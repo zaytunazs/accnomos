@@ -23,6 +23,7 @@ from app.ai.verify import verify
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, decide, run_checks
 from app.formats import Prepared
 from app.journal import draft_journal
+from app.region import UK_RULES, TaxRules, extraction_hint
 from app.repair import REPAIR_CODES, repair
 from app.schemas import Check, ExtractedDoc, Proposal, Verification
 
@@ -125,6 +126,7 @@ async def process_image(
     business_name: str | None = None,
     suppliers: Callable[[ExtractedDoc], SupplierKnowledge] | None = None,
     business_vat_registered: bool = True,
+    rules: TaxRules = UK_RULES,
     text: str | None = None,
     digest: str | None = None,
     crop: bool = True,
@@ -146,7 +148,10 @@ async def process_image(
     page = cropped.image_bytes if image_bytes is not None else None
 
     async def read(img: bytes | None) -> tuple[ExtractedDoc, dict, list[Check], list[Check]]:
-        if text is None:
+        hint = extraction_hint(rules)
+        if hint:  # books outside the UK only: UK readings are asked exactly as before
+            doc, meta = await extract_document(img, mime, cfg, text=text, hint=hint)
+        elif text is None:
             doc, meta = await extract_document(img, mime, cfg)
         else:
             doc, meta = await extract_document(img, mime, cfg, text=text)
@@ -160,6 +165,7 @@ async def process_image(
             period_end=period_end,
             supplier=supplier,
             business_vat_registered=business_vat_registered,
+            rules=rules,
         )
         return doc, meta, repairs, repairs + checks
 
@@ -214,7 +220,7 @@ async def process_image(
         status=status,
         reasons=reasons,
         suggested_filename=suggested_filename(doc, file_mime or mime or "image/jpeg"),
-        journal_draft=draft_journal(doc),
+        journal_draft=draft_journal(doc, rules),
         model=f"{meta['backend']}:{meta['model']}",
         served_by=meta.get("served"),
         verification=verification,
@@ -235,6 +241,7 @@ async def process_document(
     business_name: str | None = None,
     suppliers: Callable[[ExtractedDoc], SupplierKnowledge] | None = None,
     business_vat_registered: bool = True,
+    rules: TaxRules = UK_RULES,
 ) -> Proposal:
     """A prepared file (app/formats.py) through the same checks and the same card. `digest` is the hash of the file
     that will be filed. Raises `ExtractionError`."""
@@ -248,6 +255,7 @@ async def process_document(
         business_name=business_name,
         suppliers=suppliers,
         business_vat_registered=business_vat_registered,
+        rules=rules,
         text=prep.text,
         digest=digest,
         crop=prep.kind == "image",  # a rendered PDF page is already the page

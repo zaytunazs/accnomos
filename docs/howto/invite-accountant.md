@@ -1,27 +1,38 @@
 # Invite your accountant
 
-![Invite your accountant](img/invite-accountant-cover.png)
-
 Who this is for: an owner giving their accountant access to the same books.
-They open your files; every change they make is recorded under their name.
+Accnomos keeps no database of users: your accountant gets access because your
+Accnomos folder in OneDrive is shared with their Microsoft account. Removing
+access stops the sharing at once.
 
-1. Open Settings (`/settings`) and find *Your accountant*.
-   ![the Invite your accountant section with the email box and access choice.](img/invite-accountant-1.png)
-   If this goes wrong: the section is missing, so check you are signed in with
+1. Open **Settings › Your accountant** (`/settings`).
+   ![Settings, Your accountant: how sharing works, then Invite your accountant with their email, an optional name, and what they can do.](img/invite-accountant-1.png)
+   If this goes wrong: the tab is missing, so check you are signed in with
    the Microsoft account that owns the books.
-2. Enter their email and choose view-only or edit access.
-   ![the address typed in full and the selected access level.](img/invite-accountant-2.png)
-   If this goes wrong: the wrong level is picked, so change it before sending;
-   wider access cannot be taken back silently.
-3. Press Invite and let Microsoft email them the link.
-   ![the sent confirmation naming the address invited.](img/invite-accountant-3.png)
-   If this goes wrong: they never get the email, so use *Record access* after
-   sharing the folder from OneDrive yourself.
-4. Ask them to open your books through Accountant (`/accountant`).
-   ![your books listed under their Accountant page with the access level shown.](img/invite-accountant-4.png)
+2. Enter their email (the Microsoft account they use) and choose **View only
+   (and leave queries)** or **View and edit**, then press **Invite**.
+   Microsoft emails them the link.
+   ![The invite form with a fictional accountant's address typed in and View only (and leave queries) chosen.](img/invite-accountant-2.png)
+   If this goes wrong: they never get the email, so share the folder from
+   OneDrive yourself and tick **I shared the Accnomos folder with them myself
+   in OneDrive (just record it here)**, then press **Record access**.
+3. Your accountant opens your books from the **Accountant portal**
+   (`/accountant`), which lists every client who shared books with them, or
+   adds you with the client code from the invitation.
    If this goes wrong: your books are missing there, so the invite went to a
-   different Microsoft account; re-invite the right one.
-5. Check the audit trail for their first visit.
-   ![the audit trail (/audit) with their actions under their name.](img/invite-accountant-5.png)
-   If this goes wrong: nothing is recorded, so they opened the books without
-   signing in; ask them to sign in first.
+   different Microsoft account; invite the right one.
+4. They can leave a query on a transaction or document; you answer it in
+   **Settings › Your accountant**. With edit access, every change they make is
+   in the **Audit trail** (`/audit`) under their name, and anything can be put
+   right with a reversing entry, never a delete.
+5. To stop, press **Remove access** beside their name. The sharing ends at
+   once.
+
+Where it is offered, the same tab has a separate opt-in for a review by
+Accnomos accountants: you read what they can see before you agree, and
+**Stop reviews** removes the sharing. They never submit anything to HMRC for
+you and never move money. Sharing is switched off in the demo sandbox.
+
+## On Android
+
+**More › Your accountant** has the same invite, remove access and queries.

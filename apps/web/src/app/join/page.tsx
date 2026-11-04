@@ -3,12 +3,12 @@ import DemoLink from "@/components/marketing/DemoLink";
 import JoinForm from "@/components/sign-up/JoinForm";
 
 export const metadata = {
-  title: "Get 3 months free · Accnomos",
-  description: "Leave your email and we will set you up with 3 months free of Accnomos, bookkeeping for UK small businesses.",
+  title: "Join the waiting list · Accnomos",
+  description: "Leave your email to join the waiting list for Accnomos, bookkeeping for UK small businesses.",
 };
 
 /**
- * /join: the short page the social posts link to ("3 months free"). The neutral sign-up (components/sign-up/JoinForm,
+ * /join: the short page the social posts link to ("a place on the waiting list"). The neutral sign-up (components/sign-up/JoinForm,
  * POST /public/sign-up) in every build, with one line on what Accnomos is and the demo for anyone who wants to look
  * first. No launch, beta or waiting-list wording (e2e/submission-mode.spec.ts).
  */

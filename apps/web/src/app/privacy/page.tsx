@@ -16,9 +16,9 @@ export default function PrivacyPage() {
           reads your documents is the one on our server: <strong>Meta&apos;s Model API</strong>, then a fallback model
           on our own server. You can instead run it on a machine you control or use your own API key
           (see <a className="font-semibold text-teal underline" href="#ai-documents">where your documents go</a>).
-          {/* The "Get 3 months free" list (components/sign-up/JoinForm.tsx; the pre-launch build's EarlyAccessForm). */}
+          {/* The "Join the waiting list" list (components/sign-up/JoinForm.tsx; the pre-launch build's EarlyAccessForm). */}
           {" "}The one exception is the{" "}
-          <a className="font-semibold text-teal underline" href="#sign-up">3 months free list</a>, which holds only what
+          <a className="font-semibold text-teal underline" href="#sign-up">waiting list</a>, which holds only what
           you type into it if you choose to sign up.
         </p>
       </section>
@@ -92,26 +92,26 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">What we keep</h2>
         <p>
           Nothing from your books. The runtime and relay are stateless: requests are processed in memory and discarded. Standard web-server access logs (IP address, path, time) are kept for up to 30 days for security.
-          {" "}If you sign up for 3 months free, we keep what you typed into that form, as described next.
+          {" "}If you join the waiting list, we keep what you typed into that form, as described next.
         </p>
       </section>
 
       <section id="sign-up" className="mt-8 scroll-mt-6 space-y-3 text-[15px] leading-relaxed">
-        <h2 className="text-xl font-bold">The 3 months free list</h2>
+        <h2 className="text-xl font-bold">The waiting list</h2>
         <p>
-          You can leave your email on our website to be set up with 3 months free of Accnomos. Signing up is optional
+          You can leave your email on our website to join the Accnomos waiting list. Signing up is optional
           and has nothing to do with using the app.
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li><strong>Who:</strong> Zaytuna Business Services Ltd, United Kingdom, is the controller of the list. Contact{" "}
-            <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>.</li>
+            <a className="font-semibold text-teal underline" href="mailto:zohaibsharif@gmail.com">zohaibsharif@gmail.com</a>.</li>
           <li><strong>What we collect:</strong> your email address; your name and how you heard about us, if you give them; what the books would be for (limited company, sole trader, personal, or accountant/bookkeeper); that you ticked the consent box and its exact wording; the page you signed up on; and the date and time. We do not store your IP address with it.</li>
-          <li><strong>Why:</strong> to email you to set up your 3 months free, and to know how many people of each kind have signed up. Nothing else: no newsletter, no other products, and we never sell or share the list.</li>
+          <li><strong>Why:</strong> to email you when your place on the waiting list comes up, and to know how many people of each kind have signed up. Nothing else: no newsletter, no other products, and we never sell or share the list.</li>
           <li><strong>Lawful basis:</strong> your consent (UK GDPR Article 6(1)(a)), given by ticking the box, which is never pre-ticked. Our email also follows the Privacy and Electronic Communications Regulations.</li>
           <li><strong>Where it is kept:</strong> in one file on a server we run ourselves, readable only by the service operator. Nobody else receives it. If we use an email-sending service to email you, we will name it here first; it would act only on our instructions.</li>
           <li><strong>How long:</strong> we delete the list by the end of November 2027, except for people who have become customers. Unsubscribing deletes your entry straight away.</li>
           <li><strong>Unsubscribe or erase:</strong> reply to our email, or email{" "}
-            <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>{" "}
+            <a className="font-semibold text-teal underline" href="mailto:zohaibsharif@gmail.com">zohaibsharif@gmail.com</a>{" "}
             from the address you signed up with. Withdrawing consent is as easy as giving it, and we will delete your entry and confirm. You can also ask for a copy of what we hold, or for it to be corrected.</li>
           <li><strong>Complaints:</strong> if you are unhappy with how we handle your data, tell us first. You also have the right to complain to the Information Commissioner&apos;s Office:{" "}
             <a className="font-semibold text-teal underline" href="https://ico.org.uk/make-a-complaint/">ico.org.uk/make-a-complaint</a>, 0303 123 1113.</li>
@@ -154,9 +154,9 @@ export default function PrivacyPage() {
                 </tr>
               ))}
               <tr className="border-t border-border align-top">
-                <td className="py-2 pr-3 font-semibold">3 months free list (only if you sign up): email, optional name, business type, how you heard, consent, time</td>
+                <td className="py-2 pr-3 font-semibold">waiting list (only if you sign up): email, optional name, business type, how you heard, consent, time</td>
                 <td className="py-2 pr-3">One file on our server (the runtime’s data volume)</td>
-                <td className="py-2">The service operator, to email you to set up your 3 months free; deleted by the end of November 2027</td>
+                <td className="py-2">The service operator, to email you when your place on the waiting list comes up; deleted by the end of November 2027</td>
               </tr>
             </tbody>
           </table>
@@ -177,7 +177,7 @@ export default function PrivacyPage() {
         </ul>
         <p>
           We do not sell data and we do not use advertising or analytics SDKs.
-          {" "}The 3 months free list is not shared with anyone.
+          {" "}The waiting list is not shared with anyone.
         </p>
       </section>
 
@@ -202,7 +202,7 @@ export default function PrivacyPage() {
           your OneDrive. To delete the books, delete the Accnomos folder in your OneDrive and remove Accnomos at{" "}
           <a className="font-semibold text-teal underline" href="https://account.live.com/myapps">account.live.com/myapps</a>.
           No server-side delete is needed, because nothing from your books is stored server-side
-          {" "}(the <a className="font-semibold text-teal underline" href="#sign-up">3 months free list</a> is separate)
+          {" "}(the <a className="font-semibold text-teal underline" href="#sign-up">waiting list</a> is separate)
           .
         </p>
       </section>
@@ -218,7 +218,7 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Contact</h2>
         <p>
-          Zaytuna Business Services Ltd, United Kingdom · <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>
+          Zaytuna Business Services Ltd, United Kingdom · <a className="font-semibold text-teal underline" href="mailto:zohaibsharif@gmail.com">zohaibsharif@gmail.com</a>
         </p>
       </section>
     </div>

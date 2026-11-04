@@ -1,27 +1,34 @@
 # Export for your accountant
 
-![Export for your accountant](img/export-accountant-cover.png)
+Who this is for: an owner sending a period's records to their accountant, or
+moving to other software. Exports are copies; the books stay as they are in
+your OneDrive.
 
-Who this is for: an owner sending a period's records to their accountant.
-Exports are copies; the books stay untouched in your OneDrive.
+1. Open **Reports & exports** (`/reports/exports`, under **Reporting**). Set
+   **From** and **To**, or press **This VAT period**, and search with **Find a
+   report** if you know its name.
+   ![Reports & exports: the From and To dates, This VAT period, Find a report, the Financial statements list and the Account mapping panel for Xero.](img/export-accountant-1.png)
+   If this goes wrong: a report ignores the dates, so it is one that has no
+   period (a balance at a date); set the To date instead.
+2. Pick a report to preview it, then download it or save it to `07 Reports`.
+   **Taxes and balances** has the trial balance, general ledger, journal
+   report, the UK VAT return as HMRC lays it out, and VAT detail by box.
+   ![Taxes and balances: Trial balance, General ledger detail and summary, General ledger exceptions, Journal report, UK VAT return and VAT detail, each with a star to keep it at the top.](img/export-accountant-2.png)
+   If this goes wrong: the VAT return differs from the VAT page, so check you
+   picked the same period and scheme.
+3. For another package, open **Account mapping**, choose Xero, QuickBooks,
+   Sage or FreeAgent, and check the accounts marked *Check* or *Unmapped*
+   before exporting.
+4. For everything at once, open **Settings › Your data** and press **Export
+   your data**: one zip in `07 Reports/Exports` with ledger events, proposals,
+   contacts, invoices, payments, bank lines, rules, the audit trail and the
+   saved VAT returns, plus a README and one CSV per table that opens in Excel.
+   ![Settings, Your data: Switching from another system, and Export your data outlined, describing the zip saved to 07 Reports/Exports.](img/export-accountant-3.png)
+5. Send the files from `07 Reports` with the current `Books.xlsx` beside them,
+   or [invite your accountant](invite-accountant.md) to open the books
+   themselves.
 
-1. Open Reports and exports (`/reports/exports`) and pick the period.
-   ![the report list with the period controls and the period shown in the address.](img/export-accountant-1.png)
-   If this goes wrong: the period controls are disabled, so pick a report that
-   takes a period first.
-2. Export the VAT return as sent.
-   ![the VAT-return export matching the boxes on /vat for the same period and scheme.](img/export-accountant-2.png)
-   If this goes wrong: the boxes differ, so the return was edited after
-   submission; export again from the current page.
-3. Export the Income Tax summary (SA103) for the period.
-   ![the SA103 summary with turnover, expenses and the ledger lines behind each box.](img/export-accountant-3.png)
-   If this goes wrong: a box is empty, so that trade had no entries in the
-   period; check the date range.
-4. Export the full ledger and the audit trail as CSV.
-   ![the ledger and audit exports with every column heading kept, even for an empty section.](img/export-accountant-4.png)
-   If this goes wrong: a file opens with missing columns, so export again;
-   headings are always written.
-5. Send the files from `07 Reports/` with Books.xlsx beside them.
-   ![the dated files in 07 Reports/ and the current Books.xlsx on Files.](img/export-accountant-5.png)
-   If this goes wrong: Books.xlsx is stale, so press *Rebuild Books.xlsx* on
-   Files before sending it.
+## On Android
+
+**More › Reports** shows profit and loss, aged balances, VAT and the trend.
+Exports are made on the web.

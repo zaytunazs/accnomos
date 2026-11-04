@@ -24,12 +24,18 @@ from pydantic import BaseModel, Field, StrictBool
 from app import bank_feeds as bf
 from app import demo
 from app.books import Books
-from app.routes_books import get_books, require_user
+from app.region import rules_for
+from app.routes_books import get_books, require_uk, require_user
 from app.validation import StrictBody
 
 router = APIRouter(prefix="/books/bankfeeds", tags=["bank feeds"])
 #: Connecting reaches the provider with the server's credentials: never from a demo sandbox (app/demo.py).
-NOT_IN_DEMO = [Depends(demo.refuse_external("Connecting a bank feed"))]
+#: Open Banking through TrueLayer reaches UK banks only: books kept in another country upload statements instead.
+NOT_IN_DEMO = [Depends(demo.refuse_external("Connecting a bank feed")), require_uk()]
+ABROAD = (
+    "Connecting a bank works with UK banks only. Upload your bank statement (CSV or PDF) instead: "
+    "it is matched the same way."
+)
 
 
 def _http(exc: bf.BankFeedError) -> HTTPException:
@@ -38,6 +44,8 @@ def _http(exc: bf.BankFeedError) -> HTTPException:
 
 @router.get("", response_model=bf.FeedStatus)
 async def feed_status(books: Books = Depends(get_books)) -> bf.FeedStatus:
+    if not (await rules_for(books)).uk:
+        return bf.FeedStatus(available=False, reason=ABROAD)
     return await bf.status(books)
 
 

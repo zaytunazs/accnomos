@@ -2,6 +2,7 @@ import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import SignInCta from "@/components/SignInCta";
 import { FOLDER } from "@/lib/folders";
+import { GUIDES as guides, GUIDES_URL } from "@/lib/howto-guides";
 
 export const metadata = { title: "How it works · Accnomos" };
 
@@ -15,21 +16,6 @@ interface Feature {
   code: string;
   gap: string;
 }
-
-/** The how-to guides in docs/howto/ (screenshots from the demo sandbox's fictional sample books), read on GitHub. */
-const GUIDES_URL = "https://github.com/zaytunazs/accnomos/blob/main/docs/howto";
-const guides: { file: string; title: string; who: string }[] = [
-  { file: "connect-books", title: "Connect your books or try the demo", who: "Opening Accnomos for the first time" },
-  { file: "add-mailbox", title: "Add a mailbox", who: "Collecting supplier receipts by email" },
-  { file: "review-approve", title: "Review and approve", who: "Clearing the Review queue" },
-  { file: "reconcile-bank", title: "Reconcile bank lines", who: "Matching a statement against the books" },
-  { file: "vat-return", title: "Do a VAT return", who: "VAT-registered and filing through MTD" },
-  { file: "income-tax-update", title: "Income Tax quarterly update", who: "Sole traders and landlords sending MTD updates" },
-  { file: "payroll-paye", title: "Run payroll and file with Basic PAYE Tools", who: "Employers running a pay run" },
-  { file: "invite-accountant", title: "Invite your accountant", who: "Giving your accountant access" },
-  { file: "export-accountant", title: "Export for your accountant", who: "Sending a period's records away" },
-  { file: "voice-chat", title: "Use voice and chat", who: "Asking in plain words, typed or spoken" },
-];
 
 const features: Feature[] = [
   {
@@ -381,7 +367,7 @@ export default function HowItWorksPage() {
           Step-by-step guides
         </h2>
         <p className="mt-1 text-[15px] leading-7 text-muted">
-          Short guides with a screenshot for every step, taken from the demo&apos;s fictional sample books. They open on GitHub.
+          Short guides with a screenshot for every step, taken from the demo&apos;s fictional sample books, and the Android app where it differs. They open on GitHub.
         </p>
         <ul className="mt-3 grid grid-cols-1 gap-2 min-[560px]:grid-cols-2">
           {guides.map((g) => (

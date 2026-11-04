@@ -6,19 +6,19 @@ import { useSubmissionMode } from "@/lib/submission-mode";
 
 /** No launch, beta or waiting-list wording: the submission build shows this (scripts/prelaunch-words.mjs). */
 const COPY: SignUpCopy = {
-  heading: "Get 3 months free",
-  intro: "Leave your email and we will set you up with 3 months free.",
+  heading: "Join the waiting list",
+  intro: "Leave your email to join the waiting list.",
   consent: SIGNUP_CONSENT_TEXT,
   consentError: "Tick the box so we can email you",
-  button: "Get 3 months free",
+  button: "Join the waiting list",
   busy: "Sending…",
   success: SIGNUP_SUCCESS_TEXT,
-  purpose: "to email you to set up your 3 months free, and deletes them by the end of November 2027 unless you become a customer",
+  purpose: "to email you when your place on the waiting list comes up, and deletes them by the end of November 2027",
   submit: joinList,
 };
 
 /**
- * "Get 3 months free" (POST /public/sign-up, the same list as the pre-launch form). `everyBuild` shows it in the
+ * "Join the waiting list" (POST /public/sign-up, the same list as the pre-launch form). `everyBuild` shows it in the
  * pre-launch build too (/join); without it, the pre-launch build shows its own EarlyAccessForm instead (landing page).
  */
 export default function JoinForm({ source, everyBuild = false }: { source: SignUpSource; everyBuild?: boolean }) {

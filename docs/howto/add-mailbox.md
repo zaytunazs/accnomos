@@ -1,28 +1,40 @@
-# Add a mailbox
+# Collect receipts by email
 
-![Add a mailbox](img/add-mailbox-cover.png)
+Who this is for: an owner who gets supplier receipts and invoices by email and
+wants them picked up for Review. Mail is only read: Accnomos never sends,
+moves, marks or deletes it.
 
-Who this is for: an owner who gets supplier receipts by email and wants them
-picked up automatically. Intake is read-only: it never sends, moves or deletes
-mail. Never run against a real mailbox without testing on a throwaway first.
+1. Open **Settings › Automation** (`/settings`) and find **Outlook intake**.
+   Switch it on to copy receipts and invoices attached to your emails into
+   `00 Inbox`.
+   ![Settings, Automation: Outlook intake with its switch, saying mail is only read and nothing is moved, marked or deleted, above Email intake.](img/add-mailbox-1.png)
+   If this goes wrong: Microsoft asks for more than reading mail, so cancel
+   and tell us rather than accepting.
+2. Under **Email intake**, check the mailbox listed (the one you signed in
+   with), open **Folder and senders** to choose the folder to watch and who to
+   take receipts from, or press **Add Microsoft mailbox** / **Add shared
+   mailbox** for another one.
+   ![Email intake: the signed-in mailbox, Folder and senders, and the Add Microsoft mailbox and Add shared mailbox buttons, above Inbox triage.](img/add-mailbox-2.png)
+   If this goes wrong: a shared mailbox is refused, so check it is a work or
+   school account: Microsoft only offers that permission there.
+3. Press **Check my inbox now** in Outlook intake (it appears once intake is
+   on). Likely receipts and invoices from the last 14 days are copied into
+   `00 Inbox`, with duplicates left out, and each run is logged in
+   `_System/Intake` in Files.
+   ![Files: 07 Reports, Books.xlsx, README.txt and the _System folder outlined, which holds the rules, the audit log and the intake runs.](img/add-mailbox-3.png)
+   If this goes wrong: the run finds nothing, so check the email is from the
+   last 14 days, has an attachment and comes from a sender you allowed.
+4. Open **Review** (`/review`): each attachment is a proposal card like any
+   other, to approve, edit or reject (see [Review and approve](review-approve.md)).
+   If this goes wrong: a receipt arrived twice, so reject the copy; the
+   duplicate check also flags it.
 
-1. Open Settings (`/settings`) and find Outlook intake.
-   ![the Settings page with the Outlook intake section and its off switch.](img/add-mailbox-1.png)
-   If this goes wrong: the section is missing, so check you are signed in with
-   a Microsoft account.
-2. Switch Outlook intake on and grant `Mail.Read` only when asked.
-   ![the consent screen asking for Mail.Read and nothing wider.](img/add-mailbox-2.png)
-   If this goes wrong: consent asks for more than reading mail, so cancel and
-   report it rather than accepting.
-3. Add the mailbox and folder to watch in *Email intake*.
-   ![the mailbox address, the watched folder (Inbox), and the sender list.](img/add-mailbox-3.png)
-   If this goes wrong: the mailbox never appears, so sign that account in once
-   in the same browser first.
-4. Press *Check my inbox now* and wait for the run to finish.
-   ![the run log in _System/Intake/ with kept and dropped counts.](img/add-mailbox-4.png)
-   If this goes wrong: the run finds nothing, so check the email is within the
-   last 14 days and from an allowed sender.
-5. Open Review (`/review`) and check the new proposal cards.
-   ![one card per receipt with supplier, date and totals filled in, and the intake source line.](img/add-mailbox-5.png)
-   If this goes wrong: a receipt landed twice, so reject the duplicate; the
-   log keeps the original.
+**Inbox triage**, under Email intake, is separate: it lists the last 7 days of
+email from customers, suppliers, HMRC and your accountant with a one-line
+summary, a suggested reply and the to-dos. Replies become Outlook drafts only
+when you ask.
+
+## On Android
+
+Mailboxes are set up on the web. On the phone, receipts from email simply
+appear in **Review** with the others.

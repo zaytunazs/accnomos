@@ -15,8 +15,10 @@ class FilePicker {
 
   final MethodChannel channel;
 
-  /// Bank statement CSVs (the formats the runtime reads).
+  /// Bank statements: CSVs, or a statement PDF with a text layer (the
+  /// formats the runtime reads, services/runtime/app/bank_pdf.py).
   static const statementTypes = [
+    'application/pdf',
     'text/csv',
     'text/comma-separated-values',
     'application/csv',

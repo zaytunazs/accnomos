@@ -24,6 +24,7 @@ Default formats are csv, xlsx, pdf; vendor files are csv (some also xlsx); packs
 | `vat-detail` — VAT detail | VAT page, Reports › Exports | csv, xlsx, pdf | Same boxes as the return: sales (boxes 1+6), purchases (boxes 4+7), not on the return | `test_vat_detail_adds_up_to_the_boxes` |
 | `vat-digital-links` — MTD digital links | VAT page, Reports › Exports | csv, xlsx, pdf | VAT Notice 700/22 para 3.2.1 and section 3.3 | `test_digital_links_trace_every_entry_on_the_return` |
 | `vat-reconciliation` — VAT reconciliation | VAT page, Reports › Exports | csv, xlsx, pdf | Accnomos layout (no official format); must show no difference | `test_vat_reconciliation_has_no_difference` |
+| `tax-summary` — Tax summary (books kept outside the UK only; the four VAT reports above are UK books only) | Reports, Reports › Exports | csv, xlsx | Accnomos layout: tax on sales and on purchases by month, and the net position; nothing is filed | `test_tax_summary_report_and_csv` |
 | `trial-balance` — Trial balance | Reports › Exports | csv, xlsx, pdf | Accnomos layout; must balance | `test_trial_balance_balances` |
 | `trial-balance-range` — Trial balance by date range | Reports › Exports | csv, xlsx, pdf | Accnomos layout | `test_every_report_previews_and_renders` |
 | `general-ledger` — General ledger detail | Reports › Exports | csv, xlsx, pdf | Accnomos layout; closes on the trial balance | `test_general_ledger_closes_on_the_trial_balance` |

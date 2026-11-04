@@ -6,14 +6,14 @@ import { EARLY_ACCESS_FILE } from "./env.mjs";
 import { createBooksFolder, expect, signIn, test } from "./fixtures";
 
 /**
- * "Get 3 months free" (src/components/sign-up/JoinForm.tsx, POST /public/sign-up): the neutral sign-up the submission
+ * "Join the waiting list" (src/components/sign-up/JoinForm.tsx, POST /public/sign-up): the neutral sign-up the submission
  * build shows on the landing page (hero link, a section near the end, the pricing band, the FAQ) and on /join, the page
  * the social posts link to. Same list and file as the pre-launch form (early-access.spec.ts); its consent wording
  * names no launch. Test builds flip the mode per page through localStorage (src/lib/submission-mode.ts).
  */
-const HEADING = "Get 3 months free";
-const CONSENT = "Email me to set up my 3 months free of Accnomos. I can unsubscribe any time.";
-const DONE = "Thanks — we'll email you to set up your 3 months free";
+const HEADING = "Join the waiting list";
+const CONSENT = "Email me when my place on the Accnomos waiting list comes up. I can unsubscribe any time.";
+const DONE = "Thanks — you're on the waiting list";
 
 async function submissionMode(page: Page, mode: "0" | "1") {
   await page.addInitScript((m) => window.localStorage.setItem("accnomos.test.submission-mode", m), mode);
@@ -42,7 +42,7 @@ async function fillAndSend(page: Page, email: string) {
 test.describe("submission build (the default)", () => {
   test.use({ viewport: { width: 360, height: 780 } });
 
-  test("the hero's Get 3 months free leads to the form, which signs up at 360 px", async ({ page }) => {
+  test("the hero's Join the waiting list leads to the form, which signs up at 360 px", async ({ page }) => {
     await page.goto("/");
     const hero = page.getByRole("region", { name: "Bookkeeping you only have to check" });
     await expect(hero.getByRole("link", { name: "Try the demo", exact: true })).toBeVisible();
@@ -53,7 +53,7 @@ test.describe("submission build (the default)", () => {
     await expect(f).toBeInViewport();
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 
-    await expect(f).toContainText("Leave your email and we will set you up with 3 months free.");
+    await expect(f).toContainText("Leave your email to join the waiting list.");
     const consent = f.getByRole("checkbox", { name: CONSENT });
     await expect(consent).not.toBeChecked(); // never pre-ticked
     await expect(f.getByText(/Zaytuna Business Services Ltd keeps these details only to email you/)).toBeVisible();
@@ -85,7 +85,7 @@ test.describe("submission build (the default)", () => {
 
   test("/join: a short page with the form, for the social posts", async ({ page }) => {
     await page.goto("/join");
-    await expect(page).toHaveTitle("Get 3 months free · Accnomos");
+    await expect(page).toHaveTitle("Join the waiting list · Accnomos");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Accnomos: bookkeeping you only have to check");
     await expect(page.getByRole("main").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/judges");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
@@ -100,9 +100,9 @@ test.describe("submission build (the default)", () => {
   test("pricing, the FAQ and the footer point to it", async ({ page }) => {
     await page.goto("/");
     const pricing = page.locator("#pricing");
-    await expect(pricing).toContainText("Leave your email and we will set you up with 3 months free.");
+    await expect(pricing).toContainText("Leave your email to join the waiting list.");
     await expect(pricing.getByRole("link", { name: HEADING, exact: true })).toHaveAttribute("href", "#join");
-    await page.getByText("How do I get 3 months free?").click();
+    await page.getByText("How do I join the waiting list?").click();
     await expect(page.getByText(/at accnomos\.com\/join\) and we will set you up/)).toBeVisible();
     await expect(page.getByRole("contentinfo").getByRole("link", { name: HEADING })).toHaveAttribute("href", "/join");
   });
@@ -127,8 +127,8 @@ test.describe("submission build (the default)", () => {
   test("the privacy policy describes the list without launch wording", async ({ page }) => {
     await page.goto("/privacy#sign-up");
     const section = page.locator("#sign-up");
-    await expect(section.getByRole("heading", { name: "The 3 months free list" })).toBeVisible();
-    await expect(section).toContainText("to email you to set up your 3 months free");
+    await expect(section.getByRole("heading", { name: "The waiting list" })).toBeVisible();
+    await expect(section).toContainText("to email you when your place on the waiting list comes up");
     await expect(section).toContainText("by the end of November 2027");
     expect(prelaunchHits(await page.locator("main").innerText())).toEqual([]);
   });
@@ -138,7 +138,7 @@ test.describe("public build (submission mode 0)", () => {
   test("the landing page keeps its own form; /join shows the neutral one", async ({ page }) => {
     await submissionMode(page, "0");
     await page.goto("/");
-    await expect(page.getByRole("region", { name: "Get 3 months free at launch" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Join the waiting list" })).toBeVisible();
     await expect(form(page)).toHaveCount(0); // one form per page, not two
 
     await page.goto("/join");

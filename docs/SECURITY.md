@@ -71,7 +71,7 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 People who sign up before the public launch (November 2026) get 3 months free and one email at launch. This is
 marketing data held by the operator, separate from anyone's books, and handled under UK GDPR and PECR:
 
-- **Controller:** Zaytuna Business Services Ltd (admin@zaytunauk.co.uk). No DPO is required at this size.
+- **Controller:** Zaytuna Business Services Ltd (zohaibsharif@gmail.com). No DPO is required at this size.
 - **Collected:** email; optional name; business type (company / sole trader / personal / accountant); optional "how
   did you hear about us"; the consent flag and its exact wording (*"Email me once Accnomos launches, with my 3 months
   free. I can unsubscribe any time."*); the source page; the UTC time. No IP address is stored.
@@ -80,7 +80,7 @@ marketing data held by the operator, separate from anyone's books, and handled u
   reg. 22 needs consent for marketing email to individuals and to sole traders and non-limited partnerships; the
   same consent covers limited-company addresses, where PECR does not require it.
 - **Retention:** deleted 12 months after launch (end of November 2027) unless the person became a customer.
-- **Unsubscribe / erasure:** reply to the email or write to admin@zaytunauk.co.uk; the owner runs
+- **Unsubscribe / erasure:** reply to the email or write to zohaibsharif@gmail.com; the owner runs
   `python -m app.early_access delete --email …` (`docs/PRODUCTION.md` § 6), which removes every line for that address.
 - **Where:** one JSON-lines file on the server's `runtime-data` volume, owner-only permissions; no web admin.
   The privacy page (`/privacy#early-access`) says all of the above, including the right to complain to the ICO.

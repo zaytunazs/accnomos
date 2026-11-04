@@ -20,7 +20,7 @@ from accnomos_ledger.vat_schemes import (
 from app.books import Books, now
 from app.books import today as current_date
 from app.deadlines import add_months
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_uk, require_user
 from app.vat_cycle import VatCycle, vat_cycle
 from app.vat_schemes import (
     CHECKED,
@@ -39,7 +39,7 @@ from app.vat_schemes import (
     segment_label,
 )
 
-router = APIRouter(prefix="/books", tags=["vat"])
+router = APIRouter(prefix="/books", tags=["vat"], dependencies=[require_uk()])
 
 
 class CurrentScheme(BaseModel):

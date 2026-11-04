@@ -41,10 +41,18 @@ export default function TopBar({ routes }: { routes: string[] }) {
   const personal = usePersonalOn();
   const selfEmployed = useSelfEmployed() || Boolean(features?.includes("self_employment"));
   const landlord = useLandlordOn();
+  const uk = meta?.region ? meta.region.uk : undefined;
   const groups = useMemo(
     () =>
-      visibleGroups(routes, { features: JSON.parse(featureKey) as string[] | null, kind, personal, selfEmployed, landlord }),
-    [routes, featureKey, kind, personal, selfEmployed, landlord],
+      visibleGroups(routes, {
+        features: JSON.parse(featureKey) as string[] | null,
+        kind,
+        personal,
+        selfEmployed,
+        landlord,
+        uk,
+      }),
+    [routes, featureKey, kind, personal, selfEmployed, landlord, uk],
   );
 
   return (

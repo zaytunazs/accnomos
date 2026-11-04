@@ -56,6 +56,7 @@ from app.invoicing import (
     get_invoice,
     money,
     price_lines,
+    sales_rates,
     uk_date,
 )
 from app.journal import DEBTORS, SALES, VAT_CONTROL
@@ -272,7 +273,7 @@ async def create_credit_note(
         raise InvoiceError("The credit note is dated before the invoice")
     earlier = await list_credit_notes(books, inv.number)
     ins, sources = build_lines(inv, draft, earlier)
-    lines, summary, net, vat = price_lines(ins)
+    lines, summary, net, vat = price_lines(ins, await sales_rates(books))
     if net + vat <= 0 or vat < 0 or any(r.net_pence < 0 for r in summary):
         raise InvoiceError("A credit note must credit more than £0.00 at each VAT rate; choose other lines")
     already = sum(c.total_pence for c in earlier if c.status == "issued")
@@ -334,7 +335,7 @@ async def create_standalone_credit_note(
 ) -> CreditNote:
     """Price, number, save and post a stand-alone credit note: same CN- numbers and same posting as one made from
     an invoice, but crediting nobody's invoice — the amount is left as a credit on the customer. Raises InvoiceError."""
-    lines, summary, net, vat = price_lines(draft.lines)
+    lines, summary, net, vat = price_lines(draft.lines, await sales_rates(books))
     if net + vat <= 0 or vat < 0 or any(r.net_pence < 0 for r in summary):
         raise InvoiceError("A credit note must credit more than £0.00 at each VAT rate")
     cn = CreditNote(

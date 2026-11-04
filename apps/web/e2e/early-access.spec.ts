@@ -5,12 +5,12 @@ import { EARLY_ACCESS_FILE } from "./env.mjs";
 import { expect, test } from "./fixtures";
 
 /**
- * "Get 3 months free at launch" (src/components/early-access/EarlyAccessForm.tsx). The e2e build is a submission
+ * "Join the waiting list" (src/components/early-access/EarlyAccessForm.tsx). The e2e build is a submission
  * build (NEXT_PUBLIC_SUBMISSION_MODE unset = 1); test-mode builds let a spec flip it per page through localStorage
  * (src/lib/submission-mode.ts). The runtime writes sign-ups to EARLY_ACCESS_FILE (playwright.config.ts).
  */
-const HEADING = "Get 3 months free at launch";
-const CONSENT = "Email me once Accnomos launches, with my 3 months free. I can unsubscribe any time.";
+const HEADING = "Join the waiting list";
+const CONSENT = "Email me once Accnomos launches. I can unsubscribe any time.";
 
 async function submissionMode(page: Page, mode: "0" | "1") {
   await page.addInitScript((m) => window.localStorage.setItem("accnomos.test.submission-mode", m), mode);

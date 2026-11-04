@@ -8,6 +8,7 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime, tileData, type RtDashboard } from "@/lib/runtime";
 import { errorText, todayIso } from "@/components/jobs/useAccount";
+import { moneySign } from "@/lib/region";
 
 /**
  * What Home shows. Signed out: the Bramblewood sample. Signed in: GET /books/dashboard, with skeletons while it loads
@@ -113,7 +114,7 @@ export const UNKNOWN = "—";
 /** "£12,480" from pence (whole pounds, as the tiles show them); "—" when unknown. */
 export function pounds(p: number | null | undefined): string {
   if (p === null || p === undefined) return UNKNOWN;
-  return `${p < 0 ? "-" : ""}£${Math.round(Math.abs(p) / 100).toLocaleString("en-GB")}`;
+  return `${p < 0 ? "-" : ""}${moneySign()}${Math.round(Math.abs(p) / 100).toLocaleString("en-GB")}`;
 }
 
 /** "24 Oct" from "2026-10-24", without a time zone. */

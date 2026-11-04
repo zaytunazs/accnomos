@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PreviewSendDialog } from "@/components/invoices/InvoiceDialogs";
 import SignInCta from "@/components/SignInCta";
 import { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
-import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, VAT_CODES, type LiveTotals } from "@/lib/invoices";
+import { moneySign, taxLabel, useUkBooks } from "@/lib/region";
+import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, vatCodes, type LiveTotals } from "@/lib/invoices";
 import { RuntimeErrorNote } from "@/components/States";
 import { ItemPicker } from "@/components/trade/LinesEditor";
 import { useItems } from "@/components/trade/useItems";
@@ -53,6 +54,9 @@ function readJobDraft(): JobInvoiceDraft | null {
  * (prefilled from INVOICE_DRAFT_KEY, all editable). Sums are previews; the runtime prices it on save.
  */
 export default function InvoiceForm() {
+  // Books kept outside the UK: their own tax name, and no CIS or reverse charge (UK rules).
+  const uk = useUkBooks();
+  const tax = taxLabel();
   const router = useRouter();
   const params = useSearchParams();
   const editId = params.get("id");
@@ -460,6 +464,7 @@ export default function InvoiceForm() {
         </div>
       </section>
 
+      {uk && (
       <section className={card} aria-labelledby="inv-cis">
         <h2 id="inv-cis" className="text-[17px] font-extrabold">CIS and VAT reverse charge</h2>
         <div className="mt-2 space-y-2 text-[15px]">
@@ -484,6 +489,7 @@ export default function InvoiceForm() {
           )}
         </div>
       </section>
+      )}
 
       <section className={card} aria-labelledby="inv-lines">
         <h2 id="inv-lines" className="text-[17px] font-extrabold">Lines</h2>
@@ -535,13 +541,13 @@ export default function InvoiceForm() {
                     <input id={`ln-unit-${l.key}`} className={fieldInput} placeholder="hours, days, each" value={l.unit} onChange={(e) => setLine(l.key, { unit: e.target.value })} />
                   </div>
                   <div>
-                    <label className={fieldLabel} htmlFor={`ln-price-${l.key}`}>Unit price (£, ex VAT)</label>
+                    <label className={fieldLabel} htmlFor={`ln-price-${l.key}`}>Unit price ({moneySign().trim()}, ex {tax})</label>
                     <input id={`ln-price-${l.key}`} inputMode="decimal" className={`${fieldInput} ${priceOk ? "" : "border-warn-border"}`} placeholder="45.00" value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} />
                   </div>
                   <div>
-                    <label className={fieldLabel} htmlFor={`ln-vat-${l.key}`}>VAT</label>
+                    <label className={fieldLabel} htmlFor={`ln-vat-${l.key}`}>{tax}</label>
                     <select id={`ln-vat-${l.key}`} className={fieldInput} value={l.vat_code} onChange={(e) => setLine(l.key, { vat_code: e.target.value as RtSalesVatCode })}>
-                      {VAT_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                      {vatCodes().map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                     </select>
                   </div>
                 </div>
@@ -579,12 +585,12 @@ export default function InvoiceForm() {
         <dl className={`mt-4 space-y-1 border-t border-border pt-3 text-sm ${showSaved ? "" : "italic"}`} aria-live="polite">
           {shownTotals.byCode.map((g) => (
             <div key={g.code} className="flex justify-between text-muted">
-              <dt>{VAT_CODES.find((c) => c.code === g.code)!.label}: net {money(g.net)}</dt>
-              <dd className="tabular-nums">VAT {money(g.vat)}</dd>
+              <dt>{vatCodes().find((c) => c.code === g.code)?.label ?? g.code}: net {money(g.net)}</dt>
+              <dd className="tabular-nums">{tax} {money(g.vat)}</dd>
             </div>
           ))}
           <div className="flex justify-between pt-1"><dt className="font-bold">Net</dt><dd className="tabular-nums">{money(shownTotals.net)}</dd></div>
-          <div className="flex justify-between"><dt className="font-bold">VAT</dt><dd className="tabular-nums">{money(shownTotals.vat)}</dd></div>
+          <div className="flex justify-between"><dt className="font-bold">{tax}</dt><dd className="tabular-nums">{money(shownTotals.vat)}</dd></div>
           <div className="flex justify-between text-[17px]"><dt className="font-extrabold">Total</dt><dd className="font-extrabold tabular-nums">{money(shownTotals.total)}</dd></div>
           {rcVat > 0 && (
             <div className="flex justify-between text-muted"><dt>VAT the customer accounts for (reverse charge)</dt><dd className="tabular-nums">{money(rcVat)}</dd></div>
@@ -633,7 +639,7 @@ export default function InvoiceForm() {
           </p>
         )}
         <p className="mt-1 text-sm text-muted">
-          Net {money(saved.net_pence)} · VAT {money(saved.vat_pence)} · <strong className="text-ink">Total {money(saved.total_pence)}</strong>
+          Net {money(saved.net_pence)} · {tax} {money(saved.vat_pence)} · <strong className="text-ink">Total {money(saved.total_pence)}</strong>
         </p>
         <div className="mt-3 h-[70vh] min-h-96 overflow-hidden rounded-xl border border-border bg-ground lg:h-[60vh]">
           {pdfUrl ? (

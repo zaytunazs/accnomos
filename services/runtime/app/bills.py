@@ -26,8 +26,9 @@ from app import contacts as cb
 from app.approve import final_journal
 from app.books import Books, now
 from app.checks import decide, normalise_vat_number, run_checks
-from app.invoicing import RATES, InvoiceError, LineIn, load_profile, price_lines
+from app.invoicing import InvoiceError, LineIn, load_profile, price_lines
 from app.journal import CATEGORY_ACCOUNTS
+from app.region import UK_RULES, TaxRules, rules_for
 from app.schemas import CATEGORIES, Check, ExtractedDoc, ExtractedLine, Proposal
 
 #: Account -> the category name the Review card shows for it (the reverse of journal.CATEGORY_ACCOUNTS).
@@ -51,9 +52,10 @@ def extracted_doc(
     lines: list[LineIn],
     account: str | None,
     invoice_number: str | None = None,
+    rules: TaxRules = UK_RULES,
 ) -> tuple[ExtractedDoc, int]:
     """(the bill as Review shows it, its gross in pence). Raises InvoiceError for a bill that totals nothing."""
-    priced, _summary, net, vat = price_lines(lines)
+    priced, _summary, net, vat = price_lines(lines, None if rules.uk else rules.sales_rates())
     if net + vat <= 0:
         raise InvoiceError("A bill must total more than £0.00")
     return (
@@ -65,14 +67,14 @@ def extracted_doc(
             invoice_number=invoice_number,
             original_invoice_number=None,
             date=bill_date.isoformat(),
-            currency="GBP",
+            currency=rules.currency,
             lines=[
                 ExtractedLine(
                     description=ln.description,
                     qty=float(ln.quantity),
                     unit_price=_pounds(ln.unit_price_pence),
                     net=_pounds(ln.net_pence),
-                    vat_rate=RATES[ln.vat_code],
+                    vat_rate=ln.vat_rate,
                     vat=_pounds(ln.vat_pence),
                 )
                 for ln in priced
@@ -123,8 +125,9 @@ async def make_bill_proposal(
     except FileNotFoundError:
         pass
     vrn = await supplier_vrn(books, supplier_name, contact_id, supplier_vat_number)
+    rules = await rules_for(books)
     doc, gross = extracted_doc(
-        supplier_name=supplier_name, supplier_vrn=vrn, bill_date=bill_date, lines=lines, account=account
+        supplier_name=supplier_name, supplier_vrn=vrn, bill_date=bill_date, lines=lines, account=account, rules=rules
     )
     sha = hashlib.sha256(evidence.encode()).hexdigest()
     profile = await load_profile(books)
@@ -138,6 +141,7 @@ async def make_bill_proposal(
         this_hash=sha,
         supplier=cb.supplier_knowledge(contacts, doc),
         business_vat_registered=profile.is_vat_registered,
+        rules=rules,
     )
     checks.append(Check(code="MADE_BY_CODE", ok=True, severity="warn", message=note))
     status, reasons = decide(checks)

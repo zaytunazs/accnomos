@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'auth.dart';
 import 'books.dart' show booksClient;
 import 'demo.dart';
+import 'region.dart';
 import 'settings.dart';
 
 /// Which treatment the app shows: the business app or the household one.
@@ -78,6 +79,7 @@ class AppMode {
       }
       final account = await auth.account();
       if (account == null) {
+        BooksRegion.current.value = BooksRegion.ukBooks;
         state.value = state.value.copyWith(signedIn: false);
         return;
       }
@@ -87,6 +89,9 @@ class AppMode {
         final profile =
             await (await booksClient(settings, auth, account)).booksProfile();
         kind = profile['kind']?.toString();
+        // Where the books are kept: their currency and tax name, and no
+        // HMRC screens outside the UK (services/region.dart).
+        BooksRegion.current.value = BooksRegion.fromJson(profile['region']);
       } catch (_) {
         kind = state.value.kind;
       }

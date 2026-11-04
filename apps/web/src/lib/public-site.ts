@@ -31,7 +31,7 @@ export const PRELAUNCH_IN_BUILD =
 export const LAUNCH = "November 2026";
 
 /** Where the chat and the footer send anything the site cannot answer (runtime: PUBLIC_CONTACT_EMAIL). */
-export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "admin@zaytunauk.co.uk";
+export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "zohaibsharif@gmail.com";
 
 /** "Try the demo": the judges' sandbox guide (src/app/judges); DemoLink.tsx starts the sandbox on the way there. */
 export const DEMO_GUIDE = "/judges";

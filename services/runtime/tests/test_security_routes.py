@@ -604,7 +604,7 @@ PUBLIC_ROUTES = {
     "GET /lookup/status": "says only whether look-ups are configured",
     "GET /books/bank/coding-options": "the fixed chart of accounts and VAT codes; nothing from the user's books",
     "POST /public/early-access": "the operator's launch list sign-up, before anyone has an account",
-    "POST /public/sign-up": "the same list sign-up (3 months free), before anyone has an account",
+    "POST /public/sign-up": "the same list sign-up (the waiting list), before anyone has an account",
     "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
     "GET /ai/health": "the server's AI chain for the /models page; no keys, tokens, URLs or user data",
     "GET /ai/calls": "the last AI calls (provider, model, task, timing) for /models; no document or user data",

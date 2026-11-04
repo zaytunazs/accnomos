@@ -1389,6 +1389,19 @@ class RuntimeClient {
           what: 'load the monthly trend');
 
   /// Save the report as a spreadsheet in 07 Reports; posts nothing.
+  /// `GET /exports/{id}`: one report as JSON (`doc` with its sections), for
+  /// the Tax summary of books kept outside the UK.
+  Future<Map<String, dynamic>> exportPreview(String id, {String? from, String? to}) =>
+      _map('GET', '/exports/${_seg(id)}',
+          query: {...vatQuery(), 'from': ?from, 'to': ?to}, what: 'load that report');
+
+  /// `POST /exports/{id}/save`: the report's file saved in 07 Reports.
+  Future<Map<String, dynamic>> exportSave(String id, {String format = 'csv', String? from, String? to}) =>
+      _map('POST', '/exports/${_seg(id)}/save',
+          query: vatQuery(),
+          body: {'format': format, 'from': ?from, 'to': ?to},
+          what: 'save that report');
+
   /// `POST /reports/export` → `{path, name, size, sample, sheets}`.
   /// [report] is `pl`, `aged`, `vat`, `trend` or `all`. The saved VAT
   /// period rides along as the query, like the web.
@@ -1458,6 +1471,12 @@ class RuntimeClient {
   /// this phone shows one at a time (Settings › Switch account).
   Future<Map<String, dynamic>> booksProfile() =>
       _map('GET', '/profile', what: 'load the profile');
+
+  /// `PUT /profile`: save the whole profile (`name`, `kind`, `settings`);
+  /// `linked` left out keeps the saved list. Settings › Country and tax uses
+  /// it for `country`, `sales_tax` and `currency` (services/region.dart).
+  Future<Map<String, dynamic>> saveBooksProfile(Map<String, dynamic> body) =>
+      _map('PUT', '/profile', body: body, what: 'save the profile');
 
   Future<Map<String, dynamic>> invoiceProfile() =>
       _map('GET', '/invoices/profile', what: 'load invoice details');

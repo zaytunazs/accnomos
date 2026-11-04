@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from app.deadlines import MONTHS, period_containing, period_label, previous_period
+from app.region import UK_RULES, TaxRules
 from app.schemas import Check, ExtractedDoc, Status, VatStatus
 
 VALID_RATES = (0, 5, 20)
@@ -116,14 +117,27 @@ def check_vat_math(doc: ExtractedDoc) -> Check:
     return _chk("VAT_MATH", True, "fail", f"VAT is {rate:g}% of net")
 
 
-def check_vat_rates(doc: ExtractedDoc) -> Check:
+def check_vat_rates(doc: ExtractedDoc, rules: TaxRules = UK_RULES) -> Check:
+    if not rules.uk:
+        # One standard rate outside the UK: another rate is worth a look (a reduced or exempt line), never a block.
+        allowed = {0.0, float(rules.rate)}
+        odd = sorted({ln.vat_rate for ln in doc.lines if ln.vat_rate is not None and float(ln.vat_rate) not in allowed})
+        name = rules.label
+        if odd:
+            msg = f"{name} rate(s) {', '.join(f'{r:g}%' for r in odd)} differ from your {rules.rate:g}%"
+            return _chk("VAT_RATE_VALID", False, "warn", msg)
+        return _chk("VAT_RATE_VALID", True, "warn", f"{name} rates match your {rules.rate:g}%")
     bad = sorted({ln.vat_rate for ln in doc.lines if ln.vat_rate is not None and ln.vat_rate not in VALID_RATES})
     if bad:
         return _chk("VAT_RATE_VALID", False, "fail", f"Unexpected UK VAT rate(s): {', '.join(f'{r:g}%' for r in bad)}")
     return _chk("VAT_RATE_VALID", True, "fail", "VAT rates are 0/5/20%")
 
 
-def check_vat_number_format(doc: ExtractedDoc) -> Check:
+def check_vat_number_format(doc: ExtractedDoc, rules: TaxRules = UK_RULES) -> Check:
+    if not rules.uk:  # tax numbers are only checked against the UK's formats
+        shown = (doc.supplier_vat_number or "").strip()
+        msg = f"{rules.label} number {shown} shown" if shown else f"No {rules.label} number printed"
+        return _chk("VAT_NUMBER_FORMAT", True, "fail", msg)
     vn = normalise_vat_number(doc.supplier_vat_number)
     if vn is None:
         return _chk("VAT_NUMBER_FORMAT", True, "fail", "No VAT number printed")
@@ -150,6 +164,7 @@ def check_vat_number_required(
     doc: ExtractedDoc,
     supplier: SupplierKnowledge = UNKNOWN_SUPPLIER,
     business_vat_registered: bool = True,
+    rules: TaxRules = UK_RULES,
 ) -> Check:
     """VAT can only be reclaimed with the supplier's VAT number on the invoice.
 
@@ -162,7 +177,13 @@ def check_vat_number_required(
     4. a purchase with no VAT, over £250, from a supplier the books don't know yet: SUPPLIER_VAT_UNKNOWN, a fail
        whose message is the question the card asks; ticking "isn't VAT-registered" on approval answers it;
     5. anything else (no VAT under £250, or a known supplier): OK.
+
+    Books kept outside the UK (`rules`) are never asked for a supplier's UK VAT number.
     """
+    if not rules.uk:
+        return _chk(
+            "VAT_NUMBER_REQUIRED", True, "fail", "No supplier tax number is needed for books kept outside the UK"
+        )
     if normalise_vat_number(doc.supplier_vat_number) is not None:
         return _chk("VAT_NUMBER_REQUIRED", True, "fail", "VAT number shown")
     if not business_vat_registered:
@@ -200,11 +221,13 @@ def check_duplicate(known_hashes: set[str] | frozenset[str], this_hash: str) -> 
     return _chk("DUPLICATE", True, "fail", "Not seen before")
 
 
-def check_currency(doc: ExtractedDoc) -> Check:
-    # Severity is "fail": posting EUR amounts as GBP pence would be wrong until converted.
-    if doc.currency != "GBP":
-        return _chk("CURRENCY_GBP", False, "fail", f"In {doc.currency}, needs converting to GBP before posting")
-    return _chk("CURRENCY_GBP", True, "fail", "In GBP")
+def check_currency(doc: ExtractedDoc, rules: TaxRules = UK_RULES) -> Check:
+    # Severity is "fail": posting EUR amounts as GBP pence would be wrong until converted. The code stays
+    # CURRENCY_GBP for every country (clients key on it); the currency is the books' own (app/region.py).
+    home = rules.currency
+    if doc.currency != home:
+        return _chk("CURRENCY_GBP", False, "fail", f"In {doc.currency}, needs converting to {home} before posting")
+    return _chk("CURRENCY_GBP", True, "fail", f"In {home}")
 
 
 def parse_iso_date(s: str) -> date | None:
@@ -261,17 +284,20 @@ def run_checks(
     period_end: date | None = None,
     supplier: SupplierKnowledge = UNKNOWN_SUPPLIER,
     business_vat_registered: bool = True,
+    rules: TaxRules = UK_RULES,
 ) -> list[Check]:
-    """Run every check in a stable order."""
+    """Run every check in a stable order. Outside the UK (`rules`) there is no VAT period to check dates against."""
+    if not rules.uk:
+        period_start = period_end = None
     return [
         check_arith_lines(doc),
         check_arith_totals(doc),
         check_vat_math(doc),
-        check_vat_rates(doc),
-        check_vat_number_format(doc),
-        check_vat_number_required(doc, supplier, business_vat_registered),
+        check_vat_rates(doc, rules),
+        check_vat_number_format(doc, rules),
+        check_vat_number_required(doc, supplier, business_vat_registered, rules),
         check_duplicate(known_hashes, this_hash),
-        check_currency(doc),
+        check_currency(doc, rules),
         *check_date(doc, period_start, period_end),
         check_confidence(doc),
     ]

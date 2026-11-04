@@ -3,6 +3,7 @@
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { runtimeHeaders } from "./runtime";
+import { moneySign } from "./region";
 
 /**
  * Accounting tools: /accounting/* and the budget, cash flow and tracking reports
@@ -335,7 +336,7 @@ export function money(pence: number): string {
   const sign = pence < 0 ? "-" : "";
   const abs = Math.abs(pence);
   const pounds = Math.floor(abs / 100).toLocaleString("en-GB");
-  return `${sign}£${pounds}.${String(abs % 100).padStart(2, "0")}`;
+  return `${sign}${moneySign()}${pounds}.${String(abs % 100).padStart(2, "0")}`;
 }
 
 /** "12.34", "£1,234.5" or "7" -> pence, by string (no floats); null when it isn't an amount. */

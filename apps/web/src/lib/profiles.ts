@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, mailboxOnlyAccounts } from "./msal";
 import type { RtProfile, RtProfileKind } from "./runtime";
+import type { Region } from "./region";
 
 /**
  * Linked profiles. One Microsoft account is one set of books (a company, a sole-trader business or personal
@@ -48,6 +49,8 @@ export interface ProfileMeta {
   kind: RtProfileKind;
   features: string[];
   exists: boolean;
+  /** Where the books are kept (GET /profile `region`); missing for profiles read before it existed: UK. */
+  region?: Region;
 }
 
 interface State {
@@ -163,7 +166,13 @@ export function profileMeta(id: string): ProfileMeta | undefined {
 
 export function rememberProfile(id: string, p: RtProfile): void {
   const s = readState() ?? { owner: id, meta: {} };
-  const meta: ProfileMeta = { name: p.name, kind: p.kind, features: p.features, exists: p.exists };
+  const meta: ProfileMeta = {
+    name: p.name,
+    kind: p.kind,
+    features: p.features,
+    exists: p.exists,
+    ...(p.region ? { region: p.region } : {}),
+  };
   const before = s.meta[id];
   if (before && JSON.stringify(before) === JSON.stringify(meta)) return;
   writeState({ ...s, meta: { ...s.meta, [id]: meta } });

@@ -25,6 +25,7 @@ from accnomos_ledger.bank import FEE_WORDS, ActionHint, BankLine, suggest_action
 from app.books import BankMatchError, Books, now
 from app.journal import draft_journal
 from app.online_payments import payout_provider
+from app.region import rules_for
 from app.schemas import Check, ExtractedDoc, PaymentMethod, Proposal, ProposalStatus
 
 MODEL = "bank-line"  # in place of the extraction model's name: no model read anything
@@ -56,7 +57,7 @@ def _payment_method(text: str) -> PaymentMethod:
     return "bank_transfer"
 
 
-def proposal_from_line(line: BankLine) -> Proposal:
+def proposal_from_line(line: BankLine, currency: str = "GBP") -> Proposal:
     """An expense proposal for money out with no receipt. No VAT is claimed: without a VAT invoice
     the gross is the cost (code N); attach the receipt and edit the VAT on /review if there is one."""
     if line.amount_pence >= 0:
@@ -70,7 +71,7 @@ def proposal_from_line(line: BankLine) -> Proposal:
         customer_name=None,
         invoice_number=line.reference,
         date=line.date.isoformat(),
-        currency="GBP",
+        currency=currency,
         lines=[],
         net_total=gross,
         vat_total=0,
@@ -123,7 +124,7 @@ async def create_expense_proposal(books: Books, line_id: str, user: str) -> Prop
     user rejected it on /review: then a fresh one is made."""
     if (earlier := await _open_proposal(books, line_id)) is not None:
         return earlier
-    p = proposal_from_line(await books.find_bank_line(line_id))
+    p = proposal_from_line(await books.find_bank_line(line_id), (await rules_for(books)).currency)
     await books.save_proposal(p)
     await books.link_proposal(line_id, p.id)
     await books.audit(f"user:{user}", "bank_expense_proposed", {"line": line_id, "proposal": p.id})
@@ -146,7 +147,7 @@ async def create_private_proposal(books: Books, line_id: str, user: str) -> Prop
         raise BankMatchError("Only money out can be marked private")
     profile = await load_profile(books)
     account = private_account(profile.company_number)
-    p = proposal_from_line(line)
+    p = proposal_from_line(line, (await rules_for(books)).currency)
     p.business_use_percent = 0
     p.checks = [
         Check(

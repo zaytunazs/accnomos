@@ -154,9 +154,9 @@ Keywords: status, tested, tests, testing, ready, production, live, beta, finishe
 
 There is no published pricing. Accnomos is a hackathon build: the sample books are free to try on the website, and no
 paid plan, price or subscription has been announced. For questions about using it for your business, contact the team.
-To get 3 months free, leave your email in the "Get 3 months free" form on the home page or at accnomos.com/join, and
-the team will email you to set it up.
-Keywords: price, pricing, cost, costs, free, pay, paid, plan, plans, subscription, buy, purchase, how much, trial, licence, license, available, availability, 3 months free, three months free, offer, join, sign up, signup
+To join the waiting list, leave your email in the "Join the waiting list" form on the home page or at accnomos.com/join;
+the team will email you when your place comes up.
+Keywords: price, pricing, cost, costs, free, pay, paid, plan, plans, subscription, buy, purchase, how much, trial, licence, license, available, availability, waiting list, waitlist, join, sign up, signup
 
 ## Your accountant {#accountant}
 
