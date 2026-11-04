@@ -117,25 +117,25 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: AccnomosStatusBar.onDark,
       child: Scaffold(
-      backgroundColor: AccnomosColors.ground,
-      // The status bar keeps the hero's deep brown while the page scrolls, so
-      // text never runs under the clock.
-      body: Column(
-        children: [
-          Container(
-            key: const Key('welcome-status-strip'),
-            height: statusBar,
-            color: AccnomosColors.ledger,
-          ),
-          Expanded(
-            child: MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: _page(busy),
+        backgroundColor: AccnomosColors.ground,
+        // The status bar keeps the hero's deep brown while the page scrolls, so
+        // text never runs under the clock.
+        body: Column(
+          children: [
+            Container(
+              key: const Key('welcome-status-strip'),
+              height: statusBar,
+              color: AccnomosColors.ledger,
             ),
-          ),
-        ],
-      ),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: _page(busy),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
