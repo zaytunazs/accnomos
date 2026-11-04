@@ -55,7 +55,6 @@ void main() {
         navigatorKey: appNavigatorKey,
         theme: accnomosTheme(),
         home: const LaunchGate(restore: false)));
-    await tester.pump();
     expect(find.byType(Shell), findsOneWidget);
     appNavigatorKey.currentState!.push(MaterialPageRoute(
         builder: (_) => const Scaffold(body: Text('Sign in to view'))));
