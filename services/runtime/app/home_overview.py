@@ -51,6 +51,7 @@ from app import cis as cis_mod
 from app import cis_readings as cr
 from app import contacts as cb
 from app import dashboard as dash
+from app import home_items as hi
 from app import payroll as payroll_mod
 from app import payrun
 from app import personal as pf
@@ -650,6 +651,57 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     return facts
 
 
+def summary_items(
+    d: dash.Dashboard,
+    o: dict[str, Any],
+    today: date,
+    goals: Sequence[Any],
+    unclosed_month: tuple[str, str] | None,
+) -> list[hi.Draft]:
+    """Home's to-do list (app/home_items.py), from the same figures as the tiles and cards."""
+    att = d.attention if isinstance(d.attention, dash.Attention) else None
+    proposed, look = (att.proposed, att.needs_a_look) if att else (0, 0)
+    if o["kind"] == "personal":
+        hh: Household | None = o.get("household")
+        last_day = today.replace(day=1) - timedelta(days=1)
+        return hi.household_items(
+            today=today,
+            proposed=proposed,
+            needs_a_look=look,
+            household=hh,
+            this_month_label=f"{month_label(today)} so far",
+            last_month_label=month_label(last_day),
+            goals=goals,
+        )
+    owed = d.owed_to_you if isinstance(d.owed_to_you, dash.OwedToYou) else None
+    a: Aged | None = o["aged"]
+    cs: cf_mod.CashSeries | None = o.get("cash_points")
+    s: Snapshot | None = o.get("snapshot")
+    cash = d.cash if isinstance(d.cash, dash.Cash) else None
+    return hi.business_items(
+        today=today,
+        proposed=proposed,
+        needs_a_look=look,
+        unmatched_bank_lines=att.unmatched_bank_lines if att else 0,
+        overdue_invoices=(owed.overdue or 0) if owed else 0,
+        overdue_pence=(owed.overdue_pence or 0) if owed else 0,
+        # A late VAT, CIS or tax return stays on the list; a pay day already gone is not a deadline any more.
+        deadlines=[x for x in o["deadlines"] if x.days_left >= 0 or x.key != "payroll"][:3],
+        below_zero_on=cs.below_zero_on if cs else None,
+        lowest_pence=cs.lowest_balance_pence if cs else None,
+        lowest_on=cs.lowest_on if cs else None,
+        bills_overdue_pence=a.creditors.overdue_pence if a else 0,
+        unclosed_month=unclosed_month if s and s.entries else None,  # empty books have nothing to close
+        goals=goals,
+        ytd=(
+            {"turnover": s.turnover_pence, "change_pct": s.change_pct.turnover, "period": s.period_label}
+            if s and s.turnover_pence
+            else None
+        ),
+        cash=(cash.balance_pence, cash.as_of) if cash and cash.balance_pence is not None and cash.as_of else None,
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Reading
 # --------------------------------------------------------------------------- #
@@ -791,7 +843,27 @@ async def build(
         "cash_points": cash_v,
         "household": household_v,
     }
-    summary = await home_summary.summarise(summary_facts(d, o), cfg)
+
+    async def goals_now() -> list[Any]:
+        from app import goals as gm  # lazy: goals read purchases and bank lines only when the books have goals
+
+        gs = await gm.load_goals(books)
+        if not gs:
+            return []
+        data = await gm.load_data(books, gs, not business, today)
+        return [gm.progress(g, data, today) for g in gs]
+
+    async def unclosed() -> tuple[str, str] | None:
+        from app import month_end as me  # lazy: keeps the routers apart
+
+        month = me.previous_month(today)
+        record = await me.load_record(books, month)
+        return None if record.closes else (month, me.month_label(month))
+
+    goals_v = await reads.run("goals", goals_now) or []
+    unclosed_v = await reads.run("month-end", unclosed) if business else None
+    drafts = summary_items(d, o, today, goals_v, unclosed_v)
+    summary = await home_summary.summarise(summary_facts(d, o), cfg, drafts)
     return Overview(
         today=today,
         kind=prof.kind,

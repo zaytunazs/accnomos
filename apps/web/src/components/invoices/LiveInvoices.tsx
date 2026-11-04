@@ -82,8 +82,12 @@ export default function LiveInvoices() {
   const [query, setQuery] = useState("");
   // /invoices?q=INV-0007 (from the audit trail) starts with that search.
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("q");
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q");
     if (q) queueMicrotask(() => setQuery(q));
+    // /invoices?filter=overdue (Home summary's "Chase" link) opens on that filter.
+    const f = params.get("filter");
+    if (f && ["all", "draft", "sent", "overdue", "paid", "void"].includes(f)) queueMicrotask(() => setFilter(f as Filter));
   }, []);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [error, setError] = useState<string | null>(null);

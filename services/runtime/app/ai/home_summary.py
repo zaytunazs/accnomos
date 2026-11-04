@@ -18,6 +18,7 @@ from pydantic import BaseModel, ValidationError
 from app.ai.ask import KnownNumbers, call_json_model
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
+from app.home_items import DETAIL_MAX, TITLE_MAX, Draft, SummaryItem, headline
 from app.schemas import strict_json_schema
 
 SUMMARY_MAX = 700
@@ -47,10 +48,59 @@ class SummaryModelOutput(BaseModel):
 
 
 class HomeSummary(BaseModel):
-    summary_md: str
+    summary_md: str  # one line above `items` when there are any; otherwise the summary paragraph, as before
     model: str  # "code" when no AI is set up
     fallback_reason: str | None = None
     facts: dict[str, Any]  # what the summary was based on, every figure as code formatted it
+    items: list[SummaryItem] = []  # what needs the owner, most urgent first, each with a link (app/home_items.py)
+
+
+ITEMS_PROMPT = (
+    "You reword the to-do list at the top of a UK small business owner's or household's bookkeeping home page. "
+    "Code has already chosen the items, their order and their figures. For each item in ITEMS you get its id, code's "
+    "title and detail, and its FACTS. Return JSON {headline, items:[{id, title, detail}]} with every id once, in the "
+    "same order. Rules: 1) title is at most 60 characters, a short plain statement of the matter (no full stop); "
+    "detail is at most 140 characters, one sentence of context or why it matters, or null. 2) Quote figures, counts, "
+    "dates and percentages exactly as they appear in that item's FACTS or code's words; never calculate, round or add "
+    "a figure. 3) No links, no advice about tax law, no promises. 4) A household (KIND is personal) is never told "
+    "about VAT, turnover, profit or invoices. 5) headline is one short sentence (at most 100 characters) saying how "
+    "many things need attention now and soon, from COUNTS; never say nothing needs doing when COUNTS.now or "
+    "COUNTS.soon is above zero. Plain, friendly UK English."
+)
+
+
+class _ItemWords(BaseModel):
+    id: str
+    title: str
+    detail: str | None
+
+
+class ItemsOutput(BaseModel):
+    headline: str
+    items: list[_ItemWords]
+
+
+def item_problem(title: str, detail: str | None, draft: Draft) -> str | None:
+    """Why the model's words for one item cannot be shown, or None when they check out."""
+    if not title.strip() or len(title) > TITLE_MAX:
+        return "title missing or too long"
+    if detail is not None and len(detail) > DETAIL_MAX:
+        return "detail too long"
+    text = f"{title} {detail or ''}"
+    if LINK.search(text):
+        return "contains a link"
+    known = {**draft.facts, "code_title": draft.item.title, "code_detail": draft.item.detail or ""}
+    if invented := KnownNumbers(known).unknown(text, all_tokens=False):
+        return f"figures not in the books ({', '.join(dict.fromkeys(invented[:3]))})"
+    return None
+
+
+def counts(items: list[SummaryItem]) -> dict[str, int]:
+    return {
+        "now": sum(1 for i in items if i.priority == 1),
+        "soon": sum(1 for i in items if i.priority == 2),
+        "for_information": sum(1 for i in items if i.priority == 3),
+    }
 
 
 def gbp(pence: int) -> str:
@@ -184,8 +234,11 @@ def ground(text: str, facts: dict[str, Any]) -> str | None:
     return None
 
 
-async def summarise(facts: dict[str, Any], cfg: AiConfig | None) -> HomeSummary:
-    """Never raises: the code-written summary stands in, with the reason."""
+async def summarise(facts: dict[str, Any], cfg: AiConfig | None, drafts: list[Draft] | None = None) -> HomeSummary:
+    """Never raises: the code-written summary stands in, with the reason. With `drafts` (app/home_items.py), the summary
+    is a headline plus those items; the model may reword each item, and each is checked on its own."""
+    if drafts:
+        return await summarise_items(facts, cfg, drafts)
     if cfg is None:
         return HomeSummary(
             summary_md=fallback_summary(facts),
@@ -208,3 +261,71 @@ async def summarise(facts: dict[str, Any], cfg: AiConfig | None) -> HomeSummary:
     if reason:
         return HomeSummary(summary_md=fallback_summary(facts), model=cfg.model, fallback_reason=reason, facts=facts)
     return HomeSummary(summary_md=text, model=cfg.model, facts=facts)
+
+
+async def summarise_items(facts: dict[str, Any], cfg: AiConfig | None, drafts: list[Draft]) -> HomeSummary:
+    items = [d.item for d in drafts]
+    head = headline(items)
+    every = {**facts, "items": [d.facts for d in drafts], "counts": counts(items)}
+    if cfg is None:
+        return HomeSummary(
+            summary_md=head,
+            model="code",
+            fallback_reason="No AI is set up, so code wrote this.",
+            facts=every,
+            items=items,
+        )
+    payload = {
+        "KIND": facts.get("kind"),
+        "COUNTS": counts(items),
+        "ITEMS": [{"id": d.item.id, "title": d.item.title, "detail": d.item.detail, "facts": d.facts} for d in drafts],
+    }
+    messages = [
+        {"role": "system", "content": ITEMS_PROMPT},
+        {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
+    ]
+    try:
+        raw = await call_json_model(messages, cfg, strict_json_schema(ItemsOutput), "home_summary_items")
+        out = ItemsOutput.model_validate(parse_model_json(raw))
+    except (ExtractionError, ValidationError):
+        return HomeSummary(
+            summary_md=head,
+            model=cfg.model,
+            fallback_reason="The model's reply was not in the expected format, so code wrote this.",
+            facts=every,
+            items=items,
+        )
+    except Exception as exc:  # noqa: BLE001  any model trouble: code's list stands
+        return HomeSummary(
+            summary_md=head,
+            model=cfg.model,
+            fallback_reason=f"Your AI ({cfg.mode}) could not word the list ({type(exc).__name__}), so code wrote it.",
+            facts=every,
+            items=items,
+        )
+    words = {w.id: w for w in out.items}
+    kept: list[str] = []
+    worded: list[SummaryItem] = []
+    for d in drafts:
+        w = words.get(d.item.id)
+        if w is None or item_problem(w.title.strip(), (w.detail or "").strip() or None, d):
+            kept.append(d.item.id)
+            worded.append(d.item)
+            continue
+        worded.append(d.item.model_copy(update={"title": w.title.strip(), "detail": (w.detail or "").strip() or None}))
+    line = out.headline.strip()
+    head_facts = {"counts": counts(items), "items": [d.facts for d in drafts]}
+    if (
+        not line
+        or len(line) > 120
+        or LINK.search(line)
+        or ((head_facts["counts"]["now"] or head_facts["counts"]["soon"]) and ALL_CLEAR.search(line))
+        or KnownNumbers(head_facts).unknown(line, all_tokens=False)
+    ):
+        line = head
+    reason = (
+        None
+        if not kept
+        else f"Code's words kept for {len(kept)} of {len(drafts)} items: the model's did not check out."
+    )
+    return HomeSummary(summary_md=line, model=cfg.model, fallback_reason=reason, facts=every, items=worded)

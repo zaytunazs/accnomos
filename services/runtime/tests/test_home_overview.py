@@ -245,12 +245,28 @@ def test_home_payload(client: TestClient, fake: FakeStorageProvider) -> None:  #
     s = d["summary"]
     assert s["model"] == "code"  # summary_ai=false: code writes it
     assert s["facts"]["year_to_date"]["turnover"] == hs.gbp(snap["turnover_pence"])
-    assert "This year so far (1 Jan – 27 Oct 2026" in s["summary_md"]
     assert s["facts"]["cash"] == {"balance": "£5,400.00", "as_of": "24 Oct 2026"}
     assert s["facts"]["needs_doing"] == {"in_review": 2, "unmatched_bank_lines": 3, "overdue_invoices": 1}
-    assert s["summary_md"].startswith("You had £5,400.00 in the bank on 24 Oct 2026.")
+    # The summary is a to-do list, most urgent first: act now (money at stake first), then soon (soonest date
+    # first), then for information; each with a link to do it.
+    assert [(i["id"], i["priority"]) for i in s["items"]] == [
+        ("overdue_invoices", 1),
+        ("review", 1),
+        ("vat_due", 2),
+        ("bank_unmatched", 2),
+        ("month_end", 2),
+        ("trend", 3),
+    ]
+    by = {i["id"]: i for i in s["items"]}
+    assert by["overdue_invoices"]["title"] == "1 invoice overdue: £405.00"
+    assert by["overdue_invoices"]["action"] == {"label": "Chase", "route": "/invoices?filter=overdue"}
+    assert by["vat_due"]["title"] == "VAT return Jul–Sep 2026 due 7 Nov" and by["vat_due"]["action"]["route"] == "/vat"
+    assert by["review"]["action"]["route"] == "/review" and by["bank_unmatched"]["action"]["route"] == "/bank/reconcile"
+    assert by["trend"]["action"] is None and by["trend"]["tone"] == "neutral"
+    assert all(len(i["title"]) <= 60 and len(i["detail"] or "") <= 140 for i in s["items"])
+    assert s["summary_md"] == "2 things need you now, 3 soon."
     known = KnownNumbers(s["facts"])
-    assert all(known.knows(f) for f in _figures(s["summary_md"]))
+    assert all(known.knows(f) for i in s["items"] for f in _figures(f"{i['title']} {i['detail'] or ''}"))
 
 
 @pytest.mark.parametrize(
