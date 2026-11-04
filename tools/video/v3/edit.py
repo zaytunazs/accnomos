@@ -51,7 +51,9 @@ XF = 0.3  # crossfade between the kept parts of one recording
 # The edit. Lower thirds: (feature, the Meta model at work). Text on screen: UK English, Meta models only.
 # The judges stop at 3:00: keep the total <= 2:58.
 # A scene whose footage is missing from raw/ is left out (with a warning), so the edit still renders without it.
-HMRC_PW = [{"until": "hmrc", "box": [596, 838, 200, 54]}]  # the sandbox test user's password, blurred
+HMRC_PW = [
+    {"from": "userReady-0.15", "until": "hmrc", "box": [596, 838, 200, 54]}
+]  # the sandbox test user's password, blurred
 EDL: list[dict] = [
     {"id": "title", "lead": 0.3, "card": "title", "dur": 11.4},
     {"id": "f1", "lead": 0.3, "card": "features", "dur": 5.2},
@@ -575,11 +577,12 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
             pre += f"crop={cw}:{ch}:{x}:{y},scale={W}:{H}:flags=lanczos,"
         src_in = "0:v"
         for k, b in enumerate(shot.get("blur", [])):  # blur a box of the source until a mark (e.g. a password)
-            until = resolve(b["until"], marks_of(raw, shot["src"]), probe_dur(source(raw, shot["src"])))
+            mk, end = marks_of(raw, shot["src"]), probe_dur(source(raw, shot["src"]))
+            since, until = resolve(b.get("from", "0"), mk, end), resolve(b["until"], mk, end)
             bx, by, bw, bh = b["box"]
             fl.append(
                 f"[{src_in}]split[bz{k}a][bz{k}b];[bz{k}b]crop={bw}:{bh}:{bx}:{by},boxblur=lr=12:lp=4:cr=6:cp=4[bz{k}c];"
-                f"[bz{k}a][bz{k}c]overlay={bx}:{by}:enable='lt(t,{until:.3f})'[bz{k}]"
+                f"[bz{k}a][bz{k}c]overlay={bx}:{by}:enable='between(t,{since:.3f},{until:.3f})'[bz{k}]"
             )
             src_in = f"bz{k}"
         f, v = chain(src_in, segments(raw, shot["src"], shot["segs"]), dur, "a", pre=pre)
