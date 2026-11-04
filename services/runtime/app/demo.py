@@ -338,9 +338,22 @@ async def build_full(day: date) -> Snapshot:
         path = f"{INBOX}/{d.file_name}"
         await seed._propose(books, d, plan, arrived=(path, st.files[path]))
     from app import demo_personal, demo_recent
+    from app import profile as profile_mod
 
     await demo_recent.add_recent_trading(st, seed, plan)  # Oct/Nov sales and job purchases, up to `day`
     await demo_personal.add_company_goals(st, day)  # three goals sized from these books (app/goals.py)
+    # The books' own profile (app/profile.py), as Settings › Profile would save it: the header names the company
+    # instead of "Profile not set up". A VAT-registered company with the VAT number the seed prints on its invoices.
+    await books.write_json(
+        profile_mod.PROFILE,
+        {
+            "name": plan.business,
+            "kind": "company",
+            "settings": {"vat_registered": True, "vat_number": "GB123456789"},
+            "linked": [],
+            "updated_at": f"{day}T08:00:00+00:00",
+        },
+    )
     return Snapshot(day, st, plan.business, time.perf_counter() - started)
 
 

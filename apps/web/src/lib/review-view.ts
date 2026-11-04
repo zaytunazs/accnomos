@@ -60,6 +60,16 @@ function withCrop<T extends { verifierNote: string }>(view: T, suffix: string): 
   return { ...view, verifierNote: `${view.verifierNote} · ${suffix}` };
 }
 
+/** "Paid from cash / the business bank account / business card": the settlement line's words for a payment method. */
+function paidFrom(method: string | null | undefined): string {
+  return method === "cash" ? "cash" : method === "bank_transfer" ? "the business bank account" : "business card";
+}
+
+/** The Paid by fact: the runtime's payment method in words ("bank_transfer" is "bank transfer"), or a dash. */
+function paidByLabel(method: string | null | undefined): string {
+  return method ? method.replace(/_/g, " ") : "—";
+}
+
 /** Map a runtime proposal onto the card's display model (strings only, plain English). */
 export function toUi(p: RtProposal): UiProposal {
   const x = p.extracted;
@@ -69,7 +79,7 @@ export function toUi(p: RtProposal): UiProposal {
     const isVat = l.account.includes("2200");
     const isSettle = l.credit_pence > 0 && !isVat && x.doc_type !== "sales_invoice";
     const owed = isSettle && l.account.startsWith("2300"); // mileage allowance: the business owes you
-    const label = isVat ? "VAT to reclaim" : owed ? "Owed to you" : isSettle ? `Paid from ${x.payment_method === "cash" ? "cash" : "business card"}` : l.account.replace(/^\d{4}\s/, "");
+    const label = isVat ? "VAT to reclaim" : owed ? "Owed to you" : isSettle ? `Paid from ${paidFrom(x.payment_method)}` : l.account.replace(/^\d{4}\s/, "");
     const meaning = isVat ? "Goes to Box 4" : owed ? "You paid for the journeys; pay yourself back when you like" : isSettle ? "Will match a bank line" : `Expense, ${codeMeaning[l.vat_code ?? ""] ?? "VAT as shown"}`;
     return { account: `${label} ${amt}`, amount: amt, meaning };
   });
@@ -94,16 +104,18 @@ export function toUi(p: RtProposal): UiProposal {
     confidence: `Confidence ${Math.round(x.confidence * 100)}%`,
     source: p.mileage_claim
       ? "Calculated by code from your mileage log"
-      : p.served_by && ["modal", "meta", "spark"].includes(p.served_by.provider)
-        ? `Read by ${metaModelName(p.served_by.model)}` // the server's chain: the card's line says where
-        : local
-          ? "Read by Glimmer 30B on your machine"
-          : "Read by Muse Spark",
+      : p.model.startsWith("seed:")
+        ? "Pre-read sample document" // the sample books' seed: the gold fields, no model ran (tools/seed_demo.py)
+        : p.served_by && ["modal", "meta", "spark"].includes(p.served_by.provider)
+          ? `Read by ${metaModelName(p.served_by.model)}` // the server's chain: the card's line says where
+          : local
+            ? "Read by Glimmer 30B on your machine"
+            : "Read by Muse Spark",
     date: ukDate(x.date),
     vatNumber: x.supplier_vat_number ? `${x.supplier_vat_number} ✓` : "none shown",
     net: gbp(x.net_total),
     vat: gbp(x.vat_total),
-    paidBy: x.card_last4 ? `Card ending ${x.card_last4}` : (x.payment_method ?? "—"),
+    paidBy: x.card_last4 ? `Card ending ${x.card_last4}` : paidByLabel(x.payment_method),
     lines,
     reviewerNote: why,
     failedChecks,
