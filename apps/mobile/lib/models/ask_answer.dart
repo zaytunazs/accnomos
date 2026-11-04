@@ -167,6 +167,10 @@ class ProposedAction {
   String get kind => (raw['kind'] ?? '').toString();
   String get summaryMd => (raw['summary_md'] ?? '').toString();
   String get confirmText => (raw['confirm_text'] ?? '').toString();
+
+  /// Only the Approve button may approve it, never a spoken yes: it sends or
+  /// moves money (decided by the runtime, `app/actions.py` `needs_tap`).
+  bool get tapOnly => raw['tap_only'] == true;
   DateTime? get expiresAt => DateTime.tryParse('${raw['expires_at']}');
   Map<String, dynamic> get preview => raw['preview'] is Map
       ? Map<String, dynamic>.from(raw['preview'] as Map)

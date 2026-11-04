@@ -7,7 +7,8 @@ import { useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
 import ActionCard, { ClarifyCard, withPicked } from "@/components/ask/ActionCard";
 import AnswerCard from "@/components/ask/AnswerCard";
-import { askStream, runtime, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
+import { askStream, runtime, type RtActionResult, type RtAskAnswer, type RtAskTurn, type RtProposedAction } from "@/lib/runtime";
+import { ASK_AGAIN, cardReadBack, hearReply, inWords, LEFT_FOR_TAP, needsTap } from "@/lib/voiceApproval";
 import { pickedPeriod } from "@/lib/vat-period";
 import { useHousehold } from "@/lib/profiles";
 import {
@@ -77,8 +78,10 @@ function TalkIcon() {
 /**
  * "Talk to Accnomos": a button on every signed-in and demo page that opens a conversation drawer. Type, tap the mic
  * for one spoken question, or turn on Hands-free (lib/handsfree.ts): it listens, sends what it heard to Ask (Muse
- * Voice Transcribe, then the same checked answer as the Ask page), reads the answer aloud and listens again. Cards
- * that change the books are shown, never approved by voice.
+ * Voice Transcribe, then the same checked answer as the Ask page), reads the answer aloud and listens again. A card
+ * that changes something is shown and read back in words, then "Shall I go ahead? Say yes or no.": a clear yes sends
+ * the same signed approval as the Approve button, marked as spoken (lib/voiceApproval.ts); no, silence or two unclear
+ * replies leave the card for tapping. Cards that send or move money (`tap_only`) always need the tap.
  */
 export default function Assistant() {
   const path = usePathname() ?? "/";
@@ -99,6 +102,12 @@ export default function Assistant() {
   const opener = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
+  /** Each card on screen that can still be approved, by action id: approves it as the button does, but spoken. */
+  const voiceApprovers = useRef(new Map<string, (heard: string) => Promise<RtActionResult | null>>());
+  const voiceReady = useCallback((id: string, fn: ((heard: string) => Promise<RtActionResult | null>) | null) => {
+    if (fn) voiceApprovers.current.set(id, fn);
+    else voiceApprovers.current.delete(id);
+  }, []);
 
   const put = useCallback((next: Turn[]) => {
     turnsRef.current = next;
@@ -200,6 +209,56 @@ export default function Assistant() {
     [put],
   );
 
+  /**
+   * Verbal approval: read the card back, ask "Shall I go ahead?", and approve on a clear yes. "done" when approved;
+   * "left" when the card stays on screen (no, silence, unclear twice, a card that needs a tap, or it failed).
+   */
+  const askToApprove = useCallback(
+    async (acct: AccountInfo, action: RtProposedAction, signal: AbortSignal): Promise<"done" | "left"> => {
+      setHands("speaking");
+      await speak(cardReadBack(action), signal);
+      if (signal.aborted || needsTap(action)) return "left";
+      for (let attempt = 0; attempt < 2; attempt++) {
+        setHands("listening");
+        const audio = await recordTurn(setLevel, signal);
+        setLevel(0);
+        if (signal.aborted) return "left";
+        let heard = "";
+        if (audio) {
+          setHands("thinking");
+          try {
+            heard = (await runtime.transcribe(acct, audio)).transcript;
+          } catch {
+            heard = ""; // not heard: treated as no, and the card stays
+          }
+        }
+        const reply = hearReply(heard);
+        if (reply === "yes") {
+          const approve = voiceApprovers.current.get(action.id);
+          setHands("speaking");
+          if (!approve) {
+            await speak("That card can't be approved any more. Nothing has changed.", signal);
+            return "left";
+          }
+          setHands("thinking");
+          const result = await approve(heard);
+          setHands("speaking");
+          await speak(result ? trimForSpeech(inWords(speakable(result.summary_md))) : "That didn't go through. The reason is on screen.", signal);
+          return result ? "done" : "left";
+        }
+        setHands("speaking");
+        if (reply === "no") {
+          await speak(LEFT_FOR_TAP, signal);
+          return "left";
+        }
+        if (attempt === 0) await speak(ASK_AGAIN, signal);
+      }
+      await speak(LEFT_FOR_TAP, signal);
+      return "left";
+    },
+    [],
+  );
+
   /** Hands-free: listen → answer → speak → listen, until Stop, a stop phrase, two empty turns or a card to approve. */
   const startHands = useCallback(async () => {
     if (!account || loop.current) return;
@@ -238,9 +297,21 @@ export default function Assistant() {
           break;
         }
         setHands("speaking");
-        if (res.answer.proposed_action || res.answer.clarification) {
-          await speak("I've put that on screen for you to check. Nothing changes until you approve it.", ctrl.signal);
-          setNote("Hands-free paused: check the card on screen.");
+        if (res.answer.proposed_action) {
+          let outcome: "done" | "left";
+          try {
+            outcome = await askToApprove(account, res.answer.proposed_action, ctrl.signal);
+          } catch (e) {
+            setNote(e instanceof MicError ? e.message : errorText(e));
+            break;
+          }
+          if (outcome === "done") continue;
+          if (!ctrl.signal.aborted) setNote("Hands-free paused: the card is on screen to tap.");
+          break;
+        }
+        if (res.answer.clarification) {
+          await speak(`${trimForSpeech(speakable(res.answer.clarification.question_md))} Pick one on screen.`, ctrl.signal);
+          setNote("Hands-free paused: pick an answer on screen.");
           break;
         }
         await speak(trimForSpeech(speakable(res.answer.answer_md)), ctrl.signal);
@@ -254,7 +325,7 @@ export default function Assistant() {
       setHands("off");
       setLevel(0);
     }
-  }, [account, askSpoken]);
+  }, [account, askSpoken, askToApprove]);
 
   /** One spoken question without the loop. */
   const micOnce = useCallback(async () => {
@@ -272,7 +343,9 @@ export default function Assistant() {
       }
       setHands("thinking");
       setBusy(true);
-      await askSpoken(audio, account);
+      const res = await askSpoken(audio, account);
+      setBusy(false);
+      if (res?.answer.proposed_action && !ctrl.signal.aborted) await askToApprove(account, res.answer.proposed_action, ctrl.signal);
     } catch (e) {
       setNote(e instanceof MicError ? e.message : errorText(e));
     } finally {
@@ -284,7 +357,7 @@ export default function Assistant() {
       setHands("off");
       setLevel(0);
     }
-  }, [account, askSpoken, busy]);
+  }, [account, askSpoken, askToApprove, busy]);
 
   // Keyboard: Esc closes, Tab stays inside the drawer.
   useEffect(() => {
@@ -406,6 +479,7 @@ export default function Assistant() {
                       account={account}
                       receivedAt={t.at}
                       spoken={t.voice ? t.question : undefined}
+                      onVoiceReady={voiceReady}
                       onChange={() => {
                         setInput(t.question);
                         inputRef.current?.focus();

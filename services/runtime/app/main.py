@@ -315,6 +315,9 @@ app.include_router(payrun_router)
 from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
 
 app.include_router(plan_router)
+from app.routes_calendar import router as calendar_router  # noqa: E402  /calendar/* (events, deadlines sync)
+
+app.include_router(calendar_router)
 from app.routes_reports import router as reports_router  # noqa: E402  /reports/pl, aged, vat, trend, export, budgets…
 
 app.include_router(reports_router)
@@ -358,6 +361,9 @@ app.include_router(public_chat_router)
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 
 app.include_router(todos_router)
+from app.routes_notes import router as notes_router  # noqa: E402  /notes (spoken or typed notes)
+
+app.include_router(notes_router)
 from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
 
 app.include_router(audit_router)

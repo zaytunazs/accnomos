@@ -1,7 +1,7 @@
 "use client";
 
 import { sentNote } from "@/lib/demo";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import {
   runtime,
@@ -64,6 +64,11 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   add_to_shopping_list: "Shopping list",
   create_quote: "Quote",
   convert_quote_to_invoice: "Quote to invoice",
+  save_note: "Note",
+  delete_note: "Delete note",
+  add_todo: "To-do",
+  calendar_add_event: "Add to calendar",
+  calendar_remove_event: "Remove from calendar",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -78,6 +83,11 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   add_to_shopping_list: "the Shopping list page",
   create_quote: "Quotes",
   convert_quote_to_invoice: "Invoices and Quotes",
+  save_note: "Notes",
+  delete_note: "Notes",
+  add_todo: "To-dos",
+  calendar_add_event: "your calendar",
+  calendar_remove_event: "your calendar",
 };
 
 /**
@@ -91,7 +101,21 @@ function stalledAdvice(message: string, kind: RtProposedAction["kind"]): string 
     return ` It is never retried on its own: give it 10 minutes and check ${WHERE[kind]} before you Approve again.`;
   return "";
 }
+/** Kinds whose preview is plain label/value rows worked out by code (app/assistant_tasks.py). */
+const ROW_KINDS = new Set<RtProposedAction["kind"]>(["save_note", "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event"]);
 function Details({ action }: { action: RtProposedAction }) {
+  if (ROW_KINDS.has(action.kind)) {
+    const rows = (action.preview.rows as { label: string; value: string }[] | undefined) ?? [];
+    return (
+      <dl className="divide-y divide-border">
+        {rows.map((r) => (
+          <Row key={r.label} label={r.label}>
+            <strong>{r.value}</strong>
+          </Row>
+        ))}
+      </dl>
+    );
+  }
   if (action.kind === "convert_quote_to_invoice") {
     const p = action.preview as unknown as RtConvertQuotePreview;
     return (
@@ -297,8 +321,14 @@ export default function ActionCard({
   onChange,
   expiredText = "This proposal has expired; ask again.",
   spoken,
+  onVoiceReady,
 }: {
   action: RtProposedAction;
+  /**
+   * The assistant's verbal approval: given a function that approves this card exactly as the button does, but sent
+   * `via: "voice"` with what was heard (lib/voiceApproval.ts); given null when the card can no longer be approved.
+   */
+  onVoiceReady?: (actionId: string, approve: ((heard: string) => Promise<RtActionResult | null>) | null) => void;
   account: AccountInfo;
   /** What the speech-to-text heard, for a spoken request: shown with the card's figures read back in words. */
   spoken?: string;
@@ -325,14 +355,27 @@ export default function ActionCard({
     return () => clearTimeout(t);
   }, [action.created_at, action.expires_at, receivedAt]);
 
-  async function approve() {
+  async function approve(heard?: string): Promise<RtActionResult | null> {
     setState({ step: "working" });
     try {
-      setState({ step: "done", result: await runtime.approveAction(account, action) });
+      const result = await runtime.approveAction(account, action, heard === undefined ? undefined : { heard });
+      setState({ step: "done", result });
+      return result;
     } catch (e) {
       setState({ step: "error", message: reason(e) });
+      return null;
     }
   }
+  const approveRef = useRef(approve);
+  useEffect(() => {
+    approveRef.current = approve;
+  });
+  const voiceOpen = !!onVoiceReady && state.step === "ready" && !expired;
+  useEffect(() => {
+    if (!onVoiceReady) return;
+    onVoiceReady(action.id, voiceOpen ? (heard: string) => approveRef.current(heard) : null);
+    return () => onVoiceReady(action.id, null);
+  }, [onVoiceReady, voiceOpen, action.id]);
 
   async function reject() {
     setState({ step: "working" });
@@ -363,6 +406,9 @@ export default function ActionCard({
           </ul>
           <p className="mt-1">Not what you said? {onChange ? "Choose Change and type it." : "Reject it and type it instead."}</p>
         </div>
+      )}
+      {action.tap_only && state.step === "ready" && !expired && (
+        <p className="mt-2 text-[12px] text-muted">This one sends or moves money: it needs a tap on Approve, never a spoken yes.</p>
       )}
       {action.transcribed_by && (
         <p className="mt-2 text-[12px] text-muted">Spoken request · transcribed by {action.transcribed_by.label} (kept in the audit log)</p>
@@ -397,7 +443,7 @@ export default function ActionCard({
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={approve}
+              onClick={() => void approve()}
               disabled={state.step === "working" || expired}
               className="flex h-10 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-50"
             >

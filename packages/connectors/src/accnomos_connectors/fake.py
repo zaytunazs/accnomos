@@ -19,6 +19,7 @@ from accnomos_connectors.base import (
     MailMessage,
     MailProvider,
     MailSender,
+    NewCalendarEvent,
     OutgoingMail,
     SharedFolder,
     SharedRoot,
@@ -161,6 +162,64 @@ class FakeCalendarProvider(CalendarProvider):
         self.created.append(event)
         self.events.append(event)
         return event.id
+
+    async def list_range(self, start: date, end: date, tz: str = "Europe/London") -> list[CalendarEvent]:
+        self.calls.append(f"list_range:{start.isoformat()}:{end.isoformat()}")
+        zone = ZoneInfo(tz)
+        lo, hi = datetime.combine(start, time(0), zone), datetime.combine(end + timedelta(days=1), time(0), zone)
+        return sorted((e for e in self.events if e.start < hi and e.end > lo), key=lambda e: e.start)
+
+    def _check(self, event: NewCalendarEvent) -> None:
+        if event.start.tzinfo is None or event.end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware")
+        if event.end <= event.start:
+            raise ValueError("end must be after start")
+
+    async def add_event(self, event: NewCalendarEvent) -> CalendarEvent:
+        self._check(event)
+        self.calls.append(f"add_event:{event.subject}")
+        self._next = getattr(self, "_next", 0) + 1
+        made = CalendarEvent(
+            id=f"fake-evt-{self._next}",
+            subject=event.subject,
+            start=event.start,
+            end=event.end,
+            location=event.location,
+            body_preview=event.body[:255],
+            is_all_day=event.is_all_day,
+            show_as="free" if event.is_all_day else "busy",
+            web_link=f"https://outlook.example/calendar/item/fake-evt-{self._next}",
+            key=event.key,
+        )
+        self.created.append(made)
+        self.events.append(made)
+        return made
+
+    async def update_event(self, event_id: str, event: NewCalendarEvent) -> CalendarEvent:
+        self._check(event)
+        for i, e in enumerate(self.events):
+            if e.id == event_id:
+                self.calls.append(f"update_event:{event_id}")
+                self.events[i] = e.model_copy(
+                    update={
+                        "subject": event.subject,
+                        "start": event.start,
+                        "end": event.end,
+                        "location": event.location,
+                        "body_preview": event.body[:255],
+                        "is_all_day": event.is_all_day,
+                        "key": event.key if event.key is not None else e.key,
+                    }
+                )
+                return self.events[i]
+        raise FileNotFoundError(event_id)
+
+    async def delete_event(self, event_id: str) -> None:
+        before = len(self.events)
+        self.events = [e for e in self.events if e.id != event_id]
+        if len(self.events) == before:
+            raise FileNotFoundError(event_id)
+        self.calls.append(f"delete_event:{event_id}")
 
     async def ensure_calendar(self, name: str) -> str:
         if name not in self.calendars:

@@ -365,6 +365,11 @@ ActionKind = Literal[
     "add_to_shopping_list",
     "create_quote",
     "convert_quote_to_invoice",
+    "save_note",  # app/assistant_tasks.py: notes, to-dos and calendar, typed or spoken
+    "delete_note",
+    "add_todo",
+    "calendar_add_event",
+    "calendar_remove_event",
 ]
 
 
@@ -395,6 +400,9 @@ class ProposedAction(StrictBody):
     # Set when the request was spoken: which speech-to-text service heard it. Signed with the rest; None is left out
     # of the signed payload, so typed proposals sign exactly as before.
     transcribed_by: Transcription | None = None
+    # Only the Approve button may approve it, never a spoken yes (app/actions.py `needs_tap`). Signed when true; false
+    # is left out of the signed payload, so other cards sign exactly as before.
+    tap_only: bool = False
     signature: str = Field(default="", max_length=64)
 
 

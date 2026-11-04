@@ -74,8 +74,8 @@ export default function PrivacyPage() {
                 { scope: "Mail.ReadWrite", when: "The first time you tap Draft in Outlook", use: "Save that one reply as a draft; nothing is ever sent" },
                 { scope: "Mail.Send", when: "The first time you send an invoice or reminder, in the confirmation dialog", use: "Send only the email you saw and confirmed, with the invoice PDF" },
                 { scope: "Contacts.Read", when: "The first time you open Import contacts › Outlook contacts", use: "List your Outlook contacts so you can tick which to add; ones already in your books only gain a missing email or phone" },
-                { scope: "Calendars.Read", when: "The first time you plan a day", use: "Read that day from your default calendar to plan around it" },
-                { scope: "Calendars.ReadWrite", when: "The first time you tap Apply on a plan", use: "Create the plan’s new items as calendar events" },
+                { scope: "Calendars.Read", when: "The first time you plan a day or open Calendar", use: "Read your default calendar for those days, to plan around it or list it" },
+                { scope: "Calendars.ReadWrite", when: "The first time you apply a plan, add or remove an event, or tap Add to calendar on your deadlines", use: "Create the plan’s items, the events you add, and your deadlines as all-day events with a reminder; each event Accnomos writes carries a hidden Accnomos tag, so it only ever updates or removes its own" },
               ].map((row) => (
                 <tr key={row.scope} className="border-t border-border align-top first:border-t-0">
                   <td className="py-2 pr-3 font-semibold"><code>{row.scope}</code></td>

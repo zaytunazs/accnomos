@@ -40,6 +40,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, ValidationError
 
+from app import assistant_tasks as tasks_
 from app import contacts as contacts_
 from app import jobs as jobs_
 from app import quotes as quotes_
@@ -1223,7 +1224,10 @@ def _tenant() -> bytes:
 def _payload(action: ProposedAction) -> bytes:
     return json.dumps(
         action.model_dump(
-            mode="json", exclude={"signature"} | ({"transcribed_by"} if action.transcribed_by is None else set())
+            mode="json",
+            exclude={"signature"}
+            | ({"transcribed_by"} if action.transcribed_by is None else set())
+            | (set() if action.tap_only else {"tap_only"}),
         ),
         sort_keys=True,
         separators=(",", ":"),
@@ -1255,6 +1259,7 @@ def new_action(draft: Draft, graph_token: str, at: datetime | None = None) -> Pr
         confirm_text=draft.confirm_text,
         created_at=created,
         expires_at=created + TTL,
+        tap_only=needs_tap(draft.kind, draft.preview),
     )
     return sign(action, graph_token)
 
@@ -1340,6 +1345,32 @@ class Context:
     user: str
     graph_token: str
     mail_sender: Callable[[], Any] | None = None  # () -> MailSender; built only when something is emailed
+    calendar: Callable[[], Any] | None = None  # () -> CalendarProvider; only for the calendar cards
+    via: Literal["tap", "voice"] = "tap"  # how the user said yes: the Approve button, or "yes" to the assistant
+    approval_heard: str | None = None  # voice: what the user said, as transcribed
+
+
+# Which cards a spoken "yes" may approve: the one place this is decided. Critical work needs the Approve button: the
+# HMRC VAT submission (not an Ask card at all; it has its own legal declaration), anything that pays, sends or moves
+# money (pay runs and overtime, bank actions, sending an invoice or a payment reminder), deleting or voiding financial
+# records, locking a month, and contact merges. Notes, to-dos, the shopping list, calendar changes and drafts may be
+# approved by voice. Each card carries the answer as `tap_only` for the web and Android assistants to say so; the
+# runtime decides again here at approval and refuses a voice yes whatever the client sends.
+TAP_ONLY: frozenset[str] = frozenset({"pay_overtime", "match_bank_line", "close_month", "chase_invoice"})
+
+
+def needs_tap(kind: str, preview: dict[str, Any]) -> bool:
+    """True when only the Approve button may approve this card (never a spoken yes)."""
+    if kind in TAP_ONLY:
+        return True
+    return kind == "create_invoice" and bool(preview.get("send"))  # a draft invoice may be spoken; a sent one not
+
+
+YES_WORDS = re.compile(
+    r"^\s*(?:yes|yeah|yep|yup|ok(?:ay)?|sure|approve(?:d)?|go ahead|do it|confirm(?:ed)?|please do|that'?s right)"
+    r"\b[\s.!,]*(?:please|thanks|thank you)?[\s.!]*$",
+    re.I,
+)
 
 
 class _Stop(Exception):
@@ -1371,7 +1402,7 @@ async def _append(books: Books, action: ProposedAction, row: dict[str, Any]) -> 
     await books._update(_audit_path(action), lambda old: (old or b"") + _line(full))
 
 
-async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, Any] | None:
+async def _claim(books: Books, action: ProposedAction, user: str, heard: str | None = None) -> dict[str, Any] | None:
     """Mark the action as being approved. Returns the earlier result when it was already done."""
     row = {
         "ts": now().isoformat(),
@@ -1382,6 +1413,7 @@ async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, A
         "summary_md": action.summary_md,
         "preview": action.preview,
         **_heard(action),
+        **({"via": "voice", "approval_heard": heard} if heard is not None else {}),
     }
 
     def change(raw: bytes | None) -> bytes:
@@ -1698,13 +1730,23 @@ EXECUTORS: dict[str, Executor] = {
     "add_to_shopping_list": run_shopping,
     "create_quote": run_quote,
     "convert_quote_to_invoice": run_convert_quote,
+    "save_note": lambda a, c: tasks_.run_save_note(a, c.books, c.user),
+    "delete_note": lambda a, c: tasks_.run_delete_note(a, c.books, c.user),
+    "add_todo": lambda a, c: tasks_.run_add_todo(a, c.books, c.user),
+    "calendar_add_event": lambda a, c: tasks_.run_calendar_add(a, c.calendar),
+    "calendar_remove_event": lambda a, c: tasks_.run_calendar_remove(a, c.calendar),
 }
 
 
 async def approve(action: ProposedAction, ctx: Context) -> ActionResult:
     """Check the signature and expiry, claim the action id, execute, and record the result. Executes once."""
     verify(action, ctx.graph_token)
-    earlier = await _claim(ctx.books, action, ctx.user)
+    if ctx.via == "voice":
+        if needs_tap(action.kind, action.preview):
+            raise ActionError("This one needs the Approve button: it sends or moves money.", 403)
+        if not YES_WORDS.match(ctx.approval_heard or ""):
+            raise ActionError("That didn't sound like a yes, so nothing was done.", 422)
+    earlier = await _claim(ctx.books, action, ctx.user, ctx.approval_heard if ctx.via == "voice" else None)
     if earlier is not None:
         return ActionResult(
             action_id=action.id,

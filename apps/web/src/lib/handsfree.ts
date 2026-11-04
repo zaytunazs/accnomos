@@ -4,8 +4,9 @@
  *
  * One turn: listen → (the recording is sent to POST /books/ask/voice: Muse Voice Transcribe hears it, the Ask
  * pipeline answers with every figure checked) → speak the answer → listen again. The loop ends when the user taps
- * Stop, says a stop phrase ("stop", "that's all", …), two turns in a row hear nothing, or the answer is a card that
- * needs the user's approval (nothing is ever approved by voice alone: the card waits on screen).
+ * Stop, says a stop phrase ("stop", "that's all", …) or two turns in a row hear nothing. A card is read back and the
+ * user asked "Shall I go ahead?" (lib/voiceApproval.ts): a clear yes approves it as the button does and the loop goes
+ * on; anything else, or a card that sends or moves money, leaves it on screen for a tap and pauses the loop.
  */
 
 export type HandsFreeState = "off" | "listening" | "thinking" | "speaking";

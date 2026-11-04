@@ -527,10 +527,16 @@ SUMMARIES: dict[str, Summary] = {
     "personal_rules_reordered": lambda r, w: "Changed the order of personal spending rules",
     "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
     "personal_goal_saved": lambda r, w: "Saved a savings goal",
+    "note_saved": lambda r, w: "Saved a note" + (" (spoken)" if r.get("source") == "voice" else ""),
+    "note_deleted": lambda r, w: "Deleted a note",
     "goal_saved": lambda r, w: {"added": "Added a goal", "deleted": "Removed a goal"}.get(
         str(r.get("change") or ""), "Changed a goal"
     ),
     "personal_goal_deleted": lambda r, w: "Deleted a savings goal",
+    "calendar_event_added": lambda r, w: "Added an event to your calendar",
+    "calendar_event_removed": lambda r, w: "Removed an event from your calendar",
+    "calendar_deadlines_synced": lambda r, w: "Put your deadlines in your calendar",
+    "calendar_deadlines_preference": lambda r, w: "Changed whether deadlines go in your calendar automatically",
     # Landlords (app/property.py, app/routes_property.py)
     "property_added": lambda r, w: f"Added a let property: {r.get('name') or 'a property'}",
     "property_updated": lambda r, w: f"Changed the details of {r.get('name') or 'a let property'}",
