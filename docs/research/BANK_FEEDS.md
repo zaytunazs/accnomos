@@ -1,6 +1,6 @@
 # Bank feeds: which Open Banking provider, and why
 
-Branch `claude/bank-feeds`, 28 Oct 2026. Accnomos has no user database: whatever a bank feed needs between visits must
+Branch `bank-feeds`, 28 Oct 2026. Accnomos has no user database: whatever a bank feed needs between visits must
 live in the user's own OneDrive, and the runtime keeps nothing. This note compares four UK providers for that shape of
 app, says which one was built and why, and lists what is still unverified.
 

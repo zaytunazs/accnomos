@@ -177,4 +177,4 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
 - Runtime package is `app`; relay package is `relay` (two services, two names — they share one venv).
 - Money is integer pence inside the ledger; the model returns pounds to 2 dp.
 - Every automatic action writes one line to `_System/audit/{yyyy-mm}.jsonl` in the user's folder (format and the full folder layout: `docs/ARCHITECTURE.md`).
-- Branch names: `muse/*` (Muse Code jobs), `claude/*` (coding-agent jobs on our own server); every merge is reviewed.
+- Branch names: `muse/*` (Muse Code jobs), `claude/*` and `integ/*` (coding-agent jobs); every merge is reviewed.

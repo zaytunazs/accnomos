@@ -65,9 +65,9 @@ Multimodal in one API. Reading a receipt photo, cropping it (SAM 3.1), hearing a
 
 What we measured: every field right on 95 % clean / 96 % messy synthetic documents for Muse Spark 1.3 with repairs and a second reading, 85 % / 80 % for Glimmer; 32 of 32 Ask figures exact. The limits are written down too: synthetic documents only, sandbox HMRC, one real phone.
 
-## Partner technologies feedback (≤ 150 characters; this is 150)
+## Partner technologies feedback (≤ 150 characters; name the two partners used in the form itself)
 
-Modal served Glimmer 30B for the 27 Oct evals (fast cold starts); Baseten hosted Muse Spark Open as the Verifier. Both simple; both off at submission.
+Two partner GPU hosts served Glimmer 30B for the 27 Oct evals (fast cold starts) and Muse Spark Open as the Verifier. Both simple; both off at submission.
 
 ## Survey answers (the owner's; suggested)
 

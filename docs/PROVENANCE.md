@@ -85,7 +85,7 @@ Every line was written during the event with coding assistants, directed and rev
 
 | Assistant | Used for | Trace in git |
 |---|---|---|
-| **A coding agent** (other AI tools, in cloud sessions and on our own server) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 1,222 commits on `main` carry its `Co-Authored-By` trailer; 156 merges of its `claude/*` branches (4 Nov) |
+| **A coding agent** (other AI tools, in cloud sessions and on our own server) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 1,222 commits on `main` carry its `Co-Authored-By` trailer; 156 merges of its agent branches (4 Nov) |
 | **Muse Code** (Meta, model `muse-spark-1.3`) | Web and Android screens: the Review inbox and app shell, the VAT return page, the Android Review and Ask screens, and later web and Android feature branches | Commit messages naming Muse Code (first: `d1ccaae`, 23:18 on 26 Oct); 70 merge commits of `muse/*` branches on `main` (4 Nov) |
 | **A second open-weight model, not Meta's** (local on our own server) | Synthetic eval data (gold documents 061–200, the `ledger2` gold set) and a second reader in the Ask eval | 9 commit messages naming it (first: `93f1d13`, 03:44 on 27 Oct) |
 

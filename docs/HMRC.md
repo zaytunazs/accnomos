@@ -224,7 +224,7 @@ between bases, no "including VAT" option, no capital allowances (cars, or anythi
 `GET /books/self-employment/reports/{sa103|quarterly|calculation}?…&format=json|csv|xlsx|pdf` (`app/itsa_reports.py`):
 the SA103-style summary (boxes, totals, every ledger line), a quarterly update as sent with its receipt, and HMRC's
 calculation. Each is a pure function returning rows plus CSV/XLSX/PDF renderers, written to register in the shared
-exports registry (branch `claude/exports`) when it merges. CSV cells that start with `= + - @` are prefixed with `'`.
+exports registry (branch `exports`) when it merges. CSV cells that start with `= + - @` are prefixed with `'`.
 
 ## Sandbox test data
 
@@ -271,7 +271,7 @@ reachable from this session, so re-check the live documentation before the first
 | `/itsa/{nino}/property/test-business` (sandbox only) | `POST /individuals/self-assessment-test-support/business/{nino}` | 1.0 |
 
 Scopes `read:self-assessment write:self-assessment`, asked for at `/hmrc/authorize?scope=…` (the same scope plumbing as
-branch `claude/self-employment`). The web page keeps those tokens under the Income Tax session in `sessionStorage`
+branch `self-employment`). The web page keeps those tokens under the Income Tax session in `sessionStorage`
 (shared with the self-employment page). Writes need `confirmed: true`, sent only after the user ticks that they have
 checked the figures. After a sandbox update the web posts what it sent to `POST /property/submissions`; the runtime
 compares it with what the books say now (`matched_books`).

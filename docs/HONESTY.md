@@ -13,7 +13,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Work (Microsoft 365) accounts: one run, the owner's own, on 4 Nov 2026.** Signing in worked at once; *Create my
   Accnomos folder* (which asks for `Files.ReadWrite`) brought Microsoft's consent page back after the first two *Accept*s
   (admin consent ticked; the app is an unverified publisher) and went through on a later try, after which the folder was
-  created. Whether the first consents were simply slow to take effect is not known. `claude/consent-loop-guard` (not merged)
+  created. Whether the first consents were simply slow to take effect is not known. `consent-loop-guard` (not merged)
   holds a guard that would stop the app re-sending the user to the consent page within five minutes. Personal Microsoft
   accounts are the tested path.
 - **Real runs** are the maintainers' own, on 26–27 Oct: Microsoft sign-in on a personal account, folder creation, upload → scan →
@@ -43,7 +43,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Final declaration: built (HMRC's declaration text word for word, checked in relay, runtime and web by a test) but only exercised against a fake. The page does not check that every quarterly update and the annual submission are in before offering it; HMRC does.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
 - **VAT schemes (flat rate, cash accounting, annual accounting) are worked out by code and tested only on fakes and HMRC's
-  own worked examples** (`claude/vat-schemes`, rules read on gov.uk 28 Oct 2026; `docs/reviews/vat-schemes/REVIEW.md`).
+  own worked examples** (`vat-schemes`, rules read on gov.uk 28 Oct 2026; `docs/reviews/vat-schemes/REVIEW.md`).
   No return under a scheme has been filed, even in HMRC's sandbox, and no accountant has checked a real set of books
   under one. What is not done: the flat rate's retailer's turnover method, stock adjustments on leaving the flat rate
   (Notice 733 §12.8-12.9), flat rate bad debt relief (§14), capital goods sold later (§15.9), reverse charge and import
@@ -167,9 +167,9 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Reverse charge:** the user ticks it; code checks only that both VAT numbers are present and a line is at 20% or 5%. Whether the customer is CIS-registered or has sent an end-user notice is the user's call (the page shows HMRC's wording for that notice). Credit notes against a reverse-charge invoice are refused (not built). The 5% disregard, scaffolding, and supplies of staff are explained, not modelled. Flat Rate and Cash Accounting interactions are explained on the page; the VAT engine has neither scheme.
 - **Contractor side:** a payment against a bill already in the books goes through *Record payment* (so the bill shows paid); one with no bill posts the cost, VAT and deduction in one entry. A subcontractor's own VAT (standard or reverse charge) is worked out at 20% or 5% half up from the gross typed in. Removing a payment on the Invoices or Contacts page shows it removed on the CIS page too.
 - **Not on Android**, and not in Ask's facts pack or Books.xlsx. Never run against a real OneDrive.
-- **Reverse charge under a VAT scheme (merged in `claude/batch-tax`, 28 Oct 2026) is not checked against HMRC.** Under standard accounting the scheme engine gives exactly the boxes `compute_vat_return` does (tested). Under cash accounting and the flat rate it counts a reverse-charge purchase's VAT on the invoice date, in box 1, and in box 4 only outside the flat rate (Notice 733 §6.4-6.5 says how the flat rate treats it; not re-read here because gov.uk was unreachable from that session). Every such return carries a warning to check it; a reverse-charge *sale* on the flat rate stays in flat rate turnover as before.
-- **Cash accounting and the income tax cash basis read the same money** (`cash_basis.document_money`, merged in `claude/batch-tax`): payments, matched bank lines and overpayments applied, dated when the money moved. A credit note's credit applied to an invoice is not money and no longer counts as a payment for VAT cash accounting.
-- Gates on `claude/cis` (28 Oct 2026, Linux): runtime 1437 passed, ledger 53, evals 332, web e2e 253 passed (58 skipped); ruff, pyright and eslint clean. Flutter not touched.
+- **Reverse charge under a VAT scheme (merged in `batch-tax`, 28 Oct 2026) is not checked against HMRC.** Under standard accounting the scheme engine gives exactly the boxes `compute_vat_return` does (tested). Under cash accounting and the flat rate it counts a reverse-charge purchase's VAT on the invoice date, in box 1, and in box 4 only outside the flat rate (Notice 733 §6.4-6.5 says how the flat rate treats it; not re-read here because gov.uk was unreachable from that session). Every such return carries a warning to check it; a reverse-charge *sale* on the flat rate stays in flat rate turnover as before.
+- **Cash accounting and the income tax cash basis read the same money** (`cash_basis.document_money`, merged in `batch-tax`): payments, matched bank lines and overpayments applied, dated when the money moved. A credit note's credit applied to an invoice is not money and no longer counts as a payment for VAT cash accounting.
+- Gates on `cis` (28 Oct 2026, Linux): runtime 1437 passed, ledger 53, evals 332, web e2e 253 passed (58 skipped); ruff, pyright and eslint clean. Flutter not touched.
 
 ## Online payments (payment links)
 
@@ -227,7 +227,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 ## Payroll
 
 - **Not HMRC-recognised for RTI, and never files.** PAYE RTI is not on HMRC's REST Developer Hub: it is GovTalk XML sent to HMRC's Transaction Engine (Document Submission Protocol, IRmark), and live filing needs HMRC software recognition (HMRC "How to use the Internet services: RTI" v1.94, read 28 Oct 2026). Accnomos has neither recognition nor SDST test credentials. It generates FPS and EPS files to the 2026-27 schemas ("RTI RIM 2027 v1.0", vendored in `services/runtime/tests/fixtures/hmrc_rti_2026_27/`, and every generated file in the tests validates against them with `xmllint`) for the user to check. The page says, beside every RTI download: *File with HMRC's Basic PAYE Tools or your payroll provider. Direct submission from Accnomos is currently not available.* Every FPS and EPS file also opens with an XML comment saying it was not submitted to HMRC, must be filed using HMRC's Basic PAYE Tools (or a recognised provider's software) and that direct submission is not available. Basic PAYE Tools cannot import these files; they are a checklist of what to type or what the provider should send. There is no GovTalk envelope, no IRmark and no submission path; `EmployerSettings.rti_test_submission_enabled` is a switch typed `Literal[False]` (it cannot be turned on) for a future External Test Service path, which would need SDST credentials (owner work).
-- **Rates verified on 28 Oct 2026** (re-read independently the same day on branch claude/payroll-finish, through a web reader since that container could not reach gov.uk directly: every figure on the employer rates page, including the final Scottish bands, the SSP £123.25 / 80 % of AWE from day one, SMP £194.32, student and postgraduate loan per-period thresholds, Employment Allowance £10,500, and TPR's 2026-27 auto-enrolment table, matched the code) against GOV.UK and HMRC's technical specifications for 2026-27, each cited in `app/paye_rates.py` and pinned a second time in `tests/test_paye_rates.py`: rates and thresholds for employers (updated 1 Sep 2026), PAYE Tax Table Routines v24.0 (Scottish parameters "subject to parliamentary approval" when issued), NI guidance for software developers v1.1, student loans from 6 April 2026, the DWP/TPR auto-enrolment thresholds. Re-check every spring; pay dates outside 2026-27 are refused.
+- **Rates verified on 28 Oct 2026** (re-read independently the same day on branch payroll-finish, through a web reader since that container could not reach gov.uk directly: every figure on the employer rates page, including the final Scottish bands, the SSP £123.25 / 80 % of AWE from day one, SMP £194.32, student and postgraduate loan per-period thresholds, Employment Allowance £10,500, and TPR's 2026-27 auto-enrolment table, matched the code) against GOV.UK and HMRC's technical specifications for 2026-27, each cited in `app/paye_rates.py` and pinned a second time in `tests/test_paye_rates.py`: rates and thresholds for employers (updated 1 Sep 2026), PAYE Tax Table Routines v24.0 (Scottish parameters "subject to parliamentary approval" when issued), NI guidance for software developers v1.1, student loans from 6 April 2026, the DWP/TPR auto-enrolment thresholds. Re-check every spring; pay dates outside 2026-27 are refused.
 - **What is tested against HMRC's own figures:** Tables A free pay, all twelve 2026-27 NI worked examples (HMRC's example 3 prints a total of £47.94 where its steps add to £47.69; the steps are tested), the full SSP amounts table, two director examples. **What is not:** HMRC publishes no 2026-27 PAYE worked examples and its calculators could not be scripted, so income tax goldens are hand-worked from the routines spec (each step written in the test). A payroll professional should run a sample through HMRC's calculator or Basic PAYE Tools before relying on it; every figure is labelled "Estimate — check before filing".
 - Not covered (said on the page): quarterly, annual or irregular pay; directors on the alternative NI arrangements; SPP, SAP, ShPP, SPBP, SNCP; benefits in kind, Class 1A, court orders, apprenticeship levy, off-payroll workers; pension refunds after an opt-out and three-yearly re-enrolment (flagged, not calculated). New starters' suggested tax codes follow HMRC's long-standing starter-checklist rules, which the 2026-27 CWG2 no longer prints, so they are marked unverified. Directors with student loans are calculated per period and flagged.
 - Pension provider files, checked against the providers' current published specifications on 28 Oct 2026 but **never uploaded to a live provider account**: Nest from the Employer payroll guide on Nest's site (contribution schedule, file version 4; frequency "Tax Weekly"/"Tax Monthly" schedules are not written; the paper opt-out notice fields are left blank); The People's Pension from its Contributions file data requirements v9 (still the version it publishes; details-section headings and its refused characters handled); Smart Pension from its "CSV Specification – PAPDIS 1.0 – PAP01" (43 fields; a heading row is written although the spec does not say whether one is expected; net pay arrangement only, relief at source is refused with a message); NOW: Pensions from its undated online guide. Missing/partial contribution codes are derived for leavers, opt-outs and nil earnings only (not family leave, group or payment-source changes). The generic CSV is Accnomos's own layout.
@@ -289,7 +289,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **What is left out:** capital allowances, structures and buildings allowance, losses brought forward, the non-resident landlord scheme (`taxDeducted`), lease premium working sheets (the user enters the taxable part), foreign property, the property income allowance in the submission (shown as a comparison only), Rent a Room "jointly let" flags, and furnished holiday lettings before 2025-26 (refused: the regime ended on 6 April 2025).
 - **Quick entries are kept off the VAT return** (VAT code O). A VAT-registered landlord with commercial lets opted to tax should record those through Invoices and Review instead.
 - **An ordinary receipt reaches a property only when it is tagged** on the Property page (`_System/Property/tags.json`); untagged entries on the property accounts go to the only property when there is one, otherwise they count as 100 % the user's with a warning. Mortgage interest in an ordinary account counts as a finance cost only if the account name says interest or mortgage.
-- **Self-employment overlap:** branch `claude/self-employment` maps 4000–4899 to turnover and 8000–8099 to depreciation; the property accounts (4700–4740, 8500–8580) would be counted there too when both are merged, unless its mapping skips them (noted in `docs/reviews/landlords/REVIEW.md`).
+- **Self-employment overlap:** branch `self-employment` maps 4000–4899 to turnover and 8000–8099 to depreciation; the property accounts (4700–4740, 8500–8580) would be counted there too when both are merged, unless its mapping skips them (noted in `docs/reviews/landlords/REVIEW.md`).
 - **Android:** nothing yet; the Property page is web only.
 
 ## Inbox, calendar, planner
@@ -378,7 +378,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web's AI line (account menu; the signed-out sidebar) says "AI: Meta Muse models", "… your own key" or "… on your own computer" from the choice saved on this device (the stub in test mode), and links to `/meta-models`. It does not ask the runtime which provider actually served the last reading: a stale "own computer" choice on a hosted app still says so (and the runtime refuses a base URL that is not on its allow-list). Ask uses the period picked on `/vat` but has no picker of its own.
 
-- **Home dashboard and its summary (`GET /books/home`, claude/dashboard-ui) are tested on fakes;** the summary was worded
+- **Home dashboard and its summary (`GET /books/home`, dashboard-ui) are tested on fakes;** the summary was worded
   live by Muse Spark 1.3 on the public server on 4 Nov 2026 (`evals/runs/live_checks_2026-11-04/report.md`), but how
   often a real model's wording passes the number check, and so how often users see code's own sentences instead, is
   not measured. The number check is Ask's `KnownNumbers` (every figure must be one of the facts, whole-pound roundings
@@ -393,7 +393,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   The cheaper-options line calls `GET /books/prices` on every Home visit. The Android app shows only the summary card
   from this endpoint; `flutter analyze` and `flutter test` were not run for it (no Flutter SDK in that session).
 
-## App shell (claude/app-shell)
+## App shell (app-shell)
 
 Review: `docs/reviews/app-shell/REVIEW.md`.
 
@@ -453,7 +453,7 @@ Review: `docs/reviews/app-shell/REVIEW.md`.
 
 ## "Join the waiting list" sign-up (submission build)
 
-Branch `claude/signup-accountants`; review in `docs/reviews/signup-accountants/REVIEW.md`.
+Branch `signup-accountants`; review in `docs/reviews/signup-accountants/REVIEW.md`.
 
 - **Tested on the test-mode runtime only.** e2e signs up from the landing page and `/join` and reads the record back
   from the e2e list file. Whether the live runtime behind accnomos.com has `EARLY_ACCESS_ENABLED=1` (and a persistent
@@ -468,7 +468,7 @@ Branch `claude/signup-accountants`; review in `docs/reviews/signup-accountants/R
 
 ## Accountant collaboration
 
-Branch `claude/accountant`; review in `docs/reviews/accountant/REVIEW.md` (gates on that branch, 28 Oct 2026: runtime
+Branch `accountant`; review in `docs/reviews/accountant/REVIEW.md` (gates on that branch, 28 Oct 2026: runtime
 1432 passed, connectors 63, e2e 255 passed / 58 skipped, `flutter test` 274). **Nothing here has called Microsoft Graph**:
 every sharing call ran against httpx mocks shaped like the Microsoft Learn examples, or the test-mode fake sharing world.
 
@@ -507,7 +507,7 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
 - **Nothing has been test-imported into Xero, QuickBooks Online, Sage 50, Sage Accounting or FreeAgent.** Each import file
   follows the vendor's published template as checked on 28 Oct 2026 (golden files in `services/runtime/tests/fixtures/exports/`
   hold the headings and first rows exactly). Re-checked against the vendors' own help pages on 28 Oct 2026 in
-  `claude/sales-exports-fix` (read through a page-reading service: this container cannot reach the vendors' sites, and
+  `sales-exports-fix` (read through a page-reading service: this container cannot reach the vendors' sites, and
   Xero Central's articles mostly render only in a browser). How each was verified:
 
   | File | Checked against | How sure |
@@ -538,7 +538,7 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   trail follows VAT Notice 700/22 paragraph 3.2.1 (updated 1 Apr 2022), both read on gov.uk on 28 Oct 2026. The return is the
   same calculation the VAT page submits: `compute_vat_return` under standard accounting, and the VAT scheme engine
   (`app/vat_schemes.py`) when cash accounting, the flat rate scheme or annual accounting is set (since
-  `claude/sales-exports-fix`; tested with the flat rate). VAT detail, digital links and the VAT reconciliation still list
+  `sales-exports-fix`; tested with the flat rate). VAT detail, digital links and the VAT reconciliation still list
   entries on the invoice basis and say so under a scheme. No EC Sales List: since
   2021 only Northern Ireland goods sold to the EU need one, and the books record no NI/EU movements (boxes 2, 8, 9 are 0).
 - **Reports are not statutory accounts.** No year-end close, accruals, prepayments, depreciation or stock: the balance sheet
@@ -615,7 +615,7 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   Plesk serves at accnomos.com) served locally, because accnomos.com itself was blocked from that session; with no
   runtime reachable they also show the "reader isn't answering" strip, which the live site would not. Lighthouse was
   run on a local production export behind a local gzip server (mobile 96 performance, 100 accessibility; desktop 100,
-  100), not against accnomos.com behind Plesk. At integration (after `claude/batch-tax` reached `main`) two lines were
+  100), not against accnomos.com behind Plesk. At integration (after `batch-tax` reached `main`) two lines were
   corrected: landlords' property income figures and flat-rate VAT are in the build now, and only sending payroll (RTI)
   to HMRC is missing, not the FPS and EPS files.
 

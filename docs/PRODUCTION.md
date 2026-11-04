@@ -4,7 +4,7 @@
 or `.env.example` points at HMRC production, and no production credential exists anywhere in the repo. The switch is
 environment variables only: no code change. Companies House has no sandbox, so its key is the same before and after.
 
-Facts below were checked on 27 Oct 2026 against the pages cited in the root `REVIEW.md` of the `claude/company-lookup`
+Facts below were checked on 27 Oct 2026 against the pages cited in the root `REVIEW.md` of the `company-lookup`
 branch (HMRC Developer Hub, Companies House developer guides). Re-check them on the day: HMRC changes its process.
 
 ## 1. HMRC: a production application

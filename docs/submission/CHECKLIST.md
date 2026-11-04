@@ -146,7 +146,7 @@ git grep -n '192\.168\.1\.176'                      # your LAN address is the de
 
 - [x] Test figures refreshed 4 Nov (README "Current gates", JUDGING.md): CI green on `main`.
 - [x] `docs/PROVENANCE.md` commits-per-day table re-run on 4 Nov (1,727 commits on `main` to `8debc2e9`).
-- [x] `claude/final-audit` (doc fixes) and the `/demo` guide merged into `main` (4 Nov afternoon); the `/help` footer shows
+- [x] `final-audit` (doc fixes) and the `/demo` guide merged into `main` (4 Nov afternoon); the `/help` footer shows
       the build hash of the deployed export.
 - [ ] Last hour: run the demo path once on the real site (`/judges` → Start the demo → Review → Approve → VAT → Make a
       test user); `/health` is `"ok": true`; fill the form; **submit by 18:00 UK time on Wed 4 Nov** (the hard deadline

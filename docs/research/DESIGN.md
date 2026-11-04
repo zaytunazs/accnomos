@@ -1,6 +1,6 @@
 # Design research: navigation, onboarding, review flows and brand for Accnomos
 
-Written 28 Oct 2026 on branch `claude/research-design`. This covers part A (research) and the plan for part B (the
+Written 28 Oct 2026 on branch `research-design`. This covers part A (research) and the plan for part B (the
 first three low-risk visual changes, which this branch makes). The screenshots of the app before and after those
 changes are in [`design-shots/`](design-shots/): test-mode build, signed out (the labelled fictional sample) unless the
 name says `signed-in`, captured at 1280 × 800 and 390 × 844 by `apps/web/e2e/design-shots.spec.ts`.
@@ -12,7 +12,7 @@ that could not be traced to a public page is marked *unverified*. The empty-stat
 could not be checked without logging in or paying for a screen library, so the empty-state section draws on
 principles and on Accnomos's own screens.
 
-**Who owns what.** The `claude/profiles` branch owns the menu restructure and `claude/marketing` owns the landing
+**Who owns what.** The `profiles` branch owns the menu restructure and `marketing` owns the landing
 page. This document recommends both, but this branch changes neither.
 
 ---
@@ -137,7 +137,7 @@ pounds" in the label, accept "£1,234.50" as typed, and give specific errors ("m
 
 ---
 
-## 2. Recommended menu structure for Accnomos (for `claude/profiles`)
+## 2. Recommended menu structure for Accnomos (for `profiles`)
 
 ### 2.1 Desktop (signed in): Xero-like groups as a top menu or sidebar
 
@@ -334,14 +334,14 @@ or touch structure, so the first three **low-risk** changes (★) are the ones t
 | # | Before | After | Risk / owner |
 |---|---|---|---|
 | 1 | Signed-in Home opens on a 7-row "Get set up" list; the figures start below the fold at 1280 and 390 (`home-signed-in-*-before.png`). | The figures and "N waiting for you" come first; set-up becomes a one-line progress bar ("2 of 7 · Continue"). | Medium: it reorders Home components; `home.spec.ts` and the empty-state specs assert the order. |
-| 2 | Sidebar groups Books / Money / Work with 12 flat links; phone tabs Home · Review · Ask · VAT · Files at 11 px, text only. | Xero-like groups (section 2) and phone tabs Home · Review · ＋ · Tax · Menu with icons. | **Owned by `claude/profiles`.** |
+| 2 | Sidebar groups Books / Money / Work with 12 flat links; phone tabs Home · Review · Ask · VAT · Files at 11 px, text only. | Xero-like groups (section 2) and phone tabs Home · Review · ＋ · Tax · Menu with icons. | **Owned by `profiles`.** |
 | **3 ★** | **Content is capped at 768 px.** At 1280 there are about 140 px of empty margin on each side, the VAT table wraps "VAT due on sales" onto two lines, and the Home grid's 3 columns are squeezed. | **Content is up to 1,024 px wide from 1280 px up** (phones and tablets unchanged). The VAT table reads on one line per box, and Home's three columns breathe. | Low: one class in `AppShell`. **Done on this branch.** |
-| 4 | The landing pitch is three stacked claims plus two Connect buttons on the same screen. | One promise ("AI proposes · you approve · code calculates"), one primary CTA, and "See the demo books" as the secondary. | **Owned by `claude/marketing`.** |
+| 4 | The landing pitch is three stacked claims plus two Connect buttons on the same screen. | One promise ("AI proposes · you approve · code calculates"), one primary CTA, and "See the demo books" as the secondary. | **Owned by `marketing`.** |
 | **5 ★** | **The Home figures are 24 px**, the same weight as the card titles, so the money doesn't stand out on video. | **The figures are 30 px from 640 px up (28 px on phones)**, tabular, with a tighter line height: the number the narrator says is the biggest thing on screen. | Low: classes in `Tiles.tsx`. **Done on this branch.** |
 | 6 | The Review card shows "Approve all 2 rule matches" in the banner *and* inside each matching card; a 200 px grey "No image" box sits beside the figures. | Bulk approval appears only in the banner; the card shows Net · VAT · Total large, with one trust line ("2 readings agree · 12 of 12 checks"). | Medium: changes Review markup, and the review specs click those buttons. |
 | **7 ★** | **On a phone, "Get set up" wraps its Dismiss button onto its own line** under the subtitle (`home-signed-in-390-before.png`), which reads as broken layout. | **Dismiss stays top-right beside the title at every width**; the subtitle wraps under the title instead. | Low: classes in `SetupChecklist.tsx`. **Done on this branch.** |
 | 8 | Input borders use `border` #E3E1D8 (1.31:1 on white, which fails 1.4.11); there is no `positive` or `danger` token, so hexes are hard-coded (e.g. `#0A4F47` in `Pitch.tsx` and `States.tsx`). | Add `border-strong` (#7A776C, 4.48:1), `positive` and `danger` tokens; inputs use `border-strong`; hard-coded hexes become tokens. | Low to medium: touches many files; best done when no other branch is mid-flight. |
-| 9 | The signed-out nav shows a Review badge of **1** while the Review page says **"4 waiting for you"**; the phone page header leaves the "?" alone on its own line. | The badge uses the sample's real count; the page header keeps the "?" on the title row at every width; `scroll-padding` covers the sticky header and the tab bar (2.4.11). | Low to medium: the badge is in `AppNav` (`claude/profiles`); Ask's header action is long text, so the header needs care to avoid overflow at 390 px. |
+| 9 | The signed-out nav shows a Review badge of **1** while the Review page says **"4 waiting for you"**; the phone page header leaves the "?" alone on its own line. | The badge uses the sample's real count; the page header keeps the "?" on the title row at every width; `scroll-padding` covers the sticky header and the tab bar (2.4.11). | Low to medium: the badge is in `AppNav` (`profiles`); Ask's header action is long text, so the header needs care to avoid overflow at 390 px. |
 | 10 | Approving a card swaps the content instantly; the brand line differs between Home ("Stored only by you") and Review ("…code posts"). | A 200 ms slide-and-fade on Approve, with the count ticking down and an Undo toast; the same brand line on Home, Review and the video's end card. | Medium: motion has to stay deterministic for the e2e timing; the copy is covered by assertions in several specs. |
 
 ### What this branch changed (part B)

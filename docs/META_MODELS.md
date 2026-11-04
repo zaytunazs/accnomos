@@ -17,8 +17,8 @@ There is no separate LLM "Reviewer" stage (see `docs/ARCHITECTURE.md`).
 
 ## Speech-to-text: Muse Voice Transcribe first, a local speech-to-text model on our own server as fallback
 
-`app/ai/stt.py` is a provider chain for voice in the same style as the text chain below. `STT_PROVIDERS` (default
-`muse,whisper`) sets the order; a provider without its settings is left out.
+`app/ai/stt.py` is a provider chain for voice in the same style as the text chain below. `STT_PROVIDERS` (default: Muse Voice Transcribe, then the
+local fallback) sets the order; a provider without its settings is left out.
 
 | Order | Provider | Model | Key / URL | Default timeout |
 |---|---|---|---|---|
