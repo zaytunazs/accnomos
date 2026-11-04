@@ -10,6 +10,7 @@ import '../services/proposal_editing.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
+import '../widgets/calendar_sync.dart';
 import '../theme.dart';
 import 'business_setup_screen.dart';
 
@@ -69,6 +70,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _auth = AuthService();
+
+  /// Business › Calendar: made when the group is first opened signed in.
+  DeadlineSync? _calendar;
   final _runtimeUrl = TextEditingController();
   final _aiBaseUrl = TextEditingController();
   final _aiModel = TextEditingController();
@@ -152,6 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _calendar?.dispose();
     _runtimeUrl.dispose();
     _aiBaseUrl.dispose();
     _aiModel.dispose();
@@ -338,6 +343,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         businessName: settings.businessName,
       ),
     );
+  }
+
+  /// The deadline sync behind Business › Calendar, loaded on first use.
+  DeadlineSync _calendarSync() {
+    final made = _calendar;
+    if (made != null) return made;
+    final sync = _calendar =
+        DeadlineSync(read: _booksClient, write: _calendarClient);
+    sync.load();
+    return sync;
+  }
+
+  /// Calendar writes ask for Calendars.ReadWrite only when used.
+  Future<RuntimeClient> _calendarClient() async {
+    if (widget.clientFactory != null) return _booksClient();
+    final settings = _current();
+    return calendarClient(settings, _auth, _account);
   }
 
   /// Inbox checks read mail, so they ask for Mail.Read only now — never at
@@ -1128,6 +1150,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       enabled: _signedIn,
                       onPressed: _saveBusiness,
                     ),
+                    if (_signedIn) ...[
+                      const SizedBox(height: 20),
+                      const Text('Calendar',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AccnomosColors.ink)),
+                      const SizedBox(height: 8),
+                      CalendarSyncPanel(sync: _calendarSync()),
+                    ],
                   ],
                 ),
                 if (!household)
