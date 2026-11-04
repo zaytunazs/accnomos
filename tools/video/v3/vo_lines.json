@@ -1,0 +1,39 @@
+[
+ {
+  "id": "s1",
+  "text": "Most accounting apps are built for accountants. They're boring, full of jargon, and they don't teach you anything about your own money. We wanted the opposite: an app that keeps you up to date with your business in plain English, and helps you set goals and actually meet them."
+ },
+ {
+  "id": "s2",
+  "text": "Once you can see your numbers clearly, you make better decisions. You trim the costs you don't need, set clear goals and watch your progress every week."
+ },
+ {
+  "id": "s3",
+  "text": "This is Accnomos, running on Meta's Muse models. Home tells me what needs me now, in order, with a button for each. I can just talk: \"add a site visit tomorrow at ten\". It checks my calendar for clashes and asks before it changes anything."
+ },
+ {
+  "id": "s4",
+  "text": "Snap a receipt and Muse Spark reads it. Code checks every number, and I approve. Typing works too: \"send a £450 invoice to Hartwell\". Anything that moves money needs a tap, never just my voice. The AI proposes, code does the maths, and I decide."
+ },
+ {
+  "id": "s5",
+  "text": "Reports and CSV exports are one click. When the quarter ends, code works out the VAT return from the ledger, and I submit it to HMRC with one tap."
+ },
+ {
+  "id": "s6",
+  "text": "It isn't only for companies. Sole traders and landlords get their quarterly Making Tax Digital updates. And at home, the same app runs your household budget, puts your bills in your calendar and keeps your savings goals on track."
+ },
+ {
+  "id": "s7",
+  "text": "You choose which Meta model answers first: Muse Spark on the Meta API, or Muse Glimmer, Meta's open-weight model, running on your own computer, so nothing leaves it. Your books live in your own OneDrive, with its backups and version history. We write the code. The data, the drive and the AI are yours."
+ },
+ {
+  "id": "s8",
+  "text": "We hope Accnomos takes the stress out of money, for businesses and for families: less time on paperwork, more time on what matters. One note: in this demo, HMRC filing goes to HMRC's sandbox, because live filing needs HMRC to approve the software first."
+ },
+ {
+  "id": "u1",
+  "text": "Add a site visit tomorrow at ten.",
+  "note": "the spoken request fed to the browser's fake microphone (voice bf_emma); not part of the voice-over"
+ }
+]
