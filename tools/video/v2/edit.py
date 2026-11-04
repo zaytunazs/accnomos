@@ -45,8 +45,8 @@ EDL: list[dict] = [
         {"layout": "full", "src": "w-spending", "segs": ["0..end"], "dur": 5.2},
     ]},
     {"id": "s3", "lead": 0.4, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
-        {"layout": "full", "src": "w-home-action", "segs": ["0..end"], "dur": 6.0},
-        {"layout": "full", "src": "w-talk", "segs": ["0..speak+0.5", "speak+0.5..ready-0.2", "ready-0.2..end"], "dur": 13.0, "crop": [560, 0, 1360, 765]},
+        {"layout": "full", "src": "w-home-action", "segs": ["0.6..end"], "dur": 6.0},
+        {"layout": "full", "src": "w-talk", "segs": ["1.0..speak+2.2", "ready-0.3..end"], "dur": 13.0, "crop": [560, 0, 1360, 765]},
     ]},
     {"id": "s4", "lead": 0.4, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
         {"layout": "phone", "src": "p-receipt", "segs": ["1.0..gallery+0.5", "queued-0.6..wait+0.8", "ready-0.2..wait2+0.8", "ready2-0.6..ready2+2.2"], "dur": 11.4,

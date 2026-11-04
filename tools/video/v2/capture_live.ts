@@ -233,24 +233,25 @@ const SHOTS: Record<string, Shot> = {
   },
   // s5: Reports, profit and loss, CSV export
   "w-reports": {
-    setup: async ({ page }) => { await go(page, "/reports"); },
+    setup: async ({ page }) => {
+      await go(page, "/reports");
+      await page.getByRole("radio", { name: /Jul.Sep 2026/ }).first().click().catch(() => undefined);
+      await settle(page, 1500);
+      await page.evaluate(() => window.scrollTo(0, 0));
+    },
     run: async (c) => {
       const { page, h } = c;
-      await h.park(800, 250);
-      await hoverText(c, /^Profit and loss/, 1200);
-      await h.scrollBy(300, 1000);
-      await h.hold(1000);
-      await h.scrollToTop(700);
-      await h.click(vis(page.getByRole("link", { name: "Reports & exports" }).or(page.getByRole("button", { name: "Reports & exports" }))), 1200);
-      await settle(page, 500);
-      const csv = vis(page.getByRole("button", { name: /CSV/ }).or(page.getByRole("link", { name: /CSV/ })));
-      if (await csv.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await h.scrollIntoView(csv, 800);
-        const dl = page.waitForEvent("download", { timeout: 8000 }).catch(() => null);
-        await h.click(csv, 300);
-        await dl;
-      }
-      await h.hold(1800);
+      await h.park(800, 300);
+      await point(c, /^Jul.Sep 2026$/, 700);
+      const pl = vis(page.getByRole("heading", { name: /^Profit and loss/ }));
+      await h.scrollIntoView(pl, 1200);
+      await h.hover(pl, 1000);
+      await h.scrollBy(260, 900);
+      await h.hold(900);
+      await h.scrollToTop(800);
+      await h.click(vis(page.getByRole("button", { name: /Export to OneDrive/ })), 300);
+      await vis(page.getByText(/Saved to 07 Reports/)).waitFor({ timeout: 20_000 }).catch(() => undefined);
+      await hoverText(c, /Saved to 07 Reports/, 1800);
     },
   },
   // s5: VAT, nine boxes by code, Submit (simulated in the demo) → receipt
