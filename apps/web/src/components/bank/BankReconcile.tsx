@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { money } from "@/components/bank/LiveBank";
+import StatusBadge from "@/components/StatusBadge";
 import { runtime, ukDate, type RtAiSuggestion, type RtBankLine, type RtReconcileRow } from "@/lib/runtime";
 
 export interface RulePrefillFrom {
@@ -147,7 +148,7 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
               </p>
               {r.exact && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl bg-teal-tint p-3">
-                  <span className="rounded-full bg-teal px-2 py-0.5 text-[12px] font-bold text-white">Exact</span>
+                  <StatusBadge tone="success">Exact</StatusBadge>
                   <span className="text-sm">{r.exact.reasons.join(" · ")}</span>
                   <button
                     type="button"
@@ -162,7 +163,7 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
               )}
               {r.refund && (
                 <div data-reconcile-refund className="flex flex-wrap items-center gap-2 rounded-xl bg-teal-tint p-3">
-                  <span className="rounded-full bg-teal px-2 py-0.5 text-[12px] font-bold text-white">Refund of a credit</span>
+                  <StatusBadge tone="success">Refund of a credit</StatusBadge>
                   <span className="text-sm">{r.refund.reasons.join(" · ")}</span>
                   <button
                     type="button"
@@ -180,7 +181,7 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
               )}
               {r.rule && (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl bg-ground p-3">
-                  <span className="rounded-full border border-border bg-white px-2 py-0.5 text-[12px] font-bold">Bank rule{r.rule.rule_name ? ` · ${r.rule.rule_name}` : ""}</span>
+                  <StatusBadge tone="neutral">Bank rule{r.rule.rule_name ? ` · ${r.rule.rule_name}` : ""}</StatusBadge>
                   <Coding account={r.rule.account} vatCode={r.rule.vat_code} contact={r.rule.contact} />
                   <button
                     type="button"
@@ -194,7 +195,7 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
                 </div>
               )}
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border p-3">
-                <span className="rounded-full border border-warn-border bg-warn-bg px-2 py-0.5 text-[12px] font-bold text-warn-ink">AI</span>
+                <StatusBadge tone="warning">AI</StatusBadge>
                 {ai ? (
                   <>
                     <Coding account={ai.account} vatCode={ai.vat_code} contact={ai.contact} />

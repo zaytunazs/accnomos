@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import StatusBadge from "@/components/StatusBadge";
 import {
   BANK_FEED_KEY,
   BANK_FEED_SYNCED,
@@ -52,18 +53,18 @@ function remember(status: RtFeedStatus) {
 
 function SandboxBadge() {
   return (
-    <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-warn-ink">
+    <StatusBadge tone="warning" className="uppercase tracking-wide">
       Sandbox
-    </span>
+    </StatusBadge>
   );
 }
 
 /** The demo's label, everywhere its feed shows: TrueLayer's test bank, never a real one. */
 function DemoBadge({ label }: { label: string }) {
   return (
-    <span data-testid="bank-sandbox-label" className="rounded-full bg-warn-bg px-2.5 py-0.5 text-[12px] font-extrabold text-warn-ink">
+    <StatusBadge tone="warning" data-testid="bank-sandbox-label">
       {label}
-    </span>
+    </StatusBadge>
   );
 }
 
