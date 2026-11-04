@@ -120,7 +120,8 @@ What this shows and does not show:
   `evals/runs/spark13_200` and `evals/runs/spark13_messy_200`; the word-error figure for transcription is in
   `evals/runs/stt`. A few live calls are not a measurement.
 - The scanned photo is a synthetic scene (a gold receipt on a cluttered desk, `harness.crop_bench.make_scene`); its
-  reading is compared with that gold document below.
+  reading is compared with that gold document above. The SAM 3.1 crop was not on for this run (the scan says
+  "Cropped by code"); SAM was checked separately: `evals/runs/sam_crop_live/report.md`.
 """
 
 

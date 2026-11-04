@@ -41,6 +41,10 @@ services:
       BASETEN_API_KEY: ${BASETEN_API_KEY:-}
       VERIFIER: ${VERIFIER:-}
       VERIFIER_MODEL: ${VERIFIER_MODEL:-}
+      # Photo crop before reading (app/ai/crop.py): CROP_MODE auto|code|off; SAM_CROP=1 lets auto use SAM 3.1 on the
+      # Meta Model API (the user's key, else META_API_KEY), with the code crop as fallback. Off unless 1.
+      CROP_MODE: ${CROP_MODE:-auto}
+      SAM_CROP: ${SAM_CROP:-0}
       # Companies House Public Data API key (free; developer.company-information.service.gov.uk). Empty = the
       # company look-up is off (routes answer 503 and the app hides it). Set in .env; never commit it.
       COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:-}
