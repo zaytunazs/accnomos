@@ -7,6 +7,8 @@ Voice: Kokoro bm_lewis on the Spark (`tools/video/v3/tts.py`); the lines below a
 "accnomos.com" as in v2). Lines `s1`–`s7` are the owner's v2 lines unchanged; `s8` is the v2 line cut for time plus
 the how-to pointer. Edit: `tools/video/v3/edit.py` (EDL at the top), notes in `docs/video/V3_EDIT.md`.
 
+Final length 2:55.9; scene times are in `docs/video/V3_EDIT.md`.
+
 | # | Scene | On screen | Voice |
 |---|---|---|---|
 | title | Title + provenance | Title card; band: "Before 26 Oct: only our own AI server hardware. Built during the hackathon, 26 Oct – 4 Nov: its local model setup, the web and Android app, and every feature." | Before 26 October we had only our own AI server hardware. Everything else, even its local model setup, we built during the hackathon. |
