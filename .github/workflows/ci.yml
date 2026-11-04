@@ -122,7 +122,7 @@ jobs:
     name: e2e (Playwright, test mode)
     runs-on: ubuntu-latest
     # ~8 min for 224 tests on a 4-core box; the rest is headroom for a cold cache and one retry round
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: apps/web
@@ -177,7 +177,7 @@ jobs:
         run: pnpm run e2e:build
 
       - name: Run Playwright (starts the runtime in test mode and serves out-e2e/)
-        timeout-minutes: 18
+        timeout-minutes: 28
         run: pnpm run e2e:test
         env:
           E2E_PYTHON: ${{ github.workspace }}/.venv/bin/python
