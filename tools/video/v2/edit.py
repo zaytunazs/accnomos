@@ -480,7 +480,13 @@ def chunks(text: str, limit: int = 84) -> list[str]:
                     nxt += [p[:cut].strip(), p[cut:].strip()]
             parts = nxt
         out += parts
-    return out
+    merged: list[str] = []
+    for c in out:  # a short lead-in ("One note:") rides with the next piece
+        if merged and len(merged[-1]) < 22 and len(merged[-1]) + len(c) < limit:
+            merged[-1] = f"{merged[-1]} {c}"
+        else:
+            merged.append(c)
+    return merged
 
 
 def timed_captions(text: str, wav: Path) -> list[tuple[float, float, str]]:
@@ -497,10 +503,13 @@ def timed_captions(text: str, wav: Path) -> list[tuple[float, float, str]]:
         acc += len(c)
         raw_b.append(lead + speak * acc / tot)
     mids = [(a + b) / 2 for a, b in sil]
-    bounds = []
+    bounds: list[float] = []
     for b in raw_b:
         near = min(mids, key=lambda m: abs(m - b), default=None)
-        bounds.append(near if near is not None and abs(near - b) < 0.9 else b)
+        v = near if near is not None and abs(near - b) < 0.9 else b
+        if bounds and v < bounds[-1] + 0.8:  # two pieces snapped to one pause: keep the estimate
+            v = max(b, bounds[-1] + 0.8)
+        bounds.append(min(v, d - 0.5))
     edges = [0.0, *bounds, d]
     return [(edges[i], edges[i + 1], c) for i, c in enumerate(cs)]
 
