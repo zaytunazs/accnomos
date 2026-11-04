@@ -1,6 +1,6 @@
 # Demo video v2: the edit (4 Nov 2026)
 
-Script: `docs/video/SCRIPT_V2.md` (voice lines spoken verbatim). Length **2:41** (161.6 s), 1920 × 1080, 30 fps.
+Script: `docs/video/SCRIPT_V2.md` (voice lines spoken verbatim). Length **2:43** (163.0 s), 1920 × 1080, 30 fps.
 Made by `tools/video/v2/` (capture, voice, edit); media is not in git.
 
 ## Files (owner's PC: `builds\video-v2\`; Spark: `~/video-v2/out/`)
@@ -18,7 +18,7 @@ Made by `tools/video/v2/` (capture, voice, edit); media is not in git.
 ## Shot list
 
 Times are the final cut's. "Live" = recorded from https://accnomos.com (main `fdb0beeb`, deployed 4 Nov ~05:25 UK)
-with the real Meta chain answering; Android = APK 0.3.16 (21) on the emulator, talking to the same live API.
+(VAT: main `bf1de521`, ~06:35 UK) with the real Meta chain answering; Android = APK 0.3.16 (21) / 0.3.17 (22) on the emulator, talking to the same live API.
 Nothing is from the test-mode build; no stub text is on screen.
 
 | Time | Scene (voice) | Shot | Source | Meta model on screen |
@@ -28,11 +28,11 @@ Nothing is from the test-mode build; no stub text is on screen.
 | 0:21.8–0:35.2 | 2 | Spending › Regular costs (cropped), then Goals & progress with the AI note "What your goals are telling you" | live `w-spending`, `w-goals` | Muse Spark (goals note) |
 | 0:35.2–0:54.2 | 3 | Home summary → Review → button; Talk to Accnomos: **spoken** "Add a site visit tomorrow at ten" → "Transcribed by Muse Voice Transcribe" → calendar card (needs your OK) → Approve → "Added" | live `w-home`, `w-home-action`, `w-talk` (panel cropped) | Muse Voice Transcribe, Muse Spark |
 | 0:54.2–1:16.8 | 4 | Phone: Photograph a receipt → gallery → upload → "Looks like a receipt (97 % sure)" → Confirm → NOVEX card "Read by Muse Spark", "Cropped", verifier agrees. Web: Ask "send a £450 invoice to Hartwell" → priced card (needs a tap) → Approve → "Invoice INV-0007 … sent" (demo: not actually sent) | Android `p-receipt`; live `w-invoice` | Muse Spark (reading, second reading, invoice) |
-| 1:16.8–1:33.8 | 5 | Reports Jul–Sep 2026, profit and loss, Export to OneDrive; VAT nine boxes by code → Connect (simulated) → declaration → Submit (demo — simulated) → receipt with form bundle number | live `w-reports`, `w-vat` | none (code) |
-| 1:33.8–1:51.8 | 6 | Self-employment (MTD Income Tax, sandbox) and Property; the Harrison household: summary → budget (web + phone); household goals | live `w-selfemp`, `w-personal` + Android `p-personal`, `w-personal-goals` | Muse Spark (household summary) |
-| 1:51.8–2:14.4 | 7 | Settings › AI: the three choices, Local model only and its warning; `GET /ai/calls` drawn as a page (records `spark / muse-glimmer:30b` and `meta / muse-spark-1.3-contributor` made just before, by asking with `X-AI-Route: local_only` then `meta_first`); Files (OneDrive folder, Books.xlsx, backups) and Settings › Files & backups | live `w-ai`, `w-calls`, `w-files`, `w-backups` | Muse Spark, Muse Glimmer 30B |
-| 2:14.4–2:34.6 | 8 | End card: accnomos.com · github.com/zaytunazs/accnomos · HMRC sandbox note | card (`section-demo.png`) | — |
-| 2:34.6–2:41.6 | Judges' slide (silent) | Models at run time, measured figures, provenance, try it, limits; Muse Image credited here only | card (`section-meta-ai.png`) | — |
+| 1:16.8–1:34.4 | 5 | Reports Jul–Sep 2026, profit and loss, Export to OneDrive; VAT nine boxes by code → "Make an HMRC sandbox test user" → HMRC's own sandbox pages (Allow your software…, Give permission) → back, connected → declaration → **Submit to HMRC sandbox** → "Submitted to HMRC sandbox · key 18A2" with HMRC's form bundle number | live `w-reports`, `w-vat-hmrc` | none (code); HMRC sandbox is real |
+| 1:34.4–1:52.4 | 6 | Self-employment (MTD Income Tax, sandbox) and Property; the Harrison household: summary → budget (web + phone); household goals | live `w-selfemp`, `w-personal` + Android `p-personal`, `w-personal-goals` | Muse Spark (household summary) |
+| 1:52.4–2:15.2 | 7 | Settings › AI: the three choices, Local model only and its warning; `GET /ai/calls` drawn as a page (records `spark / muse-glimmer:30b` and `meta / muse-spark-1.3-contributor` made just before, by asking with `X-AI-Route: local_only` then `meta_first`); Files (OneDrive folder, Books.xlsx, backups) and Settings › Files & backups | live `w-ai`, `w-calls`, `w-files`, `w-backups` | Muse Spark, Muse Glimmer 30B |
+| 2:15.2–2:36.2 | 8 | End card: accnomos.com · github.com/zaytunazs/accnomos · HMRC sandbox note | card (`section-demo.png`) | — |
+| 2:36.2–2:43.2 | Judges' slide (silent) | Models at run time, measured figures, provenance, try it, limits; Muse Image credited here only | card (`section-meta-ai.png`) | — |
 
 Each scene opens with a lower third (feature · Meta model) for 5 s. Waits for a live model are cut (a short
 crossfade where the "working" moment ends); footage runs at up to 1.45× and very long takes lose their middle.
@@ -41,8 +41,9 @@ crossfade where the "working" moment ends); footage runs at up to 1.45× and ver
 
 - Live Meta calls on camera: Home summary, goals note, Muse Voice Transcribe, the calendar card, the receipt reading
   and its second reading (phone), the invoice card, the household summary, the `/ai/calls` records.
-- Simulated by the demo (and said so on screen): HMRC VAT submission ("Demo — submission simulated", "HMRC was not
-  contacted"); the invoice email ("demo — not actually sent"). Scene 8's voice explains the sandbox.
+- HMRC: the VAT return really goes to HMRC's sandbox (a test user HMRC made for this demo; its throwaway sandbox
+  credentials are on the card for a moment). The invoice email is the demo's ("demo — not actually sent"). Scene 8's
+  voice explains why live filing waits for HMRC's approval.
 - Voice input on the web uses Chromium's fake microphone fed with a recorded line (a second open-source voice,
   `bf_emma`); the phone shots use taps only (the emulator has no microphone or real camera: the receipt comes from the
   gallery after "Photograph a receipt").
