@@ -4,7 +4,10 @@
 Writes OUTDIR/<id><suffix>.wav (24 kHz mono) and prints each length. Pronunciation fixes are applied to the spoken
 text only (the captions keep the script's words).
 """
-import json, sys, wave, argparse
+import argparse
+import json
+import wave
+
 import numpy as np
 from kokoro import KPipeline
 
