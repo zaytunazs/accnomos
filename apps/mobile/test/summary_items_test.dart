@@ -7,7 +7,7 @@ import 'package:accnomos_mobile/services/summary_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-Map<String, dynamic> home(List<Map<String, dynamic>> items, {String md = ''}) => {
+Map<String, dynamic> home(List<Object?> items, {String md = ''}) => {
       'summary': {
         'summary_md': md,
         'model': 'muse-spark-1.3-contributor',
