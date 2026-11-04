@@ -576,7 +576,7 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
             until = resolve(b["until"], marks_of(raw, shot["src"]), probe_dur(source(raw, shot["src"])))
             bx, by, bw, bh = b["box"]
             fl.append(
-                f"[{src_in}]split[bz{k}a][bz{k}b];[bz{k}b]crop={bw}:{bh}:{bx}:{by},boxblur=14:4[bz{k}c];"
+                f"[{src_in}]split[bz{k}a][bz{k}b];[bz{k}b]crop={bw}:{bh}:{bx}:{by},boxblur=lr=12:lp=4:cr=6:cp=4[bz{k}c];"
                 f"[bz{k}a][bz{k}c]overlay={bx}:{by}:enable='lt(t,{until:.3f})'[bz{k}]"
             )
             src_in = f"bz{k}"
