@@ -50,7 +50,7 @@ EDL: list[dict] = [
         {"layout": "full", "src": "w-talk", "segs": ["1.0..speak+2.2", "ready-0.3..end"], "dur": 10.8, "crop": [560, 0, 1360, 765]},
     ]},
     {"id": "s4", "lead": 0.4, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
-        {"layout": "phone", "src": "p-receipt", "segs": ["1.0..gallery+0.5", "queued-0.6..wait+0.8", "ready-0.2..wait2+0.8", "ready2+1.4..ready2+5.6"], "dur": 7.8,
+        {"layout": "phone", "src": "p-receipt", "segs": ["1.6..gallery+0.4", "ready-0.2..wait2+0.8", "ready2+2.0..ready2+7.5"], "dur": 7.8,
          "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve.")},
         {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 14.8},
     ]},

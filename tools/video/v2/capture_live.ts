@@ -282,6 +282,70 @@ const SHOTS: Record<string, Shot> = {
       await h.hold(1500);
     },
   },
+  // s5 (after the 4 Nov ~06:45 deploy): the demo files to HMRC's REAL sandbox with a fresh test user
+  "w-vat-hmrc": {
+    setup: async ({ page }) => {
+      await go(page, "/vat");
+      await page.getByRole("radiogroup", { name: "VAT period" }).getByRole("radio", { name: /Jul–Sep 2026/ }).click();
+      await settle(page, 800);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 260);
+      const ret = page.getByRole("region", { name: /Your return/ });
+      await h.scrollIntoView(vis(ret.getByText("VAT due on sales")), 1000);
+      for (const t of ["VAT due on sales", "VAT reclaimed on purchases", /Net VAT to pay HMRC/]) await h.hover(vis(ret.getByText(t)), 700);
+      const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
+      await h.scrollIntoView(hmrc, 900);
+      await hoverText(c, /HMRC sandbox — real test service/, 1000);
+      c.mark("user");
+      await h.click(vis(hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" })), 300);
+      const user = hmrc.getByRole("group", { name: "HMRC sandbox test user" });
+      await user.waitFor({ timeout: 60_000 });
+      c.mark("userReady");
+      await h.hover(user, 1400);
+      const uid = (await user.getByTestId("sandbox-user-id").innerText()).trim();
+      const pwd = (await user.getByTestId("sandbox-password").innerText()).trim();
+      await h.click(vis(hmrc.getByRole("button", { name: "Connect to HMRC sandbox" })), 300);
+      c.mark("hmrc");
+      // HMRC's own sandbox pages: Continue → Sign in to the HMRC online service → User ID + password → Give permission
+      for (let i = 0; i < 12 && !page.url().startsWith(SITE); i++) {
+        await settle(page, 600);
+        if (page.url().startsWith(SITE)) break;
+        const idBox = page.getByLabel(/User ID/i).first();
+        if (await idBox.isVisible().catch(() => false)) {
+          await h.type(idBox, uid, 100);
+          await h.type(page.getByLabel(/Password/i).first(), pwd, 100);
+          await h.click(vis(page.getByRole("button", { name: /Sign in/i })), 300);
+          continue;
+        }
+        for (const name of [/Give permission/i, /Sign in to the HMRC online service/i, /^Continue/i]) {
+          const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).first();
+          if (await b.isVisible().catch(() => false)) { await h.click(b, 300); break; }
+        }
+      }
+      await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 60_000 });
+      c.mark("back");
+      await settle(page, 1000);
+      const hm = page.getByRole("region", { name: "Connect to HMRC" });
+      await vis(hm.getByText(/Connected to HMRC.s sandbox as test user/)).waitFor({ timeout: 30_000 });
+      await h.scrollIntoView(vis(hm.getByText(/Connected to HMRC.s sandbox as test user/)), 800);
+      await hoverText(c, /Connected to HMRC.s sandbox as test user/, 900);
+      await h.click(vis(hm.getByRole("button", { name: "Show obligations" })), 600);
+      await vis(hm.getByRole("button", { name: "Prepare submission" })).waitFor({ timeout: 30_000 });
+      await h.click(vis(hm.getByRole("button", { name: "Prepare submission" })), 700);
+      await h.click(vis(hm.getByLabel(/I confirm the information is true and complete/)), 600);
+      c.mark("submit");
+      await h.click(vis(hm.getByRole("button", { name: /Submit to HMRC sandbox/ })), 300);
+      const receipt = vis(hm.getByRole("heading", { name: /Submitted to HMRC sandbox/ }));
+      await receipt.waitFor({ timeout: 60_000 });
+      c.mark("receipt");
+      await h.scrollIntoView(receipt, 800);
+      await hoverText(c, /Form bundle number|form bundle/i, 1800);
+      await hoverText(c, /HMRC.s own sandbox receipt/, 1500);
+      await h.hold(800);
+    },
+  },
   // s6: sole trader and landlord pages (switched on in Settings off camera)
   "w-selfemp": {
     setup: async (c) => {
