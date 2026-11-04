@@ -68,8 +68,8 @@ class EventOut(BaseModel):
 
 class EventIn(StrictBody):
     subject: str = Field(min_length=1, max_length=120)
-    start: str = Field(description="YYYY-MM-DD (all day) or an ISO date-time; no zone = Europe/London")
-    end: str | None = None
+    start: str = Field(max_length=40, description="YYYY-MM-DD (all day) or an ISO date-time; no zone = Europe/London")
+    end: str | None = Field(None, max_length=40)
     all_day: bool | None = None
     location: str | None = Field(None, max_length=200)
     body: str | None = Field(None, max_length=2000)
