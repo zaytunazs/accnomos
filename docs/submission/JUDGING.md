@@ -11,7 +11,7 @@ and every merge has a second-agent review. Timestamps, commits per day and how e
 **Not on `main` on 28 Oct** (so not claimed below): the month-end close agent, company / sole-trader / personal profiles,
 the Meta models panel with Glimmer on a hosted GPU, and the no-sign-in `/judges` page. iPhone is not built.
 
-**Android app:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.16: [accnomos-0.3.16-21.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.16-21/accnomos-0.3.16-21.apk)) and press **Try the demo**: no account needed. The Google Play listing is in Google's review, which takes several days, so use the APK for now.
+**Android app:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.17: [accnomos-0.3.17-22.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.17-22/accnomos-0.3.17-22.apk)) and press **Try the demo**: no account needed. The Google Play listing is in Google's review, which takes several days, so use the APK for now.
 
 ## 1. Impact
 
