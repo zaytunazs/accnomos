@@ -219,6 +219,10 @@ class CalendarProvider(ABC):
         """Replace an event's subject, times, location, body and reminder."""
         raise NotImplementedError
 
+    async def move_event(self, event_id: str, start: datetime, end: datetime) -> CalendarEvent:
+        """Change only a timed event's start and end (subject, body, attendees and reminder untouched)."""
+        raise NotImplementedError
+
     async def delete_event(self, event_id: str) -> None:
         """Delete one event. FileNotFoundError when it is not there."""
         raise NotImplementedError

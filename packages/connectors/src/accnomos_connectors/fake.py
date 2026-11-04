@@ -214,6 +214,16 @@ class FakeCalendarProvider(CalendarProvider):
                 return self.events[i]
         raise FileNotFoundError(event_id)
 
+    async def move_event(self, event_id: str, start: datetime, end: datetime) -> CalendarEvent:
+        if start.tzinfo is None or end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware")
+        for i, e in enumerate(self.events):
+            if e.id == event_id:
+                self.calls.append(f"move_event:{event_id}")
+                self.events[i] = e.model_copy(update={"start": start, "end": end})
+                return self.events[i]
+        raise FileNotFoundError(event_id)
+
     async def delete_event(self, event_id: str) -> None:
         before = len(self.events)
         self.events = [e for e in self.events if e.id != event_id]

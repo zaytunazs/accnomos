@@ -894,6 +894,17 @@ class GraphCalendarProvider(_GraphHttp, CalendarProvider):
         changed = (await self._request("PATCH", url, json=self._payload(event))).json()
         return self._event(changed, event.key)
 
+    async def move_event(self, event_id: str, start: datetime, end: datetime) -> CalendarEvent:
+        if start.tzinfo is None or end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware")
+
+        def stamp(dt: datetime) -> dict[str, str]:
+            return {"dateTime": dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "UTC"}
+
+        url = f"{GRAPH}/me/events/{quote(event_id, safe='')}"
+        changed = (await self._request("PATCH", url, json={"start": stamp(start), "end": stamp(end)})).json()
+        return self._event(changed, None)
+
     async def delete_event(self, event_id: str) -> None:
         await self._request("DELETE", f"{GRAPH}/me/events/{quote(event_id, safe='')}")
 

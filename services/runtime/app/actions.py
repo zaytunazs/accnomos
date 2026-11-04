@@ -1735,6 +1735,7 @@ EXECUTORS: dict[str, Executor] = {
     "add_todo": lambda a, c: tasks_.run_add_todo(a, c.books, c.user),
     "calendar_add_event": lambda a, c: tasks_.run_calendar_add(a, c.calendar),
     "calendar_remove_event": lambda a, c: tasks_.run_calendar_remove(a, c.calendar),
+    "calendar_move_event": lambda a, c: tasks_.run_calendar_move(a, c.calendar),
 }
 
 

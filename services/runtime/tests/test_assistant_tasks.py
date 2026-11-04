@@ -50,6 +50,10 @@ def ev(id_: str, subject: str, day: date, hour: int, minutes: int = 60) -> Calen
         ("remove the 3pm meeting tomorrow", t.CalRemove),
         ("cancel my call with Sterling on Thursday", t.CalRemove),
         ("when is my next VAT deadline?", t.NextDeadline),
+        ("can you change it to 10 to 11?", t.CalMove),
+        ("I want to change the event in my calendar.", t.CalMove),
+        ("move the site visit to Friday at 2pm", t.CalMove),
+        ("reschedule my meeting with Sterling", t.CalMove),
     ],
 )
 def test_spot(q: str, kind: type) -> None:
@@ -266,6 +270,7 @@ def test_calendar_add_by_ask_and_tap(client) -> None:
         ("add_todo", {}, False),
         ("calendar_add_event", {}, False),
         ("calendar_remove_event", {}, False),
+        ("calendar_move_event", {}, False),
     ],
 )
 def test_which_cards_need_a_tap(kind: str, preview: dict[str, Any], tap: bool) -> None:
@@ -289,7 +294,7 @@ def test_every_action_kind_is_classified() -> None:
     listed = {
         "pay_overtime", "match_bank_line", "close_month", "chase_invoice", "create_invoice", "create_quote",
         "convert_quote_to_invoice", "log_timesheet", "log_mileage", "add_to_shopping_list", "save_note",
-        "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event",
+        "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event", "calendar_move_event",
     }  # fmt: skip
     assert set(get_args(ActionKind)) == listed, "a new action kind: decide in needs_tap and add it to the test above"
 
@@ -380,3 +385,76 @@ def test_transcribe_only_hears(client, monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.status_code == 200, r.text
     assert r.json()["transcript"] == "yes please"
     assert cal.created == []
+
+
+# Moving an event, and times as speech-to-text writes them ------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("said", "written"),
+    [
+        ("can you change it to ten to eleven?", "can you change it to 10 to 11?"),
+        ("a meeting ten o'clock tomorrow", "a meeting 10 o'clock tomorrow"),
+        ("call at half past two", "call at 2:30"),
+        ("lunch at twelve thirty", "lunch at 12:30"),
+        ("book it for one hour", "book it for one hour"),  # a length, not a time
+    ],
+)
+def test_spoken_times_become_digits(said: str, written: str) -> None:
+    assert t.normalise_spoken(said) == written
+
+
+async def test_move_the_event_just_talked_about(books: Books) -> None:
+    visit = ev("v1", "Site visit, Harbour Lane kitchen", date(2026, 11, 5), 9)
+    cal = FakeCalendarProvider([visit, ev("d1", "Dentist", date(2026, 11, 6), 15)])
+    made: list[dict[str, Any]] = []
+    out = await t.handle(
+        "can you change it to ten to eleven?",
+        books,
+        PERIOD,
+        TODAY,
+        sign=signer(made),
+        calendar=lambda: cal,
+        now_local=NOW,
+        history=["Tomorrow you have 1 event:\n\n- 09:00–10:00 Site visit, Harbour Lane kitchen"],
+    )
+    assert out is not None and out.proposed_action is not None
+    a = out.proposed_action
+    assert a.kind == "calendar_move_event" and a.preview["event_id"] == "v1"
+    assert a.preview["start"].startswith("2026-11-05T10:00") and a.preview["end"].startswith("2026-11-05T11:00")
+    assert "Thursday 5 November, 09:00–10:00" in out.answer_md and "10:00–11:00" in out.answer_md
+    assert cal.events[0].start.hour == 9  # nothing changes before Approve
+    msg, _ = await t.run_calendar_move(a, lambda: cal)
+    moved = next(e for e in cal.events if e.id == "v1")
+    assert moved.start.astimezone(TZ).hour == 10 and moved.subject == visit.subject and "Moved" in msg
+
+
+async def test_move_by_name_to_another_day_keeps_its_length_and_names_a_clash(books: Books) -> None:
+    cal = FakeCalendarProvider(
+        [ev("s1", "Meeting with Sterling", date(2026, 11, 5), 15, 90), ev("x", "Dentist", date(2026, 11, 6), 14)]
+    )
+    out, _ = await ask("move the meeting with Sterling to Friday at 2pm", books, cal)
+    assert out is not None and out.proposed_action is not None
+    p = out.proposed_action.preview
+    assert p["start"].startswith("2026-11-06T14:00") and p["end"].startswith("2026-11-06T15:30")
+    assert p["conflicts"] and p["conflicts"][0]["id"] == "x" and out.proposed_action.confirm_text == "Move it anyway"
+
+
+async def test_move_without_a_time_asks_when_and_unknown_asks_which(books: Books) -> None:
+    cal = FakeCalendarProvider([ev("v1", "Site visit", date(2026, 11, 5), 9)])
+    out, _ = await ask("I want to change the event in my calendar.", books, cal)
+    assert out is not None and out.clarification is not None and out.clarification.field == "time"
+    assert "Site visit" in out.answer_md
+    cal2 = FakeCalendarProvider(
+        [ev("a", "Site visit", date(2026, 11, 5), 9), ev("b", "Dentist", date(2026, 11, 6), 11)]
+    )
+    which, _ = await ask("move it to 3pm", books, cal2)
+    assert which is not None and which.clarification is not None and len(which.clarification.candidates) == 2
+
+
+async def test_spoken_meeting_at_ten_oclock_is_planned(books: Books) -> None:
+    cal = FakeCalendarProvider([])
+    out, _ = await ask("add to my calendar that I have a meeting ten o'clock tomorrow", books, cal)
+    assert out is not None and out.proposed_action is not None
+    p = out.proposed_action.preview
+    assert p["subject"] == "Meeting" and p["start"].startswith("2026-11-05T10:00")

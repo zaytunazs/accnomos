@@ -146,7 +146,7 @@ TIME_RE = re.compile(
 )
 AT_TIME_RE = re.compile(
     r"\b(?:at|from)\s+(noon|midday|\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.|o'?clock)?)"
-    r"|\b(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.))",
+    r"|\b(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.|o'?clock))",
     re.I,
 )
 DURATION_RE = re.compile(
@@ -154,6 +154,39 @@ DURATION_RE = re.compile(
 )
 UNTIL_RE = re.compile(r"\b(?:to|until|till|-|–)\s*(\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)?)\b", re.I)
 IN_MONTH_RE = re.compile(rf"\b(?:in|by|before|during|end of)\s+({_MON})\b", re.I)
+
+
+_NUM = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+    "eleven": 11, "twelve": 12,
+}  # fmt: skip
+_MINS = {"fifteen": 15, "thirty": 30, "forty-five": 45, "forty five": 45, "o five": 5, "twenty": 20, "fifty": 50}
+_N = "|".join(_NUM)
+
+
+def normalise_spoken(text: str) -> str:
+    """Clock times as speech-to-text writes them, as digits: "ten o'clock" -> "10 o'clock", "half past two" ->
+    "2:30", "ten thirty" -> "10:30", "at ten" -> "at 10", "ten to eleven" -> "10 to 11" (a range, as people say
+    when moving a meeting; the British "ten to eleven" for 10:50 is rare in a calendar request)."""
+    n = lambda w: str(_NUM[w.lower()])  # noqa: E731
+    t = re.sub(rf"\bhalf past ({_N})\b", lambda m: f"{n(m[1])}:30", text, flags=re.I)
+    t = re.sub(rf"\bquarter past ({_N})\b", lambda m: f"{n(m[1])}:15", t, flags=re.I)
+    t = re.sub(rf"\bquarter to ({_N})\b", lambda m: f"{(_NUM[m[1].lower()] - 2) % 12 + 1}:45", t, flags=re.I)
+    t = re.sub(
+        rf"\b({_N})\s+({'|'.join(_MINS)})\b(?!\s+(?:minutes?|mins?))",
+        lambda m: f"{n(m[1])}:{_MINS[m[2].lower()]:02d}",
+        t,
+        flags=re.I,
+    )
+    t = re.sub(rf"\b({_N})(?=\s*(?:o'?clock|am|pm|a\.m\.|p\.m\.)\b)", lambda m: n(m[1]), t, flags=re.I)
+    t = re.sub(rf"\b({_N})\s+(to|until|till)\s+({_N})\b", lambda m: f"{n(m[1])} {m[2]} {n(m[3])}", t, flags=re.I)
+    t = re.sub(
+        rf"\b(at|from|to|until|till|by|for)\s+({_N})\b(?!\s+(?:hours?|hrs?|minutes?|mins?|people|of)\b)",
+        lambda m: f"{m[1]} {n(m[2])}",
+        t,
+        flags=re.I,
+    )
+    return t
 
 
 def day_in(text: str, today: date) -> tuple[date, str] | None:
@@ -308,11 +341,16 @@ class CalRemove:
 
 
 @dataclass
+class CalMove:
+    text: str
+
+
+@dataclass
 class NextDeadline:
     vat_only: bool
 
 
-Intent = NoteAdd | NoteRead | NoteDelete | TodoAdd | CalRead | CalAdd | CalRemove | NextDeadline
+Intent = NoteAdd | NoteRead | NoteDelete | TodoAdd | CalRead | CalAdd | CalRemove | CalMove | NextDeadline
 
 _EVENT_WORDS = r"(?:meeting|appointment|event|call|visit|catch[- ]?up|lunch|dinner|session|interview|reminder|booking)"
 NOTE_DELETE_RE = re.compile(
@@ -341,6 +379,12 @@ TODO_ADD_RE = re.compile(
 CAL_REMOVE_RE = re.compile(
     rf"^\s*(?:please\s+)?(?:remove|delete|cancel|clear|take off|drop)\b.*?(?:\b{_EVENT_WORDS}\b|\bfrom my "
     r"(?:calendar|diary)\b)",
+    re.I,
+)
+CAL_MOVE_RE = re.compile(
+    r"^\s*(?:please\s+|can you\s+|could you\s+|can we\s+|i (?:want|need|'d like) to\s+)?"
+    r"(?:move|change|reschedule|re-schedule|shift|push|bring forward|put back|update|rearrange)\b"
+    rf"(?=.*(?:\b{_EVENT_WORDS}s?\b|\b(?:it|that|this)\b|\b(?:calendar|diary)\b))",
     re.I,
 )
 CAL_ADD_RE = re.compile(
@@ -413,6 +457,8 @@ def spot(question: str, today: date) -> Intent | None:
         return TodoAdd(m["text"].strip())
     if DEADLINE_RE.search(q):
         return NextDeadline(vat_only=bool(re.search(r"\bvat\b", q, re.I)))
+    if CAL_MOVE_RE.match(q):
+        return CalMove(q)
     if CAL_REMOVE_RE.match(q):
         return CalRemove(q)
     if CAL_ADD_RE.match(q) and not _QUESTIONISH.match(q):
@@ -570,6 +616,9 @@ def event_subject(text: str) -> str:
         flags=re.I,
     )
     t = re.sub(r"\b(?:in|to|on|into) my (?:calendar|diary)\b", " ", t, flags=re.I)
+    t = re.sub(r"^\s*(?:that\s+)?(?:i(?:'ve| have)(?: got)?|i'm having|we(?:'ve| have))\s+", "", t, flags=re.I)
+    t = re.sub(r"\b(\d{1,2}(?::\d{2})?)\s*o'?clock\b", r"at \1", t, flags=re.I)
+    t = re.sub(r"\b(?:start(?:ing)?|starts)\s*$", " ", t.strip(), flags=re.I)
     t = DAY_RE.sub(" ", t)
     t = AT_TIME_RE.sub(" ", t)
     t = DURATION_RE.sub(" ", t)
@@ -656,8 +705,11 @@ async def handle(
     calendar: CalendarFactory | None,
     deadlines: Callable[[], Any] | None = None,
     now_local: datetime | None = None,
+    history: list[str] | None = None,
 ) -> AskAnswer | None:
-    """None when the question is none of these (Ask carries on as before)."""
+    """None when the question is none of these (Ask carries on as before). `history` is the conversation's earlier
+    turns (newest last), so "move it to 10" finds the event the last answer named."""
+    question = normalise_spoken(question)
     intent = spot(question, today)
     if intent is None:
         return None
@@ -801,6 +853,9 @@ async def handle(
             confirm = "Add it anyway" if clashes else "Add this to your calendar"
             return _answer(summary, period, proposed_action=sign("calendar_add_event", summary, preview, confirm))
 
+        if isinstance(intent, CalMove):
+            return await _move(intent.text, period, today, now_local, calendar, sign, history or [])
+
         if isinstance(intent, CalRemove):
             text = intent.text
             found_day = day_in(text, today)
@@ -852,6 +907,127 @@ async def handle(
             return _answer(CAL_PERMISSION, period)
         raise
     return None
+
+
+MOVE_TO_RE = re.compile(
+    rf"\b(?:to|for|until)\s+(?=(?:(?:the\s+)?(?:{_WD}|today|tomorrow|next|this|\d))|(?:noon|midday))", re.I
+)
+_TIME_TOKEN = re.compile(r"\b(noon|midday|\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm|a\.m\.|p\.m\.|o'?clock)?)", re.I)
+_MOVE_NOISE = {
+    "move", "change", "reschedule", "shift", "push", "bring", "forward", "put", "back", "update", "rearrange", "it",
+    "that", "this", "event", "the", "my", "calendar", "diary", "please", "can", "you", "could", "want", "need",
+    "like", "in", "on", "at", "from", "of", "we", "i", "to", "time",
+}  # fmt: skip
+
+
+def _move_target(text: str, today: date, original: CalendarEvent) -> tuple[datetime, datetime] | None:
+    """Where the event should go: the part after "to ..." names a day and/or a start (and maybe an end) time.
+    Without an end the event keeps its length; without a day it stays on its own day."""
+    m = MOVE_TO_RE.search(text)
+    if not m:
+        return None
+    target = text[m.start() :]
+    old_start, old_end = original.start.astimezone(TZ), original.end.astimezone(TZ)
+    found_day = day_in(target, today)
+    day = found_day[0] if found_day else old_start.date()
+    rest = DAY_RE.sub(" ", target) if found_day else target
+    times = [c for tok in _TIME_TOKEN.findall(rest) if (c := _clock(tok)) is not None]
+    if not times and not found_day:
+        return None
+    start_t = times[0] if times else old_start.time()
+    start = datetime.combine(day, start_t, TZ)
+    if len(times) > 1 and times[1] > times[0]:
+        return start, datetime.combine(day, times[1], TZ)
+    return start, start + (old_end - old_start)
+
+
+def _last_answers(history: list[str]) -> str:
+    return " ".join(history[-4:]).lower()
+
+
+async def _move(
+    text: str,
+    period: AskPeriod,
+    today: date,
+    now_local: datetime,
+    calendar: CalendarFactory,
+    sign: Callable[[str, str, dict[str, Any], str], ProposedAction],
+    history: list[str],
+) -> AskAnswer:
+    """Move or change an event: find it (named, on a day, at a time, or the one just talked about), work out the new
+    time, check for clashes, and offer a card to approve. Nothing changes until the user says so."""
+    head = text[: m.start()] if (m := MOVE_TO_RE.search(text)) else text
+    found_day = day_in(head, today)
+    start = found_day[0] if found_day else today
+    end = start if found_day else today + timedelta(days=13)
+
+    async def look(cal: CalendarProvider) -> list[CalendarEvent]:
+        return await events_between(cal, start, end)
+
+    events = [e for e in await _with_calendar(calendar, look) if e.end.astimezone(TZ) >= now_local and not e.is_all_day]
+    if (t := time_in(head)) is not None:
+        events = [e for e in events if e.start.astimezone(TZ).time().replace(second=0) == t[0]] or events
+    ref = _words(DAY_RE.sub(" ", AT_TIME_RE.sub(" ", head))) - _MOVE_NOISE
+    if ref:
+        events = [e for e in events if ref & _words(e.subject)] or events
+    if not ref and len(events) > 1 and (said := _last_answers(history)):
+        talked = [e for e in events if e.subject and e.subject.lower() in said]
+        events = talked or events
+    scope = uk_day(start) if found_day else "the next two weeks"
+    if not events:
+        return _answer(f"I couldn't find an event to move in your calendar for {scope}.", period)
+    if len(events) > 1:
+        return _answer(
+            "Which event should I move?",
+            period,
+            clarification=Clarification(
+                kind="calendar_move_event",
+                field="event",
+                question_md="Which event should I move?",
+                candidates=[f"{uk_day(e.start.astimezone(TZ).date())} {event_line(e)}" for e in events[:6]],
+            ),
+        )
+    e = events[0]
+    name = e.subject or "(no title)"
+    moved = _move_target(text, today, e)
+    if moved is None:
+        return _answer(
+            f"When should I move **{name}** to? Say a day or a time, for example “to 10 till 11”.",
+            period,
+            clarification=Clarification(
+                kind="calendar_move_event",
+                field="time",
+                question_md=f"When should I move **{name}** to?",
+                ref=name,
+            ),
+        )
+    new_start, new_end = moved
+    if new_start < now_local - timedelta(minutes=5):
+        past = f"{uk_day(new_start.date())} at {new_start:%H:%M} has already passed. When did you mean?"
+        return _answer(past, period)
+    plan = EventPlan(name, e.location or "", new_start, new_end, False)
+    clashes = [c for c in await _clashes(calendar, plan) if c.id != e.id]
+    was = f"{uk_day(e.start.astimezone(TZ).date())}, {hhmm(e.start)}–{hhmm(e.end)}"
+    now = f"{uk_day(new_start.date())}, {new_start:%H:%M}–{new_end:%H:%M}"
+    preview = {
+        "event_id": e.id,
+        "subject": name,
+        "location": e.location or "",
+        "start": new_start.isoformat(),
+        "end": new_end.isoformat(),
+        "old_start": e.start.isoformat(),
+        "old_end": e.end.isoformat(),
+        "rows": [{"label": "Event", "value": name}, {"label": "Was", "value": was}, {"label": "Now", "value": now}]
+        + [{"label": "Clashes with", "value": clash_line(c)} for c in clashes],
+        "conflicts": [
+            {"id": c.id, "subject": c.subject, "start": c.start.isoformat(), "end": c.end.isoformat()} for c in clashes
+        ],
+    }
+    summary = f"Move **{name}** from {was} to {now}."
+    if clashes:
+        summary += " This clashes with " + "; ".join(clash_line(c) for c in clashes) + "."
+    confirm = "Move it anyway" if clashes else "Move this event"
+    return _answer(summary, period, proposed_action=sign("calendar_move_event", summary, preview, confirm))
 
 
 def _count(n: int) -> str:
@@ -957,6 +1133,32 @@ async def run_calendar_remove(action: ProposedAction, calendar: CalendarFactory 
             raise LookupError(CAL_PERMISSION.replace("read it", "change it")) from exc
         raise
     return f"Removed **{p.get('subject') or 'the event'}** from your calendar.", {"event_id": p["event_id"]}
+
+
+async def run_calendar_move(action: ProposedAction, calendar: CalendarFactory | None) -> tuple[str, dict[str, Any]]:
+    if calendar is None:
+        raise LookupError("Your calendar isn't connected here.")
+    p = action.preview
+    start, end = datetime.fromisoformat(p["start"]), datetime.fromisoformat(p["end"])
+
+    async def move(cal: CalendarProvider) -> str:
+        return (await cal.move_event(p["event_id"], start, end)).id  # only the times: the body and guests stay
+
+    try:
+        event_id = await _with_calendar(calendar, move)
+    except (KeyError, FileNotFoundError) as exc:
+        raise LookupError("That event is no longer in your calendar.") from exc
+    except GraphError as exc:
+        if exc.status == 404:
+            raise LookupError("That event is no longer in your calendar.") from exc
+        if _calendar_refused(exc):
+            raise LookupError(CAL_PERMISSION.replace("read it", "change it")) from exc
+        raise
+    local = start.astimezone(TZ)
+    return (
+        f"Moved **{p['subject']}** to {uk_day(local.date())}, {local:%H:%M}–{end.astimezone(TZ):%H:%M}.",
+        {"event_id": event_id},
+    )
 
 
 def utc_now() -> datetime:

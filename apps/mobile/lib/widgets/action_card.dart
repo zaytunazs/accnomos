@@ -18,6 +18,7 @@ const actionKindLabels = <String, String>{
   'add_todo': 'To-do',
   'calendar_add_event': 'Add to calendar',
   'calendar_remove_event': 'Remove from calendar',
+  'calendar_move_event': 'Move in calendar',
 };
 
 /// One signed card that does nothing until approved: summary, warnings,

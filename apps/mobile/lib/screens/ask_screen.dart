@@ -1232,6 +1232,7 @@ class _AskScreenState extends State<AskScreen> {
     'add_todo': 'To-do',
     'calendar_add_event': 'Add to calendar',
     'calendar_remove_event': 'Remove from calendar',
+    'calendar_move_event': 'Move in calendar',
   };
 
   /// Kinds whose preview is plain label/value rows worked out by code
@@ -1242,6 +1243,7 @@ class _AskScreenState extends State<AskScreen> {
     'add_todo',
     'calendar_add_event',
     'calendar_remove_event',
+    'calendar_move_event',
   };
 
   /// One label/value row, like the web's action details.

@@ -69,6 +69,7 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   add_todo: "To-do",
   calendar_add_event: "Add to calendar",
   calendar_remove_event: "Remove from calendar",
+  calendar_move_event: "Move in calendar",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -88,6 +89,7 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   add_todo: "To-dos",
   calendar_add_event: "your calendar",
   calendar_remove_event: "your calendar",
+  calendar_move_event: "your calendar",
 };
 
 /**
@@ -102,7 +104,7 @@ function stalledAdvice(message: string, kind: RtProposedAction["kind"]): string 
   return "";
 }
 /** Kinds whose preview is plain label/value rows worked out by code (app/assistant_tasks.py). */
-const ROW_KINDS = new Set<RtProposedAction["kind"]>(["save_note", "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event"]);
+const ROW_KINDS = new Set<RtProposedAction["kind"]>(["save_note", "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event", "calendar_move_event"]);
 function Details({ action }: { action: RtProposedAction }) {
   if (ROW_KINDS.has(action.kind)) {
     const rows = (action.preview.rows as { label: string; value: string }[] | undefined) ?? [];

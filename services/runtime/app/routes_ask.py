@@ -157,6 +157,7 @@ async def _prepare(
         sign=card,
         calendar=calendar,
         deadlines=lambda: _deadlines(books, cycle),
+        history=[t.text for t in req.history if t.role == "assistant"],
     )
     if done is not None:
         return done

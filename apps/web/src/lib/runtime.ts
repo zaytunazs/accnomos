@@ -3059,7 +3059,8 @@ export type RtActionKind =
   | "delete_note"
   | "add_todo"
   | "calendar_add_event"
-  | "calendar_remove_event";
+  | "calendar_remove_event"
+  | "calendar_move_event";
 /** A saved note (GET /notes; app/assistant_tasks.py). */
 export interface RtNote {
   id: string;

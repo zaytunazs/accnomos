@@ -370,6 +370,7 @@ ActionKind = Literal[
     "add_todo",
     "calendar_add_event",
     "calendar_remove_event",
+    "calendar_move_event",
 ]
 
 
