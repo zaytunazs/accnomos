@@ -95,7 +95,7 @@ class RuntimeClient {
         'X-Account-Kind': 'personal',
         'X-User': demo.user,
         if (settings.autopilotLevel != 'L2') 'X-Autopilot': 'off',
-        if (route != null) kAiRouteHeader: route,
+        kAiRouteHeader: ?route,
       };
     }
     // 'auto': no AI choice is sent, so the runtime reads with its own Meta
@@ -109,7 +109,7 @@ class RuntimeClient {
         'X-AI-Base-Url': settings.aiBaseUrl,
         'X-AI-Model': settings.aiModel,
       },
-      if (route != null) kAiRouteHeader: route,
+      kAiRouteHeader: ?route,
     };
     // Autopilot posts only at level L2 (Settings > Automation, like the
     // web's runtime.ts): every other level sends `X-Autopilot: off`, so a
