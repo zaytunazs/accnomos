@@ -79,7 +79,10 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
 
   // The footer sits after <main>, not in it, so it is the page's contentinfo landmark.
   const main = (
-    <div className="flex min-w-0 flex-1 flex-col px-4 pb-28 pt-6 sm:px-8 min-[900px]:py-8 min-[900px]:pb-8">
+    // Under 900 px the tab bar (AppNav) and the assistant's floating button (Assistant.tsx) sit over the page: the
+    // bottom padding clears both (the button's top is 9 rem up, plus the safe area), so the last row of actions
+    // and the footer can always be scrolled clear of them; globals.css gives focus the same clearance.
+    <div className="flex min-w-0 flex-1 flex-col px-4 pb-[calc(9.5rem+env(safe-area-inset-bottom))] pt-6 sm:px-8 min-[900px]:py-8 min-[900px]:pb-8">
       <main className="min-w-0 flex-1">
         <div className="mx-auto w-full max-w-3xl xl:max-w-6xl">{children}</div>
       </main>

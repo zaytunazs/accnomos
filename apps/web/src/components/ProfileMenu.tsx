@@ -216,10 +216,13 @@ export function ProfileSwitcher({ linked }: { linked: Linked }) {
   const { active, all } = linked;
   const router = useRouter();
   const current = profileLabel(active, profileMeta(active.homeAccountId));
+  // Under 400 px the bar has room for one line: the profile's name, as wide as the bar allows (no chevron, the kind
+  // read out but not shown). The button stays 44 px tall and its name stays "Profile: <name> <kind>". `w-full`: a
+  // button is sized to its content whatever its display, so it must be told to fill the (shrinking) wrapper.
   return (
     <MenuButton
       menuLabel="Profiles"
-      className="flex min-h-11 min-w-0 max-w-[11rem] items-center gap-2 rounded-xl px-2 py-1 text-left hover:bg-ground max-[399px]:max-w-[5.5rem] sm:max-w-[16rem]"
+      className="flex min-h-11 w-full min-w-0 max-w-[11rem] items-center gap-2 rounded-xl px-2 py-1 text-left hover:bg-ground max-[399px]:gap-1 max-[399px]:px-1.5 sm:max-w-[16rem]"
       items={
         <>
           <p className="px-3 pb-1 pt-1 text-[13px] font-bold text-muted" aria-hidden="true">
@@ -265,13 +268,15 @@ export function ProfileSwitcher({ linked }: { linked: Linked }) {
       }
     >
       <span className="min-w-0">
-        <span className="block truncate text-sm font-extrabold text-ink">
+        <span className="block truncate text-sm font-extrabold text-ink max-[399px]:text-[13px]">
           <span className="sr-only">Profile: </span>
           {current.name}
         </span>
-        <span className="block truncate text-xs text-muted">{current.kind}</span>
+        <span className="block truncate text-xs text-muted max-[399px]:sr-only">{current.kind}</span>
       </span>
-      <Chevron />
+      <span className="max-[399px]:hidden">
+        <Chevron />
+      </span>
     </MenuButton>
   );
 }

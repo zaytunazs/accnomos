@@ -10,7 +10,9 @@ import { useOverview, useOverviewData } from "./Overview";
 
 /**
  * Home › Business snapshot (GET /books/home `snapshot`, `trend`, `cash_points`; the Bramblewood sample on /try):
- * the year to date against last year, the last 12 months as bars with the net line, and the 90-day cash forecast.
+ * the year to date against last year as a compact strip (SnapshotYear, before Goals & progress), then the last 12
+ * months as bars with the net line and the 90-day cash forecast (SnapshotCharts, "Trend and cash", after Goals).
+ * One fetch, two places on the page: the pieces are recomposed, never recomputed.
  * Every figure is worked out by code (services/runtime/app/home_overview.py); the charts are inline SVG, each with a
  * text alternative: an aria-label and the same figures as a table for screen readers. Changes are said with an arrow
  * and words ("▲ 12% vs last year"), never colour alone.
@@ -34,7 +36,7 @@ function useWidth(fallback: number) {
 
 function Panel({ id, title, children, className = "" }: { id: string; title: string; children: ReactNode; className?: string }) {
   return (
-    <section aria-labelledby={id} className={`flex min-w-0 flex-col rounded-2xl border border-border bg-white p-4 sm:p-5 ${className}`}>
+    <section aria-labelledby={id} className={`flex min-w-0 flex-col rounded-2xl border border-border bg-white p-4 ${className}`}>
       <h3 id={id} className="text-base font-bold tracking-tight">
         {title}
       </h3>
@@ -77,7 +79,7 @@ function Figure({ label, value, children }: { label: string; value: string; chil
   return (
     <div role="group" aria-label={label} className="min-w-0">
       <p className="text-sm font-semibold text-muted">{label}</p>
-      <p className="mt-1 text-2xl leading-tight font-bold tracking-tight tabular-nums sm:text-[28px]">{value}</p>
+      <p className="mt-1 text-[22px] leading-tight font-bold tracking-tight tabular-nums sm:text-2xl">{value}</p>
       {children}
     </div>
   );
@@ -93,8 +95,8 @@ export function SnapshotCard({ snapshot, vat }: { snapshot: RtHomeSnapshot; vat:
   const v = s.vat_position;
   const vatLabel = v ? { pay: "VAT to pay", reclaim: "VAT to reclaim", nil: "VAT" }[v.direction] : "VAT";
   return (
-    <Panel id="snapshot-year" title="Year to date" className="lg:col-span-3">
-      <div className={`mt-3 grid grid-cols-2 gap-x-3 gap-y-4 ${vat ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
+    <Panel id="snapshot-year" title="Year to date">
+      <div className={`mt-3 grid grid-cols-2 gap-x-3 gap-y-3 ${vat ? "md:grid-cols-4" : "md:grid-cols-3"}`}>
         <Figure label="Turnover" value={pounds(s.turnover_pence)}>
           <Change pct={s.change_pct.turnover} good="up" />
           <LastYear pence={s.last_year.turnover_pence} />
@@ -115,18 +117,20 @@ export function SnapshotCard({ snapshot, vat }: { snapshot: RtHomeSnapshot; vat:
           </Figure>
         ) : null}
       </div>
-      <p className="mt-3 text-[12px] leading-5 text-muted">
-        {s.period_label} against {s.last_year_label} · {s.basis} · year from {s.year_start_rule}
-      </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Link href="/reports" className={link}>
-          Profit and loss
-        </Link>
-        {vat ? (
-          <Link href="/vat" className={link}>
-            VAT return
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="text-[12px] leading-5 text-muted">
+          {s.period_label} against {s.last_year_label} · {s.basis} · year from {s.year_start_rule}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/reports" className={link}>
+            Profit and loss
           </Link>
-        ) : null}
+          {vat ? (
+            <Link href="/vat" className={link}>
+              VAT return
+            </Link>
+          ) : null}
+        </div>
       </div>
     </Panel>
   );
@@ -149,10 +153,12 @@ export function MonthlyChart({ months }: { months: RtTrendMonth[] }) {
 
   const W = width;
   const { y, ticks } = yAxis(months.flatMap((m) => [m.sales_pence, m.purchases_pence, m.net_pence]), CHART_H, CHART_PAD);
-  const plotW = W - CHART_PAD.left - CHART_PAD.right;
+  // Room for the widest axis label ("-£1,500,000" in big books), so the figures are never cut off at the left.
+  const padLeft = Math.max(CHART_PAD.left, 10 + Math.max(...ticks.map((v) => whole(v).length)) * 6.4);
+  const plotW = W - padLeft - CHART_PAD.right;
   const slot = plotW / Math.max(months.length, 1);
   const bar = Math.max(2, Math.min(18, slot * 0.34));
-  const left = (i: number) => CHART_PAD.left + i * slot;
+  const left = (i: number) => padLeft + i * slot;
   const centre = (i: number) => left(i) + slot / 2;
   const y0 = y(0);
   const every = slot < 30 ? 3 : slot < 48 ? 2 : 1; // fewer month labels when the chart is narrow
@@ -219,8 +225,8 @@ export function MonthlyChart({ months }: { months: RtTrendMonth[] }) {
               </defs>
               {ticks.map((v) => (
                 <g key={v}>
-                  <line x1={CHART_PAD.left} x2={W - CHART_PAD.right} y1={y(v)} y2={y(v)} stroke={v === 0 ? MUTED : GRID} strokeWidth={1} />
-                  <text x={CHART_PAD.left - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill={MUTED}>
+                  <line x1={padLeft} x2={W - CHART_PAD.right} y1={y(v)} y2={y(v)} stroke={v === 0 ? MUTED : GRID} strokeWidth={1} />
+                  <text x={padLeft - 6} y={y(v) + 4} textAnchor="end" fontSize={11} fill={MUTED}>
                     {whole(v)}
                   </text>
                 </g>
@@ -400,16 +406,24 @@ function Spark({ cash, width, box }: { cash: RtCashSeries; width: number; box: R
 }
 
 // --------------------------------------------------------------------------- //
-// The block
+// The two blocks
 // --------------------------------------------------------------------------- //
 
-/** The three together, between What needs attention and Today. Personal books (no snapshot) show nothing. */
-export function BusinessSnapshot() {
+/** Whether these books have a snapshot at all: personal books (no snapshot, no trend) show nothing. */
+function useSnapshot() {
   const o = useOverview();
   const data = useOverviewData();
-  if (o.mode === "error") return null; // the summary card says why
-  if (data && !data.snapshot && !data.trend) return null;
-  const sample = o.mode === "sample";
+  const hidden = o.mode === "error" || (data !== null && !data.snapshot && !data.trend); // the summary card says why
+  return { o, data, hidden, sample: o.mode === "sample" };
+}
+
+/**
+ * Business snapshot: the compact year-to-date strip, between What needs attention and Goals & progress. The same
+ * GET /books/home as the charts below Goals (SnapshotCharts); nothing is worked out twice.
+ */
+export function SnapshotYear() {
+  const { data, hidden, sample } = useSnapshot();
+  if (hidden || (data && !data.snapshot)) return null;
   const vat = data ? data.features.includes("vat") : false;
   return (
     <section aria-labelledby="business-snapshot" data-home-card="business-snapshot" className="flex min-w-0 flex-col gap-3">
@@ -417,18 +431,41 @@ export function BusinessSnapshot() {
         Business snapshot
         {sample ? <SampleTag /> : null}
       </h2>
+      {data?.snapshot ? (
+        <SnapshotCard snapshot={data.snapshot} vat={vat} />
+      ) : (
+        <div aria-busy="true" className="rounded-2xl border border-border bg-white p-4">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="mt-3 h-8 w-full" />
+        </div>
+      )}
+      {data ? (
+        <ByWhom
+          code={sample ? "Sample figures from the fictional Bramblewood books" : "Every figure by code from your approved entries"}
+          ai="no AI involved"
+        />
+      ) : null}
+    </section>
+  );
+}
+
+/** Trend and cash: the last 12 months and the 90-day cash line, after Goals & progress. */
+export function SnapshotCharts() {
+  const { data, hidden, sample } = useSnapshot();
+  if (hidden) return null;
+  return (
+    <section aria-labelledby="business-trend" data-home-card="business-trend" className="flex min-w-0 flex-col gap-3">
+      <h2 id="business-trend" className="text-[19px] font-semibold tracking-tight">
+        Trend and cash
+        {sample ? <SampleTag /> : null}
+      </h2>
       {data ? (
         <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
-          {data.snapshot ? <SnapshotCard snapshot={data.snapshot} vat={vat} /> : null}
           {data.trend ? <MonthlyChart months={data.trend.months} /> : null}
           <CashSparkline cash={data.cash_points} />
         </div>
       ) : (
         <div aria-busy="true" className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="rounded-2xl border border-border bg-white p-4 lg:col-span-3">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="mt-3 h-8 w-full" />
-          </div>
           <div className="min-h-56 rounded-2xl border border-border bg-white p-4 lg:col-span-2">
             <Skeleton className="h-5 w-40" />
           </div>

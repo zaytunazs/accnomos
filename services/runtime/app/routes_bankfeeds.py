@@ -133,9 +133,9 @@ async def connect(
 
 
 @router.post("/sync", response_model=bf.SyncResult, dependencies=[Depends(sandbox_only_in_demo)])
-async def sync(books: Books = Depends(get_books), user: str = Depends(require_user)) -> bf.SyncResult:
+async def sync(request: Request, books: Books = Depends(get_books), user: str = Depends(require_user)) -> bf.SyncResult:
     try:
-        return await bf.sync(books, user)
+        return await bf.sync(books, user, demo=_demo_session(request) is not None)
     except bf.BankFeedError as exc:
         raise _http(exc) from exc
 

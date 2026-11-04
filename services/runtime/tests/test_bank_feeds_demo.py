@@ -229,3 +229,52 @@ async def test_a_base64_credentials_id_from_truelayer_is_accepted() -> None:
     cred, bank, *_ = await bank_feeds._describe(Api(), "tok")  # noqa: SLF001
     again, *_ = await bank_feeds._describe(Api(), "tok")  # noqa: SLF001
     assert cred == again and cred.startswith("tl_") and bank_feeds.ID_RE.match(cred) and bank == "MOCK"
+
+
+async def test_a_demo_sync_keeps_the_newest_few_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    """TrueLayer's mock bank carries years of sample lines on several accounts: a demo keeps the newest
+    DEMO_MAX_LINES from the first account and reads DEMO_SYNC_DAYS back, a real connection everything."""
+    from datetime import date, timedelta
+
+    from app.bank_feeds import DEMO_MAX_LINES, DEMO_SYNC_DAYS, FIRST_SYNC_DAYS, FeedAccount, _fetch
+
+    on = date(2026, 11, 4)
+    seen: list[tuple[str, date]] = []
+
+    class Api:
+        async def refresh(self, token: str) -> dict:
+            return {"access_token": "a", "refresh_token": "r"}
+
+        async def transactions(self, access: str, account_id: str, start: date, end: date) -> list:
+            seen.append((account_id, start))
+            return [
+                {
+                    "transaction_id": f"{account_id}-{i}",
+                    "timestamp": f"{(end - timedelta(days=i)).isoformat()}T00:00:00+00:00",
+                    "description": f"Line {i}",
+                    "amount": -1.0,
+                    "currency": "GBP",
+                    "transaction_type": "DEBIT",
+                }
+                for i in range(100)
+            ]
+
+    accounts = [FeedAccount(id="acc-1", name="Current"), FeedAccount(id="acc-2", name="Savings")]
+    conn = bank_feeds.FeedConnection(
+        id="c1",
+        bank="Mock",
+        accounts=accounts,
+        consent_expires_at=bank_feeds.now() + timedelta(days=30),
+        connected_at=bank_feeds.now(),
+        connected_by="u",
+        token="x",
+        key_id="k",
+    )
+    monkeypatch.setattr(bank_feeds, "_refresh_token", lambda c, k: "r")
+    lines, _, _ = await _fetch(Api(), conn, b"k", on, demo=True)
+    assert len(lines) == DEMO_MAX_LINES and seen == [("acc-1", on - timedelta(days=DEMO_SYNC_DAYS))]
+    assert max(ln.date for ln in lines) == on  # the newest, not the oldest
+    seen.clear()
+    lines, _, _ = await _fetch(Api(), conn, b"k", on)
+    assert len(lines) == 200 and [a for a, _ in seen] == ["acc-1", "acc-2"]
+    assert seen[0][1] == on - timedelta(days=FIRST_SYNC_DAYS)
