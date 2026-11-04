@@ -59,9 +59,8 @@ EDL: list[dict] = [
     ]},
     {"id": "s6", "lead": 0.4, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
         {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 5.2},
-        {"layout": "split", "src": "w-personal", "segs": ["0..end"], "phone": "p-personal", "psegs": ["0..end"], "dur": 5.8},
-        {"layout": "full", "src": "w-personal-cal", "segs": ["wait-3.5..wait+0.6", "ready-0.2..wait2+2.6"], "dur": 4.6, "crop": [560, 0, 1360, 765]},
-        {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 3.2},
+        {"layout": "split", "src": "w-personal", "segs": ["0..end"], "phone": "p-personal", "psegs": ["0..end"], "dur": 7.8},
+        {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 5.0},
     ]},
     {"id": "s7", "lead": 0.4, "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"), "shots": [
         {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 9.8, "crop": [240, 40, 1600, 900]},
