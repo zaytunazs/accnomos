@@ -1,7 +1,10 @@
 """The user's calendar: read events, add and remove them, and keep the books' deadlines in it.
 
 GET    /calendar/events?start=&end=     events overlapping those days (at most 62), Europe/London times
-POST   /calendar/events                 add one (audited `calendar_event_added`); 201
+POST   /calendar/events                 add one (audited `calendar_event_added`); 201. It checks the calendar first:
+                                        `check_only: true` answers {conflicts} and writes nothing; a clash without
+                                        `allow_conflict: true` is a 409 {detail, conflicts}
+GET    /calendar/conflicts?start=&end=  pairs of events already in the calendar that clash (default the next 14 days)
 DELETE /calendar/events/{id}            remove one, body {"confirm": true} (audited `calendar_event_removed`); 204
 POST   /calendar/deadlines/sync         body {"confirm": true}: put the books' upcoming deadlines into the calendar as
                                         all-day events with a reminder the day before; idempotent (audited
@@ -27,6 +30,7 @@ from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from accnomos_connectors import CalendarEvent, CalendarProvider, NewCalendarEvent
@@ -70,6 +74,21 @@ class EventIn(StrictBody):
     location: str | None = Field(None, max_length=200)
     body: str | None = Field(None, max_length=2000)
     reminder_minutes: int | None = Field(None, ge=0, le=40320)
+    check_only: bool = False  # only report clashes; write nothing
+    allow_conflict: bool = False  # the user saw the clash and said "Add anyway"
+
+
+class Clash(BaseModel):
+    id: str
+    subject: str
+    start: datetime
+    end: datetime
+    all_day: bool
+
+
+class ClashPair(BaseModel):
+    a: Clash
+    b: Clash
 
 
 class Confirm(StrictBody):
@@ -86,6 +105,7 @@ class SyncResult(BaseModel):
     unchanged: int
     removed: int
     events: list[EventOut]
+    conflicts: list[ClashPair] = []  # a deadline on the same day as another all-day event (said, never blocking)
 
 
 class SyncStatus(BaseModel):
@@ -106,6 +126,23 @@ def out(e: CalendarEvent) -> EventOut:
         accnomos=e.key is not None,
         web_link=e.web_link or None,
     )
+
+
+def clash(e: CalendarEvent) -> Clash:
+    return Clash(
+        id=e.id, subject=e.subject, start=e.start.astimezone(LONDON), end=e.end.astimezone(LONDON), all_day=e.is_all_day
+    )
+
+
+def clashes(start: datetime, end: datetime, all_day: bool, others: list[CalendarEvent]) -> list[CalendarEvent]:
+    """Events that clash with [start, end). The rule: timed events clash with timed events they overlap; an all-day
+    event (a deadline) clashes only with other all-day events on the same days, so a deadline never flags every
+    meeting that day."""
+    return [o for o in others if o.is_all_day == all_day and o.start < end and o.end > start]
+
+
+def _deadline(e: CalendarEvent) -> bool:
+    return bool(e.key and e.key.startswith(OWN_PREFIXES))
 
 
 def _when(text: str) -> tuple[datetime, bool]:
@@ -183,18 +220,62 @@ async def add_event(
     calendar: CalendarProvider = Depends(get_calendar),
     books: Books = Depends(get_books),
     user: str = Depends(require_user),
-) -> EventOut:
+) -> EventOut | JSONResponse:
     event = new_event(body, f"event:{uuid.uuid4().hex[:12]}")
     try:
+        around = await calendar.list_range(event.start.astimezone(LONDON).date(), event.end.astimezone(LONDON).date())
+        found = [clash(c) for c in clashes(event.start, event.end, event.is_all_day, around)]
+        if body.check_only:
+            return JSONResponse({"conflicts": [c.model_dump(mode="json") for c in found]})
+        if found and not body.allow_conflict:
+            names = ", ".join(f"‘{c.subject}’" for c in found[:3])
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": f"This clashes with {names}. Add it anyway, or pick another time.",
+                    "conflicts": [c.model_dump(mode="json") for c in found],
+                },
+            )
         made = await calendar.add_event(event)
     except GraphError as exc:
         raise _graph_refused(exc) from exc
     await books.audit(
         f"user:{user}",
         "calendar_event_added",
-        {"event": made.id, "subject": made.subject, "start": made.start.astimezone(LONDON).isoformat()},
+        {
+            "event": made.id,
+            "subject": made.subject,
+            "start": made.start.astimezone(LONDON).isoformat(),
+            "clashes": len(found),
+        },
     )
     return out(made)
+
+
+@router.get("/conflicts", response_model=list[ClashPair])
+async def list_conflicts(
+    start: date | None = Query(None, description="first day (default today)"),
+    end: date | None = Query(None, description="last day (default start + 13 days)"),
+    calendar: CalendarProvider = Depends(get_calendar),
+) -> list[ClashPair]:
+    """Events already in the calendar that clash with each other (the same rule as adding one). Two of Accnomos's own
+    deadlines on one day (a VAT return and its payment) are not a clash."""
+    first = start or london_today()
+    last = end or first + timedelta(days=13)
+    if last < first or (last - first).days + 1 > MAX_DAYS:
+        raise HTTPException(422, f"Give a range of 1 to {MAX_DAYS} days")
+    try:
+        events = await calendar.list_range(first, last)
+    except GraphError as exc:
+        raise _graph_refused(exc) from exc
+    pairs: list[ClashPair] = []
+    for i, a in enumerate(events):
+        for b in events[i + 1 :]:
+            if _deadline(a) and _deadline(b):
+                continue
+            if clashes(a.start, a.end, a.is_all_day, [b]):
+                pairs.append(ClashPair(a=clash(a), b=clash(b)))
+    return pairs
 
 
 @router.delete("/events/{event_id}", status_code=204)
@@ -306,11 +387,8 @@ async def sync_deadlines(
     day = london_today()
     wanted = await wanted_deadlines(books, day, cycle)
     try:
-        existing = [
-            e
-            for e in await calendar.list_range(day - timedelta(days=SYNC_BACK), day + timedelta(days=SYNC_AHEAD))
-            if e.key and e.key.startswith(OWN_PREFIXES)
-        ]
+        window = await calendar.list_range(day - timedelta(days=SYNC_BACK), day + timedelta(days=SYNC_AHEAD))
+        existing = [e for e in window if _deadline(e)]
         by_key: dict[str, CalendarEvent] = {}
         extra: list[CalendarEvent] = []
         for e in existing:  # a key twice (an earlier interrupted sync): keep the first, remove the rest
@@ -318,13 +396,18 @@ async def sync_deadlines(
                 extra.append(e)
             else:
                 by_key[e.key or ""] = e
+        others = [e for e in window if not _deadline(e)]
         added = updated = unchanged = removed = 0
         events: list[CalendarEvent] = []
+        conflicts: list[ClashPair] = []
         for w in wanted:
             have = by_key.pop(w.key, None)
             if have is None:
-                events.append(await calendar.add_event(_all_day(w)))
+                new = _all_day(w)
+                made = await calendar.add_event(new)
+                events.append(made)
                 added += 1
+                conflicts += [ClashPair(a=clash(made), b=clash(o)) for o in clashes(new.start, new.end, True, others)]
             elif have.start.astimezone(LONDON).date() != w.day or have.subject != w.title:
                 events.append(await calendar.update_event(have.id, _all_day(w)))
                 updated += 1
@@ -343,10 +426,15 @@ async def sync_deadlines(
     await books.audit(
         f"user:{user}",
         "calendar_deadlines_synced",
-        {"added": added, "updated": updated, "unchanged": unchanged, "removed": removed},
+        {"added": added, "updated": updated, "unchanged": unchanged, "removed": removed, "clashes": len(conflicts)},
     )
     return SyncResult(
-        added=added, updated=updated, unchanged=unchanged, removed=removed, events=[out(e) for e in events]
+        added=added,
+        updated=updated,
+        unchanged=unchanged,
+        removed=removed,
+        events=[out(e) for e in events],
+        conflicts=conflicts,
     )
 
 

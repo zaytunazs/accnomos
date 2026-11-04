@@ -182,3 +182,68 @@ def test_demo_session_uses_its_own_calendar(monkeypatch: pytest.MonkeyPatch) -> 
         assert len(c.get("/calendar/events", headers=h).json()) == before
     finally:
         demo.reset_for_tests()
+
+
+# Clashes: said before adding, never silently ------------------------------------------------------------------- #
+
+
+def test_check_only_and_409_until_add_anyway(client: TestClient, cal: FakeCalendarProvider) -> None:
+    clashing = {"subject": "Call Emily", "start": "2026-11-05T09:30", "end": "2026-11-05T10:30"}
+    r = client.post("/calendar/events", headers=H, json={**clashing, "check_only": True})
+    assert r.status_code == 200 and [c["subject"] for c in r.json()["conflicts"]] == ["Dentist"]
+    assert len(cal.events) == 1  # check_only wrote nothing
+
+    r = client.post("/calendar/events", headers=H, json=clashing)
+    assert r.status_code == 409 and "Dentist" in r.json()["detail"] and r.json()["conflicts"][0]["id"] == "theirs"
+    assert len(cal.events) == 1
+
+    r = client.post("/calendar/events", headers=H, json={**clashing, "allow_conflict": True})
+    assert r.status_code == 201 and len(cal.events) == 2
+
+    free = client.post("/calendar/events", headers=H, json={"subject": "Later", "start": "2026-11-05T10:00"})
+    assert free.status_code == 409  # 10:00-11:00 overlaps the 09:30-10:30 call just added
+    ok = client.post("/calendar/events", headers=H, json={"subject": "Lunch", "start": "2026-11-05T12:00"})
+    assert ok.status_code == 201
+
+
+def test_all_day_events_only_clash_with_all_day_events(client: TestClient, cal: FakeCalendarProvider) -> None:
+    # an all-day deadline on the dentist's day is not a clash; a second all-day event that day is
+    assert (
+        client.post("/calendar/events", headers=H, json={"subject": "Stock take", "start": "2026-11-05"}).status_code
+        == 201
+    )
+    r = client.post(
+        "/calendar/events", headers=H, json={"subject": "Bank holiday", "start": "2026-11-05", "check_only": True}
+    )
+    assert [c["subject"] for c in r.json()["conflicts"]] == ["Stock take"]
+    # and a timed meeting that day does not clash with the all-day event
+    r = client.post(
+        "/calendar/events", headers=H, json={"subject": "Quote", "start": "2026-11-05T15:00", "check_only": True}
+    )
+    assert r.json()["conflicts"] == []
+
+
+def test_conflicts_endpoint_and_sync_reports_clashes(
+    client: TestClient, cal: FakeCalendarProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    client.post(
+        "/calendar/events", headers=H, json={"subject": "Overlap", "start": "2026-11-05T09:30", "allow_conflict": True}
+    )
+    pairs = client.get("/calendar/conflicts", headers=H).json()
+    assert len(pairs) == 1 and {pairs[0]["a"]["subject"], pairs[0]["b"]["subject"]} == {"Dentist", "Overlap"}
+
+    client.post("/calendar/events", headers=H, json={"subject": "Holiday", "start": "2026-11-07"})
+
+    async def fake_wanted(_books, _day, _cycle):  # noqa: ANN001
+        return [
+            Wanted(key="deadline:vat:a", title="VAT return due", day=date(2026, 11, 7), body="b"),
+            Wanted(key="deadline:vatpay:b", title="VAT payment due", day=date(2026, 11, 7), body="b"),
+        ]
+
+    monkeypatch.setattr(routes_calendar, "wanted_deadlines", fake_wanted)
+    synced = client.post("/calendar/deadlines/sync", headers=H, json={"confirm": True}).json()
+    assert synced["added"] == 2 and len(synced["conflicts"]) == 2
+    assert {c["b"]["subject"] for c in synced["conflicts"]} == {"Holiday"}
+    # two of Accnomos's own deadlines on one day are not a clash; each with the user's holiday is
+    pairs = client.get("/calendar/conflicts?start=2026-11-07&end=2026-11-07", headers=H).json()
+    assert len(pairs) == 2 and all("Holiday" in (p["a"]["subject"], p["b"]["subject"]) for p in pairs)
