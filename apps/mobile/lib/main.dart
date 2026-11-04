@@ -8,6 +8,7 @@ import 'screens/household_home_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/personal_screen.dart';
+import 'screens/reports_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
@@ -15,6 +16,7 @@ import 'screens/welcome_screen.dart';
 import 'services/app_mode.dart';
 import 'services/demo.dart';
 import 'services/navigation.dart';
+import 'services/region.dart';
 import 'theme.dart';
 import 'widgets/brand.dart';
 
@@ -190,6 +192,7 @@ class _ShellState extends State<Shell> {
   void initState() {
     super.initState();
     AppMode.state.addListener(_modeChanged);
+    BooksRegion.current.addListener(_regionChanged);
     Demo.state.addListener(_demoChanged);
     AppNav.homeRequests.addListener(_goHome);
     AppNav.tabRequests.addListener(_openTab);
@@ -206,7 +209,7 @@ class _ShellState extends State<Shell> {
   void _openTab() {
     final name = AppNav.tabRequests.value?.name;
     if (!mounted || name == null) return;
-    final i = shellTabIndex(name, household: _household);
+    final i = shellTabIndex(name, household: _household, uk: _uk);
     if (i != null && i != _tab) _selectTab(i);
   }
 
@@ -217,6 +220,7 @@ class _ShellState extends State<Shell> {
   @override
   void dispose() {
     AppMode.state.removeListener(_modeChanged);
+    BooksRegion.current.removeListener(_regionChanged);
     Demo.state.removeListener(_demoChanged);
     AppNav.homeRequests.removeListener(_goHome);
     AppNav.tabRequests.removeListener(_openTab);
@@ -224,6 +228,19 @@ class _ShellState extends State<Shell> {
   }
 
   bool _household = AppMode.household;
+
+  /// Books kept outside the UK (services/region.dart): Reports takes the VAT
+  /// tab's place, as HMRC's VAT returns are for UK books only.
+  bool _uk = BooksRegion.current.value.uk;
+
+  void _regionChanged() {
+    final uk = BooksRegion.current.value.uk;
+    if (!mounted || uk == _uk) return;
+    setState(() {
+      _uk = uk;
+      if (_tab == 3) _tab = 0;
+    });
+  }
 
   /// Personal books (or the household sample) get the household tabs; a
   /// change of treatment starts again on Home.
@@ -306,7 +323,7 @@ class _ShellState extends State<Shell> {
             ),
       // The demo bar is drawn above every route by [DemoFrame].
       body: IndexedStack(
-        key: ValueKey(_household),
+        key: ValueKey('$_household-$_uk'),
         index: _tab,
         children: _household
             ? const [
@@ -316,12 +333,12 @@ class _ShellState extends State<Shell> {
                 GoalsScreen(),
                 MoreScreen(household: true),
               ]
-            : const [
-                HomeScreen(),
-                ReviewScreen(),
-                AskScreen(),
-                VatScreen(),
-                MoreScreen(),
+            : [
+                const HomeScreen(),
+                const ReviewScreen(),
+                const AskScreen(),
+                if (_uk) const VatScreen() else const ReportsScreen(),
+                const MoreScreen(),
               ],
       ),
       // "Talk to Accnomos" (the Ask screen as a full-screen sheet, with
@@ -333,7 +350,7 @@ class _ShellState extends State<Shell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: _selectTab,
-        destinations: shellDestinations(household: _household),
+        destinations: shellDestinations(household: _household, uk: _uk),
       ),
     );
   }
@@ -365,13 +382,16 @@ class AssistantButton extends StatelessWidget {
 
 /// The index of a tab by name in this shell, or null when it has none (a
 /// household has no VAT or Ask tab; a business has no Budget or Goals tab).
-int? shellTabIndex(String name, {required bool household}) => household
+int? shellTabIndex(String name, {required bool household, bool uk = true}) => household
     ? const {'home': 0, 'review': 1, 'budget': 2, 'goals': 3, 'more': 4}[name]
-    : const {'home': 0, 'review': 1, 'ask': 2, 'vat': 3, 'more': 4}[name];
+    : uk
+        ? const {'home': 0, 'review': 1, 'ask': 2, 'vat': 3, 'more': 4}[name]
+        : const {'home': 0, 'review': 1, 'ask': 2, 'reports': 3, 'more': 4}[name];
 
 /// The bottom tabs: the household app (personal books) has Budget and Goals
-/// where a business has Ask and VAT; there is no VAT tab for a household.
-List<NavigationDestination> shellDestinations({required bool household}) =>
+/// where a business has Ask and VAT; there is no VAT tab for a household,
+/// and books kept outside the UK ([uk] false) have Reports in its place.
+List<NavigationDestination> shellDestinations({required bool household, bool uk = true}) =>
     household
         ? const [
             NavigationDestination(
@@ -385,16 +405,20 @@ List<NavigationDestination> shellDestinations({required bool household}) =>
             NavigationDestination(
                 icon: Icon(Icons.more_horiz_outlined), label: 'More'),
           ]
-        : const [
-            NavigationDestination(
+        : [
+            const NavigationDestination(
                 icon: Icon(Icons.home_outlined), label: 'Home'),
-            NavigationDestination(
+            const NavigationDestination(
                 icon: Icon(Icons.checklist_outlined), label: 'Review'),
-            NavigationDestination(
+            const NavigationDestination(
                 icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
-            NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined), label: 'VAT'),
-            NavigationDestination(
+            if (uk)
+              const NavigationDestination(
+                  icon: Icon(Icons.receipt_long_outlined), label: 'VAT')
+            else
+              const NavigationDestination(
+                  icon: Icon(Icons.bar_chart_outlined), label: 'Reports'),
+            const NavigationDestination(
                 icon: Icon(Icons.more_horiz_outlined), label: 'More'),
           ];
 

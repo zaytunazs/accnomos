@@ -175,6 +175,10 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return. HMRC has closed production access for new Income Tax quarterly-update products for the 2026-27 tax year, so live Income Tax filing from Accnomos cannot start before the 2027-28 year; live VAT filing needs a separate HMRC production application.",
   },
   {
+    q: "Can I use it outside the UK?",
+    a: "Yes. Choose your country when you set up: you say whether you charge VAT, GST or sales tax and at what rate, and your books are kept in your own currency. Bookkeeping, Review, invoices, reports and CSV exports work the same; HMRC filing, payroll and Making Tax Digital are UK only and stay hidden.",
+  },
+  {
     q: "Which banks are covered?",
     a: "You import bank statements as CSV files. Barclays, Starling, Tide and Monzo style layouts are read, along with HSBC and Lloyds style paid-in and paid-out columns.",
   },

@@ -4,6 +4,7 @@ import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
 import '../services/demo.dart';
 import '../services/navigation.dart';
+import '../services/region.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
@@ -151,6 +152,7 @@ class _MoreScreenState extends State<MoreScreen> {
       final profile =
           await (await booksClient(settings, auth, account)).booksProfile();
       final features = profile['features'];
+      BooksRegion.current.value = BooksRegion.fromJson(profile['region']);
       if (!mounted || features is! List) return;
       setState(() => _features = [for (final f in features) f.toString()]);
     } catch (_) {

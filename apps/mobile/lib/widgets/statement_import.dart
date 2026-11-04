@@ -16,8 +16,10 @@ String statementImportResult(Map<String, dynamic> r, String name) {
   return parts.join(' ');
 }
 
-/// Pick a bank statement CSV with the phone's file picker and import it
-/// through `POST /books/bank/import`, as the web's Bank › Upload does.
+/// Pick a bank statement (CSV, or a PDF with a text layer) with the phone's
+/// file picker and import it through `POST /books/bank/import`, as the web's
+/// Bank › Upload does. This is how statements come in for books kept outside
+/// the UK, where bank connections (UK banks only) are not offered.
 /// Returns the sentence to show, or null when the user backed out.
 Future<String?> pickAndImportStatement(
   RuntimeClient client, {
@@ -25,8 +27,9 @@ Future<String?> pickAndImportStatement(
 }) async {
   final file = await (picker ?? FilePicker()).pick(mimeTypes: FilePicker.statementTypes);
   if (file == null) return null;
-  if (!file.name.toLowerCase().endsWith('.csv')) {
-    return 'Pick the statement as a CSV file (most banks offer "Download as CSV").';
+  final name = file.name.toLowerCase();
+  if (!name.endsWith('.csv') && !name.endsWith('.pdf')) {
+    return 'Pick the statement as a CSV or PDF file (most banks offer "Download as CSV").';
   }
   final r = await client.bankImportBytes(file.name, file.bytes);
   return statementImportResult(r, file.name);
@@ -39,7 +42,7 @@ class ImportStatementButton extends StatefulWidget {
     super.key,
     required this.clientFor,
     this.onImported,
-    this.label = 'Import a bank statement (CSV)',
+    this.label = 'Import a bank statement (CSV or PDF)',
     this.picker,
   });
 
