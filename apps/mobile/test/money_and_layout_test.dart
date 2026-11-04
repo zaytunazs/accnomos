@@ -89,6 +89,16 @@ void main() {
       expect(vatDuePeriod(const {'due_period': '2026-Q4'}, periods), '2026-Q4');
       expect(vatDuePeriod(const {'due_period': 'nope'}, periods), '2026-Q3');
       expect(vatDuePeriod(const {}, [periods.first]), isNull);
+      // `/books/vat` sends the hint as a map; the periods list as an id
+      expect(vatDuePeriod(const {'due_period': {'period': '2026-Q4', 'label': 'Oct–Dec 2026'}}, periods), '2026-Q4');
+      // every earlier period open with nothing in it (books that started this year): the one just before the
+      // current period is due next, not Jan–Mar of last year
+      final young = [
+        ...periods.take(2),
+        VatPeriod(period: '2026-Q2', label: 'Apr–Jun 2026', status: 'open', current: false, start: '2026-04-01'),
+        VatPeriod(period: '2025-Q1', label: 'Jan–Mar 2025', status: 'open', current: false, start: '2025-01-01'),
+      ];
+      expect(vatDuePeriod(const {}, young), '2026-Q3');
     });
   });
 

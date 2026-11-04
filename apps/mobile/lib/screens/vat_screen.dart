@@ -470,12 +470,17 @@ class _VatScreenState extends State<VatScreen> {
 }
 
 /// The period the VAT tab opens on: the runtime's `due_period` hint when it
-/// sends one, else the earliest period still open that is not the current
-/// one (the return Home counts down to), else the current period (null).
+/// sends one (a period id on `/books/vat/periods`; `/books/vat` sends the
+/// same hint as a map with a `period`), else the latest ended period still
+/// open (the return Home counts down to, the one just before the current
+/// period), else the current period (null). Older open periods are not
+/// "due next": books that started this year leave every earlier period open
+/// with nothing in it, and the tab must not open on Jan–Mar of last year.
 String? vatDuePeriod(Map<String, dynamic> json, List<VatPeriod> periods) {
-  final hint = (json['due_period'] ?? '').toString();
+  final raw = json['due_period'];
+  final hint = (raw is Map ? raw['period'] : raw)?.toString() ?? '';
   if (hint.isNotEmpty && periods.any((p) => p.period == hint)) return hint;
   final open = periods.where((p) => p.status == 'open' && !p.current).toList()
-    ..sort((a, b) => a.start.compareTo(b.start));
+    ..sort((a, b) => b.start.compareTo(a.start));
   return open.isEmpty ? null : open.first.period;
 }

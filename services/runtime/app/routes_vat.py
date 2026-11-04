@@ -336,6 +336,9 @@ class VatPeriods(BaseModel):
     months: int
     start_month: int
     periods: list[VatPeriod]  # current first, then the 8 before it
+    # The ended period whose return is still to file (not submitted, deadline not passed), as `/vat` names it in
+    # `due_period`: the one a client opens on instead of the period we are in now. The Android VAT tab reads it here.
+    due_period: str | None = None
     warnings: list[str] = []  # e.g. our periods do not match the ones HMRC holds
     status_source: str = (
         "Submitted = HMRC marks the obligation fulfilled, or a receipt saved in "
@@ -388,8 +391,15 @@ async def vat_periods(
                 annual=ctx.is_annual(s, e),
             )
         )
+    done = set(submitted) | {(o.start, o.end) for o in obligations.values() if o.status == "F"}
+    hint = due_period_hint(ctx, today, done)
     return VatPeriods(
-        today=today, months=cycle.months, start_month=cycle.start_month, periods=periods, warnings=warnings
+        today=today,
+        months=cycle.months,
+        start_month=cycle.start_month,
+        periods=periods,
+        due_period=hint.period if hint else None,
+        warnings=warnings,
     )
 
 
