@@ -99,13 +99,18 @@ def parse_model_json(text: str) -> dict[str, Any]:
 
 
 async def _call_ollama(
-    client: httpx.AsyncClient, b64: str | None, cfg: AiConfig, schema: dict[str, Any], text: str | None = None
+    client: httpx.AsyncClient,
+    b64: str | None,
+    cfg: AiConfig,
+    schema: dict[str, Any],
+    text: str | None = None,
+    prompt: str = USER_PROMPT,
 ) -> tuple[str, dict[str, Any]]:
     body = {
         "model": cfg.model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            user_message(USER_PROMPT, b64, None, text, ollama=True),
+            user_message(prompt, b64, None, text, ollama=True),
         ],
         "format": schema,
         "think": False,
@@ -131,12 +136,13 @@ async def _call_meta(
     cfg: AiConfig,
     schema: dict[str, Any],
     text: str | None = None,
+    prompt: str = USER_PROMPT,
 ) -> tuple[str, dict[str, Any]]:
     body = {
         "model": cfg.model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            user_message(USER_PROMPT, b64, mime, text, ollama=False),
+            user_message(prompt, b64, mime, text, ollama=False),
         ],
         "response_format": {
             "type": "json_schema",
@@ -174,12 +180,19 @@ def image_mime(mime: str | None) -> str:
 
 
 async def extract_document(
-    image_bytes: bytes | None, mime: str | None, cfg: AiConfig, *, text: str | None = None
+    image_bytes: bytes | None,
+    mime: str | None,
+    cfg: AiConfig,
+    *,
+    text: str | None = None,
+    hint: str | None = None,
 ) -> tuple[ExtractedDoc, dict[str, Any]]:
     """Run the configured model on the image, its text, or both; return the validated doc and call metadata.
 
     Metadata keys: backend, model, elapsed_s, usage, raw (model text), served (app.schemas.ServedBy).
     Raises `ExtractionError` on unsupported type, HTTP failure (of every provider, in the server's chain) or bad output.
+    `hint` is one sentence about the books (where they are kept: app/region.py `extraction_hint`), added to the
+    user turn; UK books send none, so their prompt is unchanged.
     """
     if image_bytes is None and not text:
         raise ExtractionError("Nothing to read: no image and no text")
@@ -192,9 +205,10 @@ async def extract_document(
 
     async def attempt(c: AiConfig) -> tuple[str, dict[str, Any]]:
         async with httpx.AsyncClient(timeout=c.http_timeout(TIMEOUT_S)) as client:
+            prompt = f"{USER_PROMPT} {hint}" if hint else USER_PROMPT
             if c.mode == "local":
-                return await _call_ollama(client, b64, c, schema, text)
-            return await _call_meta(client, b64, mime, c, schema, text)
+                return await _call_ollama(client, b64, c, schema, text, prompt)
+            return await _call_meta(client, b64, mime, c, schema, text, prompt)
 
     try:
         (text_out, usage), served = await chain.run(

@@ -24,6 +24,7 @@ from app.contacts import forget_from_undo, learn_from_approval
 from app.journal import VAT_CONTROL, draft_journal, private_account, split_business_use, with_expense_account
 from app.mileage import load_vehicles
 from app.paths import NEEDS_A_LOOK, PROPOSALS, VAT_RETURNS, upgrade
+from app.region import rules_for
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
 log = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ async def final_journal(books: Books, p: Proposal) -> list[JournalLine]:
     drafted."""
     if p.payroll_run:
         return p.journal_draft
-    journal = draft_journal(p.extracted)
+    journal = draft_journal(p.extracted, await rules_for(books))
     if p.account_override:
         journal = with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
     percent = p.business_use_percent if p.business_use_percent is not None else 100
@@ -111,11 +112,12 @@ async def final_journal(books: Books, p: Proposal) -> list[JournalLine]:
     return split_business_use(journal, percent, private_account(profile.company_number))
 
 
-def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEvent:
-    """Balanced LedgerEvent in pence. Raises ApprovalError when there is nothing sensible to post."""
+def build_event(p: Proposal, journal: list[JournalLine], user: str, currency: str = "GBP") -> LedgerEvent:
+    """Balanced LedgerEvent in pence (minor units of the books' `currency`). Raises ApprovalError when there is
+    nothing sensible to post."""
     doc = p.extracted
-    if doc.currency != "GBP":
-        raise ApprovalError(f"Convert {doc.currency} to GBP before posting")
+    if doc.currency != currency:
+        raise ApprovalError(f"Convert {doc.currency} to {currency} before posting")
     try:
         when = date.fromisoformat(doc.date)
     except ValueError as exc:
@@ -233,7 +235,7 @@ async def _approve(books: Books, proposal_id: str, user: str, edits: dict[str, A
     if not_registered:
         _check_not_registered(p.extracted)
     p.journal_draft = await final_journal(books, p)
-    event = build_event(p, p.journal_draft, user)
+    event = build_event(p, p.journal_draft, user, (await rules_for(books)).currency)
     if p.tracking:
         event = with_tracking(event, p.tracking)
     if p.extracted.doc_type == "credit_note" and (bill := await credited_bill(books, p.extracted)):

@@ -33,10 +33,10 @@ from app.books import today as current_date
 from app.formats import FormatError
 from app.paths import INBOX, REPORTS
 from app.projection import SAMPLE_LABEL
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_uk, require_user
 from app.validation import Day, StrictBody, UnsafeName
 
-router = APIRouter(prefix="/property", tags=["property"])
+router = APIRouter(prefix="/property", tags=["property"], dependencies=[require_uk()])
 
 TAX_YEAR = r"^20\d{2}-\d{2}$"
 TaxYearQ = Annotated[str | None, Query(pattern=TAX_YEAR, max_length=7)]

@@ -405,7 +405,9 @@ async def pdf(number: str, books: Books = Depends(get_books)) -> PdfResult:
         sha256=hashlib.sha256(data).hexdigest(),
         data_url=f"data:application/pdf;base64,{base64.b64encode(data).decode()}",
         email=EmailDraft(to=inv.customer.email, subject=subject, body=body),
-        problems=inv_.send_problems(inv, profile, inv.customer.email) if inv.status == "draft" else [],
+        problems=inv_.send_problems(inv, profile, inv.customer.email, await inv_.abroad(books))
+        if inv.status == "draft"
+        else [],
     )
 
 

@@ -36,6 +36,7 @@ from app.books import SYSTEM, Books, now
 from app.books import today as london_today
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal
+from app.region import rules_for
 from app.schemas import MILEAGE_CATEGORY, Check, ExtractedDoc, ExtractedLine, MileageClaim, Proposal
 from app.taxyear import uk_tax_year_start
 from app.validation import LENIENT, Day, StrictBody
@@ -395,6 +396,7 @@ def claim_proposal(
     covers_to: date,
     rows: list[JourneyAllowance],
     vehicles: list[Vehicle],
+    currency: str = "GBP",
 ) -> Proposal:
     """An expense proposal for these journeys: category "Motor — mileage allowance", VAT code N
     (no supplier VAT number), credited to the owner who paid for the journeys."""
@@ -412,7 +414,7 @@ def claim_proposal(
         customer_name=None,
         invoice_number=f"MILEAGE-{tax_year}-{period}",
         date=covers_to.isoformat(),
-        currency="GBP",
+        currency=currency,
         lines=lines,
         net_total=pence / 100,
         vat_total=0,
@@ -492,7 +494,13 @@ async def propose_allowance(
         raise MileageError(f"No unclaimed business miles in personal vehicles for {period} {tax_year}")
     n = sum(c.mileage_claim.period == period for c in every)  # type: ignore[union-attr]
     fresh = claim_proposal(
-        waiting.id if waiting else _claim_id(tax_year, period, n), tax_year, period, covers_to, rows, vehicles
+        waiting.id if waiting else _claim_id(tax_year, period, n),
+        tax_year,
+        period,
+        covers_to,
+        rows,
+        vehicles,
+        (await rules_for(books)).currency,
     )
     if waiting is None:
         p = fresh.model_copy(update={"created_at": now()})

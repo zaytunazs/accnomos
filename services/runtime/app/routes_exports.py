@@ -30,6 +30,7 @@ from app.exports import writers
 from app.exports.mapping import PACKAGES, VAT, Mapped, Target, load_mappings, resolve, save_mappings
 from app.exports.vendors import chart
 from app.paths import REPORTS, SYSTEM
+from app.region import rules_for
 from app.routes_books import get_books, require_user
 from app.validation import Day, StrictBody
 from app.vat_cycle import VatCycle, vat_cycle
@@ -66,7 +67,8 @@ async def _favourites(books: Books) -> list[str]:
 
 @router.get("", response_model=Catalogue)
 async def catalogue(books: Books = Depends(get_books)) -> Catalogue:
-    specs = reg.catalogue()
+    uk = (await rules_for(books)).uk
+    specs = {i: s for i, s in reg.catalogue().items() if s.shown_for(uk)}
     known = [g for g, _ in reg.GROUPS]
     order = {g: i for i, g in enumerate(known)}
     reports = [
@@ -187,6 +189,14 @@ def _spec(export_id: str) -> reg.ExportSpec:
     return spec
 
 
+async def _spec_for(export_id: str, books: Books) -> reg.ExportSpec:
+    """The report, if these books list it (HMRC's reports are for UK books; the tax summary for books elsewhere)."""
+    spec = _spec(export_id)
+    if not spec.shown_for((await rules_for(books)).uk):
+        raise HTTPException(status_code=404, detail=f"no report {export_id!r} for these books")
+    return spec
+
+
 def _context(
     spec: reg.ExportSpec,
     books: Books,
@@ -257,7 +267,7 @@ async def preview(
     books: Books = Depends(get_books),
 ) -> dict[str, Any]:
     """The report as JSON, each table cut to `rows` rows (`total_rows` says how many it has). Reads only."""
-    spec = _spec(export_id)
+    spec = await _spec_for(export_id, books)
     ctx = _context(spec, books, cycle, today, start, end, as_of, mode)
     doc = await spec.build(ctx)
     totals = [len(s.rows) for s in doc.sections]
@@ -289,7 +299,7 @@ async def download(
     books: Books = Depends(get_books),
 ) -> Response:
     """The file, as a download. Reads only; nothing is written to the books."""
-    spec = _spec(export_id)
+    spec = await _spec_for(export_id, books)
     ctx = _context(spec, books, cycle, today, start, end, as_of, mode)
     data = await produce(spec, ctx, format)
     name = filename(spec, ctx, format)
@@ -326,7 +336,7 @@ async def save(
     user: str = Depends(require_user),
 ) -> Saved:
     """Save the file in 07 Reports (a second one of the same name gets ' (2)'). Posts nothing to the ledger."""
-    spec = _spec(export_id)
+    spec = await _spec_for(export_id, books)
     ctx = _context(spec, books, cycle, today, body.start, body.end, body.as_of, body.mode)
     data = await produce(spec, ctx, body.format)
     await books.storage.ensure_folder(REPORTS)

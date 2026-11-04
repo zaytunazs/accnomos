@@ -19,6 +19,7 @@ from collections import defaultdict
 from enum import StrEnum
 
 from app.checks import normalise_vat_number, p
+from app.region import UK_RULES, TaxRules
 from app.schemas import MILEAGE_CATEGORY, ExtractedDoc, ExtractedLine, JournalLine
 
 try:
@@ -77,10 +78,20 @@ def _code(code: str) -> str:
     return str(VatCode(code).value)
 
 
-def line_vat_code(doc: ExtractedDoc, line: ExtractedLine | None) -> str:
-    """VatCode member name for a line (or for the whole doc when `line` is None)."""
-    if doc.currency != "GBP":
+def line_vat_code(doc: ExtractedDoc, line: ExtractedLine | None, rules: TaxRules = UK_RULES) -> str:
+    """VatCode member name for a line (or for the whole doc when `line` is None).
+
+    Outside the UK (`rules`) there is no VAT-number test: tax charged in the books' own currency is the business's to
+    claim back when it charges tax itself (S, or Z at 0%), and part of the cost when it charges none (N)."""
+    if doc.currency != rules.currency:
         return "O"
+    if not rules.uk:
+        rate = line.vat_rate if line is not None else _doc_rate(doc)
+        if not rules.charges_tax:
+            return "N"
+        if rate is None:
+            return "S" if (line.vat if line is not None else doc.vat_total) else "Z"
+        return "S" if rate > 0 else "Z"
     if normalise_vat_number(doc.supplier_vat_number) is None:
         return "N"
     rate = line.vat_rate if line is not None else _doc_rate(doc)
@@ -106,13 +117,13 @@ def _settlement_account(doc: ExtractedDoc) -> str:
             return CREDITORS
 
 
-def _groups(doc: ExtractedDoc) -> dict[str, tuple[int, int]]:
+def _groups(doc: ExtractedDoc, rules: TaxRules = UK_RULES) -> dict[str, tuple[int, int]]:
     """Net and VAT pence per VatCode name. Uses lines when they reconcile to totals."""
     groups: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     lines_ok = doc.lines and abs(sum(p(ln.net) for ln in doc.lines) - p(doc.net_total)) <= 1
     if lines_ok:
         for ln in doc.lines:
-            g = groups[line_vat_code(doc, ln)]
+            g = groups[line_vat_code(doc, ln, rules)]
             g[0] += p(ln.net)
             g[1] += p(ln.vat)
         # Use the printed VAT total, put any rounding difference on the largest VAT group.
@@ -121,7 +132,7 @@ def _groups(doc: ExtractedDoc) -> dict[str, tuple[int, int]]:
             biggest = max(groups, key=lambda k: groups[k][1])
             groups[biggest][1] += diff
     else:
-        groups[line_vat_code(doc, None)] = [p(doc.net_total), p(doc.vat_total)]
+        groups[line_vat_code(doc, None, rules)] = [p(doc.net_total), p(doc.vat_total)]
     return {k: (v[0], v[1]) for k, v in groups.items()}
 
 
@@ -140,12 +151,13 @@ def _positive(doc: ExtractedDoc) -> ExtractedDoc:
     )
 
 
-def draft_journal(doc: ExtractedDoc) -> list[JournalLine]:
-    """Return a balanced journal draft for `doc` (sum debits == sum credits)."""
+def draft_journal(doc: ExtractedDoc, rules: TaxRules = UK_RULES) -> list[JournalLine]:
+    """Return a balanced journal draft for `doc` (sum debits == sum credits). `rules`: the books' country
+    (app/region.py); UK books are drafted exactly as before."""
     if doc.doc_type == "credit_note":
-        bill = draft_journal(_positive(doc).model_copy(update={"doc_type": "purchase_invoice"}))
+        bill = draft_journal(_positive(doc).model_copy(update={"doc_type": "purchase_invoice"}), rules)
         return [j.model_copy(update={"debit_pence": j.credit_pence, "credit_pence": j.debit_pence}) for j in bill]
-    groups = _groups(doc)
+    groups = _groups(doc, rules)
     out: list[JournalLine] = []
 
     if doc.doc_type == "sales_invoice":

@@ -35,10 +35,10 @@ from app.books import Books, now
 from app.books import today as current_date
 from app.contacts import load_ledger
 from app.paths import ITSA
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_uk, require_user
 from app.validation import StrictBody
 
-router = APIRouter(prefix="/books/self-employment", tags=["self-employment"])
+router = APIRouter(prefix="/books/self-employment", tags=["self-employment"], dependencies=[require_uk()])
 
 TaxYear = Annotated[str, Field(pattern=r"^20\d{2}-\d{2}$", max_length=7)]
 BusinessId = Annotated[str, Field(pattern=r"^X[A-Z0-9]IS\d{11}$", max_length=15)]  # Business Details API 2.0

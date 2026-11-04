@@ -34,7 +34,7 @@ from pydantic import BaseModel, Field
 from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, settlement_pence
-from app import bank_status
+from app import bank_pdf, bank_status
 from app.ai.config import ai_config_from_request
 from app.bank_actions import UnmatchedLine, create_expense_proposal, create_private_proposal, unmatched_lines
 from app.bank_reconcile import (
@@ -48,6 +48,7 @@ from app.bank_reconcile import (
 from app.bank_rules import BankRule, BankRuleAction, BankRuleMatch, load_bank_rules, save_bank_rules
 from app.books import BankImport, BankMatchError, BankStatement, Books
 from app.contacts import load_ledger
+from app.formats import is_pdf
 from app.payments import MoneyEvent, money_events
 from app.routes_books import get_books, require_user
 from app.schemas import Proposal
@@ -128,6 +129,9 @@ async def import_csv(
     if len(data) > MAX_CSV:
         raise HTTPException(status_code=413, detail="Bank statement CSV is over 5 MB")
     try:
+        if is_pdf(data):  # a statement PDF: its transactions as a CSV (app/bank_pdf.py), then the same import
+            data = await asyncio.to_thread(bank_pdf.pdf_to_csv, data)
+            name = f"{name.rsplit('.', 1)[0]}.csv"
         result = await books.import_bank_csv(data, name, user)
     except BankCsvError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

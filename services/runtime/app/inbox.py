@@ -46,6 +46,7 @@ from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
 from app.paths import INBOX
 from app.pipeline import process_document, sha256_hex
+from app.region import UK_RULES, TaxRules, rules_for
 from app.schemas import AutopilotDecision, Check, ExtractedDoc, Proposal
 
 log = logging.getLogger(__name__)
@@ -87,12 +88,12 @@ async def bounded[T](coro: Coroutine[Any, Any, T], seconds: float | None = None)
             raise DocTimeout(timeout_message(budget)) from None
 
 
-def unreadable_placeholder(name: str, digest: str, reason: str) -> Proposal:
+def unreadable_placeholder(name: str, digest: str, reason: str, currency: str = "GBP") -> Proposal:
     """A needs-a-look proposal for a file we cannot read; the user types the amounts in on approval."""
-    return placeholder(name, digest, f"Not read: {reason}. Please check it by hand")
+    return placeholder(name, digest, f"Not read: {reason}. Please check it by hand", currency=currency)
 
 
-def placeholder(name: str, digest: str, message: str, code: str = "UNREADABLE") -> Proposal:
+def placeholder(name: str, digest: str, message: str, code: str = "UNREADABLE", currency: str = "GBP") -> Proposal:
     """A needs-a-look card with no figures, saying `message`: the user types the amounts in, or rejects it."""
     check = Check(code=code, ok=False, severity="fail", message=message)
     doc = ExtractedDoc(
@@ -102,7 +103,7 @@ def placeholder(name: str, digest: str, message: str, code: str = "UNREADABLE") 
         customer_name=None,
         invoice_number=None,
         date=london_today().isoformat(),
-        currency="GBP",
+        currency=currency,
         lines=[],
         net_total=0,
         vat_total=0,
@@ -164,7 +165,8 @@ async def _propose(
     try:
         prep = await asyncio.to_thread(prepare, data, f.name)
     except FormatError as exc:
-        return unreadable_placeholder(f.name, sha256_hex(data), str(exc)), f, mime
+        currency = vat.tax.currency if vat else "GBP"
+        return unreadable_placeholder(f.name, sha256_hex(data), str(exc), currency), f, mime
     if prep.converted_from and prep.image is not None:
         f, data = await _swap_for_jpeg(books, f, prep.image), prep.image
     start, end = period or (None, None)
@@ -180,6 +182,7 @@ async def _propose(
             period_end=end,
             suppliers=vat.knowledge,
             business_vat_registered=vat.business_registered,
+            rules=vat.tax,
         )
     )
     apply_rule(p, books.match_rule(p.extracted, rules))
@@ -194,6 +197,7 @@ class VatContext:
 
     contacts: list[contact_book.Contact]
     business_registered: bool
+    tax: TaxRules = UK_RULES  # the books' country, tax and currency (app/region.py)
 
     def knowledge(self, doc: ExtractedDoc) -> SupplierKnowledge:
         return contact_book.supplier_knowledge(self.contacts, doc)
@@ -212,7 +216,7 @@ async def vat_context(books: Books) -> VatContext:
     except ValueError:
         log.warning("invoice profile unreadable; scanning as a VAT-registered business")
         registered = True
-    return VatContext(contacts, registered)
+    return VatContext(contacts, registered, await rules_for(books))
 
 
 async def _vehicles(books: Books) -> list[Vehicle]:

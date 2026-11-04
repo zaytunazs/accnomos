@@ -15,6 +15,7 @@ send one, and Accnomos records no NI/EU movements (boxes 2, 8 and 9 are always 0
 
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Sequence
 from datetime import date
 from typing import Any
@@ -475,4 +476,4 @@ for _spec in (
         build_reconciliation,
     ),
 ):
-    register(_spec)
+    register(dataclasses.replace(_spec, region="uk"))

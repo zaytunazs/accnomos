@@ -131,6 +131,19 @@ def require_feature(feature: str) -> Any:
     return Depends(check)
 
 
+def require_uk() -> Any:
+    """A route dependency for HMRC's pages (MTD Income Tax, CIS, property for MTD, VAT schemes): 404 with a sentence
+    when these books are kept in another country (app/profile.py `region`). Books with no profile are UK books."""
+    from app import profile as profile_mod
+
+    async def check(books: Books = Depends(get_books)) -> None:
+        p = await profile_mod.load(books)
+        if not p.region.uk:
+            raise profile_mod.missing_uk(p)
+
+    return Depends(check)
+
+
 async def require_user(request: Request, x_user: str | None = Header(default=None)) -> str:
     """Who is doing this, for the audit line: the email Graph `/me` reports for `X-Graph-Token` (app/identity.py),
     never the `X-User` the client wrote, which must still be sent but is only a hint (and, in a demo session, the

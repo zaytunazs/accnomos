@@ -378,8 +378,15 @@ async def approve_line(
         raise BankMatchError("Business use only applies to money out")
     if not 0 <= percent <= 100:
         raise BankMatchError("Business use is a whole percent from 0 to 100")
+    from app.region import rules_for
+
     proposal = proposal_for_coding(
-        line, account=account, vat_code=vat_code, contact=contact, business_use_percent=percent
+        line,
+        account=account,
+        vat_code=vat_code,
+        contact=contact,
+        business_use_percent=percent,
+        rules=await rules_for(books),
     )
     await books.save_proposal(proposal)
     await books.link_proposal(line_id, proposal.id)
@@ -404,10 +411,11 @@ async def approve_line(
     return {"line": await books.find_bank_line(line_id), "proposal_id": proposal.id, "event_id": posted.event_id}
 
 
-def _split_gross(gross_pence: int, vat_code: str | None) -> tuple[float, float]:
-    """Net and VAT in pounds for a bank coding: the VAT is taken as included in the gross."""
+def _split_gross(gross_pence: int, vat_code: str | None, rates: dict[str, float] | None = None) -> tuple[float, float]:
+    """Net and VAT in pounds for a bank coding: the VAT is taken as included in the gross. `rates`: the books' own
+    (app/region.py TaxRules.sales_rates), the UK's 20/5 when not given."""
     gross = abs(gross_pence) / 100
-    rate = {"S": 20, "R": 5}.get((vat_code or "").upper())
+    rate = (rates or {"S": 20, "R": 5}).get((vat_code or "").upper())
     if not rate:
         return round(gross, 2), 0.0
     vat = round(gross * rate / (100 + rate), 2)
@@ -415,7 +423,13 @@ def _split_gross(gross_pence: int, vat_code: str | None) -> tuple[float, float]:
 
 
 def proposal_for_coding(
-    line: Any, *, account: str, vat_code: str | None, contact: str | None, business_use_percent: int = 100
+    line: Any,
+    *,
+    account: str,
+    vat_code: str | None,
+    contact: str | None,
+    business_use_percent: int = 100,
+    rules: Any = None,
 ) -> Any:
     """A Review proposal for the line coded as the suggestion says.
 
@@ -435,7 +449,10 @@ def proposal_for_coding(
     from app.schemas import Check, ExtractedDoc, Proposal
 
     gross = abs(line.amount_pence) / 100
-    net, vat = _split_gross(line.amount_pence, vat_code)
+    from app.region import UK_RULES
+
+    rules = rules or UK_RULES
+    net, vat = _split_gross(line.amount_pence, vat_code, None if rules.uk else rules.sales_rates())
     who = (contact or "").strip() or line.description or "Bank payment"
     category = next((c for c, a in CATEGORY_ACCOUNTS.items() if a == account), None)
     if category is None:
@@ -448,7 +465,7 @@ def proposal_for_coding(
             customer_name=None,
             invoice_number=line.reference,
             date=line.date.isoformat(),
-            currency="GBP",
+            currency=rules.currency,
             lines=[],
             net_total=net,
             vat_total=vat,
@@ -466,7 +483,7 @@ def proposal_for_coding(
             customer_name=who,
             invoice_number=line.reference,
             date=line.date.isoformat(),
-            currency="GBP",
+            currency=rules.currency,
             lines=[],
             net_total=net,
             vat_total=vat,
@@ -491,7 +508,7 @@ def proposal_for_coding(
         status="needs_a_look",
         reasons=[f"{note.code}: {note.message}"],
         suggested_filename=suggested_filename_for_line(line),
-        journal_draft=draft_journal(doc),
+        journal_draft=draft_journal(doc, rules),
         model=MODEL,
         elapsed_s=0.0,
         source_name=line.source_file,
