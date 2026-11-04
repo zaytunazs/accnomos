@@ -34,9 +34,22 @@ async function settle(page: any, ms = 600) {
   await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
   await page.waitForTimeout(ms);
 }
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/** The live API rate-limits per IP: if a page says so, wait and load it again (off camera). */
+async function unthrottled(page: any) {
+  for (let i = 0; i < 6; i++) {
+    const busy = await page.getByText(/Too many requests|Couldn.t (finish|load)/).first().isVisible().catch(() => false);
+    if (!busy) return;
+    console.log("  rate-limited, waiting");
+    await sleep(20_000);
+    await page.reload();
+    await settle(page, 1500);
+  }
+}
 async function go(page: any, p: string) {
   await page.goto(SITE + p);
   await settle(page, 1200);
+  await unthrottled(page);
   await page.evaluate(() => window.scrollTo(0, 0));
 }
 /** Home's summary is written by the live model: wait (off camera) until it is in words. */
@@ -44,6 +57,8 @@ async function homeReady(page: any) {
   await vis(page.getByText("Your summary")).waitFor({ timeout: 60_000 });
   await page.getByText(/putting this into words/).first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
   await page.waitForTimeout(800);
+  await unthrottled(page);
+  await page.getByText(/putting this into words/).first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
 }
 async function sidebar(c: Ctx, name: string | RegExp) {
   await c.h.click(vis(c.page.getByRole("link", { name })), 900);
@@ -437,8 +452,11 @@ async function demoSession(page: any, kind: "company" | "personal") {
 }
 
 const browserArgs = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"];
+let first = true;
 for (const [id, shot] of Object.entries(SHOTS)) {
   if (ONLY && !ONLY.has(id)) continue;
+  if (!first) await sleep(Number(process.env.GAP_MS ?? 25_000)); // stay under the live API's per-IP limits
+  first = false;
   const args = [...browserArgs];
   if (shot.mic && process.env.FAKE_MIC) args.push(`--use-file-for-fake-audio-capture=${process.env.FAKE_MIC}%noloop`);
   const browser = await chromium.launch({ args });
