@@ -32,6 +32,12 @@ void main() {
     expect(miles.single.figure, '14 miles');
     expect(miles.single.words, 'fourteen miles');
     expect(readBack('log_timesheet', {'hours': '1'}).single.words, 'one hour');
+    final split = readBack('log_timesheet', {
+      'hours': '2',
+      'overtime_hours': '1',
+      'cost_pence': 3300,
+    });
+    expect(split.map((l) => l.figure), ['2 hours', '1 hour', '£33.00']);
     final inv = readBack('create_invoice', {
       'lines': [
         {'unit_price_pence': 45000},

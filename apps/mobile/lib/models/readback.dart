@@ -127,7 +127,11 @@ List<ReadBackLine> readBack(String kind, Map<String, dynamic> preview) {
     case 'log_mileage':
       return _qty('Distance', preview['miles'], 'mile');
     case 'log_timesheet':
-      return _qty('Time', preview['hours'], 'hour');
+      return [
+        ..._qty('Time', preview['hours'], 'hour'),
+        ..._qty('Overtime', preview['overtime_hours'], 'hour'),
+        ..._money('Pay', preview['cost_pence']),
+      ];
     case 'pay_overtime':
       return [
         ..._qty('Time', preview['hours'], 'hour'),

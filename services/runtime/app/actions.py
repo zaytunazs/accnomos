@@ -212,9 +212,30 @@ class LogTimesheetIntent(BaseModel):
     kind: Literal["log_timesheet"] = "log_timesheet"
     staff_ref: str
     job_ref: str
-    hours: Decimal
+    hours: Decimal  # all the hours, overtime included
     date: dt.date | None = None
     note: str = ""
+    overtime_hours: Decimal | None = None  # "including 1 hour overtime": that many of `hours`, at `overtime_multiplier`
+    overtime_multiplier: Decimal | None = None
+
+
+#: "2 hours including 1 hour overtime at double rate", "with 1.5 hours of overtime at time and a half". Code reads it
+#: from the user's own words; the model only says it is a timesheet.
+_OVERTIME_SPLIT = re.compile(
+    r"\b(?:including|incl\.?|inc\.?|with|of which|plus)\s+(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b\s*"
+    r"(?:of\s+(?:it\s+)?|as\s+)?(?:overtime|ot)\b(?P<rate>[^,;]*)",
+    re.I,
+)
+_TOTAL_HOURS = re.compile(r"\b(?:add|log|record|book|put)\s+(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b", re.I)
+
+
+def overtime_split(question: str, said: set[Decimal]) -> tuple[Decimal, Decimal | None] | None:
+    """(overtime hours, its multiplier or None when no rate was said) for a timesheet that includes overtime."""
+    m = _OVERTIME_SPLIT.search(question)
+    if m is None:
+        return None
+    hours = Decimal(m.group(1))
+    return hours, multiplier_in(m.group("rate"), said)
 
 
 class PayOvertimeIntent(BaseModel):
@@ -486,6 +507,12 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             vehicle_ref=out.vehicle_ref,
             date=d,
         )
+    split = overtime_split(question, said) if out.kind in ("log_timesheet", "pay_overtime") else None
+    if split is not None and out.kind == "pay_overtime":  # new hours, some of them overtime: a timesheet card
+        total = _TOTAL_HOURS.search(question)
+        out = out.model_copy(
+            update={"kind": "log_timesheet", "hours_text": out.hours_text or (total and total.group(1))}
+        )
     if out.kind == "pay_overtime":
         if not (out.staff_ref or "").strip():
             return Clarification(kind="pay_overtime", field="staff", question_md="Who should be paid the overtime?")
@@ -520,12 +547,31 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
         d = day("log_timesheet")
         if isinstance(d, Clarification):
             return d
+        ot_hours = ot_mult = None
+        if split is not None:
+            ot_hours, ot_mult = split
+            if ot_mult is None:
+                return Clarification(
+                    kind="log_timesheet",
+                    field="amount",
+                    question_md="At what rate is the overtime? Say “double”, “time and a half” or a multiplier "
+                    "like “1.5”.",
+                )
+            if not Decimal(0) < ot_hours <= hours:
+                return Clarification(
+                    kind="log_timesheet",
+                    field="hours",
+                    question_md=f"The overtime ({ot_hours} hours) is more than the {hours} hours in all. "
+                    "How many hours were worked?",
+                )
         return LogTimesheetIntent(
             staff_ref=out.staff_ref.strip(),
-            job_ref=out.job_ref.strip(),
+            job_ref=re.sub(r"^\s*the\s+|\s+job\s*$", "", out.job_ref.strip(), flags=re.I) or out.job_ref.strip(),
             hours=hours,
             date=d,
             note=(out.description or "").strip()[:500],
+            overtime_hours=ot_hours,
+            overtime_multiplier=ot_mult,
         )
     if out.kind == "add_to_shopping_list":
         item = " ".join((out.item_text or "").split())[:120]
@@ -600,7 +646,7 @@ def pick(ref: str, options: Sequence[Option], kind: ActionKind, field: str, noun
     near = [p.option.name for p in scored if p.score >= NEAR_AT][:3]
     if not options:
         return Clarification(kind=kind, field=field, question_md=f"You don't have any {noun}s set up yet.")
-    ask = f"I couldn't find a {noun} called “{ref}”."
+    ask = f"I couldn't find {'an' if noun[:1] in 'aeiou' else 'a'} {noun} called “{ref}”."
     if near:
         ask += f" Did you mean {', '.join(near)}?"
     return Clarification(kind=kind, field=field, candidates=near, ref=ref, question_md=ask)
@@ -980,6 +1026,16 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
         return staff
     job = pick(intent.job_ref, await job_options(books), "log_timesheet", "job", "open job")
     if isinstance(job, Clarification):
+        closed = [Option(j.id, j.name, (), j) for j in await jobs_.load_jobs(books) if j.status != "open"]
+        hit = pick(intent.job_ref, closed, "log_timesheet", "job", "job") if closed else None
+        if isinstance(hit, Picked):  # the job exists but is closed: say so, rather than "couldn't find"
+            return Clarification(
+                kind="log_timesheet",
+                field="job",
+                ref=intent.job_ref,
+                question_md=f"{_md(hit.option.name)} is closed. Reopen it on the Jobs page to add hours, then ask "
+                "again.",
+            )
         return job
     try:
         hours = jobs_.round_hours(intent.hours)
@@ -987,7 +1043,7 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
         return Clarification(kind="log_timesheet", field="hours", question_md=str(exc))
     warnings = [] if hours == intent.hours else [f"{intent.hours} hours rounded to the nearest quarter: {hours}."]
     day = intent.date or today
-    preview = {
+    preview: dict[str, Any] = {
         "staff_id": staff.option.id,
         "staff_name": staff.option.name,
         "job_id": job.option.id,
@@ -998,7 +1054,44 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
         "warnings": warnings,
     }
     summary = f"**Log {hours} hours** for **{_md(staff.option.name)}** on **{_md(job.option.name)}**, {uk_date(day)}."
+    if intent.overtime_hours is not None and intent.overtime_multiplier is not None:
+        ot = jobs_.round_hours(intent.overtime_hours)
+        mult = intent.overtime_multiplier
+        rate = staff.option.data.hourly_rate_pence
+        lines = timesheet_lines(hours, ot, mult, rate)
+        cost = sum(ln["cost_pence"] for ln in lines)
+        preview |= {
+            "lines": lines,
+            "overtime_hours": str(ot),
+            "overtime_multiplier": str(mult),
+            "rate_pence": rate,
+            "cost_pence": cost,
+        }
+        preview["warnings"] = warnings + [
+            f"The overtime hours are paid at {mult}× in the next pay run that covers {uk_date(day)}; nothing is "
+            "paid now. Customers are charged the normal rate."
+        ]
+        parts = [f"{ln['hours']} hours {ln['label'].lower()} at {money(ln['rate_pence'])} × {ln['multiplier']} = "
+                 f"{money(ln['cost_pence'])}" for ln in lines]  # fmt: skip
+        summary = (
+            f"**Log {hours} hours** for **{_md(staff.option.name)}** on **{_md(job.option.name)}**, {uk_date(day)}: "
+            + "; ".join(parts)
+            + f". **{money(cost)}** in pay."
+        )
     return Draft("log_timesheet", summary, preview, "Add the hours to the timesheet")
+
+
+def timesheet_lines(hours: Decimal, overtime: Decimal, mult: Decimal, rate_pence: int) -> list[dict[str, Any]]:
+    """Normal and overtime rows for one timesheet card, priced in pence (half up), by code."""
+    rows = []
+    for label, h, m in (("Normal", hours - overtime, Decimal(1)), ("Overtime", overtime, mult)):
+        if h <= 0:
+            continue
+        cost = int((Decimal(jobs_.quarters(h) * rate_pence) * m / 4).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+        rows.append(
+            {"label": label, "hours": str(h), "multiplier": str(m), "rate_pence": rate_pence, "cost_pence": cost}
+        )
+    return rows
 
 
 async def resolve_overtime(books: Books, intent: PayOvertimeIntent, today: date) -> Draft | Clarification:
@@ -1363,6 +1456,8 @@ def needs_tap(kind: str, preview: dict[str, Any]) -> bool:
     """True when only the Approve button may approve this card (never a spoken yes)."""
     if kind in TAP_ONLY:
         return True
+    if kind == "log_timesheet":  # hours alone may be spoken; hours with overtime change what someone is paid
+        return Decimal(str(preview.get("overtime_multiplier") or 1)) > 1
     return kind == "create_invoice" and bool(preview.get("send"))  # a draft invoice may be spoken; a sent one not
 
 
@@ -1453,20 +1548,33 @@ Executor = Callable[[ProposedAction, Context], Awaitable[tuple[str, dict[str, An
 
 
 async def run_timesheet(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    """One timesheet entry; a card with overtime adds one entry per line (normal at 1×, overtime at its rate)."""
     p = action.preview
-    entry = jobs_.TimesheetEntry(
-        id=action.id[:12],
-        staff_id=p["staff_id"],
-        job_id=p["job_id"],
-        date=date.fromisoformat(p["date"]),
-        hours=p["hours"],
-        note=p.get("note") or "",
-    )
-    await jobs_.add_entry(ctx.books, entry)
-    await ctx.books.audit(f"user:{ctx.user}", "timesheet_added", {"entry": entry.id, "action": action.id})
+    rows = p.get("lines") or [{"hours": p["hours"], "multiplier": "1"}]
+    ids = [action.id[:12], action.id[12:24]]  # action ids are 32 hex characters
+    added = []
+    for n, row in enumerate(rows[:2]):
+        entry = jobs_.TimesheetEntry(
+            id=ids[n] if len(rows) > 1 else ids[0],
+            staff_id=p["staff_id"],
+            job_id=p["job_id"],
+            date=date.fromisoformat(p["date"]),
+            hours=row["hours"],
+            note=(p.get("note") or "") if row["multiplier"] == "1" else ((p.get("note") or "") + " (overtime)").strip(),
+            rate_multiplier=float(Decimal(row["multiplier"])),
+        )
+        await jobs_.add_entry(ctx.books, entry)
+        added.append(entry)
+    await ctx.books.audit(
+        f"user:{ctx.user}", "timesheet_added", {"entry": added[0].id, "entries": [e.id for e in added],
+                                                "action": action.id},
+    )  # fmt: skip
+    text = f"Logged {p['hours']} hours for {_md(p['staff_name'])} on {_md(p['job_name'])}"
+    if p.get("lines"):
+        text += f", {p['overtime_hours']} of them overtime at {p['overtime_multiplier']}× ({money(p['cost_pence'])})"
     return (
-        f"Logged {p['hours']} hours for {_md(p['staff_name'])} on {_md(p['job_name'])}.",
-        {"entry_id": entry.id, "hours": p["hours"], "date": p["date"]},
+        text + ".",
+        {"entry_id": added[0].id, "entry_ids": [e.id for e in added], "hours": p["hours"], "date": p["date"]},
     )
 
 

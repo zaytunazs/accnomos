@@ -3166,6 +3166,14 @@ export interface RtCloseMonthPreview {
   changes: string[];
   warnings: string[];
 }
+export interface RtTimesheetLine {
+  label: "Normal" | "Overtime";
+  hours: string;
+  multiplier: string;
+  rate_pence: number;
+  cost_pence: number;
+}
+
 export interface RtTimesheetPreview {
   staff_name: string;
   job_name: string;
@@ -3173,6 +3181,11 @@ export interface RtTimesheetPreview {
   hours: string;
   note: string;
   warnings: string[];
+  /** Hours with overtime in them: one row per rate, priced in pence by the runtime. */
+  lines?: RtTimesheetLine[];
+  overtime_hours?: string;
+  overtime_multiplier?: string;
+  cost_pence?: number;
 }
 /** pay_overtime: the timesheet entries code found, priced by code at the multiplier. */
 export interface RtOvertimePreview {

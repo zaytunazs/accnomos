@@ -689,3 +689,61 @@ async def test_reject_route(books: Books):
     assert missing.status_code == 422
     assert no.status_code == 200 and no.json() == {"action_id": card["id"], "status": "rejected"}
     assert after.status_code == 409 and await jobs.load_entries(books) == []
+
+
+# --------------------------------------------------------------------------- #
+# A timesheet with overtime in it: one card, two lines, priced in pence by code
+# --------------------------------------------------------------------------- #
+
+SPLIT_Q = "Add 2 hours for Alex on the Bathroom, 4 Oak Lane job, including 1 hour overtime at double rate"
+
+
+@pytest.mark.parametrize("kind", ["log_timesheet", "pay_overtime"])  # the model may read "overtime" as either
+async def test_overtime_split_is_one_timesheet_card(books: Books, monkeypatch: pytest.MonkeyPatch, kind: str):
+    stub_model(
+        monkeypatch,
+        out(kind, staff_ref="Alex", job_ref="Bathroom, 4 Oak Lane job", hours_text="2" if kind == "log_timesheet"
+            else None, multiplier_text="double"),
+    )  # fmt: skip
+    card = await actions.propose(SPLIT_Q, books, CFG, TOKEN, TODAY)
+    assert isinstance(card, ProposedAction), card
+    p = card.preview
+    assert card.kind == "log_timesheet" and p["hours"] == "2" and p["job_name"] == "Bathroom, 4 Oak Lane"
+    assert p["lines"] == [
+        {"label": "Normal", "hours": "1", "multiplier": "1", "rate_pence": 1200, "cost_pence": 1200},
+        {"label": "Overtime", "hours": "1", "multiplier": "2", "rate_pence": 1200, "cost_pence": 2400},
+    ]
+    assert p["cost_pence"] == 3600 and p["overtime_multiplier"] == "2"
+    assert "£12.00 × 2 = £24.00" in card.summary_md and "**£36.00** in pay" in card.summary_md
+    assert card.tap_only is True  # overtime changes pay: the Approve button only
+    ctx = actions.Context(books=books, user=USER, graph_token=TOKEN)
+    await actions.approve(card, ctx)
+    got = sorted((e.hours, e.rate_multiplier) for e in await jobs.load_entries(books))
+    assert got == [(1.0, 1.0), (1.0, 2.0)]
+
+
+def test_overtime_split_pricing_in_pence() -> None:
+    rows = actions.timesheet_lines(Decimal("7.5"), Decimal("1.5"), Decimal("1.5"), 1133)
+    assert [(r["hours"], r["cost_pence"]) for r in rows] == [("6.0", 6798), ("1.5", 2549)]  # 1.5 × 11.33 × 1.5
+    assert actions.timesheet_lines(Decimal(1), Decimal(1), Decimal(2), 1100) == [
+        {"label": "Overtime", "hours": "1", "multiplier": "2", "rate_pence": 1100, "cost_pence": 2200}
+    ]
+
+
+def test_overtime_split_needs_a_rate_and_fits_the_hours() -> None:
+    o = out("log_timesheet", staff_ref="Alex", job_ref="Oak Lane", hours_text="2")
+    no_rate = actions.parse_intent(o, "add 2 hours for Alex on Oak Lane including 1 hour overtime", TODAY)
+    assert isinstance(no_rate, Clarification) and "rate" in no_rate.question_md
+    too_many = actions.parse_intent(o, "add 2 hours for Alex on Oak Lane including 3 hours overtime at double", TODAY)
+    assert isinstance(too_many, Clarification) and too_many.field == "hours"
+    plain = actions.parse_intent(o, "add 2 hours for Alex on Oak Lane", TODAY)
+    assert isinstance(plain, actions.LogTimesheetIntent) and plain.overtime_hours is None
+    assert actions.needs_tap("log_timesheet", {"hours": "2"}) is False
+
+
+async def test_hours_on_a_closed_job_say_it_is_closed(books: Books) -> None:
+    job = await jobs.get_job(books, "00000000a002")
+    await jobs.save_job(books, job.model_copy(update={"status": "closed"}))
+    intent = actions.LogTimesheetIntent(staff_ref="Alex", job_ref="Bathroom, 4 Oak Lane", hours=Decimal(2))
+    got = await actions.resolve_timesheet(books, intent, TODAY)
+    assert isinstance(got, Clarification) and got.question_md.startswith("Bathroom, 4 Oak Lane is closed. Reopen it")

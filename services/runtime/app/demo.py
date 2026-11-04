@@ -334,8 +334,9 @@ async def build_full(day: date) -> Snapshot:
     for d in picks:
         path = f"{INBOX}/{d.file_name}"
         await seed._propose(books, d, plan, arrived=(path, st.files[path]))
-    from app import demo_personal
+    from app import demo_personal, demo_recent
 
+    await demo_recent.add_recent_trading(st, seed, plan)  # Oct/Nov sales and job purchases, up to `day`
     await demo_personal.add_company_goals(st, day)  # three goals sized from these books (app/goals.py)
     return Snapshot(day, st, plan.business, time.perf_counter() - started)
 

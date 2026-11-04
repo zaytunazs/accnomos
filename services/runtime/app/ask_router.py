@@ -13,7 +13,7 @@ import json
 import math
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from app.books import EVENTS, PROPOSALS, WORKBOOK
@@ -324,3 +324,115 @@ def _fit(out: dict[str, Any], facts: dict[str, Any], r: Route) -> None:
             if "quotes" in out:
                 out["quotes"][key] = {**out["quotes"][key], "quotes": out["quotes"][key]["quotes"][: min(n, 3)]}
         out["sources"] = _pack_sources(facts, r, out)
+
+
+# --------------------------------------------------------------------------- #
+# Profit and loss questions: the span asked about, by code (app/ask_pnl.py answers them)
+# --------------------------------------------------------------------------- #
+
+_PNL_STRONG = re.compile(
+    r"\bprofits?\b|\bmargins?\b|\blos(?:s|ses|t money)\b|\bp\s?&\s?l\b|\bp and l\b|\bnet income\b|"
+    r"\bhow much (?:money )?(?:did|have|has) (?:we|i|the business) (?:make|made|earn(?:ed)?|take|taken)\b|"
+    r"\bhow much (?:money )?(?:are|am) (?:we|i) making\b|\bearn(?:ed|ings)\b|\bin profit\b",
+    _I,
+)
+_PNL_WEAK = re.compile(
+    r"\bsales?\b|\bsold\b|\bturnover\b|\brevenue\b|\bincome\b|\btakings\b|\bcosts?\b|\bexpenses?\b|\bspen[dt]\b|"
+    r"\bmoney (?:in|out)\b|\bcame in\b|\bwent out\b",
+    _I,
+)
+_PNL_NOT = re.compile(r"\bvat\b|\bbox\s*\d\b|\bhmrc\b|\breturn\b|\b(?:in|out)put tax\b|\breclaim", _I)
+#: A span the VAT facts pack cannot give (it only has whole VAT periods): these send even a plain "sales" question to
+#: the P&L answer. "This/last quarter" alone stays with the VAT pack unless the question is about profit.
+_SPAN_NOT_VAT = re.compile(
+    r"\btoday\b|\byesterday\b|\b(?:this|last|previous|past) (?:week|month|tax year|financial year|year)\b|"
+    r"\bso far\b|\byear to date\b|\bytd\b|\btax year\b",
+    _I,
+)
+
+
+@dataclass(frozen=True)
+class Span:
+    start: date
+    end: date
+    name: str  # "yesterday", "this quarter so far", "October 2026"
+    vat_period: bool = False  # the span is the VAT period (the question said "VAT quarter")
+
+
+def _quarter_start(d: date) -> date:
+    return date(d.year, 3 * ((d.month - 1) // 3) + 1, 1)
+
+
+def _month_end(d: date) -> date:
+    nxt = date(d.year + d.month // 12, d.month % 12 + 1, 1)
+    return nxt - timedelta(days=1)
+
+
+def _tax_year_start(d: date) -> date:
+    start = date(d.year, 4, 6)
+    return start if d >= start else date(d.year - 1, 4, 6)
+
+
+def pnl_span(question: str, today: date, year_start: date | None = None) -> Span:
+    """The span a profit question asks about. Calendar quarters; whole past months; spans in progress end today."""
+    q = question.lower()
+    monday = today - timedelta(days=today.weekday())
+    first = today.replace(day=1)
+    qstart = _quarter_start(today)
+    if re.search(r"\byesterday\b", q):
+        y = today - timedelta(days=1)
+        return Span(y, y, "yesterday")
+    if re.search(r"\btoday\b|\bso far today\b", q):
+        return Span(today, today, "today")
+    if re.search(r"\b(?:last|previous|past) week\b", q):
+        return Span(monday - timedelta(days=7), monday - timedelta(days=1), "last week")
+    if re.search(r"\bthis week\b", q):
+        return Span(monday, today, "this week so far")
+    if re.search(r"\b(?:last|previous|past) month\b", q):
+        end = first - timedelta(days=1)
+        return Span(end.replace(day=1), end, "last month")
+    if re.search(r"\bthis month\b", q):
+        return Span(first, today, "this month so far")
+    if re.search(r"\b(?:last|previous|past) (?:vat )?quarter\b", q):
+        end = qstart - timedelta(days=1)
+        return Span(_quarter_start(end), end, "last quarter")
+    if re.search(r"\b(?:this|current) (?:vat )?quarter\b|\bquarter so far\b", q):
+        return Span(qstart, today, "this quarter so far")
+    if re.search(r"\b(?:last|previous) tax year\b", q):
+        start = _tax_year_start(_tax_year_start(today) - timedelta(days=1))
+        return Span(start, _tax_year_start(today) - timedelta(days=1), "last tax year")
+    if re.search(r"\btax year\b", q):
+        return Span(_tax_year_start(today), today, "this tax year so far")
+    for m in _MONTH.finditer(question):
+        word = m.group(1).lower()
+        if word == "may" and not re.search(r"\bin may\b|\bmay \d{4}\b|\bfor may\b", q):
+            continue
+        month = next(i for name, i in _MONTHS.items() if name.startswith(word[:3]))
+        year = int(m.group(2)) if m.group(2) else (today.year if month <= today.month else today.year - 1)
+        start = date(year, month, 1)
+        if start > today:
+            continue
+        end = min(_month_end(start), today)
+        return Span(start, end, f"{start:%B %Y}" + (" so far" if end == today and end != _month_end(start) else ""))
+    if re.search(r"\b(?:last|previous) (?:financial )?year\b", q):
+        ys = year_start or date(today.year, 1, 1)
+        start = date(ys.year - 1, ys.month, ys.day)
+        return Span(start, ys - timedelta(days=1), "last year")
+    ys = year_start or date(today.year, 1, 1)
+    return Span(ys, today, "this year so far")
+
+
+def pnl_intent(question: str) -> bool:
+    """A question about profit, or about income or costs over a span the VAT facts pack has no figures for."""
+    if _PNL_NOT.search(question):
+        return False
+    if _PNL_STRONG.search(question):
+        return True
+    return bool(_PNL_WEAK.search(question) and (_SPAN_NOT_VAT.search(question) or _named_month(question)))
+
+
+def _named_month(question: str) -> bool:
+    for m in _MONTH.finditer(question):
+        if m.group(1).lower() != "may" or re.search(r"\bin may\b|\bmay \d{4}\b|\bfor may\b", question, _I):
+            return True
+    return False

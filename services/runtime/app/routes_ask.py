@@ -30,13 +30,14 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import actions, ask_more, jobs, spending
+from app import actions, ask_more, ask_pnl, jobs, spending
 from app import assistant_tasks as tasks
 from app import dashboard as dash
 from app.ai import ask as ask_ai
 from app.ai import spending as spending_ai
 from app.ai import stt, voice
 from app.ai.config import AiConfig, ai_config_from_request
+from app.ask_router import pnl_intent
 from app.books import EVENTS, Books, today
 from app.facts import build_facts
 from app.planner import TZ, plan_intent, uk_day
@@ -166,6 +167,13 @@ async def _prepare(
         return await ask_more.household_answer(req.question, books, cfg, period, today(TZ))
     if (side := ask_more.owed_intent(req.question)) is not None:  # the aged balances Home shows
         return await ask_more.owed_answer(req.question, side, books, cfg, period, today(TZ))
+    if (bought := await ask_pnl.job_items_answer(req.question, books, cfg, period)) is not None:  # "what did we
+        return bought  # order for the kitchen job?": the purchases tagged to that job, line by line
+    if pnl_intent(req.question):  # profit, income or costs for a span: the P&L by code
+        from app import home_overview
+
+        ys, _rule = home_overview.year_start(prof.kind, prof.settings, today(TZ))
+        return await ask_pnl.pnl_answer(req.question, books, cfg, period, today(TZ), ys)
     if spending.asks_for_summary(req.question):
         return await spending_answer(books, period, cfg, business)
     found = await actions.propose(req.question, books, cfg, token, today(TZ))  # the same day as the plan and VAT period

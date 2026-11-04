@@ -263,6 +263,7 @@ def test_calendar_add_by_ask_and_tap(client) -> None:
         ("create_quote", {}, False),
         ("convert_quote_to_invoice", {}, False),  # a draft invoice
         ("log_timesheet", {}, False),
+        ("log_timesheet", {"overtime_multiplier": "2", "overtime_hours": "1"}, True),  # overtime changes pay
         ("log_mileage", {}, False),
         ("add_to_shopping_list", {}, False),
         ("save_note", {}, False),

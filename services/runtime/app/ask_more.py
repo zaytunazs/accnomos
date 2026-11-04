@@ -214,7 +214,8 @@ async def owed_answer(
 HOUSEHOLD_PROMPT = (
     "You answer a question about a UK household's own money from FACTS worked out by code from their bank statements "
     "and their spending categories. This is a household, not a business: never mention VAT, HMRC, turnover, profit "
-    "or invoices. If FACTS.asked_about is present, answer with its figures first (this month so far and last "
+    "or invoices. If FACTS.asked_span is present, answer with its figures first (that span only). "
+    "If FACTS.asked_about is present, answer with its figures first (this month so far and last "
     "month). Otherwise answer from the months and categories. " + _RULES
 )
 
@@ -258,6 +259,9 @@ _STOP = {
     "so",
     "far",
 }
+
+
+_SHORT_SPAN = re.compile(r"\b(?:today|yesterday|(?:this|last|previous|past) week)\b", _I)
 
 
 def _month_key(d: date) -> str:
@@ -318,6 +322,19 @@ def household_facts(
             if c.spent_pence or last_by.get(c.id)
         ][:10],
     }
+    if _SHORT_SPAN.search(question):  # "yesterday", "today", "this week": money in and out over just that span
+        from app.ask_pnl import span_words
+        from app.ask_router import pnl_span
+        from app.home_overview import money_between
+
+        s = pnl_span(question, today)
+        money_in, money_out, n = money_between(lines, s.start, s.end)
+        facts["asked_span"] = {
+            "span": span_words(s),
+            "money_in": gbp(money_in),
+            "money_out": gbp(money_out),
+            "bank_lines": n,
+        }
     focus = focus_of(question, [c.name for c in categories])
     if focus:
         known = {c.id for c in categories}
@@ -353,6 +370,10 @@ def household_facts(
 
 def household_code_text(f: dict[str, Any]) -> str:
     a = f.get("asked_about")
+    if (sp := f.get("asked_span")) is not None and not a:
+        if not sp["bank_lines"]:
+            return f"Nothing went in or out of your bank accounts {sp['span']}."
+        return f"{sp['span'][:1].upper()}{sp['span'][1:]}, {sp['money_out']} went out and {sp['money_in']} came in."
     if a:
         t, last = a["this_month"], a["last_month"]
         if not t["payments"] and not last["payments"]:
@@ -392,8 +413,14 @@ async def household_answer(
     code_text = household_code_text(f)
     text, by, why = await worded(question, f, HOUSEHOLD_PROMPT, code_text, cfg, "ask_household")
     a = f.get("asked_about")
+    sp = f.get("asked_span")
     keys = (
         [
+            KeyNumber(label=f"Money out, {sp['span']}", value=sp["money_out"], source="bank"),
+            KeyNumber(label=f"Money in, {sp['span']}", value=sp["money_in"], source="bank"),
+        ]
+        if sp and not a
+        else [
             KeyNumber(label=f"{a['what']}, {a['this_month']['label']}", value=a["this_month"]["spent"], source="bank"),
             KeyNumber(label=f"{a['what']}, {a['last_month']['label']}", value=a["last_month"]["spent"], source="bank"),
         ]

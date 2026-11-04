@@ -67,7 +67,7 @@ second invoice.
 
 | Kind | Runs | Available |
 |---|---|---|
-| `log_timesheet` | `jobs.add_entry` (job must be open, staff must exist) | now |
+| `log_timesheet` | `jobs.add_entry` (job must be open, staff must exist; a closed job gets "reopen it on Jobs" rather than "couldn't find"). Hours with overtime in them ("add 2 hours for Ellie on the kitchen job, including 1 hour overtime at double rate") are one card with two lines: code reads the overtime hours and the rate words from the user's own sentence (the model only says it is a timesheet, even if it read it as `pay_overtime`), prices each line from the staff member's hourly rate in pence (quarter hours, half up), and on Approve adds two entries, the overtime one with `rate_multiplier` set. Such a card changes pay, so it is tap-only (`needs_tap`); plain hours may still be approved by voice | now |
 | `pay_overtime` | `jobs.set_rate_multiplier` on exactly the entries the card listed (refused if their hours changed or an approved pay run already paid them). The model only copies the rate words ("double", "time and a half") and the week ("last week"); code reads them, finds the person's entries for that week (and job, if named) and prices them from the payroll hourly rate. The next pay run pays them; the card notes that regular overtime can affect holiday pay (check with your adviser) | now |
 | `create_invoice` | `invoicing.create_invoice` → PDF (`app/pdf.py`) → `invoicing.send_invoice` through Graph if `send` | on `main` (`app/invoicing.py`) |
 | `chase_invoice` | `invoicing.send_reminder` with the reminder shown on the card and the sent PDF attached | on `main` |

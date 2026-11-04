@@ -94,7 +94,7 @@ export function readBack(kind: string, preview: Record<string, unknown>): ReadBa
     case "log_mileage":
       return qty("Distance", preview.miles, "mile");
     case "log_timesheet":
-      return qty("Time", preview.hours, "hour");
+      return [...qty("Time", preview.hours, "hour"), ...qty("Overtime", preview.overtime_hours, "hour"), ...money("Pay", preview.cost_pence)];
     case "pay_overtime":
       return [...qty("Time", preview.hours, "hour"), ...money("Extra pay", preview.extra_pence)];
     default:

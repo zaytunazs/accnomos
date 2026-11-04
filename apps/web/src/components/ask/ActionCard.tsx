@@ -293,6 +293,18 @@ function Details({ action }: { action: RtProposedAction }) {
         <Row label="Hours">
           <strong className="tabular-nums">{p.hours}</strong>
         </Row>
+        {p.lines?.map((l) => (
+          <Row key={l.label} label={l.label}>
+            <span className="tabular-nums">
+              {l.hours} h at {gbp(l.rate_pence)} × {l.multiplier} = <strong>{gbp(l.cost_pence)}</strong>
+            </span>
+          </Row>
+        ))}
+        {p.cost_pence !== undefined && (
+          <Row label="Pay">
+            <strong className="tabular-nums">{gbp(p.cost_pence)}</strong> in the next pay run
+          </Row>
+        )}
         {p.note && <Row label="Note">{p.note}</Row>}
       </dl>
     );

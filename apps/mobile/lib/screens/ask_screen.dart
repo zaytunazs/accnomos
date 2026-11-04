@@ -1456,6 +1456,23 @@ class _AskScreenState extends State<AskScreen> {
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
+        // Hours with overtime in them: one row per rate, priced by the runtime.
+        for (final l in maps(p['lines']))
+          _detailRow(
+            str(l['label']),
+            Text(
+              '${str(l['hours'])} h at ${gbp(pence(l['rate_pence']))} × '
+              '${str(l['multiplier'])} = ${gbp(pence(l['cost_pence']))}',
+            ),
+          ),
+        if (p['cost_pence'] is num)
+          _detailRow(
+            'Pay',
+            Text(
+              '${gbp(pence(p['cost_pence']))} in the next pay run',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
         if (str(p['note']).isNotEmpty) _detailRow('Note', Text(str(p['note']))),
       ];
     }
