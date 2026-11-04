@@ -64,7 +64,7 @@ test.describe("signed out, / is the marketing home", () => {
     await expect(footer.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/privacy");
     await expect(footer.getByRole("link", { name: "Terms of use" })).toHaveAttribute("href", "/terms");
     await expect(footer.getByRole("link", { name: "Contact us" })).toHaveAttribute("href", /^mailto:.+@/);
-    await expect(footer.getByRole("link", { name: /HONESTY\.md/ })).toHaveAttribute("href", /docs\/HONESTY\.md$/);
+    await expect(footer.getByRole("link", { name: "The Meta models we use" })).toHaveAttribute("href", "/meta-models");
   });
 
   test("the hero screen is the LCP image: fetched first and never hidden by its entrance", async ({ page }) => {

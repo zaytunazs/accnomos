@@ -5,7 +5,7 @@ import { CONSENT_TEXT, joinEarlyAccess, SUCCESS_TEXT } from "@/lib/early-access"
 import { useSubmissionMode } from "@/lib/submission-mode";
 
 const COPY: SignUpCopy = {
-  heading: "Join the waiting list",
+  heading: "Hear when Accnomos opens",
   intro: "Leave your email to join the waiting list.",
   consent: CONSENT_TEXT,
   consentError: "Tick the box so we can send you the launch email",

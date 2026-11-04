@@ -103,7 +103,7 @@ test.describe("submission build (the default)", () => {
     await expect(pricing).toContainText("Leave your email to join the waiting list.");
     await expect(pricing.getByRole("link", { name: HEADING, exact: true })).toHaveAttribute("href", "#join");
     await page.getByText("How do I join the waiting list?").click();
-    await expect(page.getByText(/at accnomos\.com\/join\) and we will set you up/)).toBeVisible();
+    await expect(page.getByText(/at accnomos\.com\/join\)\./)).toBeVisible();
     await expect(page.getByRole("contentinfo").getByRole("link", { name: HEADING })).toHaveAttribute("href", "/join");
   });
 
@@ -138,7 +138,7 @@ test.describe("public build (submission mode 0)", () => {
   test("the landing page keeps its own form; /join shows the neutral one", async ({ page }) => {
     await submissionMode(page, "0");
     await page.goto("/");
-    await expect(page.getByRole("region", { name: "Join the waiting list" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Hear when Accnomos opens" })).toBeVisible();
     await expect(form(page)).toHaveCount(0); // one form per page, not two
 
     await page.goto("/join");

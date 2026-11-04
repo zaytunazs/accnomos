@@ -9,7 +9,7 @@ import { expect, test } from "./fixtures";
  * build (NEXT_PUBLIC_SUBMISSION_MODE unset = 1); test-mode builds let a spec flip it per page through localStorage
  * (src/lib/submission-mode.ts). The runtime writes sign-ups to EARLY_ACCESS_FILE (playwright.config.ts).
  */
-const HEADING = "Join the waiting list";
+const HEADING = "Hear when Accnomos opens";
 const CONSENT = "Email me once Accnomos launches. I can unsubscribe any time.";
 
 async function submissionMode(page: Page, mode: "0" | "1") {
