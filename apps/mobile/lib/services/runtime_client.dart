@@ -10,6 +10,7 @@ import '../models/calendar.dart';
 import '../models/sample_books.dart';
 import '../models/scan_job.dart';
 import '../models/storage.dart';
+import 'ai_route.dart';
 import 'books_events.dart';
 import 'demo.dart';
 import 'settings.dart';
@@ -82,6 +83,8 @@ class RuntimeClient {
 
   Map<String, String> get _headers {
     final demo = Demo.current;
+    // Which AI answers first, only once the user has picked one.
+    final route = clampAiRoute(settings.aiRoute);
     if (demo != null && books != null) {
       // A demo: the session id instead of a Graph token, and no X-AI-*
       // headers, so the runtime reads with its own Meta model chain, as the
@@ -92,6 +95,7 @@ class RuntimeClient {
         'X-Account-Kind': 'personal',
         'X-User': demo.user,
         if (settings.autopilotLevel != 'L2') 'X-Autopilot': 'off',
+        if (route != null) kAiRouteHeader: route,
       };
     }
     // 'auto': no AI choice is sent, so the runtime reads with its own Meta
@@ -105,6 +109,7 @@ class RuntimeClient {
         'X-AI-Base-Url': settings.aiBaseUrl,
         'X-AI-Model': settings.aiModel,
       },
+      if (route != null) kAiRouteHeader: route,
     };
     // Autopilot posts only at level L2 (Settings > Automation, like the
     // web's runtime.ts): every other level sends `X-Autopilot: off`, so a

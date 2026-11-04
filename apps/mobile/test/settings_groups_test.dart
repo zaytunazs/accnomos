@@ -446,6 +446,57 @@ void main() {
     expect(find.byKey(const Key('linked-mailboxes')), findsNothing);
   });
 
+  testWidgets('Which AI answers first: three options, local-only warning, saved and sent',
+      (tester) async {
+    await pumpSignedIn(tester, FakeSettingsClient());
+
+    await scrollTo(tester, find.text('Which AI answers first'));
+    expect(find.text('Meta Model API first'), findsOneWidget);
+    expect(find.text('RECOMMENDED'), findsOneWidget);
+    expect(find.text('Local model first, Meta API when unsure'), findsOneWidget);
+    expect(find.text('Local model only'), findsOneWidget);
+    expect(find.byKey(const Key('aiRoute_meta_first')), findsOneWidget);
+    expect(find.byKey(const Key('aiRoute_local_first')), findsOneWidget);
+    expect(find.byKey(const Key('aiRoute_local_only')), findsOneWidget);
+    // The warning always sits under "Local model only"; nothing saved yet,
+    // so it is not highlighted and no header goes to the runtime.
+    expect(find.byKey(const Key('aiRouteWarning')), findsOneWidget);
+    expect(find.text('If the local model is offline, AI features wait; nothing falls back.'),
+        findsOneWidget);
+    expect((await AppSettings.load()).aiRoute, isNull);
+    expect(RuntimeClient(await AppSettings.load()).debugHeaders.containsKey('X-AI-Route'),
+        isFalse);
+
+    await scrollTo(tester, find.text('Local model only'));
+    await tester.tap(find.text('Local model only'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('AI choice saved'), findsOneWidget);
+    expect(find.byKey(const Key('aiRouteWarningSelected')), findsOneWidget);
+    expect(
+        find.text(
+            'No voice input: speech-to-text (Muse Voice Transcribe) runs on the Meta Model API. You can still type, and replies can still be read out by your device.'),
+        findsOneWidget);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('accnomos.ai.route'), 'local_only');
+    final saved = await AppSettings.load();
+    expect(saved.aiRoute, 'local_only');
+    expect(RuntimeClient(saved).debugHeaders['X-AI-Route'], 'local_only');
+  });
+
+  testWidgets('a saved AI choice shows as chosen when Settings opens',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'accnomos.ai.route': 'local_first'});
+    await pumpSignedIn(tester, FakeSettingsClient());
+    await scrollTo(tester, find.text('Which AI answers first'));
+    final group = tester.widget<RadioGroup<String>>(find.descendant(
+        of: find.byKey(const Key('aiRoutePicker')),
+        matching: find.byType(RadioGroup<String>)));
+    expect(group.groupValue, 'local_first');
+    expect(find.byKey(const Key('aiRouteWarning')), findsOneWidget);
+  });
+
   testWidgets('nothing overflows at 360 dp', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1.0;

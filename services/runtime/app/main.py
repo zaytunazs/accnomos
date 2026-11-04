@@ -57,6 +57,7 @@ app.add_middleware(
         "X-AI-Mode",
         "X-AI-Base-Url",
         "X-AI-Model",
+        "X-AI-Route",  # meta_first | local_first | local_only: which AI answers first (Settings › AI)
         "X-Meta-Api-Key",
         "X-Business-Name",
         "X-Autopilot",

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'ai_route.dart';
+
 /// Release builds talk to the hosted runtime over HTTPS; debug builds default to
 /// the emulator's alias for the dev PC (10.0.2.2) so a local runtime is reachable.
 const String kDefaultRuntimeUrl =
@@ -31,6 +33,7 @@ class AppSettings {
     this.vatStartMonth,
     this.autopilotLevel = 'L1',
     this.showPersonalFinances = false,
+    this.aiRoute,
   });
 
   /// Address of the reader service. The default is the Android emulator's
@@ -82,6 +85,11 @@ class AppSettings {
   /// savings goals. Off by default: most users keep business books only.
   final bool showPersonalFinances;
 
+  /// Which AI answers first: 'meta_first', 'local_first' or 'local_only'
+  /// (lib/services/ai_route.dart). Null until the user picks one in
+  /// Settings › AI; only then is `X-AI-Route` sent.
+  final String? aiRoute;
+
   static const _kRuntimeUrl = 'accnomos.runtimeUrl';
   static const _kAiMode = 'accnomos.aiMode';
   static const _kAiBaseUrl = 'accnomos.aiBaseUrl';
@@ -111,6 +119,7 @@ class AppSettings {
       vatStartMonth: _clampMonth(prefs.getInt(_kVatStartMonth)),
       autopilotLevel: _clampLevel(prefs.getString(_kAutopilot)),
       showPersonalFinances: prefs.getBool(_kShowPersonal) ?? false,
+      aiRoute: clampAiRoute(prefs.getString(kAiRouteKey)),
     );
   }
 
@@ -170,6 +179,10 @@ class AppSettings {
     }
     await prefs.setString(_kAutopilot, autopilotLevel);
     await prefs.setBool(_kShowPersonal, showPersonalFinances);
+    // Written once chosen and never cleared here: a settings value built
+    // without a route keeps the saved one (Disconnect clears everything).
+    final route = clampAiRoute(aiRoute);
+    if (route != null) await prefs.setString(kAiRouteKey, route);
     if (vatStagger == null) {
       await prefs.remove(_kVatStagger);
     } else {

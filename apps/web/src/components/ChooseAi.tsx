@@ -14,6 +14,7 @@ import {
 } from "@/lib/ai-config";
 import { runtimeAiTest, type RtAiTest } from "@/lib/runtime";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
+import AiRouteChoice from "@/components/AiRouteChoice";
 
 type TestResult = RtAiTest;
 
@@ -111,6 +112,8 @@ export default function ChooseAi() {
           </p>
         </div>
       )}
+
+      <AiRouteChoice />
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
         <button type="button" onClick={test} disabled={testing} className="h-12 rounded-xl border border-[#D9D6CC] bg-white px-5 text-[15px] font-bold disabled:opacity-60">
