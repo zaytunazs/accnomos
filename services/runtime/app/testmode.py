@@ -834,7 +834,7 @@ def home_items_reply(content: str) -> dict[str, Any]:
     payload = json.loads(content)
     items = [{"id": i["id"], "title": i["title"], "detail": i["detail"]} for i in payload["ITEMS"]]
     c = payload["COUNTS"]
-    return {"headline": f"Test stub: {c['now']} now, {c['soon']} soon.", "items": items}
+    return {"headline": f"Test stub: {c['now']} now, {c['soon']} coming up.", "items": items}
 
 
 def duplicate_reply(content: str) -> dict[str, Any]:

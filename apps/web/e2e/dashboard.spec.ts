@@ -28,10 +28,10 @@ test("business: the AI summary on top, then money, aged debts and deadlines, eac
   await home(page, runtime, COMPANY);
   const summary = card(page, "Your summary");
   // A to-do list chosen by code, worded by the stub AI (quoting only the facts it was given); code checked the numbers.
-  await expect(summary).toContainText("Test stub: 0 now, 1 soon.");
+  await expect(summary).toContainText("Test stub: 0 now, 1 coming up.");
   const vat = summary.locator('[data-summary-item="vat_due"]');
   await expect(vat).toContainText("VAT return Jul–Sep 2026 due 7 Nov");
-  await expect(vat).toContainText("Soon:"); // the urgency in words for screen readers, not colour alone
+  await expect(vat).toContainText("Coming up:"); // the urgency in words for screen readers, not colour alone
   await expect(vat.getByRole("link", { name: /File it/ })).toHaveAttribute("href", "/vat");
   await expect(summary).toContainText("worded by your AI (accnomos-test-stub), numbers checked by code");
 
@@ -90,7 +90,7 @@ test("personal books: no business cards (aged debts, payroll, CIS, VAT, Income T
 test("signed out (/try): the sample summary and cards are marked as sample", async ({ page }) => {
   await page.goto("/try");
   const summary = card(page, "Your summary");
-  await expect(summary).toContainText("3 things need you now, 2 soon.");
+  await expect(summary).toContainText("3 things need you now, 2 coming up.");
   await expect(summary).toContainText("Sample");
   // Most urgent first; the information line last, with no link.
   await expect(summary.locator("[data-summary-item]")).toHaveCount(6);

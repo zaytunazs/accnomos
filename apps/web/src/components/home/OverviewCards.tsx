@@ -65,7 +65,7 @@ function Sample() {
   return useOverview().mode === "sample" ? <SampleTag /> : null;
 }
 
-const WHEN: Record<RtSummaryItem["priority"], string> = { 1: "Now", 2: "Soon", 3: "For information" };
+const WHEN: Record<RtSummaryItem["priority"], string> = { 1: "Now", 2: "Coming up", 3: "For information" };
 const TONE_DOT: Record<RtSummaryItem["tone"], string> = {
   negative: "bg-[#FFF0F0] text-[#A12626] border-[#F3C4C4]",
   warning: "bg-[#FFF4DC] text-[#8A470D] border-[#F0D9A8]",

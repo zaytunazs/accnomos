@@ -515,7 +515,7 @@ def headline(items: Sequence[SummaryItem]) -> str:
     urgent = sum(1 for i in items if i.priority == 1)
     soon = sum(1 for i in items if i.priority == 2)
     if urgent:
-        return f"{plural(urgent, 'thing needs', 'things need')} you now" + (f", {soon} soon." if soon else ".")
+        return f"{plural(urgent, 'thing needs', 'things need')} you now" + (f", {soon} coming up." if soon else ".")
     if soon:
-        return f"Nothing urgent; {plural(soon, 'thing')} to look at soon."
+        return f"Nothing urgent; {plural(soon, 'thing')} coming up."
     return "You're up to date."

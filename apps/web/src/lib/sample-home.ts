@@ -185,7 +185,7 @@ export const sampleOverview: import("./runtime").RtHome = {
     { key: "vat", title: "VAT return Jul–Sep 2026", due: "2026-11-07", days_left: 11, href: "/vat", source_url: null },
   ],
   summary: {
-    summary_md: "3 things need you now, 2 soon.",
+    summary_md: "3 things need you now, 2 coming up.",
     model: "code",
     fallback_reason: "Sample books: code wrote this.",
     facts: {},

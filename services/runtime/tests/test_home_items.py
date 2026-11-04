@@ -85,7 +85,7 @@ def test_order_priority_then_date_then_money_and_routes() -> None:
         "bank_unmatched": "/bank/reconcile",
         "month_end": "/month-end",
     }
-    assert hi.headline(items) == "4 things need you now, 2 soon."
+    assert hi.headline(items) == "4 things need you now, 2 coming up."
 
 
 def test_late_deadline_is_negative_and_information_comes_last() -> None:

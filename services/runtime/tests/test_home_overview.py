@@ -264,7 +264,7 @@ def test_home_payload(client: TestClient, fake: FakeStorageProvider) -> None:  #
     assert by["review"]["action"]["route"] == "/review" and by["bank_unmatched"]["action"]["route"] == "/bank/reconcile"
     assert by["trend"]["action"] is None and by["trend"]["tone"] == "neutral"
     assert all(len(i["title"]) <= 60 and len(i["detail"] or "") <= 140 for i in s["items"])
-    assert s["summary_md"] == "2 things need you now, 3 soon."
+    assert s["summary_md"] == "2 things need you now, 3 coming up."
     known = KnownNumbers(s["facts"])
     assert all(known.knows(f) for i in s["items"] for f in _figures(f"{i['title']} {i['detail'] or ''}"))
 
