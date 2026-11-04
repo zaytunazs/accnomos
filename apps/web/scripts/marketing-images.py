@@ -24,21 +24,21 @@ JOBS: dict[str, tuple[Path, tuple[int, int, int, int] | None, int]] = {
     "hero-review-640": (SHOTS / "04-scan.png", None, 640),
     "hero-phone": (SHOTS / "05-proposal-phone.png", None, 390),
     "hero-phone-200": (SHOTS / "05-proposal-phone.png", None, 200),  # shown at about 130-200 px wide
-    # The five steps of the process animation (main column only, 816 x 510 shown at 16:10; the highlight boxes in
+    # The five steps of the process animation (main column of the 232 px sidebar layout, 1016 x 635 scaled to 816 x 510 at 16:10; the highlight boxes in
     # src/components/marketing/ProcessDemo.tsx are percentages of these crops).
     "step-1-receipt": (ROOT / "apps/web/public/sample-receipt.png", None, 750),
-    "step-2-read": (SHOTS / "04-scan.png", (348, 290, 1164, 800), 816),
-    "step-3-check": (SHOTS / "05-proposal.png", (348, 290, 1164, 800), 816),
-    "step-4-approved": (SHOTS / "06-approve.png", (348, 0, 1164, 510), 816),
-    "step-5-vat": (SHOTS / "07-vat.png", (348, 0, 1164, 510), 816),
+    "step-2-read": (SHOTS / "05-proposal.png", (248, 66, 1264, 701), 816),
+    "step-3-check": (SHOTS / "05-proposal.png", (248, 66, 1264, 701), 816),
+    "step-4-approved": (SHOTS / "06-approve.png", (248, 62, 1264, 697), 816),
+    "step-5-vat": (SHOTS / "07-vat.png", (248, 64, 1264, 699), 816),
     # Feature screens (main column, below the sample banner where there is one).
-    "feat-invoices": (SHOTS / "invoices.png", (352, 50, 1160, 600), 808),
-    "feat-reports": (SHOTS / "reports-pl.png", (352, 50, 1160, 800), 808),
-    "feat-contacts": (SHOTS / "contacts-statement.png", (352, 50, 1240, 800), 888),
-    "feat-files": (SHOTS / "02-files.png", (352, 0, 1160, 560), 808),
-    "feat-your-data": (SHOTS / "settings-your-data.png", (352, 50, 1160, 760), 808),
-    "feat-ask": (SHOTS / "10-ask.png", (352, 180, 1160, 740), 808),
-    "feat-action": (SHOTS / "11-invoice-card.png", (352, 180, 1160, 580), 808),
+    "feat-invoices": (SHOTS / "invoices.png", (248, 40, 1264, 732), 808),
+    "feat-reports": (SHOTS / "reports-pl.png", (248, 40, 1264, 800), 808),
+    "feat-contacts": (SHOTS / "contacts-statement.png", (248, 40, 1264, 800), 888),
+    "feat-files": (SHOTS / "02-files.png", (248, 64, 1264, 768), 808),
+    "feat-your-data": (SHOTS / "settings-your-data.png", (352, 40, 1160, 750), 808),
+    "feat-ask": (SHOTS / "10-ask.png", (248, 96, 1264, 800), 808),
+    "feat-action": (SHOTS / "11-invoice-card.png", (248, 100, 1264, 603), 808),
     # Android (emulator, signed out, labelled sample data).
     "android-review": (MOBILE / "review.png", None, 360),
     "android-ask": (MOBILE / "ask.png", None, 360),

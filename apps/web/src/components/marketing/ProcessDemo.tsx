@@ -36,7 +36,7 @@ const STEPS: Step[] = [
     width: 816,
     height: 510,
     alt: "The Review card for Novex Office Supplies Ltd, £51.90: confidence 97 %, read by Glimmer 30B, date 2 Nov 2026, VAT number GB 882431902, net £43.25, VAT £8.65, paid by card ending 4821, and the proposed entry.",
-    mark: { left: 29, top: 15, width: 53, height: 9 },
+    mark: { left: 22, top: 6.5, width: 43, height: 12 },
   },
   {
     title: "Code checks it",
@@ -45,7 +45,7 @@ const STEPS: Step[] = [
     width: 816,
     height: 510,
     alt: "The proposed entry (office supplies £43.25, VAT to reclaim £8.65, paid from business card £51.90), the line “Why: 2 lines, totals add up (43.25 + 8.65 = 51.90) — Checker, code”, and the verifier agreeing on all six fields.",
-    mark: { left: 4, top: 53, width: 92, height: 32 },
+    mark: { left: 3.5, top: 48.5, width: 93, height: 29 },
   },
   {
     title: "You approve, on phone or web",
@@ -54,7 +54,7 @@ const STEPS: Step[] = [
     width: 816,
     height: 510,
     alt: "The Review page after approving: “Approved · Autopilot will do this for Novex Office Supplies Ltd next time · U to undo”, and nothing left waiting.",
-    mark: { left: 2, top: 8.5, width: 95, height: 9 },
+    mark: { left: 1, top: 0.5, width: 98, height: 5.5 },
   },
   {
     title: "The VAT box fills",
@@ -63,7 +63,7 @@ const STEPS: Step[] = [
     width: 816,
     height: 510,
     alt: "The nine-box VAT return: Box 4, VAT reclaimed on purchases, £8.65 from 1 entry; Box 5, net VAT, £8.65; Box 7, purchases excluding VAT, £43.",
-    mark: { left: 3, top: 32.5, width: 93, height: 19 },
+    mark: { left: 1.5, top: 16.5, width: 97, height: 14.5 },
   },
 ];
 

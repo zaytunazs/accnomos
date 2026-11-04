@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/app_mode.dart';
@@ -113,9 +114,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   Widget build(BuildContext context) {
     final busy = _busy != null;
     final statusBar = MediaQuery.paddingOf(context).top;
-    return Scaffold(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AccnomosStatusBar.onDark,
+      child: Scaffold(
       backgroundColor: AccnomosColors.ground,
-      // The status bar keeps the hero's dark teal while the page scrolls, so
+      // The status bar keeps the hero's deep brown while the page scrolls, so
       // text never runs under the clock.
       body: Column(
         children: [
@@ -132,6 +135,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
