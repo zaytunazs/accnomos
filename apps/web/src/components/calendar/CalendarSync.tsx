@@ -31,7 +31,11 @@ const RESYNC_MS = 6 * 60 * 60 * 1000; // automatic: refresh when Home opens and 
  * Deadlines into the user's calendar: "Add to calendar" (all upcoming deadlines, safe to repeat) and the switch
  * "Add all deadlines to my calendar automatically", which re-adds them when Home opens. Used on Home and on /calendar.
  */
-export function useDeadlineSync(account: AccountInfo | null | undefined, auto: boolean) {
+export function useDeadlineSync(account: AccountInfo | null | undefined, auto: boolean, onSynced?: () => void) {
+  const synced = useRef(onSynced);
+  useEffect(() => {
+    synced.current = onSynced;
+  });
   const [status, setStatus] = useState<RtDeadlineStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -52,6 +56,7 @@ export function useDeadlineSync(account: AccountInfo | null | undefined, auto: b
       const clashes = r.conflicts.map((c) => `${c.a.subject} is on the same day as ${clashLabel(c.b)}`);
       setMessage(clashes.length ? `${said} Note: ${clashes.join("; ")}.` : said);
       setStatus(await runtime.deadlinesStatus(account));
+      synced.current?.();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Couldn't add the deadlines just now.");
     } finally {
@@ -100,8 +105,17 @@ export function useDeadlineSync(account: AccountInfo | null | undefined, auto: b
 
 export type DeadlineSync = ReturnType<typeof useDeadlineSync>;
 
-export default function CalendarSync({ account, auto = false }: { account: AccountInfo; auto?: boolean }) {
-  return <CalendarSyncPanel state={useDeadlineSync(account, auto)} />;
+export default function CalendarSync({
+  account,
+  auto = false,
+  onSynced,
+}: {
+  account: AccountInfo;
+  auto?: boolean;
+  /** Called after each sync, e.g. so /calendar reloads its list. */
+  onSynced?: () => void;
+}) {
+  return <CalendarSyncPanel state={useDeadlineSync(account, auto, onSynced)} />;
 }
 
 /** The switch, the "Add to calendar" button and the status line, for a sync state owned by the caller. */

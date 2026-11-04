@@ -195,7 +195,7 @@ function Signed({ account }: { account: AccountInfo }) {
           </div>
         </form>
       )}
-      <CalendarSync account={account} />
+      <CalendarSync account={account} onSynced={() => void load()} />
       {notice && <p className="text-[14px] font-semibold text-teal-dark" aria-live="polite">{notice}</p>}
       {error ? (
         <RuntimeErrorNote message={error} onRetry={() => void load()} />
