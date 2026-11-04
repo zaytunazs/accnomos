@@ -155,10 +155,10 @@ void main() {
       expect(requested.single.headers['content-type'], startsWith('multipart/form-data'));
     });
 
-    test('a non-CSV file is refused before upload', () async {
+    test('a file that is neither CSV nor PDF is refused before upload', () async {
       const channel = MethodChannel('test/files2');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
-        return {'name': 'statement.pdf', 'bytes': Uint8List(4)};
+        return {'name': 'statement.xlsx', 'bytes': Uint8List(4)};  // a PDF is read by the runtime now
       });
       final note = await pickAndImportStatement(client(), picker: FilePicker(channel: channel));
       expect(note, contains('CSV'));
