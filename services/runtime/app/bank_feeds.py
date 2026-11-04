@@ -72,6 +72,10 @@ CONSENT_DAYS = 90  # UK AIS consent (FCA PS21/19; TrueLayer's refresh token last
 RECONFIRM_DAYS = 14  # ask the user to reconfirm from this many days before the consent ends
 FIRST_SYNC_DAYS = 89  # how far back the first sync reads (banks give at least 90 days; some more)
 OVERLAP_DAYS = 7  # later syncs re-read this far back: late-posted lines are caught, seen ones dropped by id
+#: A demo reads TrueLayer's mock bank, which carries years of sample lines on several accounts: keep it to the
+#: newest few on the first account, so the demo's Bank page stays a page and not a dump.
+DEMO_SYNC_DAYS = 30
+DEMO_MAX_LINES = 40
 STATE_TTL_S = 900
 TEST_TOKEN_KEY = base64.b64encode(b"accnomos-test-mode-bankfeed-key!").decode()  # 32 bytes, test mode only
 ID_RE = re.compile(r"^[A-Za-z0-9_:-][A-Za-z0-9._:-]{0,127}$")  # ids put in a path or a file; never "." or ".."
@@ -787,25 +791,29 @@ class SyncResult(BaseModel):
 
 
 async def _fetch(
-    api: TrueLayerApi, conn: FeedConnection, key: bytes, on: date
+    api: TrueLayerApi, conn: FeedConnection, key: bytes, on: date, demo: bool = False
 ) -> tuple[list[BankLine], int, str | None]:
-    """(lines, skipped, new refresh token or None) for one connection."""
+    """(lines, skipped, new refresh token or None) for one connection. A demo reads only the first account, the
+    last DEMO_SYNC_DAYS days, and keeps the newest DEMO_MAX_LINES lines."""
     tokens = await api.refresh(_refresh_token(conn, key))
     access = str(tokens["access_token"])
-    start = (conn.synced_to - timedelta(days=OVERLAP_DAYS)) if conn.synced_to else on - timedelta(days=FIRST_SYNC_DAYS)
+    first_days = DEMO_SYNC_DAYS if demo else FIRST_SYNC_DAYS
+    start = (conn.synced_to - timedelta(days=OVERLAP_DAYS)) if conn.synced_to else on - timedelta(days=first_days)
     lines: list[BankLine] = []
     skipped = 0
-    for acc in conn.accounts:
+    for acc in conn.accounts[:1] if demo else conn.accounts:
         for raw in await api.transactions(access, acc.id, start, on):
             ln = to_line(raw, conn.id, acc.id)
             if ln is None:
                 skipped += 1
             else:
                 lines.append(ln)
+    if demo and len(lines) > DEMO_MAX_LINES:
+        lines = sorted(lines, key=lambda x: (x.date, x.id))[-DEMO_MAX_LINES:]
     return lines, skipped, (str(tokens["refresh_token"]) if tokens.get("refresh_token") else None)
 
 
-async def sync(books: Books, user: str) -> SyncResult:
+async def sync(books: Books, user: str, demo: bool = False) -> SyncResult:
     """Fetch every live connection's transactions and add the lines not already in the books."""
     cfg, key = _need()
     feeds = await load_feeds(books)
@@ -826,7 +834,7 @@ async def sync(books: Books, user: str) -> SyncResult:
                 row.reauth = v.state == "reconnect"
                 continue
             try:
-                lines, bad, rotated = await _fetch(api, conn, key, on)
+                lines, bad, rotated = await _fetch(api, conn, key, on, demo)
             except TrueLayerError as exc:
                 # A refused refresh token: the consent was withdrawn at the bank, or has lapsed there early.
                 if exc.status in (400, 401):
