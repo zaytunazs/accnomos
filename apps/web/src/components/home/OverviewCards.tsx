@@ -8,7 +8,7 @@ import ExplainMore from "@/components/ExplainMore";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
 import { useLandlordOn } from "@/lib/property";
-import { runtime, type RtAgedSide, type RtPriceReport, type RtShoppingItem } from "@/lib/runtime";
+import { runtime, type RtAgedSide, type RtPriceReport, type RtShoppingItem, type RtSummaryItem } from "@/lib/runtime";
 import { pounds, SampleTag, shortDate, Skeleton } from "./HomeData";
 import { useOverview, useOverviewData } from "./Overview";
 
@@ -65,6 +65,58 @@ function Sample() {
   return useOverview().mode === "sample" ? <SampleTag /> : null;
 }
 
+const WHEN: Record<RtSummaryItem["priority"], string> = { 1: "Now", 2: "Soon", 3: "For information" };
+const TONE_DOT: Record<RtSummaryItem["tone"], string> = {
+  negative: "bg-[#FFF0F0] text-[#A12626] border-[#F3C4C4]",
+  warning: "bg-[#FFF4DC] text-[#8A470D] border-[#F0D9A8]",
+  positive: "bg-[#ECFDF3] text-[#166534] border-[#BFE6CD]",
+  neutral: "bg-white text-muted border-border",
+};
+const TONE_MARK: Record<RtSummaryItem["tone"], string> = { negative: "!", warning: "!", positive: "✓", neutral: "i" };
+
+/**
+ * The summary as a to-do list: code chose the items, their order and every figure; the AI may have reworded a line.
+ * Each item: a tone mark with its urgency in words (never colour alone), the title, a muted line of context and, where
+ * there is something to do, a link to do it. Information items come last, quieter.
+ */
+export function SummaryItems({ items, quiet = false }: { items: RtSummaryItem[]; quiet?: boolean }) {
+  return (
+    <ul data-summary-items="" className={`mt-3 divide-y divide-teal/15 transition-opacity duration-300 ${quiet ? "opacity-80" : ""}`}>
+      {items.map((it) => (
+        <li
+          key={it.id}
+          data-summary-item={it.id}
+          data-priority={it.priority}
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3 first:pt-0 last:pb-0"
+        >
+          <span
+            aria-hidden="true"
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold ${TONE_DOT[it.tone]}`}
+          >
+            {TONE_MARK[it.tone]}
+          </span>
+          <div className="min-w-0 flex-1 basis-56">
+            <p className={`text-[15px] leading-6 ${it.priority === 3 ? "font-semibold text-muted" : "font-bold text-ink"}`}>
+              <span className="sr-only">{WHEN[it.priority]}: </span>
+              {it.title}
+            </p>
+            {it.detail ? <p className="text-[13px] leading-5 text-muted">{it.detail}</p> : null}
+          </div>
+          {it.action ? (
+            <Link
+              href={it.action.route}
+              className="ml-10 inline-flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-xl border border-teal/40 bg-white px-4 text-sm font-bold text-teal-dark hover:bg-teal hover:text-white sm:ml-0"
+            >
+              {it.action.label}
+              <span aria-hidden="true">→</span>
+            </Link>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The summary at the top of Home: the AI's words (checked by code) or code's own, with what it was based on. */
 export function SummaryCard() {
   const o = useOverview();
@@ -90,7 +142,12 @@ export function SummaryCard() {
         </ExplainMore>
       </div>
       <div aria-live="polite" className="mt-2 min-h-[3.5rem]">
-        {s ? (
+        {s && s.items && s.items.length > 0 ? (
+          <div data-home-summary="">
+            <p className="text-[15px] font-semibold leading-6 text-teal-dark">{s.summary_md}</p>
+            <SummaryItems items={s.items} quiet={wording} />
+          </div>
+        ) : s ? (
           <p data-home-summary="" className={`text-[15px] leading-7 text-ink transition-opacity duration-300 ${wording ? "opacity-80" : ""}`}>
             {s.summary_md}
           </p>

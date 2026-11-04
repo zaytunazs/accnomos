@@ -185,14 +185,60 @@ export const sampleOverview: import("./runtime").RtHome = {
     { key: "vat", title: "VAT return Jul–Sep 2026", due: "2026-11-07", days_left: 11, href: "/vat", source_url: null },
   ],
   summary: {
-    summary_md:
-      "You had £12,480.00 in the bank on 24 Oct 2026. This year so far (1 Jan – 27 Oct 2026, accrual from approved " +
-      "entries), turnover was £148,620.00 and expenses £101,340.00: a net profit of £47,280.00, with turnover up 12% on " +
-      "1 Jan – 27 Oct 2025. To do: 3 items waiting in Review, 2 bank lines to match and 1 invoice overdue (£3,250.00). " +
-      "Next deadline: Pay run 2026-10 to confirm, due 31 Oct 2026 (in 4 days).",
+    summary_md: "3 things need you now, 2 soon.",
     model: "code",
     fallback_reason: "Sample books: code wrote this.",
     facts: {},
+    items: [
+      {
+        id: "overdue_invoices",
+        priority: 1,
+        tone: "negative",
+        title: "1 invoice overdue: £3,250.00",
+        detail: "Customers are late paying; a reminder usually helps.",
+        action: { label: "Chase", route: "/invoices?filter=overdue" },
+      },
+      {
+        id: "review",
+        priority: 1,
+        tone: "warning",
+        title: "3 items waiting for your approval",
+        detail: null,
+        action: { label: "Review", route: "/review" },
+      },
+      {
+        id: "payroll_due",
+        priority: 1,
+        tone: "warning",
+        title: "Pay run 2026-10 to confirm due 31 Oct",
+        detail: "Due 31 Oct 2026, in 4 days.",
+        action: { label: "Open", route: "/payroll" },
+      },
+      {
+        id: "vat_due",
+        priority: 2,
+        tone: "warning",
+        title: "VAT return Jul–Sep 2026 due 7 Nov",
+        detail: "Due 7 Nov 2026, in 11 days.",
+        action: { label: "File it", route: "/vat" },
+      },
+      {
+        id: "bank_unmatched",
+        priority: 2,
+        tone: "warning",
+        title: "2 bank lines to match",
+        detail: "Matching keeps your cash figure and VAT right.",
+        action: { label: "Match", route: "/bank/reconcile" },
+      },
+      {
+        id: "trend",
+        priority: 3,
+        tone: "positive",
+        title: "Turnover £148,620.00 this year, up 12%",
+        detail: "1 Jan – 27 Oct 2026, against the same dates last year.",
+        action: null,
+      },
+    ],
   },
   unavailable: [],
 };

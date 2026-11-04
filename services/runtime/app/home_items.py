@@ -71,9 +71,15 @@ def plural(n: int, one: str, many: str | None = None) -> str:
 
 def payee(label: str) -> str:
     """A bank payee in readable case: "BT BROADBAND" → "BT Broadband" (short words stay capitals: BT, EE, O2)."""
-    if label != label.upper():
-        return label
-    return " ".join(w if len(w) <= 3 else w.capitalize() for w in label.split())
+    words: list[str] = []
+    for w in label.split():
+        if sum(c.isdigit() for c in w) >= 3 and words:
+            break  # bank reference noise: "NETFLIX.COM 44444 ON 03 OCT" → "NETFLIX.COM"
+        words.append(w)
+    name = " ".join(words) or label
+    if name != name.upper():
+        return name
+    return " ".join(w if len(w) <= 3 else w.capitalize() for w in name.split())
 
 
 def clip(text: str, limit: int) -> str:

@@ -27,8 +27,12 @@ const PERSONAL = { name: "Sam at home", kind: "personal", settings: {} };
 test("business: the AI summary on top, then money, aged debts and deadlines, each linking to its page", async ({ page, runtime }) => {
   await home(page, runtime, COMPANY);
   const summary = card(page, "Your summary");
-  // Test mode: the stub AI words it, quoting only the facts it was given; code checked the numbers.
-  await expect(summary).toContainText("Test stub summary: no bank balance yet. 0 waiting in Review.");
+  // A to-do list chosen by code, worded by the stub AI (quoting only the facts it was given); code checked the numbers.
+  await expect(summary).toContainText("Test stub: 0 now, 1 soon.");
+  const vat = summary.locator('[data-summary-item="vat_due"]');
+  await expect(vat).toContainText("VAT return Jul–Sep 2026 due 7 Nov");
+  await expect(vat).toContainText("Soon:"); // the urgency in words for screen readers, not colour alone
+  await expect(vat.getByRole("link", { name: /File it/ })).toHaveAttribute("href", "/vat");
   await expect(summary).toContainText("worded by your AI (accnomos-test-stub), numbers checked by code");
 
   const money = card(page, "Money in and out");
@@ -86,13 +90,27 @@ test("personal books: no business cards (aged debts, payroll, CIS, VAT, Income T
 test("signed out (/try): the sample summary and cards are marked as sample", async ({ page }) => {
   await page.goto("/try");
   const summary = card(page, "Your summary");
-  await expect(summary).toContainText("You had £12,480.00 in the bank on 24 Oct 2026.");
+  await expect(summary).toContainText("3 things need you now, 2 soon.");
   await expect(summary).toContainText("Sample");
+  // Most urgent first; the information line last, with no link.
+  await expect(summary.locator("[data-summary-item]")).toHaveCount(6);
+  expect(await summary.locator("[data-summary-item]").evaluateAll((els) => els.map((e) => e.getAttribute("data-summary-item")))).toEqual([
+    "overdue_invoices",
+    "review",
+    "payroll_due",
+    "vat_due",
+    "bank_unmatched",
+    "trend",
+  ]);
+  await expect(summary.locator('[data-summary-item="trend"]').getByRole("link")).toHaveCount(0);
   await expect(card(page, "Payroll")).toContainText("The 2026-10 pay run is prepared and waits for you");
   // The chart has its figures as a table: a text alternative for the bars, which are hidden from screen readers.
   const money = card(page, "Money in and out");
   await expect(money.getByRole("table")).toContainText("£18,420");
   await expect(money.locator("[aria-hidden=true] span").first()).toBeAttached();
+  // An item's link does the job: "Chase" opens Invoices on the overdue filter.
+  await summary.locator('[data-summary-item="overdue_invoices"]').getByRole("link", { name: /Chase/ }).click();
+  await expect(page).toHaveURL(/\/invoices\?filter=overdue$/);
 });
 
 /** font size, weight and left edge of an element. */
@@ -147,7 +165,7 @@ test.describe("phone width (360 px)", () => {
 
   test("the sample Home (/try, signed out): no sideways scroll either", async ({ page }) => {
     await page.goto("/try");
-    await expect(card(page, "Your summary")).toContainText("£12,480.00");
+    await expect(card(page, "Your summary")).toContainText("£148,620.00");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
   });
 

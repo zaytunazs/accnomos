@@ -4311,11 +4311,21 @@ export interface RtHomeDue {
   href: string;
   source_url: string | null;
 }
+/** GET /books/home `summary.items`: what needs the owner, most urgent first (app/home_items.py). */
+export interface RtSummaryItem {
+  id: string; // "review", "vat_due", "overdue_invoices", "budget_over:<category>", "goal:<id>", …
+  priority: 1 | 2 | 3; // 1 act now · 2 soon · 3 for information
+  tone: "negative" | "warning" | "positive" | "neutral";
+  title: string; // ≤ 60 characters
+  detail: string | null; // ≤ 140 characters
+  action: { label: string; route: string } | null; // a web path
+}
 export interface RtHomeSummary {
-  summary_md: string;
+  summary_md: string; // one line above `items` when there are any; otherwise the summary paragraph
   model: string; // "code" when no AI is set up
   fallback_reason: string | null;
   facts: Record<string, unknown>;
+  items?: RtSummaryItem[];
 }
 /** GET /books/home `snapshot`: the P&L year to date against the same span last year, and the VAT tile's figure. */
 export interface RtHomeYearFigures {
