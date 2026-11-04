@@ -1,5 +1,5 @@
 # ruff: noqa  (one-off video edit script; kept as it was run)
-"""Kokoro (open-source, Apache-2.0) voice-over for the v2 demo video. Runs on the Spark in ~/spark/accnomos/tts/.venv.
+"""Kokoro (open-source, Apache-2.0) voice-over for the v2/v3 demo video. Runs on the Spark in ~/spark/accnomos/tts/.venv.
 
     python tts.py LINES.json OUTDIR VOICE [--ids s1,s3] [--speed 1.0] [--suffix _x]
 Writes OUTDIR/<id><suffix>.wav (24 kHz mono) and prints each length. Pronunciation fixes are applied to the spoken
@@ -14,6 +14,7 @@ import numpy as np
 from kokoro import KPipeline
 
 SAY = {
+    "accnomos.com": "accnomos dot com",
     "£450": "four hundred and fifty pounds",
     "CSV": "C S V",
     "HMRC's": "H M R C's",

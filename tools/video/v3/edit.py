@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # ruff: noqa  (one-off video edit script; kept as it was run)
-"""Demo video v2: cut the live footage, the voice-over and the cards into the submission video (ffmpeg + Pillow).
+"""Demo video v3: cut the live footage, the voice-over and the cards into the submission video (ffmpeg + Pillow).
 
-    python3 edit.py ROOT [--only s3] [--draft]
-ROOT holds raw/ (capture_live.ts WebMs + phone.ps1 MP4s, each with its marks), vo/s1..s8.wav, cards/ (the Muse Image
+    python3 edit.py ROOT [--only s3] [--keep]
+ROOT holds raw/ (capture_live.ts WebMs + phone.ps1 MP4s, each with its marks), vo/<scene>.wav (title, f1, s1..s8, s4b), cards/ (the Muse Image
 art: judges-title.png, section-demo.png, section-meta-ai.png) and fonts/ (Atkinson Hyperlegible). Writes ROOT/out/:
 
-  accnomos-demo-v2.mp4          1080p H.264, voice-over + burned-in UK English captions
-  accnomos-demo-v2-novo.mp4     the same picture without voice or captions, for a new voice-over
-  accnomos-demo-v2-vo.wav       the voice-over alone, timed to the picture (48 kHz)
-  accnomos-demo-v2.srt          the captions
-  timeline.json                 every scene and shot with its start time (for re-voicing)
+  accnomos-demo-v3.mp4          1080p H.264, voice-over + burned-in UK English captions
+  accnomos-demo-v3-novo.mp4     the same picture without voice or captions, for a new voice-over
+  accnomos-demo-v3-vo.wav       the voice-over alone, timed to the picture (48 kHz)
+  accnomos-demo-v3.srt          the captions
+  accnomos-demo-v3-contact-sheet.jpg, timeline.json
 
 The edit is data: EDL below. Each scene has a voice line (vo/<id>.wav, starting `lead` seconds into the scene) and
 shots played back to back; a shot's `segs` pick seconds of its source ("a..b", where a/b are numbers, "end", or a
@@ -49,8 +49,12 @@ XF = 0.3  # crossfade between the kept parts of one recording
 
 # --------------------------------------------------------------------------------------------------------------------
 # The edit. Lower thirds: (feature, the Meta model at work). Text on screen: UK English, Meta models only.
+# The judges stop at 3:00: keep the total <= 2:58.
+# A scene whose footage is missing from raw/ is left out (with a warning), so the edit still renders without it.
+HMRC_PW = [{"until": "hmrc", "box": [596, 838, 200, 54]}]  # the sandbox test user's password, blurred
 EDL: list[dict] = [
-    {"id": "title", "card": "title", "dur": 2.6},
+    {"id": "title", "lead": 0.6, "card": "title", "dur": 9.4},
+    {"id": "f1", "lead": 0.5, "card": "features", "dur": 5.8},
     {
         "id": "s1",
         "lead": 0.4,
@@ -62,7 +66,7 @@ EDL: list[dict] = [
                 "segs": ["0..end"],
                 "phone": "p-home",
                 "psegs": ["0..end"],
-                "dur": 19.2,
+                "dur": 17.4,
             },
         ],
     },
@@ -71,8 +75,14 @@ EDL: list[dict] = [
         "lead": 0.4,
         "lt": ("Goals and spending", "Progress note by Muse Spark"),
         "shots": [
-            {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 6.0, "crop": [640, 220, 1280, 720]},
-            {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 7.4},
+            {
+                "layout": "full",
+                "src": "w-spending",
+                "segs": ["2.6..end"],
+                "dur": 4.8,
+                "crop": [640, 220, 1280, 720],
+            },
+            {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 6.2},
         ],
     },
     {
@@ -80,13 +90,13 @@ EDL: list[dict] = [
         "lead": 0.4,
         "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"),
         "shots": [
-            {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 4.8},
-            {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.4},
+            {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 3.8},
+            {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.0},
             {
                 "layout": "full",
                 "src": "w-talk",
                 "segs": ["1.0..speak+2.2", "ready-0.3..end"],
-                "dur": 10.8,
+                "dur": 10.2,
                 "crop": [560, 0, 1360, 765],
             },
         ],
@@ -100,14 +110,42 @@ EDL: list[dict] = [
                 "layout": "phone",
                 "src": "p-receipt",
                 "segs": ["1.6..gallery+0.4", "ready-0.2..wait2+0.8", "ready2+2.0..ready2+7.5"],
-                "dur": 7.8,
+                "dur": 7.2,
                 "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve."),
             },
             {
                 "layout": "full",
                 "src": "w-invoice",
                 "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"],
-                "dur": 14.8,
+                "dur": 12.0,
+            },
+        ],
+    },
+    {
+        "id": "s4b",
+        "lead": 0.4,
+        "lt": ("Ask anything, in plain words", "Muse Spark · figures by code"),
+        "shots": [
+            {
+                "layout": "full",
+                "src": "w-profit",
+                "segs": ["0..wait+0.6", "ready-0.3..end"],
+                "dur": 5.6,
+                "crop": "ASK",
+            },
+            {
+                "layout": "full",
+                "src": "w-timesheet",
+                "segs": ["0..wait+0.6", "ready-0.3..approve+0.4", "ready2-0.3..end"],
+                "dur": 8.6,
+                "crop": "ASK",
+            },
+            {
+                "layout": "full",
+                "src": "w-tiles",
+                "segs": ["0..wait+0.6", "ready-0.3..end"],
+                "dur": 5.6,
+                "crop": "ASK",
             },
         ],
     },
@@ -116,19 +154,20 @@ EDL: list[dict] = [
         "lead": 0.4,
         "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"),
         "shots": [
-            {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 4.6},
+            {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 3.8},
             {
                 "layout": "full",
                 "src": "w-vat-hmrc",
                 "segs": [
-                    "0.5..4.5",
-                    "user+0.3..userReady+1.2",
-                    "hmrc+3.0..hmrc+5.0",
-                    "back-3.2..back-0.8",
-                    "submit-1.6..submit+0.6",
-                    "receipt+0.3..end",
+                    "0.5..3.8",
+                    "user+0.3..userReady+1.0",
+                    "hmrc+3.0..hmrc+4.8",
+                    "back-3.0..back-0.9",
+                    "submit-1.3..submit+0.5",
+                    "receipt+0.3..receipt+4.6",
                 ],
-                "dur": 13.0,
+                "dur": 11.2,
+                "blur": HMRC_PW,
             },
         ],
     },
@@ -137,32 +176,80 @@ EDL: list[dict] = [
         "lead": 0.4,
         "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"),
         "shots": [
-            {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 5.2},
+            {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 4.8},
             {
                 "layout": "split",
                 "src": "w-personal",
                 "segs": ["0..end"],
                 "phone": "p-personal",
                 "psegs": ["0..end"],
-                "dur": 7.8,
+                "dur": 7.2,
             },
-            {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 5.0},
+            {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 4.4},
         ],
     },
     {
         "id": "s7",
         "lead": 0.4,
-        "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"),
+        "lt": ("Your choice of Meta model", "Muse Glimmer 30B (open weights) · Muse Spark (Meta API)"),
         "shots": [
-            {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 6.6, "crop": [240, 40, 1600, 900]},
-            {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 4.8},
-            {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 6.4},
-            {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 5.0},
+            {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 4.4, "crop": [240, 40, 1600, 900]},
+            {"layout": "full", "src": "w-route", "segs": ["set1+0.2..ask1-0.2"], "dur": 2.4, "crop": "SET"},
+            {
+                "layout": "full",
+                "src": "w-route",
+                "segs": ["ask1..wait+0.5", "ready-0.2..by1+2.4"],
+                "dur": 4.4,
+                "crop": "ANS",
+            },
+            {"layout": "full", "src": "w-route", "segs": ["set2+0.2..ask2-0.2"], "dur": 2.0, "crop": "SET"},
+            {
+                "layout": "full",
+                "src": "w-route",
+                "segs": ["ask2..wait2+0.5", "ready2-0.2..by2+2.4"],
+                "dur": 4.0,
+                "crop": "ANS",
+            },
+            {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 3.6},
+            {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 2.6},
         ],
     },
-    {"id": "s8", "lead": 0.5, "card": "end", "dur": 21.0},
-    {"id": "judges", "card": "judges", "dur": 7.0},
+    {"id": "s8", "lead": 0.4, "card": "end", "dur": 24.0},
+    {"id": "judges", "card": "judges", "dur": 6.0},
 ]
+# 16:9 crops of the 1920 x 1080 frame, filled in once the takes are looked at (None = whole frame)
+CROPS: dict[str, list[int] | None] = {
+    "ASK": [376, 140, 1504, 846],
+    "SET": [240, 40, 1600, 900],
+    "ANS": [376, 140, 1504, 846],
+}
+
+
+def pick(edl: list[dict], raw: Path) -> list[dict]:
+    """The scenes with named crops resolved; a scene without its footage is left out."""
+    out = []
+    for sc in edl:
+        sc = dict(sc)
+        if "shots" in sc:
+            shots = []
+            for sh in sc["shots"]:
+                sh = dict(sh)
+                if isinstance(sh.get("crop"), str):
+                    sh["crop"] = CROPS[sh["crop"]]
+                shots.append(sh)
+            missing = [
+                s
+                for sh in shots
+                for s in (sh["src"], sh.get("phone"))
+                if s and not any((raw / f"{s}{e}").exists() for e in (".webm", ".mp4"))
+            ]
+            if missing:
+                print(f"SKIP {sc['id']}: no footage for {sorted(set(missing))}", file=sys.stderr)
+                continue
+            sc["shots"] = shots
+        out.append(sc)
+    return out
+
 
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -419,6 +506,21 @@ def card_image(root: Path, work: Path, fonts: Fonts, kind: str) -> Path:
         d.text((150, 572), "Your business and household money,", font=fonts.r(52), fill=CREAM)
         d.text((150, 640), "in plain English.", font=fonts.r(52), fill=CREAM)
         d.text((150, 760), "Running on Meta's Muse models", font=fonts.b(38), fill=GOLD)
+        # what existed before the hackathon, and what was built during it (Cerebral Valley asks for this first)
+        band = Image.new("RGBA", (W, 150), (42, 26, 13, 200))
+        img.paste(band, (0, 900), band)
+        d.text(
+            (150, 922),
+            "Before 26 Oct: only our own AI server with a local model runtime.",
+            font=fonts.r(34),
+            fill=CREAM,
+        )
+        d.text(
+            (150, 972),
+            "Built during the hackathon, 26 Oct – 4 Nov: the app (web and Android) and every feature you will see.",
+            font=fonts.b(34),
+            fill=GOLD,
+        )
     elif kind == "end":
         img = fill(Image.open(cards / "section-demo.png"))
         d = ImageDraw.Draw(img)
@@ -427,10 +529,11 @@ def card_image(root: Path, work: Path, fonts: Fonts, kind: str) -> Path:
         def centre(y: int, text: str, font, colour: str) -> None:
             d.text((cx - d.textlength(text, font=font) / 2, y), text, font=font, fill=colour)
 
-        centre(515, "Accnomos", fonts.b(104), BROWN)
-        centre(648, "accnomos.com  ·  Try the demo, no sign-in", fonts.b(46), DARK)
-        centre(716, "github.com/zaytunazs/accnomos", fonts.r(42), DARK)
-        centre(790, "HMRC filing in this demo goes to HMRC's sandbox.", fonts.r(30), "#6b5a48")
+        centre(470, "Accnomos", fonts.b(104), BROWN)
+        centre(600, "accnomos.com  ·  Try the demo, no sign-in", fonts.b(46), DARK)
+        centre(684, "Step-by-step how-to guides:", fonts.b(36), BROWN)
+        centre(734, "accnomos.com  ·  github.com/zaytunazs/accnomos/tree/main/docs/howto", fonts.r(36), DARK)
+        centre(806, "HMRC filing in this demo goes to HMRC's sandbox.", fonts.r(30), "#6b5a48")
     elif kind == "judges":
         img = fill(Image.open(cards / "section-meta-ai.png"))
         scrim = Image.new("RGBA", (W, H), (42, 26, 13, 215))
@@ -487,7 +590,16 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
         if shot.get("crop"):  # [x, y, w, h] of the 1920 x 1080 frame, enlarged to fill it (16:9 crops only)
             x, y, cw, ch = shot["crop"]
             pre += f"crop={cw}:{ch}:{x}:{y},scale={W}:{H}:flags=lanczos,"
-        f, v = chain("0:v", segments(raw, shot["src"], shot["segs"]), dur, "a", pre=pre)
+        src_in = "0:v"
+        for k, b in enumerate(shot.get("blur", [])):  # blur a box of the source until a mark (e.g. a password)
+            until = resolve(b["until"], marks_of(raw, shot["src"]), probe_dur(source(raw, shot["src"])))
+            bx, by, bw, bh = b["box"]
+            fl.append(
+                f"[{src_in}]split[bz{k}a][bz{k}b];[bz{k}b]crop={bw}:{bh}:{bx}:{by},boxblur=14:4[bz{k}c];"
+                f"[bz{k}a][bz{k}c]overlay={bx}:{by}:enable='lt(t,{until:.3f})'[bz{k}]"
+            )
+            src_in = f"bz{k}"
+        f, v = chain(src_in, segments(raw, shot["src"], shot["segs"]), dur, "a", pre=pre)
         fl.append(f)
         base = v
         n = 1
@@ -570,10 +682,109 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
     tmp.rename(out)
 
 
+FEATURES = [
+    "Receipts & invoices",
+    "Bank matching",
+    "Invoices & quotes",
+    "Jobs & timesheets",
+    "Payroll estimates",
+    "VAT to HMRC (sandbox)",
+    "MTD income tax for sole traders & landlords",
+    "Household budgets & goals",
+    "Calendar, notes & tasks by voice",
+    "Reports & CSV exports",
+    "Your own OneDrive",
+    "Your choice of Meta model (local or API)",
+]
+
+
+def render_features(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) -> None:
+    """The feature list: brand brown, two columns, each line fading and rising in a beat after the one before."""
+    dur = scene["dur"]
+    n = round(dur * FPS)
+    base = Image.new("RGBA", (W, H), BROWN)
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse((-300, -500, W + 300, H + 200), fill=(120, 66, 14, 150))
+    base = Image.alpha_composite(base, glow.filter(ImageFilter.GaussianBlur(160)))
+
+    def layer(draw_fn, size):
+        im = Image.new("RGBA", size, (0, 0, 0, 0))
+        draw_fn(ImageDraw.Draw(im))
+        return im
+
+    fh, fi = fonts.b(76), fonts.b(37)
+    head = layer(
+        lambda d: (
+            d.text((0, 0), "What Accnomos does", font=fh, fill=CREAM),
+            d.rectangle((4, 112, 150, 121), fill=GOLD),
+        ),
+        (1200, 130),
+    )
+    items = []
+    for t in FEATURES:
+        items.append(
+            layer(
+                lambda d, t=t: (d.ellipse((0, 16, 20, 36), fill=GOLD), d.text((44, 0), t, font=fi, fill=CREAM)),
+                (880, 60),
+            )
+        )
+    cols, x0s, y0, pitch = 6, (150, 1000), 300, 104
+    pos = [(x0s[i // cols], y0 + (i % cols) * pitch) for i in range(len(items))]
+
+    def ease(u: float) -> float:
+        u = max(0.0, min(1.0, u))
+        return 1 - (1 - u) ** 3
+
+    tmp = out.with_name(out.stem + ".part.mp4")
+    p = subprocess.Popen(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-s",
+            f"{W}x{H}",
+            "-r",
+            str(FPS),
+            "-i",
+            "-",
+            *ENC,
+            str(tmp),
+        ],
+        stdin=subprocess.PIPE,
+    )
+    for f in range(n):
+        t = f / FPS
+        img = base.copy()
+        for lay, (x, y), st in [(head, (150, 120), 0.05)] + [
+            (it, xy, 0.45 + i * 0.14) for i, (it, xy) in enumerate(zip(items, pos))
+        ]:
+            a = ease((t - st) / 0.45)
+            if a <= 0:
+                continue
+            l2 = lay.copy()
+            l2.putalpha(l2.getchannel("A").point(lambda v, a=a: int(v * a)))
+            img.alpha_composite(l2, (x, int(y + 22 * (1 - a))))
+        if t > dur - 0.35:  # dip towards the next scene
+            img = Image.blend(img, Image.new("RGBA", (W, H), BROWN), (t - (dur - 0.35)) / 0.35 * 0.6)
+        p.stdin.write(img.convert("RGB").tobytes())
+    p.stdin.close()
+    if p.wait() != 0:
+        raise SystemExit("ffmpeg failed: features card")
+    tmp.rename(out)
+
+
 def render_card(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) -> None:
     img = card_image(root, work, fonts, scene["card"])
     dur = scene["dur"]
     # a slow push-in (3 %) so a long card does not look frozen; fade in from black on the first card
+    if scene["card"] == "features":
+        return render_features(root, work, fonts, scene, out)
     z = {"title": 0.03, "end": 0.02, "judges": 0.0}[scene["card"]]
     vf = (
         f"scale={W * 2}:{H * 2},zoompan=z='1+{z}*on/({dur * FPS:.0f})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={round(dur * FPS)}:s={W}x{H}:fps={FPS},"
@@ -765,6 +976,7 @@ def main() -> None:
     a = ap.parse_args()
     root = Path(a.root).resolve()
     work, out = root / "work", root / "out"
+    stem = "accnomos-demo-v3"
     work.mkdir(exist_ok=True)
     out.mkdir(exist_ok=True)
     fonts = Fonts(root)
@@ -773,7 +985,7 @@ def main() -> None:
 
     files, timeline, caps, vo_parts = [], [], [], []
     t = 0.0
-    for sc in EDL:
+    for sc in pick(EDL, root / "raw"):
         sid = sc["id"]
         wav = root / "vo" / f"{sid}.wav"
         vo_len = wav_dur(wav) if wav.exists() else 0.0
@@ -846,7 +1058,7 @@ def main() -> None:
     )
 
     # voice-over track, timed to the picture, loudness-normalised (-16 LUFS, web)
-    vo = out / "accnomos-demo-v2-vo.wav"
+    vo = out / f"{stem}-vo.wav"
     ins, flt = [], []
     for k, (w, st) in enumerate(vo_parts):
         ins += ["-i", str(w)]
@@ -875,11 +1087,11 @@ def main() -> None:
         ]
     )
 
-    srt, ass = out / "accnomos-demo-v2.srt", work / "captions.ass"
+    srt, ass = out / f"{stem}.srt", work / "captions.ass"
     write_subs(caps, srt, ass)
     fontsdir = str(root / "fonts")
-    final = out / "accnomos-demo-v2.mp4"
-    tmp = final.with_name("final.part.mp4")
+    final = out / f"{stem}.mp4"
+    tmp = final.with_name(f"{stem}.part.mp4")
     run(
         [
             "ffmpeg",
@@ -918,8 +1130,8 @@ def main() -> None:
         ]
     )
     tmp.rename(final)
-    novo = out / "accnomos-demo-v2-novo.mp4"
-    tmp = novo.with_name("novo.part.mp4")
+    novo = out / f"{stem}-novo.mp4"
+    tmp = novo.with_name(f"{stem}-novo.part.mp4")
     run(
         [
             "ffmpeg",
@@ -958,7 +1170,7 @@ def main() -> None:
         ]
     )
     tmp.rename(novo)
-    contact_sheet(final, timeline, out / "accnomos-demo-v2-contact-sheet.jpg")
+    contact_sheet(final, timeline, out / f"{stem}-contact-sheet.jpg")
     (out / "timeline.json").write_text(
         json.dumps({"total": round(total, 2), "scenes": timeline}, indent=1, ensure_ascii=False), encoding="utf-8"
     )
