@@ -2,8 +2,10 @@
 
 Two methods, tried in order; any error or doubt returns the original bytes untouched:
 
-* sam  -> Meta SAM 3.1 on `/responses` (key mode only, and only with `SAM_CROP=1`).
-          Prompts "receipt", then "invoice"; takes the largest box, pads 3 %, crops.
+* sam  -> Meta SAM 3.1 on `/responses`, only with `SAM_CROP=1`: the user's own Meta key, else the server's `meta`
+          provider (META_API_KEY) from the chain. Not under X-AI-Route local_only (nothing goes to Meta) or
+          local_first (spend no Meta credit when a local model answers). Prompts "receipt", then "invoice";
+          takes the largest confident box, pads 3 %, crops. Any error or timeout falls back to code.
 * code -> Pillow + numpy: grayscale -> Otsu threshold -> largest bright connected
           component -> bounding box. Accepted only if it covers 25-95 % of the photo and
           the paper fills most of its box; otherwise the original is returned.
@@ -187,12 +189,13 @@ def code_box(img: Image.Image) -> tuple[Box | None, dict[str, Any]]:
 
 # --------------------------------------------------------------------------- method A: SAM 3.1
 #
-# UNVERIFIED WIRE FORMAT. The Meta docs could not be fetched when this was written, so the
-# request follows the research note (POST {base}/responses, model "sam-3.1", input_text noun +
-# input_image) and the parser below is deliberately tolerant. It is off unless SAM_CROP=1.
-# Fixture: services/runtime/tests/fixtures/sam_response.json. Check both against a live call
-# before enabling.
+# Wire format from dev.meta.ai/docs/sam (segmenting, reading-segmentation), checked against live calls on 4 Nov 2026
+# (evals/runs/sam_crop_live/): POST {base}/responses, model "sam-3.1", one user message with an `input_text` noun phrase
+# and an `input_image` data URL; `metadata.include_confidence` is the string "true". The image comes back as one
+# `output_text` line: `<0f>` then comma-separated records `id<|box;x1=;y1=;x2=;y2=;w=;h=;c=|><|mask;...|>`, corners in
+# source pixels with x2/y2 inclusive. No match = empty text. The JSON shapes below are kept as a tolerant fallback.
 
+_BOX_TOKEN = re.compile(r"<\|box;([^|]*)\|>")
 _BOX_KEYS = ("box", "bbox", "bounding_box", "xyxy")
 _QUAD = re.compile(
     r"\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]"
@@ -204,6 +207,7 @@ def sam_request_body(noun: str, data_url: str) -> dict[str, Any]:
         "model": SAM_MODEL,
         "input": [
             {
+                "type": "message",
                 "role": "user",
                 "content": [
                     {"type": "input_text", "text": noun},
@@ -211,6 +215,8 @@ def sam_request_body(noun: str, data_url: str) -> dict[str, Any]:
                 ],
             }
         ],
+        # strings, not booleans (the docs); one-bit masks keep the reply small, we only use the box
+        "metadata": {"include_confidence": "true", "mask_encoding": "one_bit"},
     }
 
 
@@ -270,9 +276,27 @@ def _walk(obj: Any, out: list[tuple[Box, float | None]]) -> None:
                 _walk(v, out)
 
 
+def _box_tokens(text: str) -> list[tuple[Box, float | None]]:
+    """`<|box;x1=..;y1=..;x2=..;y2=..;w=..;h=..[;c=..]|>` tokens, parsed by key; x2/y2 inclusive -> exclusive."""
+    out: list[tuple[Box, float | None]] = []
+    for body in _BOX_TOKEN.findall(text):
+        kv: dict[str, float] = {}
+        for part in body.split(";"):
+            k, _, v = part.partition("=")
+            with contextlib.suppress(ValueError):
+                kv[k.strip()] = float(v)
+        if all(k in kv for k in ("x1", "y1", "x2", "y2")):
+            b = _as_box([kv["x1"], kv["y1"], kv["x2"] + 1, kv["y2"] + 1])
+            if b is not None:
+                out.append((b, kv.get("c")))
+    return out
+
+
 def parse_sam_boxes(data: dict[str, Any]) -> list[tuple[Box, float | None]]:
     """Every (box, score) found in a SAM response; masks (base85) are ignored."""
     text = _response_text(data).strip()
+    if "<|box;" in text:
+        return _box_tokens(text)
     found: list[tuple[Box, float | None]] = []
     if text:
         try:
@@ -300,8 +324,9 @@ def pick_sam_box(boxes: list[tuple[Box, float | None]], size: tuple[int, int]) -
 
 
 async def _call_sam(noun: str, data_url: str, cfg: AiConfig) -> dict[str, Any]:
-    headers = {"Authorization": f"Bearer {cfg.api_key}"}
-    async with httpx.AsyncClient(timeout=httpx.Timeout(SAM_TIMEOUT_S)) as client:
+    headers = cfg.auth_headers()
+    timeout = httpx.Timeout(SAM_TIMEOUT_S, connect=min(cfg.connect_s, SAM_TIMEOUT_S))
+    async with httpx.AsyncClient(timeout=timeout) as client:
         r = await client.post(f"{cfg.base_url}/responses", json=sam_request_body(noun, data_url), headers=headers)
         r.raise_for_status()
         return r.json()
@@ -322,8 +347,17 @@ async def sam_box(img: Image.Image, data_url: str, cfg: AiConfig) -> tuple[Box |
 # --------------------------------------------------------------------------- entry point
 
 
+def sam_config(cfg: AiConfig | None) -> AiConfig | None:
+    """The Meta Model API backend SAM 3.1 runs on, or None: the user's own key, else the server chain's `meta`
+    provider. None without SAM_CROP=1, and under the routes that keep work off the Meta API (local_only, local_first).
+    """
+    if cfg is None or os.getenv("SAM_CROP", "") != "1" or cfg.route in ("local_only", "local_first"):
+        return None
+    return next((c for c in cfg.chain() if c.mode == "key" and c.api_key), None)
+
+
 def sam_allowed(cfg: AiConfig | None) -> bool:
-    return bool(cfg and cfg.mode == "key" and cfg.api_key and os.getenv("SAM_CROP", "") == "1")
+    return sam_config(cfg) is not None
 
 
 def _encode(img: Image.Image, fmt: str) -> bytes:
@@ -364,12 +398,13 @@ async def crop_document(image_bytes: bytes, cfg: AiConfig | None = None) -> Crop
     details: dict[str, Any] = {}
     box: Box | None = None
     method: CropMethod = "none"
-    if mode == "auto" and sam_allowed(cfg):
+    sam_cfg = sam_config(cfg) if mode == "auto" else None
+    if sam_cfg is not None:
         try:
             # SAM's boxes must be in the same (EXIF-upright) pixels we crop
             sam_bytes = await asyncio.to_thread(_encode, img, fmt) if rotated else image_bytes
             b64 = base64.b64encode(sam_bytes).decode("ascii")
-            box, details["sam"] = await sam_box(img, f"data:{_FORMATS[fmt]};base64,{b64}", cfg)  # type: ignore[arg-type]
+            box, details["sam"] = await sam_box(img, f"data:{_FORMATS[fmt]};base64,{b64}", sam_cfg)
             if box is not None:
                 method = "sam"
         except Exception as exc:  # noqa: BLE001 - SAM is best effort; fall back to code
