@@ -122,15 +122,27 @@ EDL: list[dict] = [
         "lead": 0.3,
         "lt": ("Ask anything, in plain words", "Muse Spark · figures by code"),
         "shots": [
-            {"layout": "full", "src": "w-profit", "segs": ["wait-2.5..wait+0.5", "ready-0.2..ready+2.8"], "dur": 5.0, "crop": "ASK"},
+            {
+                "layout": "full",
+                "src": "w-profit",
+                "segs": ["wait-2.5..wait+0.5", "ready-0.2..ready+2.8"],
+                "dur": 5.0,
+                "crop": "ASK",
+            },
             {
                 "layout": "full",
                 "src": "w-timesheet",
-                "segs": ["wait-2.5..wait+0.5", "ready-0.2..ready+2.6", "approve-1.2..approve+0.4", "ready2-0.2..end"],
+                "segs": ["ready-0.2..ready+2.8", "approve-1.2..approve+0.4", "ready2-0.2..end"],
                 "dur": 6.4,
+                "crop": [376, 60, 1504, 846],
+            },
+            {
+                "layout": "full",
+                "src": "w-tiles",
+                "segs": ["wait..wait+0.6", "ready-0.2..ready+3.4"],
+                "dur": 4.6,
                 "crop": "ASK",
             },
-            {"layout": "full", "src": "w-tiles", "segs": ["wait-2.5..wait+0.5", "ready-0.2..ready+1.8"], "dur": 4.6, "crop": "ASK"},
         ],
     },
     {
