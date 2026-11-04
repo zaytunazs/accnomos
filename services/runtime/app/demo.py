@@ -10,9 +10,10 @@ in-memory fakes instead:
 * Storage is a `DemoStorage` (a `FakeStorageProvider` with limits). No request in a demo reaches OneDrive or Graph;
   the browser's own Graph calls go to `/demo/graph/v1.0` (app/fake_graph.py) over the same storage.
 * Mail is never sent: the sender only records it, and the web app says "Sent (demo — not actually sent)".
-* HMRC is never called: the runtime holds no HMRC token anyway, and the web app simulates the submission in a demo
-  (a clearly labelled "Demo — submission simulated" receipt). The VAT-number check and Companies House look-ups are
-  refused for demo sessions (403).
+* The runtime never calls HMRC (it holds no HMRC token). The VAT card in the web and Android apps files a demo's
+  return to HMRC's sandbox through the relay, with a sandbox test user the relay makes for that demo
+  (POST /hmrc/test-user); if the relay can't, the apps simulate the submission and label the receipt
+  "Demo — submission simulated". The VAT-number check and Companies House look-ups are refused for demo sessions (403).
 * AI calls use the server's normal AI configuration, exactly as for a signed-in user.
 
 Two demos (`POST /demo/session?kind=`): `company` (the default, above) and `personal`, a fictional household's
@@ -578,7 +579,8 @@ class SessionInfo(BaseModel):
     user: str = USER
     today: date
     idle_ttl_s: int
-    simulated: list[str] = ["mail", "hmrc"]  # what a demo never really does
+    simulated: list[str] = ["mail"]  # what a demo never really does
+    hmrc: str = "sandbox"  # the VAT card files to HMRC's sandbox (simulated only if the relay can't make a test user)
 
 
 def _info(s: DemoSession, token: str | None = None) -> SessionInfo:

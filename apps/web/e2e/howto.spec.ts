@@ -2,6 +2,7 @@ import { statSync } from "node:fs";
 import path from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test, TODAY } from "./fixtures";
+import { routeSandboxRelay } from "./sandbox-relay";
 
 /**
  * Screenshots for the how-to guides (docs/howto/*.md), from the demo sandbox's fictional sample books: the company demo
@@ -228,23 +229,25 @@ test("company demo", async ({ page }) => {
     await page.keyboard.press("Escape");
   });
   if (!/\/vat$/.test(page.url())) await page.goto("/vat");
+  await routeSandboxRelay(page); // HMRC's sandbox, as a routed relay answers it (e2e/sandbox-relay.ts)
   const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
   await bring(page, hmrc, 120);
-  await mark(hmrc.getByRole("button", { name: "Connect to HMRC (simulated)" }));
+  await mark(hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }));
   await shoot(page, "vat-return-3");
-  await hmrc.getByRole("button", { name: "Connect to HMRC (simulated)" }).click();
+  await hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }).click();
+  await hmrc.getByRole("button", { name: "Connect to HMRC sandbox" }).click();
   await hmrc.getByRole("button", { name: "Show obligations" }).click();
-  await expect(hmrc.getByRole("radio", { name: "Choose period 26A3" })).toBeChecked();
+  await expect(hmrc.getByRole("radio", { name: "Choose period 18A2" })).toBeChecked();
   await bring(page, hmrc, 120);
   await shoot(page, "vat-return-4");
   await hmrc.getByRole("button", { name: "Prepare submission" }).click();
   await hmrc.getByLabel("I confirm the information is true and complete").check();
-  const submit = hmrc.getByRole("button", { name: "Submit (demo — simulated)" });
+  const submit = hmrc.getByRole("button", { name: "Submit to HMRC sandbox" });
   await bring(page, submit, 420);
   await mark(submit);
   await shoot(page, "vat-return-5");
   await submit.click();
-  const done = hmrc.getByRole("heading", { name: /Demo — submission simulated/ });
+  const done = hmrc.getByRole("heading", { name: /Submitted to HMRC sandbox/ });
   await expect(done).toBeVisible();
   await bring(page, done, 200);
   await shoot(page, "vat-return-6");

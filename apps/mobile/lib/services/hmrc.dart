@@ -24,8 +24,11 @@ import 'sha256.dart';
 /// * Every VAT call names the MOBILE_APP_VIA_SERVER connection method and
 ///   carries this phone's facts ([DeviceFacts]); the relay adds the rest of the
 ///   fraud-prevention headers.
-/// * In a demo nothing reaches HMRC, not even the sandbox: connect, the
-///   obligations and the submission are simulated, and the receipt says so.
+/// * A demo files to HMRC's sandbox (its real test service): the relay makes a
+///   sandbox test organisation for it ([Hmrc.prepareDemoSandbox]), the visitor
+///   signs in with it on HMRC's own sandbox page, and the obligations and the
+///   receipt are HMRC's. If the relay can't make one, the demo falls back to
+///   the simulated flow (nothing reaches HMRC) and the receipt says so.
 class Obligation {
   Obligation({
     required this.periodKey,
@@ -168,8 +171,32 @@ class HmrcTokens {
 /// pass for a real one (the web's `DEMO_SUBMISSION`).
 const demoSubmission = 'Demo — submission simulated';
 
-/// The sample books' fictional VAT number (the web's `DEMO_VRN`).
+/// The sample books' fictional VAT number (the web's `DEMO_VRN`), for a demo on the simulated fallback.
 const demoVrn = '123456789';
+
+/// Badge and note for a demo on HMRC's sandbox (the web's `SANDBOX_BADGE` / `SANDBOX_NOTE`).
+const sandboxBadge = 'HMRC sandbox — real test service, no real tax filed';
+const sandboxNote =
+    "The sandbox is HMRC's own test service: the sign-in, the VAT periods and the receipt come from HMRC, but no real tax is filed. Filing for real needs HMRC's approval of Accnomos for live use.";
+
+/// An HMRC sandbox test organisation made for one demo by the relay
+/// (POST /hmrc/test-user). HMRC test credentials: they work only on the sandbox.
+class SandboxTestUser {
+  SandboxTestUser({required this.userId, required this.password, required this.vrn, this.organisation});
+  final String userId;
+  final String password;
+  final String vrn;
+  final String? organisation;
+}
+
+/// How this demo reaches HMRC: its sandbox with [user], or simulated because of [reason].
+class DemoHmrc {
+  DemoHmrc.sandbox(SandboxTestUser this.user) : reason = null;
+  DemoHmrc.simulated(String this.reason) : user = null;
+  final SandboxTestUser? user;
+  final String? reason;
+  bool get sandbox => user != null;
+}
 
 /// The legal declaration HMRC requires before a VAT return is sent
 /// (word for word as the web's ConnectHmrc.tsx).
@@ -211,17 +238,81 @@ class Hmrc {
   // Memory only, for this app process (the web keeps them in sessionStorage).
   static HmrcTokens? _tokens;
 
+  // This demo's way to HMRC, for the demo session it was made in (a reset demo starts again).
+  static DemoHmrc? _demoHmrc;
+  static String? _demoHmrcFor;
+
   /// Forget the session (tests, and Disconnect).
   static void disconnect() => _tokens = null;
 
+  /// Forget the demo's sandbox test user too (tests, and a new demo).
+  static void resetDemo() {
+    _demoHmrc = null;
+    _demoHmrcFor = null;
+  }
+
   bool get connected => _tokens != null;
+
+  /// This demo's way to HMRC (null until [prepareDemoSandbox], and outside a demo).
+  DemoHmrc? get demoHmrc {
+    if (!Demo.active) return null;
+    if (_demoHmrcFor != Demo.current?.session) {
+      if (_demoHmrc != null) _tokens = null; // that HMRC session belonged to an earlier demo
+      resetDemo();
+    }
+    return _demoHmrc;
+  }
+
+  /// A demo without (or not yet with) an HMRC sandbox test user: nothing in it may reach the relay.
+  bool get simulatedDemo => Demo.active && demoHmrc?.sandbox != true;
+
+  /// Ask the relay for a fresh HMRC sandbox test organisation for this demo; on
+  /// failure the demo falls back to the simulated flow, with the reason.
+  Future<DemoHmrc> prepareDemoSandbox() async {
+    DemoHmrc next;
+    try {
+      final u = await _relayFetch('POST', '/hmrc/test-user', body: const {});
+      final m = u is Map ? u : const {};
+      final userId = m['userId']?.toString();
+      final password = m['password']?.toString();
+      final vrn = m['vrn']?.toString() ?? '';
+      if (userId == null || password == null || !RegExp(r'^\d{9}$').hasMatch(vrn)) {
+        throw RelayException("HMRC's answer had no user ID, password and VAT number", 502);
+      }
+      final org = m['organisationDetails'];
+      next = DemoHmrc.sandbox(SandboxTestUser(
+          userId: userId, password: password, vrn: vrn, organisation: org is Map ? org['name']?.toString() : null));
+    } catch (e) {
+      next = DemoHmrc.simulated(_fallbackReason(e));
+    }
+    _demoHmrc = next;
+    _demoHmrcFor = Demo.current?.session;
+    return next;
+  }
+
+  /// HMRC's sandbox page failed: carry on with the simulated flow, and say why.
+  DemoHmrc fallBackToSimulated(String reason) {
+    _tokens = null;
+    _demoHmrc = DemoHmrc.simulated(reason);
+    _demoHmrcFor = Demo.current?.session;
+    return _demoHmrc!;
+  }
+
+  static String _fallbackReason(Object e) {
+    final status = e is RelayException ? e.status : 0;
+    if (status == 0) return "the HMRC relay couldn't be reached";
+    if (status == 503) return 'the HMRC relay has no sandbox credentials set up';
+    if (status == 403) return "the HMRC relay isn't pointed at HMRC's sandbox";
+    if (status == 429) return 'too many demo test users were asked for just now';
+    return "HMRC's sandbox didn't make a test user ($e)";
+  }
 
   // --- OAuth (PKCE) ---------------------------------------------------------------------------------
 
-  /// Start HMRC's consent page in the browser; in a demo, mark this session
-  /// connected without any HMRC page.
+  /// Start HMRC's consent page in the browser; in a simulated demo, mark this
+  /// session connected without any HMRC page.
   Future<void> startConnect() async {
-    if (Demo.active) {
+    if (simulatedDemo) {
       _tokens = HmrcTokens(_demoToken, _demoToken, _now().add(const Duration(hours: 2)));
       return;
     }
@@ -309,7 +400,7 @@ class Hmrc {
 
   Future<RelayResult> obligations(String vrn,
       {required String? accountId, required DateTime from, required DateTime to, String? scenario}) async {
-    if (Demo.active) {
+    if (simulatedDemo) {
       return RelayResult(hmrc: {
         'obligations': [for (final o in demoObligations(to)) o.toJson()]
       });
@@ -319,7 +410,7 @@ class Hmrc {
 
   Future<RelayResult> submit(String vrn, Map<String, dynamic> returnBody,
       {required String? accountId, String? scenario}) async {
-    if (Demo.active) {
+    if (simulatedDemo) {
       final net = (returnBody['netVatDue'] as num?) ?? 0;
       return RelayResult(hmrc: {
         'processingDate': _now().toUtc().toIso8601String(),
@@ -345,7 +436,11 @@ class Hmrc {
   }
 
   Future<Object?> _relay(String method, String path, {Map<String, dynamic>? body, String? token}) async {
-    if (Demo.active) throw RelayException("The demo sandbox doesn't contact HMRC.", 0);
+    if (simulatedDemo) throw RelayException("This demo is using the simulated HMRC flow, so it doesn't contact HMRC.", 0);
+    return _relayFetch(method, path, body: body, token: token);
+  }
+
+  Future<Object?> _relayFetch(String method, String path, {Map<String, dynamic>? body, String? token}) async {
     final req = http.Request(method, Uri.parse('$relayUrl$path'));
     if (body != null) {
       req.headers['Content-Type'] = 'application/json';
@@ -380,7 +475,7 @@ class Hmrc {
   // --- the VAT number to use ---------------------------------------------------------------------------
 
   Future<String> savedVrn(String? businessVat) async {
-    if (Demo.active) return demoVrn;
+    if (Demo.active) return demoHmrc?.user?.vrn ?? demoVrn;
     final prefs = await _prefs();
     final direct = prefs.getString(_kVrn);
     if (direct != null && direct.isNotEmpty) return direct;

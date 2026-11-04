@@ -183,8 +183,10 @@ How it behaves:
 - AI: a demo uses the AI this server is configured with (`AI_MODE`, `OLLAMA_*`, `MODEL_API_*`, or `AI_PROVIDERS` once
   it lands), exactly as for a signed-in user. The six documents waiting in Review were pre-read by the seed; scanning
   the 19 still in `00 Inbox`, Ask and the planner call the server's model, at the owner's cost.
-- Never real: mail is recorded, not sent ("Sent (demo — not actually sent)"); HMRC is simulated in the browser (a
-  receipt labelled "Demo — submission simulated", no relay call); Companies House and VAT-number look-ups answer 403.
+- Never real: mail is recorded, not sent ("Sent (demo — not actually sent)"); Companies House and VAT-number look-ups
+  answer 403. HMRC: the VAT card files to HMRC's sandbox through the relay with a test user made for the demo
+  (`POST /hmrc/test-user`, so the relay needs its sandbox credentials); without them it falls back to a simulated
+  submission labelled "Demo — submission simulated" (docs/HMRC_SANDBOX_DEMO.md).
 - The edge must let `/demo/graph/` uploads through at 11 MB (`deploy/nginx.conf` has the location) and `CORS_ORIGINS`
   must include the web origin as before (`X-Demo-Session` is in the allowed headers).
 - One runtime process (as the image runs): sessions live in that process's memory. A restart ends every demo.
