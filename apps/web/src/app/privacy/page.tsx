@@ -104,14 +104,14 @@ export default function PrivacyPage() {
         </p>
         <ul className="list-disc space-y-2 pl-5">
           <li><strong>Who:</strong> Zaytuna Business Services Ltd, United Kingdom, is the controller of the list. Contact{" "}
-            <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>.</li>
+            <a className="font-semibold text-teal underline" href="mailto:zohaibsharif@gmail.com">zohaibsharif@gmail.com</a>.</li>
           <li><strong>What we collect:</strong> your email address; your name and how you heard about us, if you give them; what the books would be for (limited company, sole trader, personal, or accountant/bookkeeper); that you ticked the consent box and its exact wording; the page you signed up on; and the date and time. We do not store your IP address with it.</li>
           <li><strong>Why:</strong> to email you to set up your 3 months free, and to know how many people of each kind have signed up. Nothing else: no newsletter, no other products, and we never sell or share the list.</li>
           <li><strong>Lawful basis:</strong> your consent (UK GDPR Article 6(1)(a)), given by ticking the box, which is never pre-ticked. Our email also follows the Privacy and Electronic Communications Regulations.</li>
           <li><strong>Where it is kept:</strong> in one file on a server we run ourselves, readable only by the service operator. Nobody else receives it. If we use an email-sending service to email you, we will name it here first; it would act only on our instructions.</li>
           <li><strong>How long:</strong> we delete the list by the end of November 2027, except for people who have become customers. Unsubscribing deletes your entry straight away.</li>
           <li><strong>Unsubscribe or erase:</strong> reply to our email, or email{" "}
-            <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>{" "}
+            <a className="font-semibold text-teal underline" href="mailto:zohaibsharif@gmail.com">zohaibsharif@gmail.com</a>{" "}
             from the address you signed up with. Withdrawing consent is as easy as giving it, and we will delete your entry and confirm. You can also ask for a copy of what we hold, or for it to be corrected.</li>
           <li><strong>Complaints:</strong> if you are unhappy with how we handle your data, tell us first. You also have the right to complain to the Information Commissioner&apos;s Office:{" "}
             <a className="font-semibold text-teal underline" href="https://ico.org.uk/make-a-complaint/">ico.org.uk/make-a-complaint</a>, 0303 123 1113.</li>
@@ -218,7 +218,7 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Contact</h2>
         <p>
-          Zaytuna Business Services Ltd, United Kingdom · <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>
+          Zaytuna Business Services Ltd, United Kingdom · <a className="font-semibold text-teal underline" href="mailto:zohaibsharif@gmail.com">zohaibsharif@gmail.com</a>
         </p>
       </section>
     </div>

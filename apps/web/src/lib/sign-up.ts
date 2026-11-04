@@ -57,7 +57,7 @@ export async function postSignUp(path: string, form: SignUpForm, consentText: st
   }
   if (r.ok) return;
   if (r.status === 503)
-    throw new Error("Sign-ups aren't open on this server yet. Email admin@zaytunauk.co.uk and we'll add you by hand.");
+    throw new Error("Sign-ups aren't open on this server yet. Email zohaibsharif@gmail.com and we'll add you by hand.");
   if (r.status === 429) throw new Error("Too many tries from this connection. Wait a minute and try again.");
   const detail = await r
     .json()

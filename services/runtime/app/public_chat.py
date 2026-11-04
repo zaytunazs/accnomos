@@ -48,7 +48,7 @@ ANSWER_MAX = 700  # characters in a reply, cut at a sentence
 TOP_SECTIONS = 3
 MODEL_TIMEOUT_S = 60.0  # Glimmer answers Ask in ~16 s median on the Spark; beyond this the visitor gets the notes
 MAX_CONCURRENT = 2  # model calls at once from this process: the public must not starve the owners' own work
-DEFAULT_CONTACT = "admin@zaytunauk.co.uk"
+DEFAULT_CONTACT = "zohaibsharif@gmail.com"
 DEFAULT_SITE_HOSTS = "accnomos.com"
 
 SYSTEM_PROMPT = (

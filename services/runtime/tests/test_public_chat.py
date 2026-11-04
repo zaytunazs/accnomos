@@ -18,7 +18,7 @@ from app.main import app
 from app.security import TokenBucket
 
 CFG = AiConfig(mode="local", base_url="http://ollama.invalid", model="stub-model")
-CONTACT = "admin@zaytunauk.co.uk"
+CONTACT = "zohaibsharif@gmail.com"
 
 
 class FakeModel:
@@ -156,9 +156,9 @@ def test_ordinary_questions_are_not_mistaken_for_injection():
 
 
 def test_contact_address_comes_from_the_environment(client: TestClient, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setenv("PUBLIC_CONTACT_EMAIL", "hello@accnomos.com")
+    monkeypatch.setenv("PUBLIC_CONTACT_EMAIL", "zohaibsharif@gmail.com")
     out = ask(client, "What's the capital of France?")
-    assert "hello@accnomos.com" in out["answer"] and out["contact"] == "hello@accnomos.com"
+    assert "zohaibsharif@gmail.com" in out["answer"] and out["contact"] == "zohaibsharif@gmail.com"
     monkeypatch.setenv("PUBLIC_CONTACT_EMAIL", "not an address")
     assert pc.contact_email() == CONTACT
 
@@ -209,7 +209,7 @@ def test_foreign_links_and_addresses_are_removed(client: TestClient, model: Fake
         "answerable": True,
         "answer": (
             "See [our guide](https://evil.example/phish) or http://bit.ly/x, visit www.example.org, "
-            "evil.com, email someone@else.com or admin@zaytunauk.co.uk, or go to https://accnomos.com/privacy."
+            "evil.com, email someone@else.com or zohaibsharif@gmail.com, or go to https://accnomos.com/privacy."
         ),
         "sections": ["your-data"],
     }

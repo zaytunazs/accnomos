@@ -60,9 +60,9 @@ services:
       PRICE_SEARCH_PROVIDER: ${PRICE_SEARCH_PROVIDER:-}
       # Website chat "Ask about Accnomos" (POST /public/chat, app/public_chat.py): Accnomos-only answers from
       # app/public_kb.md on the server's own model (local Glimmer by default, never a visitor's key).
-      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-admin@zaytunauk.co.uk}
+      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-zohaibsharif@gmail.com}
       # The operator's accountants team (app/accountant.py): clients who opt in share their books with this account.
-      ACCOUNTANT_TEAM_EMAIL: ${ACCOUNTANT_TEAM_EMAIL:-admin@zaytunauk.co.uk}
+      ACCOUNTANT_TEAM_EMAIL: ${ACCOUNTANT_TEAM_EMAIL:-zohaibsharif@gmail.com}
       # Bank feeds through TrueLayer (app/bank_feeds.py, docs/research/BANK_FEEDS.md): off while any of the four is empty.
       # Sandbox unless TRUELAYER_ENV=live and BANKFEEDS_LIVE=1. Secrets come from .env only.
       TRUELAYER_CLIENT_ID: ${TRUELAYER_CLIENT_ID:-}

@@ -91,7 +91,7 @@ sign-in and answers only from `services/runtime/app/public_kb.md`. All variables
 
 | Variable | Default | What it does |
 |---|---|---|
-| `PUBLIC_CONTACT_EMAIL` | `admin@zaytunauk.co.uk` | Where off-topic or unanswerable questions are referred (also returned to the page). An invalid value falls back to the default |
+| `PUBLIC_CONTACT_EMAIL` | `zohaibsharif@gmail.com` | Where off-topic or unanswerable questions are referred (also returned to the page). An invalid value falls back to the default |
 | `PUBLIC_CHAT_PER_MIN` | `6` | Questions per minute per visitor IP, on top of `RATE_LIMIT_PER_MIN`. `0` turns this limit off (the e2e suite does) |
 | `PUBLIC_CHAT` | `on` | `off` makes the route answer 503 with the contact address |
 | `PUBLIC_CHAT_AI_MODE` | `local` | The chat's model: the server's own local model (`OLLAMA_BASE`, `OLLAMA_MODEL`, Glimmer on our own server). `key` spends the operator's `META_API_KEY`, so set it only on purpose. Visitors' `X-AI-*` headers are always ignored |
@@ -99,7 +99,7 @@ sign-in and answers only from `services/runtime/app/public_kb.md`. All variables
 | `PUBLIC_SITE_HOSTS` | `accnomos.com` | Hosts an answer may link to (comma-separated, subdomains included); any other link is removed |
 | `PUBLIC_SUBMISSION_MODE` | `1` | Which notes the chat uses: `1` the judged build (no launch date, nothing "coming soon"); `0` the pre-launch notes (public launch November 2026, iPhone app and more mailboxes coming soon). Keep it equal to the web build's `NEXT_PUBLIC_SUBMISSION_MODE` |
 
-Web build: `NEXT_PUBLIC_CONTACT_EMAIL` (default `admin@zaytunauk.co.uk`) is the address shown under the chat and in the
+Web build: `NEXT_PUBLIC_CONTACT_EMAIL` (default `zohaibsharif@gmail.com`) is the address shown under the chat and in the
 footer before any answer arrives, and where the pre-launch "get notified" e-mail goes; keep it equal to
 `PUBLIC_CONTACT_EMAIL`.
 
@@ -238,7 +238,7 @@ docker compose -f deploy/docker-compose.yml exec runtime python -m app.early_acc
 1. **One email at launch**, from Accnomos / Zaytuna Business Services Ltd, saying who it is from, with the 3-months
    offer and a working unsubscribe (a reply-to address you read, or a link). No newsletters, no other products, no
    sharing or selling the list. Anything more needs fresh consent.
-2. **Unsubscribe = delete.** Anyone who asks (reply, email to admin@zaytunauk.co.uk) is removed with `delete --email`.
+2. **Unsubscribe = delete.** Anyone who asks (reply, email to zohaibsharif@gmail.com) is removed with `delete --email`.
 3. **Retention:** delete the whole list 12 months after launch (November 2027), except people who became customers
    (their account then has its own basis). `export` first if you need the converted ones, then
    `docker compose exec runtime rm /data/early-access.jsonl`.

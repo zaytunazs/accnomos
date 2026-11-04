@@ -214,8 +214,8 @@ export default function SignUpForm({ copy, source }: { copy: SignUpCopy; source:
               <p id={`${id}-notice`} className="text-[13px] leading-relaxed text-muted">
                 Zaytuna Business Services Ltd keeps these details only {copy.purpose}. To unsubscribe or be removed,
                 email{" "}
-                <a className="font-semibold text-teal-dark underline" href="mailto:admin@zaytunauk.co.uk">
-                  admin@zaytunauk.co.uk
+                <a className="font-semibold text-teal-dark underline" href="mailto:zohaibsharif@gmail.com">
+                  zohaibsharif@gmail.com
                 </a>
                 . More in our{" "}
                 <Link className="font-semibold text-teal-dark underline" href="/privacy#sign-up">

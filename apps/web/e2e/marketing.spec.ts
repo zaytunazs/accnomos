@@ -7,7 +7,7 @@ import { createBooksFolder, expect, signIn, test } from "./fixtures";
  * same routes are the app.
  */
 
-const CONTACT = "admin@zaytunauk.co.uk";
+const CONTACT = "zohaibsharif@gmail.com";
 
 async function noSidewaysScroll(page: Page, path: string) {
   const { scroll, client } = await page.evaluate(() => ({
