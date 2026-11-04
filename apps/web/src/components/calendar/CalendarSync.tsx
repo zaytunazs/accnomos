@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
-import { runtime, type RtCalendarClash, type RtDeadlineStatus } from "@/lib/runtime";
+import { runtime, type RtCalendarClash, type RtCalendarDeadline, type RtDeadlineStatus } from "@/lib/runtime";
 
 /** "‘Site visit, Hartwell’ 10:00–11:00" or "‘Holiday’ (all day)". */
 export function clashLabel(c: RtCalendarClash): string {
@@ -37,52 +37,74 @@ export function useDeadlineSync(account: AccountInfo | null | undefined, auto: b
     synced.current = onSynced;
   });
   const [status, setStatus] = useState<RtDeadlineStatus | null>(null);
+  const [items, setItems] = useState<RtCalendarDeadline[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const autoRan = useRef(false);
 
-  const sync = useCallback(async () => {
+  const reloadItems = useCallback(async () => {
+    if (!account) return;
+    try {
+      setItems((await runtime.calendarDeadlines(account)).items);
+    } catch {
+      setItems(null);
+    }
+  }, [account]);
+
+  const sync = useCallback(async (keys?: string[]) => {
     if (!account) return;
     setBusy(true);
     setMessage(null);
     try {
-      const r = await runtime.syncDeadlines(account);
+      const r = await runtime.syncDeadlines(account, keys);
       const parts = [
         r.added && `${r.added} added`,
         r.updated && `${r.updated} moved`,
         r.removed && `${r.removed} removed`,
       ].filter(Boolean);
-      const said = parts.length ? `Done: ${parts.join(", ")}.` : "Your calendar already has every deadline.";
+      const said =
+        keys && r.added + r.updated === 0 ? "Already in your calendar."
+        : keys ? `Added to your calendar: ${r.events.map((e) => e.subject).join(", ")}.`
+        : parts.length ? `Done: ${parts.join(", ")}.`
+        : "Your calendar already has every deadline.";
       const clashes = r.conflicts.map((c) => `${c.a.subject} is on the same day as ${clashLabel(c.b)}`);
       setMessage(clashes.length ? `${said} Note: ${clashes.join("; ")}.` : said);
       setStatus(await runtime.deadlinesStatus(account));
+      await reloadItems();
       synced.current?.();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Couldn't add the deadlines just now.");
     } finally {
       setBusy(false);
     }
-  }, [account]);
+  }, [account, reloadItems]);
 
   const setKeep = useCallback(
     async (keep: boolean) => {
       if (!account) return;
+      const before = status;
+      setStatus((s) => (s ? { ...s, keep } : s)); // the switch moves at once; put back if the save fails
       setBusy(true);
       try {
         setStatus(await runtime.setDeadlinesKeep(account, keep));
       } catch (e) {
+        setStatus(before);
         setMessage(e instanceof Error ? e.message : "Couldn't save that just now.");
       } finally {
         setBusy(false);
       }
       if (keep) await sync();
     },
-    [account, sync],
+    [account, sync, status],
   );
 
   useEffect(() => {
     if (!account) return;
     let live = true;
+    runtime.calendarDeadlines(account).then(
+      (v) => live && setItems(v.items),
+      () => live && setItems(null),
+    );
     runtime.deadlinesStatus(account).then(
       (s) => {
         if (!live) return;
@@ -100,7 +122,10 @@ export function useDeadlineSync(account: AccountInfo | null | undefined, auto: b
     };
   }, [account, auto, sync]);
 
-  return { status, busy, message, sync, setKeep };
+  /** The first upcoming deadline of a kind ("vat", "payroll"…), for a per-deadline button. */
+  const deadlineOf = useCallback((kind: string) => items?.find((i) => i.kind === kind) ?? null, [items]);
+
+  return { status, busy, message, sync, setKeep, items, deadlineOf };
 }
 
 export type DeadlineSync = ReturnType<typeof useDeadlineSync>;

@@ -6,9 +6,12 @@ POST   /calendar/events                 add one (audited `calendar_event_added`)
                                         `allow_conflict: true` is a 409 {detail, conflicts}
 GET    /calendar/conflicts?start=&end=  pairs of events already in the calendar that clash (default the next 14 days)
 DELETE /calendar/events/{id}            remove one, body {"confirm": true} (audited `calendar_event_removed`); 204
-POST   /calendar/deadlines/sync         body {"confirm": true}: put the books' upcoming deadlines into the calendar as
-                                        all-day events with a reminder the day before; idempotent (audited
-                                        `calendar_deadlines_synced`)
+POST   /calendar/deadlines/sync         body {"confirm": true, "keys"?: [...]}: put the books' upcoming deadlines into
+                                        the calendar as all-day events with a reminder the day before; idempotent
+                                        (audited `calendar_deadlines_synced`). With `keys`, only those deadlines (the
+                                        per-deadline "Add to calendar"), and nothing else is removed
+GET    /calendar/deadlines              the deadlines a sync would add, each {key, kind, title, day, in_calendar}, from
+                                        the books and what the last syncs wrote (no calendar read, so no consent)
 GET    /calendar/deadlines/status       {synced, keep, last_sync, count}
 PUT    /calendar/deadlines/preference   {"keep": bool}: "Add all deadlines to my calendar automatically"
 
@@ -27,6 +30,7 @@ from __future__ import annotations
 import hashlib
 import uuid
 from datetime import date, datetime, time, timedelta
+from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -97,6 +101,26 @@ class Confirm(StrictBody):
 
 class Preference(StrictBody):
     keep: bool
+
+
+class SyncBody(StrictBody):
+    confirm: bool = False
+    keys: list[Annotated[str, Field(min_length=1, max_length=120)]] | None = Field(default=None, max_length=50)
+
+
+class DeadlineOut(BaseModel):
+    key: str
+    kind: str  # vat | itsa | self_assessment | cis | payroll | invoice
+    title: str
+    day: date
+    in_calendar: bool  # as of the last sync this app made
+
+
+class DeadlinesView(BaseModel):
+    items: list[DeadlineOut]
+    keep: bool
+    last_sync: datetime | None = None
+    count: int = 0
 
 
 class SyncResult(BaseModel):
@@ -376,7 +400,7 @@ async def _prefs(books: Books) -> dict:
 
 @router.post("/deadlines/sync", response_model=SyncResult)
 async def sync_deadlines(
-    body: Confirm,
+    body: SyncBody,
     cycle: VatCycle = Depends(vat_cycle),
     calendar: CalendarProvider = Depends(get_calendar),
     books: Books = Depends(get_books),
@@ -386,6 +410,12 @@ async def sync_deadlines(
         raise HTTPException(422, 'Adding deadlines to your calendar needs {"confirm": true}.')
     day = london_today()
     wanted = await wanted_deadlines(books, day, cycle)
+    partial = body.keys is not None
+    if partial:
+        asked = set(body.keys or [])
+        if asked - {w.key for w in wanted}:
+            raise HTTPException(404, "That deadline is no longer in your books; reload the page.")
+        wanted = [w for w in wanted if w.key in asked]
     try:
         window = await calendar.list_range(day - timedelta(days=SYNC_BACK), day + timedelta(days=SYNC_AHEAD))
         existing = [e for e in window if _deadline(e)]
@@ -414,19 +444,28 @@ async def sync_deadlines(
             else:
                 events.append(have)
                 unchanged += 1
-        for gone in [*by_key.values(), *extra]:  # the books no longer have it: remove only if still ahead
+        for gone in [] if partial else [*by_key.values(), *extra]:  # gone from the books: remove only if ahead
             if gone.start.astimezone(LONDON).date() >= day:
                 await calendar.delete_event(gone.id)
                 removed += 1
     except GraphError as exc:
         raise _graph_refused(exc) from exc
     prefs = await _prefs(books)
-    prefs.update({"last_sync": datetime.now(LONDON).isoformat(), "count": len(events)})
+    done = {e.key for e in events if e.key}
+    keys = sorted((set(prefs.get("keys") or []) | done) if partial else done)
+    prefs.update({"last_sync": datetime.now(LONDON).isoformat(), "count": len(keys), "keys": keys})
     await books.write_json(PREFS, prefs)
     await books.audit(
         f"user:{user}",
         "calendar_deadlines_synced",
-        {"added": added, "updated": updated, "unchanged": unchanged, "removed": removed, "clashes": len(conflicts)},
+        {
+            "added": added,
+            "updated": updated,
+            "unchanged": unchanged,
+            "removed": removed,
+            "clashes": len(conflicts),
+            "only": len(wanted) if partial else None,
+        },
     )
     return SyncResult(
         added=added,
@@ -435,6 +474,31 @@ async def sync_deadlines(
         removed=removed,
         events=[out(e) for e in events],
         conflicts=conflicts,
+    )
+
+
+def _kind(key: str) -> str:
+    if key.startswith("invoice:"):
+        return "invoice"
+    parts = key.split(":")
+    return parts[1] if len(parts) > 2 else "deadline"
+
+
+@router.get("/deadlines", response_model=DeadlinesView)
+async def list_deadlines(cycle: VatCycle = Depends(vat_cycle), books: Books = Depends(get_books)) -> DeadlinesView:
+    """What "Add to calendar" would add, and which are already there (as the last syncs left them)."""
+    p = await _prefs(books)
+    have = set(p.get("keys") or [])
+    wanted = await wanted_deadlines(books, london_today(), cycle)
+    last = p.get("last_sync")
+    return DeadlinesView(
+        items=[
+            DeadlineOut(key=w.key, kind=_kind(w.key), title=w.title, day=w.day, in_calendar=w.key in have)
+            for w in wanted
+        ],
+        keep=bool(p.get("keep")),
+        last_sync=datetime.fromisoformat(last) if last else None,
+        count=int(p.get("count") or 0),
     )
 
 

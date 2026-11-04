@@ -72,7 +72,8 @@ test("deadlines sync twice without duplicates, and the switch is saved", async (
   await page.reload();
   await expect(days).toContainText("Added by Accnomos");
   expect(await days.getByText("Added by Accnomos").count()).toBe(first);
-  await expect(panel).toContainText(/deadlines? in your calendar · updated \d\d:\d\d/);
+  // "updated HH:MM" on the day; the browser's clock is pinned to the test day, the server stamps real time
+  await expect(panel).toContainText(/deadlines? in your calendar · updated (\d\d:\d\d|\d{1,2} [A-Z][a-z]{2})/);
 
   const toggle = panel.getByRole("switch", { name: "Add all deadlines to my calendar automatically" });
   await expect(toggle).not.toBeChecked();
@@ -92,4 +93,26 @@ test("the menu's Your plan section links to Calendar", async ({ page }) => {
   await nav.getByRole("link", { name: "Calendar", exact: true }).click();
   await expect(page).toHaveURL(/\/calendar$/);
   await expect(page.getByRole("heading", { name: "Calendar", level: 1 })).toBeVisible();
+});
+
+test("Home › Deadlines: one deadline goes into the calendar and then says so", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await runtime.postGold();
+
+  await page.goto("/");
+  const deadlines = page.getByRole("region", { name: "Deadlines" });
+  await expect(deadlines).toContainText("VAT period"); // loaded
+  await deadlines.getByRole("button", { name: /^Add to calendar: VAT return/ }).click();
+  await expect(deadlines.getByText("In your calendar ✓").first()).toBeVisible();
+  await expect(deadlines.getByRole("button", { name: /^Add to calendar: VAT/ })).toHaveCount(0);
+  await expect(deadlines.locator("[data-calendar-sync]")).toContainText("Added to your calendar: VAT return");
+  await page.reload();
+  await expect(deadlines.getByText("In your calendar ✓").first()).toBeVisible();
+  await expect(deadlines.locator("[data-calendar-sync]")).toContainText("1 deadline in your calendar");
+
+  // only that one: the other deadlines are still to add from the panel
+  await page.goto("/calendar");
+  const days = page.getByRole("list", { name: "Events by day" });
+  await expect(days).toContainText("Site meeting, Harbour Lane kitchen");
 });

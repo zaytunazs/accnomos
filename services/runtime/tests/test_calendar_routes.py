@@ -247,3 +247,62 @@ def test_conflicts_endpoint_and_sync_reports_clashes(
     # two of Accnomos's own deadlines on one day are not a clash; each with the user's holiday is
     pairs = client.get("/calendar/conflicts?start=2026-11-07&end=2026-11-07", headers=H).json()
     assert len(pairs) == 2 and all("Holiday" in (p["a"]["subject"], p["b"]["subject"]) for p in pairs)
+
+
+def test_one_deadline_only_and_which_are_in_the_calendar(
+    client: TestClient, cal: FakeCalendarProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    wanted = [
+        Wanted(key="deadline:vat:a", title="VAT return Jul–Sep 2026 due", day=date(2026, 11, 7), body="b"),
+        Wanted(key="deadline:payroll:b", title="Pay run 2026-11 to confirm", day=date(2026, 11, 28), body="b"),
+        Wanted(key="invoice:INV-0006", title="Invoice INV-0006 due", day=date(2026, 11, 20), body="b"),
+    ]
+
+    async def fake_wanted(_books, _day, _cycle):  # noqa: ANN001
+        return list(wanted)
+
+    monkeypatch.setattr(routes_calendar, "wanted_deadlines", fake_wanted)
+    view = client.get("/calendar/deadlines", headers=H).json()
+    assert [(i["key"], i["kind"], i["in_calendar"]) for i in view["items"]] == [
+        ("deadline:vat:a", "vat", False),
+        ("deadline:payroll:b", "payroll", False),
+        ("invoice:INV-0006", "invoice", False),
+    ]
+    one = client.post("/calendar/deadlines/sync", headers=H, json={"confirm": True, "keys": ["deadline:vat:a"]}).json()
+    assert (one["added"], one["removed"]) == (1, 0) and [e["subject"] for e in one["events"]] == [wanted[0].title]
+    assert [e.key for e in cal.events if e.key] == ["deadline:vat:a"]
+    view = client.get("/calendar/deadlines", headers=H).json()
+    assert [i["in_calendar"] for i in view["items"]] == [True, False, False] and view["count"] == 1
+
+    # a second single add keeps the first; a partial sync never removes the others
+    client.post("/calendar/deadlines/sync", headers=H, json={"confirm": True, "keys": ["invoice:INV-0006"]})
+    assert sorted(e.key for e in cal.events if e.key) == ["deadline:vat:a", "invoice:INV-0006"]
+    assert client.get("/calendar/deadlines/status", headers=H).json()["count"] == 2
+
+    bad = client.post("/calendar/deadlines/sync", headers=H, json={"confirm": True, "keys": ["deadline:gone:x"]})
+    assert bad.status_code == 404
+    # the full sync ("Add all") adds the rest
+    full = client.post("/calendar/deadlines/sync", headers=H, json={"confirm": True}).json()
+    assert (full["added"], full["unchanged"]) == (1, 2)
+    assert all(i["in_calendar"] for i in client.get("/calendar/deadlines", headers=H).json()["items"])
+
+
+def test_one_deadline_reports_an_all_day_clash(
+    client: TestClient, cal: FakeCalendarProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cal.events.append(
+        CalendarEvent(
+            id="hol",
+            subject="Bank holiday trip",
+            start=datetime(2026, 11, 7, tzinfo=LONDON),
+            end=datetime(2026, 11, 8, tzinfo=LONDON),
+            is_all_day=True,
+        )
+    )
+
+    async def fake_wanted(_books, _day, _cycle):  # noqa: ANN001
+        return [Wanted(key="deadline:vat:a", title="VAT return due", day=date(2026, 11, 7), body="b")]
+
+    monkeypatch.setattr(routes_calendar, "wanted_deadlines", fake_wanted)
+    r = client.post("/calendar/deadlines/sync", headers=H, json={"confirm": True, "keys": ["deadline:vat:a"]}).json()
+    assert r["added"] == 1 and [c["b"]["subject"] for c in r["conflicts"]] == ["Bank holiday trip"]
