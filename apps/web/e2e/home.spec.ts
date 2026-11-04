@@ -202,7 +202,7 @@ test("Business snapshot (signed in): the year to date, the last 12 months and th
       return el?.getBoundingClientRect().top ?? -1;
     }),
   );
-  expect(order[0]).toBeGreaterThan(0);
+  expect(order.every((y) => y !== -1), `found ${order.join(", ")}`).toBe(true);
   for (let i = 1; i < order.length; i++) expect(order[i], `order ${order.join(" < ")}`).toBeGreaterThan(order[i - 1]);
 });
 

@@ -57,16 +57,16 @@ export default function HomeDashboard() {
             business={
               <>
               {/* The order, top to bottom: which books these are and anything wrong (the sample banner, an error);
-                  the summary and what needs attention; the compact year to date; Goals & progress with its note; the
-                  monthly and cash charts; then the secondary cards and activity. */}
+                  the summary, the ask bar under it, and what needs attention; the compact year to date; Goals &
+                  progress with its note; the monthly and cash charts; then the secondary cards and activity. */}
               {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
               <HomeSampleBooks />
               <HomeError />
               {/* The summary: two to four sentences on the whole picture, then the detail below. */}
               <SummaryCard />
+              <AskBar />
               {/* What needs attention, one tap from Review, Invoices and Bank (up to four tiles, 2 by 2 on a phone). */}
               <AttentionTiles />
-              <AskBar />
               {/* The business snapshot's year to date against last year (GET /books/home snapshot); personal books: nothing. */}
               <SnapshotYear />
               {/* Goals & progress: up to three goals, most urgent first, and the checked note (GET /books/goals). */}
@@ -108,8 +108,8 @@ export default function HomeDashboard() {
                     far, Goals & progress with its note, then budgets, bills, where the money went and the rest. */}
                 <HomeError />
                 <SummaryCard />
-                <HouseholdTiles />
                 <AskBar example="where did my money go this month?" />
+                <HouseholdTiles />
                 <ThisMonth />
                 <HomeGoals />
                 <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
