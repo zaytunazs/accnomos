@@ -33,7 +33,7 @@ export const DEMO_KINDS: Record<DemoKind, { title: string; blurb: string; next: 
   company: {
     title: "Company demo (Bramblewood Joinery)",
     blurb: "A small joinery business: receipts to review, bank matching, invoices, VAT and business goals.",
-    next: "/judges",
+    next: "/demo", // the demo guide (lib/public-site.ts DEMO_GUIDE)
     label: "SAMPLE — FICTIONAL COMPANY",
   },
   personal: {

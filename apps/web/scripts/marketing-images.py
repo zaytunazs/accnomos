@@ -1,8 +1,9 @@
 """Make the website's screenshots (apps/web/public/shots/*.webp) from the real ones in the repo.
 
-Sources: docs/submission/shots/ (the web app in test mode with the fictional sample books, taken by e2e/demo.spec.ts and
-e2e/shots.spec.ts), apps/mobile/screenshots/ (the Android app on an emulator, company demo, labelled sample data) and
-apps/web/public/sample-receipt.png. Every output is a crop or resize of one of those: nothing is drawn or edited.
+Sources: docs/submission/shots/ (the web app in test mode with the fictional sample books, taken by e2e/demo.spec.ts,
+e2e/shots.spec.ts and, for the hero, e2e/hero-shots.spec.ts in the demo sandbox), apps/mobile/screenshots/ (the Android
+app on an emulator, company demo, labelled sample data) and apps/web/public/sample-receipt.png. Every output is a
+crop or resize of one of those: nothing is drawn or edited.
 Run from the repo root: `python apps/web/scripts/marketing-images.py` (needs Pillow with WebP).
 """
 
@@ -19,11 +20,13 @@ OUT = ROOT / "apps/web/public/shots"
 
 # name: (source, crop box in source pixels or None, output width)
 JOBS: dict[str, tuple[Path, tuple[int, int, int, int] | None, int]] = {
-    # Hero: the Review page with the Novex receipt read and waiting; the same card at phone width.
-    "hero-review-1280": (SHOTS / "04-scan.png", None, 1280),
-    "hero-review-640": (SHOTS / "04-scan.png", None, 640),
-    "hero-phone": (SHOTS / "05-proposal-phone.png", None, 390),
-    "hero-phone-200": (SHOTS / "05-proposal-phone.png", None, 200),  # shown at about 130-200 px wide
+    # Hero: Review in the demo sandbox, a pre-read timber invoice with its receipt, supplier and amount, the proposed
+    # entry and Approve · Edit · Reject in one frame (e2e/hero-shots.spec.ts); the same card at phone width, from the
+    # supplier line to the decision row. Whole frames: the sizes in Landing.tsx's <Shot> follow the sources.
+    "hero-review-1280": (SHOTS / "hero-review.png", None, 1280),
+    "hero-review-640": (SHOTS / "hero-review.png", None, 640),
+    "hero-phone": (SHOTS / "hero-review-phone.png", None, 390),
+    "hero-phone-200": (SHOTS / "hero-review-phone.png", None, 200),  # shown at about 130-200 px wide
     # The five steps of the process animation (main column of the 232 px sidebar layout, 1016 x 635 scaled to 816
     # x 510 at 16:10; the highlight boxes in
     # src/components/marketing/ProcessDemo.tsx are percentages of these crops).

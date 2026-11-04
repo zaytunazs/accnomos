@@ -30,7 +30,7 @@ export function IfDemoAvailable({ children }: { children: ReactNode }) {
 
 /**
  * "Try the demo — no sign-in": starts a demo sandbox (lib/demo.ts) and opens `next` in it. Hidden when the runtime
- * says demos are off (DEMO_MODE unset), unless `always` (the /judges page explains instead).
+ * says demos are off (DEMO_MODE unset), unless `always` (the /demo and /judges pages explain instead).
  */
 export default function TryDemo({
   next = "/",

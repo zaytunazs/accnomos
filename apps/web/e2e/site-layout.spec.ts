@@ -7,7 +7,7 @@ import { PAGES } from "./pages";
  * The one-click demo from the landing page is driven end to end in sandbox.spec.ts (it waits for the seed).
  */
 
-const PUBLIC = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/judges", "/join"]); // lib/public-site.ts PUBLIC_PATHS
+const PUBLIC = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/demo", "/judges", "/join"]); // lib/public-site.ts PUBLIC_PATHS
 
 test.describe("signed out, / is the marketing home", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -42,7 +42,7 @@ test.describe("signed out, / is the marketing home", () => {
     // The headline is the largest text on the page (globals.css .hero-lines), not body size.
     const h1Size = await page.getByRole("heading", { level: 1 }).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
     expect(h1Size).toBeGreaterThanOrEqual(38);
-    await expect(hero.getByRole("link", { name: "Try the demo", exact: true })).toHaveAttribute("href", "/judges");
+    await expect(hero.getByRole("link", { name: "Try the demo", exact: true })).toHaveAttribute("href", "/demo");
     await expect(hero.getByRole("link", { name: "Sign in with Microsoft" })).toHaveAttribute("href", "/connect?next=%2F");
 
     // The public top bar, with nothing from the app: no menu bar or sidebar, profile switcher, review count, to-dos,
@@ -77,8 +77,8 @@ test.describe("signed out, / is the marketing home", () => {
     expect(opacity).toBe("1");
   });
 
-  test("terms and the judges' guide are public pages too", async ({ page }) => {
-    for (const route of ["/terms", "/judges"]) {
+  test("terms, the demo guide and the judges' notes are public pages too", async ({ page }) => {
+    for (const route of ["/terms", "/demo", "/judges"]) {
       await page.goto(route);
       await expect(page.getByRole("navigation", { name: "Site" })).toBeVisible();
       await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);

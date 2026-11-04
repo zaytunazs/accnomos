@@ -81,7 +81,7 @@ test.describe("submission mode: no pre-launch wording", () => {
 
   test("every page in the demo sandbox", async ({ page }) => {
     test.setTimeout(Math.max(240_000, APP_PAGES.length * 5_000));
-    await page.goto("/judges");
+    await page.goto("/demo");
     await page.getByRole("button", { name: "Start the demo" }).click();
     await expect(page).toHaveURL(/\/review$/, { timeout: 120_000 });
     for (const route of APP_PAGES) await sweep(page, route);

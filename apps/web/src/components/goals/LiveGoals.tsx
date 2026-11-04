@@ -18,8 +18,8 @@ export default function LiveGoals() {
   return <Signed account={account} />;
 }
 
-const primary = "inline-flex h-11 items-center rounded-lg bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60";
-const secondary = "inline-flex h-11 items-center rounded-lg border border-border bg-white px-4 text-[15px] font-bold text-ink hover:bg-ground disabled:opacity-60";
+const primary = "inline-flex h-11 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60";
+const secondary = "inline-flex h-11 items-center rounded-xl border border-border bg-white px-4 text-[15px] font-bold text-ink hover:bg-ground disabled:opacity-60";
 
 function Header({ action }: { action: React.ReactNode }) {
   return (
@@ -40,16 +40,16 @@ function SampleGoals() {
   return (
     <div className="flex flex-col gap-5">
       <Header action={<SignInCta />} />
-      <p className="rounded-lg border border-border bg-white px-4 py-3 text-[15px] text-muted">
+      <p className="rounded-xl border border-border bg-white px-4 py-3 text-[15px] text-muted">
         <strong className="text-ink">Sample — fictional figures.</strong> These goals belong to the fictional Bramblewood
         Joinery books. Sign in, or try the demo, to set goals on your own books.
       </p>
+      <GoalsNotePanel note={v.note} sample className="md:order-last" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {byUrgency(v.goals).map((p) => (
           <GoalCard key={p.goal.id} p={p} sample />
         ))}
       </div>
-      <GoalsNotePanel note={v.note} sample />
     </div>
   );
 }
@@ -132,12 +132,12 @@ function Signed({ account }: { account: AccountInfo }) {
         }
       />
       {notice ? (
-        <p role="status" className="rounded-lg bg-[#ECFDF3] px-4 py-2.5 text-[15px] text-[#166534]">
+        <p role="status" className="rounded-xl bg-pos-tint px-4 py-2.5 text-[15px] text-pos-ink">
           {notice}
         </p>
       ) : null}
       {adding ? (
-        <section aria-labelledby="add-goal-title" className="rounded-xl border border-border bg-white p-4 sm:p-6">
+        <section aria-labelledby="add-goal-title" className="rounded-2xl border border-border bg-white p-4 sm:p-6">
           <h2 id="add-goal-title" className="mb-4 text-[19px] font-bold text-ink">
             Add a goal
           </h2>
@@ -151,8 +151,10 @@ function Signed({ account }: { account: AccountInfo }) {
           />
         </section>
       ) : null}
+      {/* The note: under the heading on a phone, after the cards from md (see components/goals/GoalCard.tsx). */}
+      {goals.length > 0 ? <GoalsNotePanel note={view.note} wording={wording} className="md:order-last" /> : null}
       {goals.length === 0 ? (
-        <div className="rounded-xl border border-border bg-white p-6 text-center">
+        <div className="rounded-2xl border border-border bg-white p-6 text-center">
           <h2 className="text-[19px] font-bold text-ink">No goals yet</h2>
           <p className="mx-auto mt-1 max-w-md text-[15px] text-muted">
             Save for something, spend less on a category, keep under a limit or reach a {view.household ? "income" : "sales"}{" "}
@@ -198,7 +200,7 @@ function Signed({ account }: { account: AccountInfo }) {
           ))}
         </div>
       )}
-      <GoalsNotePanel note={view.note} wording={wording} />
+      {goals.length === 0 ? <GoalsNotePanel note={view.note} wording={wording} /> : null}
       {error ? <RuntimeErrorNote message={error} onRetry={() => void load()} /> : null}
     </div>
   );
@@ -250,7 +252,7 @@ function Details({
     <section
       id={`goal-details-${g.id}`}
       aria-label={`${g.name} details`}
-      className="mt-2 flex flex-col gap-4 rounded-xl border border-border bg-white p-4 sm:p-5"
+      className="mt-2 flex flex-col gap-4 rounded-2xl border border-border bg-white p-4 sm:p-5"
     >
       {p.baseline_label ? <p className="text-[13px] text-muted">Compared with: {p.baseline_label}</p> : null}
       {p.drivers.length ? (
@@ -259,7 +261,7 @@ function Details({
           <div className="mt-2 overflow-x-auto">
             <table className="w-full text-[13px] tabular-nums">
               <caption className="sr-only">Spending that moved most, against the same number of days before</caption>
-              <thead className="bg-[#F3F6F8] text-left text-muted">
+              <thead className="bg-ground text-left text-muted">
                 <tr>
                   <th scope="col" className="px-2 py-1.5 font-semibold">What</th>
                   <th scope="col" className="px-2 py-1.5 text-right font-semibold">So far</th>
@@ -309,7 +311,7 @@ function Details({
               inputMode="decimal"
               value={put}
               onChange={(e) => setPut(e.target.value)}
-              className="h-11 w-36 rounded-lg border border-border bg-white px-3 text-base"
+              className="h-11 w-36 rounded-xl border border-border bg-white px-3 text-base"
             />
             <button type="button" disabled={busy} onClick={record} className={primary}>
               Record
@@ -344,7 +346,7 @@ function Details({
               <button
                 type="button"
                 disabled={busy}
-                className="inline-flex h-11 items-center rounded-lg bg-[#A12626] px-4 text-[15px] font-bold text-white disabled:opacity-60"
+                className="inline-flex h-11 items-center rounded-xl bg-neg-ink px-4 text-[15px] font-bold text-white disabled:opacity-60"
                 onClick={() => void run(() => goalsApi.remove(account, g.id), `Deleted ${g.name}.`)}
               >
                 Yes, delete
@@ -361,7 +363,7 @@ function Details({
         </div>
       )}
       {err && !editing ? (
-        <p role="alert" className="rounded-lg bg-[#FFF0F0] px-3 py-2 text-[15px] text-[#A12626]">
+        <p role="alert" className="rounded-xl bg-neg-tint px-3 py-2 text-[15px] text-neg-ink">
           {err}
         </p>
       ) : null}

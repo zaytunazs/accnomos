@@ -1,7 +1,8 @@
 # Judging: every criterion mapped to evidence, and how to run it
 
-Refreshed 4 Nov 2026 against the official criteria: **Impact (30 %), Use of Meta AI tooling (25 %), Technical depth and
-execution (20 %) and Demo quality (25 %)** (the weights as published in the participant guide; check the form on the day).
+Refreshed 4 Nov 2026 against the official criteria: **Impact, Use of Meta AI tooling, Technical depth and execution, and
+Demo quality** (the participant guide gives the weighting; the event page says the indie track is judged on creativity,
+technical ambition and whether it works).
 Every claim names a path in this repo; nothing here goes beyond `docs/HONESTY.md`.
 Status words: *run live* = run for real against the live server or a real sandbox, with the record named (or, where it says
 "our record", the maintainers' word with no log committed); *measured* = a committed report under `evals/`;
@@ -14,7 +15,7 @@ and every merge has a second-agent review. Timestamps, commits per day and how e
 profiles, the Meta models page, the no-sign-in demo sandbox (`/judges`, also linked as *Try the demo*), the personal demo,
 the HMRC sandbox and TrueLayer sandbox in the demo, the hands-free assistant, goals and the calendar. iPhone is not built.
 
-**Android app:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.18: [accnomos-0.3.18-23.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.18-23/accnomos-0.3.18-23.apk)) and press **Try the company demo** (or **Try the personal demo**): no account needed. The Google Play listing is in Google's review, which takes several days, so use the APK for now.
+**Android app:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.19: [accnomos-0.3.19-24.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.19-24/accnomos-0.3.19-24.apk)) and press **Try the company demo** (or **Try the personal demo**): no account needed. The Google Play listing is in Google's review, which takes several days, so use the APK for now.
 
 ## 1. Impact
 
@@ -61,7 +62,7 @@ above); every accuracy number is on synthetic documents, and real phone photos w
 | Bank rules and reconciliation; matching measured (precision 83/83, recall 83/106) | `services/runtime/app/bank_rules.py`, `bank_reconcile.py`, `evals/runs/bank_matching/report.md` | Measured, synthetic |
 | Autopilot L2 with a safety eval that found a real bug (21 of 32 re-photographed receipts posted twice), fixed by a same-document rule (0 of 42 after) | `services/runtime/app/autopilot.py`, `evals/runs/autopilot_l2/`, `docs/reviews/autopilot-eval/REVIEW.md` | Measured, Glimmer, synthetic |
 | Security: log scrubbing, size caps, rate limit, exact-origin CORS, one-time OAuth state, safe file names | `docs/SECURITY.md`, `services/runtime/tests/test_security.py` | Tested; **not load-tested** |
-| Two clients on one stateless runtime: a web app and an Android app (0.3.18+23) with page-by-page parity | `apps/web/src/app`, `apps/mobile/lib/screens`, `apps/mobile/PARITY.md`, `apps/mobile/RELEASE_NOTES.md` | Android run on the owner's own phone (4 Nov 2026) and smoke-tested on the emulator (`docs/reviews/final-audit-4nov/REPORT.md`); no other phones |
+| Two clients on one stateless runtime: a web app and an Android app (0.3.19+24) with page-by-page parity | `apps/web/src/app`, `apps/mobile/lib/screens`, `apps/mobile/PARITY.md`, `apps/mobile/RELEASE_NOTES.md` | Android run on the owner's own phone (4 Nov 2026) and smoke-tested on the emulator (`docs/reviews/final-audit-4nov/REPORT.md`); no other phones |
 | Tests, 4 Nov 2026 (`pytest --collect-only` on `main` at `8debc2e9`): runtime 2789, ledger 101, connectors 67, evals 383, relay 181; Playwright about 300 tests in 84 spec files; Flutter about 470 | `uv run pytest -q`, `apps/web/e2e/*.spec.ts`, `apps/mobile/test`, `docs/HONESTY.md` | Every suite runs on GitHub in `.github/workflows/ci.yml` on every push and PR and was green on that commit (`docs/reviews/ci/REVIEW.md`) |
 | Process: every branch reviewed by a second agent before merging, with what was fixed and what remains | `docs/reviews/*/REVIEW.md` (101 reviews on 4 Nov), `docs/PROVENANCE.md` | Documented |
 

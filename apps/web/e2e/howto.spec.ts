@@ -109,7 +109,7 @@ async function soft(name: string, body: () => Promise<void>): Promise<void> {
 async function startDemo(page: Page, kind: "company" | "personal"): Promise<void> {
   await tidy(page);
   await page.clock.install({ time: TODAY });
-  await page.goto("/judges");
+  await page.goto("/demo");
   await page.getByRole("button", { name: kind === "personal" ? "Start the personal demo" : "Start the demo" }).click();
   await expect(bar(page)).toContainText("Demo sandbox with sample data", { timeout: SEED_WAIT });
 }
@@ -129,15 +129,15 @@ async function settings(page: Page, tab: string): Promise<Locator> {
   return panel;
 }
 
-test("signed out: Connect and the judges' guide", async ({ page }) => {
+test("signed out: Connect and the demo guide", async ({ page }) => {
   await page.clock.install({ time: TODAY });
   await page.goto("/connect");
   await expect(page.getByRole("button", { name: "Sign in with Microsoft" })).toBeVisible();
   await mark(page.getByRole("button", { name: "Sign in with Microsoft" }));
   await shoot(page, "connect-books-1");
 
-  await page.goto("/judges");
-  await expect(page.getByRole("heading", { name: "Try Accnomos in one click" })).toBeVisible();
+  await page.goto("/demo");
+  await expect(page.getByRole("heading", { name: "Your demo of Accnomos" })).toBeVisible();
   await mark(page.getByRole("button", { name: "Start the demo" }));
   await shoot(page, "connect-books-2");
 });

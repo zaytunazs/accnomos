@@ -16,6 +16,7 @@ import {
 import { ApplyCreditDialog, RefundDialog } from "@/components/invoices/CreditDialogs";
 import { OnlineFound, PaymentLinkDialog, PayOnlineLine, linkAmount } from "@/components/invoices/OnlinePayments";
 import SignInCta from "@/components/SignInCta";
+import StatusBadge, { type BadgeTone } from "@/components/StatusBadge";
 import { EmptyState, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
@@ -51,13 +52,19 @@ const FILTERS: { value: Filter; label: string }[] = [
 
 const isOverdue = (i: Pick<RtInvoice, "status" | "days_overdue">) => i.status === "sent" && (i.days_overdue ?? 0) > 0;
 
+/** The shared badge (components/StatusBadge.tsx): paid is green, draft and void quiet, overdue amber; the words say it. */
+const STATUS_TONE: Record<RtInvoice["status"], BadgeTone> = { draft: "neutral", sent: "brand", paid: "success", void: "neutral" };
+
 function StatusChip({ invoice }: { invoice: Pick<RtInvoice, "status" | "days_overdue"> }) {
   if (isOverdue(invoice)) {
     const d = invoice.days_overdue!;
-    return <span className="rounded-full bg-warn-bg px-2 py-0.5 text-[12px] font-extrabold text-warn-ink">{d} day{d === 1 ? "" : "s"} overdue</span>;
+    return <StatusBadge tone="warning">{d} day{d === 1 ? "" : "s"} overdue</StatusBadge>;
   }
-  const tone = { draft: "bg-ground text-muted", sent: "bg-teal-tint text-teal-dark", paid: "bg-teal text-white", void: "bg-ground text-muted line-through" }[invoice.status];
-  return <span className={`rounded-full px-2 py-0.5 text-[12px] font-extrabold ${tone}`}>{STATUS_LABEL[invoice.status]}</span>;
+  return (
+    <StatusBadge tone={STATUS_TONE[invoice.status]} className={invoice.status === "void" ? "line-through" : ""}>
+      {STATUS_LABEL[invoice.status]}
+    </StatusBadge>
+  );
 }
 
 const action = "text-[13px] font-bold text-teal-dark hover:underline";

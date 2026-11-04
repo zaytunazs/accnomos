@@ -7,7 +7,7 @@ import { createBooksFolder, expect, signIn, test } from "./fixtures";
  * /meta-models (src/app/meta-models/page.tsx, data in src/lib/meta-models-page.ts): one page saying which Meta model
  * does which job. It lists every model in use, each overview row lands on its section, every report link points at a
  * file committed in this repository, and the page names no hardware and no other company's engine. Reached from the
- * public footer, the app footer, /judges and the Home summary card.
+ * public footer, the app footer, /demo, /judges and the Home summary card.
  */
 const MODELS = [
   ["muse-spark", "Muse Spark 1.3"],
@@ -94,14 +94,16 @@ test.describe("desktop", () => {
     expect(await page.locator("main").innerText()).not.toMatch(NOT_NAMED);
   });
 
-  test("the public footer and /judges link to it", async ({ page }) => {
+  test("the public footer, /demo and /judges link to it", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("navigation", { name: "Help" }).getByRole("link", { name: "Meta models used" }).click();
     await expect(page).toHaveURL(/\/meta-models$/);
-    await page.goto("/judges");
-    await page.getByRole("link", { name: "Which Meta model does what" }).click();
-    await expect(page).toHaveURL(/\/meta-models$/);
-    await expect(page.getByTestId("row-muse-glimmer")).toBeVisible();
+    for (const route of ["/demo", "/judges"]) {
+      await page.goto(route);
+      await page.getByRole("link", { name: "Which Meta model does what" }).click();
+      await expect(page).toHaveURL(/\/meta-models$/);
+      await expect(page.getByTestId("row-muse-glimmer")).toBeVisible();
+    }
   });
 
   test("signed in: the Home summary's note and the app footer link to it", async ({ page }) => {

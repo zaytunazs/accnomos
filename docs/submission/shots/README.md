@@ -2,6 +2,11 @@
 
 Labelled sample books (Bramblewood Joinery Ltd, fictional) at 1280×800 (`*.png`) and 390×844 (`*-phone.png`), light theme. Taken by `apps/web/e2e/shots.spec.ts` (`SHOTS=1`); every shot asserts the `SAMPLE — FICTIONAL COMPANY` label before capture. The `01–14` files belong to the demo video flow (`e2e/demo.spec.ts`); the files below are the app-page set.
 
+The landing page's hero (`apps/web/public/shots/hero-*.webp`, via `apps/web/scripts/marketing-images.py`) comes from two more, taken by `apps/web/e2e/hero-shots.spec.ts` (`HERO_SHOTS=1`) in the demo sandbox, whose top bar names the company from the demo's own profile:
+
+- `hero-review.png` — Review in the company demo at 1280×860, scrolled to one pre-read waiting document (Northgate Timber & Hardware Supplies, £643.80, VAT £107.30): the receipt, supplier and amount, the facts read, the proposed entry and Approve · Edit · Reject in one frame. The card says "Pre-read sample document" and `seed:gold-reading`: no model ran on it. The demo bar scrolls off with the page; the receipt carries the SAMPLE — FICTIONAL COMPANY stamp.
+- `hero-review-phone.png` — the same card at 430×1000 (an iPhone Pro Max's CSS width, taller so the decision row fits above the tab bar), from the supplier line to Approve · Edit · Reject.
+
 - `home.png` — Home: signed-out pitch with the sample dashboard for the fictional demo company.
 - `home-phone.png` — Home at phone width, same pitch and sample dashboard.
 - `review-proposal.png` — Review: the Novex Office Supplies sample proposal with its document viewer open (original beside the crop).

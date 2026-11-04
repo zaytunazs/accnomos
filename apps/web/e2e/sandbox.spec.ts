@@ -18,11 +18,11 @@ test("Try the demo from the landing: review and approve a receipt, the VAT retur
   test.setTimeout(SEED_WAIT + 120_000);
   await page.clock.install({ time: TODAY });
   await page.goto("/");
-  // One click on the landing page's "Try the demo" (DemoLink.tsx): a sandbox, opened on the judges' guide.
+  // One click on the landing page's "Try the demo" (DemoLink.tsx): a sandbox, opened on the demo guide.
   await page.getByRole("main").getByRole("link", { name: "Try the demo", exact: true }).first().click();
   await expect(bar(page)).toContainText("Demo sandbox with sample data — changes reset after 2 hours.", { timeout: SEED_WAIT });
-  await expect(page).toHaveURL(/\/judges$/);
-  await expect(page.getByRole("heading", { name: "Try Accnomos in one click" })).toBeVisible();
+  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page.getByRole("heading", { name: "Your demo of Accnomos" })).toBeVisible();
   await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · demo data only")).toHaveCount(0); // live books, not the static sample
 
   // Review: six documents waiting (two need a look); approve one.
@@ -98,15 +98,26 @@ test("Try the demo from the landing: review and approve a receipt, the VAT retur
   await expect(bar(page)).toHaveCount(0);
 });
 
-test("/judges: a short guide that starts a demo in one click", async ({ page }) => {
+test("/demo: a short guide that starts a demo in one click; /judges keeps the judges' notes", async ({ page }) => {
   test.setTimeout(SEED_WAIT + 60_000);
   await page.clock.install({ time: TODAY });
+  await page.goto("/demo");
+  await expect(page.getByRole("heading", { name: "Your demo of Accnomos" })).toBeVisible();
+  const steps = page.getByRole("region", { name: "What to try" }).getByRole("listitem");
+  await expect(steps).toHaveText([/receipt/, /Approve/, /Ask/, /invoice/, /bank/, /VAT return/, /goal/, /Reports and contacts/]);
+  await expect(page.getByRole("main")).toContainText("reset after 2 hours");
+  await expect(page.getByRole("main")).toContainText("No real tax is filed");
+  await expect(page.getByRole("main")).toContainText("Sign in with Microsoft and Accnomos sets up real books in a folder in your own OneDrive");
+  await expect(page.getByRole("main")).not.toContainText(/judg/i); // written for the owner, not the hackathon
+
+  // The judges' notes: a footer link, the same Start buttons, the tour one link away.
   await page.goto("/judges");
   await expect(page.getByRole("heading", { name: "Try Accnomos in one click" })).toBeVisible();
-  const steps = page.getByRole("region", { name: "What to try, in this order" }).getByRole("listitem");
-  await expect(steps).toHaveText([/Review a receipt/, /Approve/, /VAT return/, /Ask/, /Reports/, /Contacts/, /Bank/]);
   await expect(page.getByRole("main")).toContainText("This sandbox is specially for testing");
-  await expect(page.getByRole("main")).toContainText("Signing in with Microsoft sets up real books in a folder in your own OneDrive");
+  await expect(page.getByRole("main").getByRole("link", { name: "the demo guide" })).toHaveAttribute("href", "/demo");
+  await expect(page.getByRole("main").getByRole("link", { name: "docs/submission/JUDGING.md" })).toHaveAttribute("href", /JUDGING\.md$/);
+
+  await page.goto("/demo");
   await page.getByRole("button", { name: "Start the demo" }).click();
   await expect(page).toHaveURL(/\/review$/, { timeout: SEED_WAIT });
   await expect(bar(page)).toBeVisible();
@@ -116,7 +127,7 @@ test("/judges: a short guide that starts a demo in one click", async ({ page }) 
 test("demo sandbox: Add a receipt reads only the upload, with progress, a type to confirm and the card in Review", async ({ page, runtime }) => {
   test.setTimeout(SEED_WAIT + 90_000);
   await page.clock.install({ time: TODAY });
-  await page.goto("/judges");
+  await page.goto("/demo");
   await page.getByRole("button", { name: "Start the demo" }).click();
   await expect(page).toHaveURL(/\/review$/, { timeout: SEED_WAIT });
   await expect(page.getByText("6 waiting for you")).toBeVisible();
@@ -139,7 +150,9 @@ test("demo sandbox: Add a receipt reads only the upload, with progress, a type t
 
   await row.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(row).toHaveAttribute("data-stage", /^(ready|needs_a_look)$/, { timeout: 30_000 });
-  await expect(row.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  // A finished job folds into the quiet row (ScanProgress.tsx): its bars are gone, the file's stage label stays.
+  await expect(page.locator("[data-scan-quiet]")).toHaveCount(1);
+  await expect(row.getByRole("progressbar")).toHaveCount(0);
   await expect(status(page)).toHaveText("1 new proposal");
   await expect(page.getByText("7 waiting for you")).toBeVisible();
   await expect(page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" })).toBeVisible();
@@ -149,7 +162,7 @@ test("demo sandbox: Add a receipt reads only the upload, with progress, a type t
 test("no HMRC sandbox for the relay: the demo falls back to simulated, says why, and never claims the sandbox", async ({ page }) => {
   test.setTimeout(SEED_WAIT + 60_000);
   await page.clock.install({ time: TODAY });
-  await page.goto("/judges");
+  await page.goto("/demo");
   await page.getByRole("button", { name: "Start the demo" }).click();
   await expect(bar(page)).toContainText("Demo sandbox with sample data", { timeout: SEED_WAIT });
   const calls = await routeSandboxRelay(page, { testUser: "unconfigured" });

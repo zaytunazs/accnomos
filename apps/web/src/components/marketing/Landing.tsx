@@ -324,10 +324,10 @@ function Hero() {
               srcSet="/shots/hero-review-640.webp 640w, /shots/hero-review-1280.webp 1280w"
               sizes="(min-width: 1024px) 600px, 72vw"
               width={1280}
-              height={800}
+              height={860}
               eager
               priority
-              alt="Accnomos Review page: the Novex Office Supplies receipt has been read, £51.90 with £8.65 VAT, confidence 97 %, waiting for approval."
+              alt="Accnomos Review in the demo sandbox, books of the fictional Bramblewood Joinery Ltd: a timber and hardware invoice from Northgate Timber & Hardware Supplies, £643.80 with £107.30 VAT to reclaim, shown beside its proposed entry and the Approve, Edit and Reject buttons."
             />
           </BrowserFrame>
           <PhoneFrame className="hero-phone absolute -bottom-12 left-0 w-[34%] max-w-[200px] sm:w-[30%]">
@@ -336,13 +336,14 @@ function Hero() {
               srcSet="/shots/hero-phone-200.webp 200w, /shots/hero-phone.webp 390w"
               sizes="(min-width: 640px) 200px, 34vw"
               width={390}
-              height={844}
+              height={907}
               eager
-              alt="The same Novex proposal on a phone, with the proposed entry: office supplies £43.25, VAT to reclaim £8.65."
+              alt="The same Northgate invoice on a phone: supplier and amount, the proposed entry (materials £536.50, VAT to reclaim £107.30) and the Approve, Edit and Reject buttons."
             />
           </PhoneFrame>
-          <p className="mt-16 text-right text-[13px] text-ground/65">
-            One receipt on the phone and on the web: the real app, with the fictional sample books.
+          {/* The phone frame overhangs the column's left edge: the caption starts clear of it. */}
+          <p className="mt-16 pl-[8%] text-right text-[13px] text-ground/65">
+            One invoice on the phone and on the web: the real app in its demo sandbox, with the fictional sample books.
           </p>
         </div>
       </div>

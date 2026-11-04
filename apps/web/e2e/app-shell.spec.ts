@@ -69,6 +69,7 @@ test.describe("signed in", () => {
         ["Help and guides", "/help"],
         ["Privacy", "/privacy"],
         ["Meta models at work", "/models"],
+        ["Demo guide", "/demo"],
         ["For judges", "/judges"],
       ] as const) {
         await expect(about.getByRole("link", { name, exact: true }), `${route} ${name}`).toHaveAttribute("href", href);

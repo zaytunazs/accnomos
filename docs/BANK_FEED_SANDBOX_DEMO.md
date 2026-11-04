@@ -53,8 +53,9 @@ demo session, so a bank connected there shows there, not on the phone.
 ids), as the video's bank feed take (`docs/video/V3_EDIT.md`, scene s5a; the capture script is `tools/video/`): Try the demo
 → Bank → *Connect the test bank* → TrueLayer's sandbox page listed Mock Bank only → signed in as `john` / `doe` → *Allow* →
 back on `/bank` connected ("mock · test bank, sample data only", *Last fetched 4 Nov 2026*). The take fetched 2,145 sample
-lines, all left unmatched because TrueLayer's mock data does not match the demo's books; `integ/4nov-big` (`e0a61829`,
-not yet on `main`) caps the demo's feed at the newest 40 lines of the first account so the Bank page stays a page.
+lines, all left unmatched because TrueLayer's mock data does not match the demo's books; since `e0a61829` (on `main`
+and deployed the same afternoon) the demo's feed is capped at the newest 40 lines of the first account so the Bank page
+stays a page.
 Earlier the same morning (about 07:45 UTC, before that deploy) the live runtime still refused a demo with 403
 "Connecting a bank feed is switched off in the demo sandbox."
 

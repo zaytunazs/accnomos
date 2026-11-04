@@ -11,18 +11,19 @@ run the secrets check in section 8 now, not last.
 
 - [x] Entra holds the Play app-signing key's MSAL hash (27 Oct); release builds from 0.3.1+4 carry it.
 - [x] `flutter analyze` and `flutter test` run green in CI on every push (`main` at `8debc2e9`, 4 Nov).
-- [x] **APK 0.3.18+23 published** as a GitHub pre-release (`android-0.3.18-23`, 4 Nov 08:51 UTC; the link in the README and
-      JUDGING.md resolves; the audit installed it on the emulator and walked Welcome → Try the company demo → Home, Review,
-      Ask, VAT, More › Bank, Settings).
+- [x] **APK 0.3.19+24 published** as a GitHub release (`android-0.3.19-24`, 4 Nov 13:20 UTC; the link in the README and
+      JUDGING.md resolves). The audit installed 0.3.18+23 on the emulator and walked Welcome → Try the company demo → Home,
+      Review, Ask, VAT, More › Bank, Settings; 0.3.19 adds the Home goals and AI cards, the duplicates card fix and Bank sync.
 - [ ] **Play Console:** the listing is in Google's review. If you upload again, build from `apps/mobile/pubspec.yaml`
-      (**0.3.18+23**; bump first) with `tools/build_release.ps1`, paste the "What's new" text from
+      (**0.3.19+24**; bump first) with `tools/build_release.ps1`, paste the "What's new" text from
       `apps/mobile/RELEASE_NOTES.md`. Not needed for the submission: the APK is the judges' path.
 - [ ] **Write the real Play status into the form on the day** (in review, live, or testing track only). Do not write
       "published" unless the console says so. If it is live, copy the listing URL for the form.
 - [x] **Run on a real phone:** the owner's own phone, 4 Nov 2026, with spoken questions to Ask (no log committed; README and
       HONESTY say so). Sign-in from a Play install is still untried (the APK is sideloaded).
-- [ ] Optional, if time allows: on the phone, open the company demo's **VAT** tab and check which period it opens on
-      (the emulator opened on *Jan–Mar 2025* with every box at £0.00: `docs/reviews/final-audit-4nov/REPORT.md`, issue A1).
+- [x] The company demo's **VAT** tab on the phone opened on *Jan–Mar 2025* with every box at £0.00 (emulator, audit issue A1):
+      fixed on the server side on 4 Nov (`/books/vat/periods` now names the period due next, which the released APK reads),
+      so 0.3.19 opens on Jul–Sep 2026 once the API is deployed; no rebuild needed.
 
 ## 2. HMRC sandbox: one full run
 
@@ -55,10 +56,9 @@ run the secrets check in section 8 now, not last.
 - [x] `curl https://api.accnomos.com/health` returned `"ok": true` with `demo.ready: true` at 11:00 UK on 4 Nov.
 - [ ] **Keep the server up until results are announced**, not just until you submit: sleep and automatic updates off;
       check `/health` once a day; the demo seed rebuilds after midnight (the first visitor waits ~2 min).
-- [ ] **Deploy what is on `main` but not yet on the server or site** before 02:00: the web export is at `e1fcfcd7`
-      (`/help` footer shows the build hash); `integ/4nov-big` holds the demo bank-feed cap (`e0a61829`), the audit's doc
-      fixes (`claude/final-audit`) and the `/demo` guide once merged. After the deploy, open `/judges` (and `/demo`) in a
-      private window.
+- [ ] **Deploy what is on `main` but not yet on the server or site** before 02:00 (the web deploys itself on every push to
+      `main`; the API is deployed by hand): after the last merge, redeploy the API and open `/judges` and `/demo` in a private
+      window. The demo bank-feed cap, the `/demo` guide, the UI polish and the audit's doc fixes are on `main`.
 - [x] Server keys set: `ACTIONS_SIGNING_KEY`, the HMRC sandbox client id and secret on the relay, `TRUELAYER_*` sandbox
       keys, `META_API_KEY`.
 
@@ -98,7 +98,7 @@ Check the form's own field list on the day; this is what the repo has for each l
 | Video link | from section 5 |
 | Live demo | `https://accnomos.com` (press *Try the demo*; guide at `https://accnomos.com/judges`, no sign-in) |
 | Judge access | "No account needed: press Try the demo. HMRC and the bank feed are sandboxes." |
-| Android app | the APK link from the README (`android-0.3.18-23`); Play: "submitted, in Google's review" unless the console says otherwise |
+| Android app | the APK link from the README (`android-0.3.19-24`); Play: "submitted, in Google's review" unless the console says otherwise |
 | Meta models / tools used | `docs/submission/META_MODELS.md`: Muse Spark 1.3 (the live server's first model, measured), Muse Glimmer 30B (open weights on our own server: fallback and local mode), Muse Spark Open (hosted open weights, evals only, off on the live server), Muse Voice Transcribe and SAM 3.1 (both run live), Muse Image (brand art); Muse Code as a coding assistant. Where the open weights run, with call records: `docs/submission/OPEN_WEIGHTS.md` |
 | What pre-existed | `docs/PROVENANCE.md`: the owner's own AI server with a local model runtime, nothing else; first commit 6 h 29 min after kickoff |
 | AI coding assistants | Muse Code and other AI tools; every merge reviewed (`docs/reviews/`) |
@@ -146,8 +146,8 @@ git grep -n '192\.168\.1\.176'                      # your LAN address is the de
 
 - [x] Test figures refreshed 4 Nov (README "Current gates", JUDGING.md): CI green on `main`.
 - [x] `docs/PROVENANCE.md` commits-per-day table re-run on 4 Nov (1,727 commits on `main` to `8debc2e9`).
-- [ ] Merge `claude/final-audit` (doc fixes) and the `/demo` guide into `main`; let CI and the web deploy finish; check
-      the `/help` footer shows the new build hash.
+- [x] `claude/final-audit` (doc fixes) and the `/demo` guide merged into `main` (4 Nov afternoon); the `/help` footer shows
+      the build hash of the deployed export.
 - [ ] Last hour: run the demo path once on the real site (`/judges` → Start the demo → Review → Approve → VAT → Make a
       test user); `/health` is `"ok": true`; fill the form; **submit by 18:00 UK time on Wed 4 Nov** (the hard deadline
       is 02:00 UK time on Thu 5 Nov).

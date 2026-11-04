@@ -5,8 +5,8 @@ import { DEMO_KINDS, startDemo, type DemoKind } from "@/lib/demo";
 import { DEMO_GUIDE } from "@/lib/public-site";
 
 /**
- * "Try the demo": one click starts a demo sandbox (lib/demo.ts, no sign-in) and opens the judges' guide inside it,
- * with the demo bar. It is a plain link to the guide underneath, so without scripts, or when this server runs no
+ * "Try the demo": one click starts a demo sandbox (lib/demo.ts, no sign-in) and opens the demo guide (/demo) inside
+ * it, with the demo bar. It is a plain link to the guide underneath, so without scripts, or when this server runs no
  * demos (the guide then says so), it still lands somewhere that explains. A modified click opens the guide as is.
  */
 export default function DemoLink({
@@ -16,7 +16,7 @@ export default function DemoLink({
 }: {
   className: string;
   children?: ReactNode;
-  /** company: the judges' guide in the Bramblewood Joinery books; personal: a household's books, on its Personal page. */
+  /** company: the demo guide in the Bramblewood Joinery books; personal: a household's books, on its Personal page. */
   kind?: DemoKind;
 }) {
   const [busy, setBusy] = useState(false);

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import StatusBadge from "@/components/StatusBadge";
 import { runtime, type RtBankRule, type RtBankRuleIn } from "@/lib/runtime";
 import { LoadingSkeleton, RuntimeErrorNote, parseRuntimeError } from "@/components/States";
 
@@ -259,7 +260,7 @@ export default function BankRules({ account, prefill, onPrefillUsed }: {
             <li key={r.id} className="flex flex-col gap-2 rounded-xl border border-border p-4">
               <div className="flex flex-wrap items-baseline gap-x-3">
                 <span className="font-bold">{r.name || `Rule ${i + 1}`}</span>
-                <span className="rounded-full bg-ground px-2 py-0.5 text-[12px] font-bold text-muted">#{i + 1} of {rules.length}</span>
+                <StatusBadge tone="neutral">#{i + 1} of {rules.length}</StatusBadge>
               </div>
               <p className="text-sm">
                 When the description <strong>{r.match.op}</strong> {r.match.value}
