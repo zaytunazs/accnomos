@@ -606,7 +606,12 @@ const SHOTS: Record<string, Shot> = {
             const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).or(page.getByRole("option", { name })).first();
             if (await b.isVisible().catch(() => false)) { await h.click(b, 300); clicked = true; break; }
           }
-          if (!clicked) await page.waitForTimeout(1500);
+          if (!clicked) {
+            const tile = page.getByText(/^Mock/i).first();
+            if (await tile.isVisible().catch(() => false)) await h.click(tile, 300);
+            else await page.waitForTimeout(1500);
+          }
+          console.log("  tl page", i, page.url().slice(0, 80));
         }
         await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 90_000 });
         c.mark("back");
