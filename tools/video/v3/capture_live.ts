@@ -597,13 +597,13 @@ const SHOTS: Record<string, Shot> = {
         for (let i = 0; i < 16 && !page.url().startsWith(SITE); i++) {
           await settle(page, 700);
           if (page.url().startsWith(SITE)) break;
-          const user = page.getByLabel(/user ?name|user id/i).first();
-          if (await user.isVisible().catch(() => false)) {
+          const user = page.getByLabel(/user ?name|user id/i).or(page.getByPlaceholder(/user ?name/i)).first();
+          if ((await user.isVisible().catch(() => false)) && !(await user.inputValue().catch(() => "x"))) {
             await h.type(user, process.env.TL_USER ?? "john", 80);
-            await h.type(page.getByLabel(/password/i).first(), process.env.TL_PASS ?? "doe", 80);
+            await h.type(page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)).first(), process.env.TL_PASS ?? "doe", 80);
           }
           let clicked = false;
-          for (const name of [/mock/i, /^Allow|^Approve|^Agree/i, /^Continue|^Submit|^Sign in|^Log in|^Confirm|^Next/i]) {
+          for (const name of [/mock/i, /^Allow|^Approve|^Agree/i, /^Proceed|^Continue|^Submit|^Sign in|^Log in|^Confirm|^Next/i]) {
             const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).or(page.getByRole("option", { name })).first();
             if (await b.isVisible().catch(() => false)) { await h.click(b, 300); clicked = true; break; }
           }
