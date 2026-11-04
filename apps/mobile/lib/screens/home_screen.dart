@@ -6,9 +6,11 @@ import '../models/home_summary.dart';
 import '../models/suggestions.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
+import '../services/app_mode.dart';
 import '../services/books_events.dart';
 import '../services/runtime_client.dart' show RuntimeClient;
 import '../services/settings.dart';
+import '../services/summary_routes.dart';
 import '../theme.dart';
 import '../widgets/loading.dart';
 import '../widgets/tile_grid.dart';
@@ -345,12 +347,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// "Assuming Mar/Jun/Sep/Dec quarters — set yours in Settings", shown when
-/// the runtime assumed calendar quarters (no stagger saved), worded like
-/// the web's Deadlines note. The link opens Settings.
-/// The summary at the top of Home: two to four sentences, figures by code.
+/// The summary at the top of Home, figures by code. Newer servers send it as
+/// a short list sorted by code (most urgent first), each line with a button
+/// to the page where the task is done; older servers send a paragraph.
 class SummaryCard extends StatelessWidget {
-  const SummaryCard({super.key, required this.summary, this.pending = false});
+  const SummaryCard({
+    super.key,
+    required this.summary,
+    this.pending = false,
+    this.household,
+  });
 
   final HomeSummary summary;
 
@@ -358,8 +364,42 @@ class SummaryCard extends StatelessWidget {
   /// teal bar along the top and "Muse Spark is writing your summary…".
   final bool pending;
 
+  /// Which app the actions open pages in; null reads it from [AppMode].
+  final bool? household;
+
   @override
   Widget build(BuildContext context) {
+    final isHousehold = household ?? AppMode.household;
+    // Background lines (priority 3) go last, the rest keep the server's order.
+    final items = [
+      ...summary.items.where((i) => i.priority < 3),
+      ...summary.items.where((i) => i.priority >= 3),
+    ];
+    final body = items.isEmpty
+        ? Text(summary.text,
+            key: ValueKey(summary.text),
+            style: const TextStyle(color: AccnomosColors.ink, height: 1.45))
+        : Column(
+            key: ValueKey(items.map((i) => '${i.id}:${i.title}').join('|')),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // With items, summary_md is the one-line headline above them.
+              if (summary.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(summary.text,
+                      key: const Key('summary-headline'),
+                      style: const TextStyle(
+                          color: AccnomosColors.ink, height: 1.4)),
+                ),
+              for (final (n, item) in items.indexed)
+                SummaryItemRow(
+                  item: item,
+                  household: isHousehold,
+                  divider: n > 0,
+                ),
+            ],
+          );
     return Semantics(
       container: true,
       label: 'Your summary',
@@ -394,10 +434,7 @@ class SummaryCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     AnimatedSwitcher(
                       duration: const Duration(milliseconds: 350),
-                      child: Text(summary.text,
-                          key: ValueKey(summary.text),
-                          style: const TextStyle(
-                              color: AccnomosColors.ink, height: 1.45)),
+                      child: body,
                     ),
                     const SizedBox(height: 8),
                     pending
@@ -418,6 +455,107 @@ class SummaryCard extends StatelessWidget {
   }
 }
 
+/// One summary line: a tone icon, the title in bold, the detail muted, and the
+/// action ("Review →") when the app has a page for it. Text wraps at any font
+/// size; nothing is cut off.
+class SummaryItemRow extends StatelessWidget {
+  const SummaryItemRow({
+    super.key,
+    required this.item,
+    required this.household,
+    this.divider = false,
+  });
+
+  final SummaryItem item;
+  final bool household;
+  final bool divider;
+
+  static (IconData, Color, String) _tone(SummaryTone t) => switch (t) {
+        SummaryTone.negative => (
+            Icons.error_outline,
+            const Color(0xFFA12626),
+            'Needs attention'
+          ),
+        SummaryTone.warning => (
+            Icons.schedule,
+            const Color(0xFF8A470D),
+            'Coming up'
+          ),
+        SummaryTone.positive => (
+            Icons.check_circle_outline,
+            const Color(0xFF166534),
+            'Good news'
+          ),
+        SummaryTone.neutral => (
+            Icons.info_outline,
+            AccnomosColors.muted,
+            'For information'
+          ),
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color, toneLabel) = _tone(item.tone);
+    final background = item.priority >= 3;
+    final action = item.action;
+    final target =
+        action == null ? null : summaryTarget(action.route, household: household);
+    return Container(
+      key: Key('summary-item-${item.id}'),
+      padding: EdgeInsets.only(top: divider ? 10 : 2, bottom: 2),
+      decoration: divider
+          ? const BoxDecoration(
+              border: Border(top: BorderSide(color: Color(0xFFC9E2DC))))
+          : null,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 1, right: 10),
+            child: Semantics(
+              label: toneLabel,
+              child: Icon(icon,
+                  size: 20, color: background ? AccnomosColors.muted : color),
+            ),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.title,
+                    style: TextStyle(
+                        fontWeight: background ? FontWeight.w600 : FontWeight.w700,
+                        color: background ? AccnomosColors.muted : AccnomosColors.ink,
+                        height: 1.3)),
+                if (item.detail != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(item.detail!,
+                        style: const TextStyle(
+                            color: AccnomosColors.muted, fontSize: 13, height: 1.4)),
+                  ),
+                if (target != null)
+                  TextButton(
+                    key: Key('summary-action-${item.id}'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      minimumSize: const Size(48, 40),
+                      alignment: Alignment.centerLeft,
+                      foregroundColor: AccnomosColors.tealDark,
+                    ),
+                    onPressed: () => openSummaryTarget(context, target),
+                    child: Text('${action!.label} →',
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The summary card before even code's figures are in: its title and
 /// shimmering lines, in the same teal card.
 class SummaryCardSkeleton extends StatelessWidget {
@@ -428,6 +566,9 @@ class SummaryCardSkeleton extends StatelessWidget {
       key: Key('summary-skeleton'), title: 'Your summary', lines: 3, tinted: true);
 }
 
+/// "Assuming Mar/Jun/Sep/Dec quarters — set yours in Settings", shown when
+/// the runtime assumed calendar quarters (no stagger saved), worded like
+/// the web's Deadlines note. The link opens Settings.
 class AssumedStaggerNote extends StatelessWidget {
   const AssumedStaggerNote({super.key});
 

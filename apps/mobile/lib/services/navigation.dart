@@ -15,6 +15,17 @@ class AppNav {
   /// Bumped when the shell should show its Home tab ([goHome]).
   static final ValueNotifier<int> homeRequests = ValueNotifier(0);
 
+  /// A tab the shell should show by name ("review", "ask", "vat", "budget",
+  /// "goals"); a new request object each time, so asking twice still fires.
+  static final ValueNotifier<TabRequest?> tabRequests = ValueNotifier(null);
+
+  /// Show one of the shell's tabs (a summary line's action): pushed screens
+  /// close first, as for the logo.
+  static void openTab(String name) {
+    appNavigatorKey.currentState?.popUntil((r) => r.isFirst);
+    tabRequests.value = TabRequest(name);
+  }
+
   /// The logo: close every pushed screen and show the Home tab. Signed out,
   /// the root is already the Welcome page.
   static void goHome() {
@@ -38,4 +49,10 @@ class AppNav {
     appNavigatorKey.currentState?.popUntil((r) => r.isFirst);
     await Demo.end();
   }
+}
+
+/// One request to show a tab by name ([AppNav.openTab]).
+class TabRequest {
+  TabRequest(this.name);
+  final String name;
 }

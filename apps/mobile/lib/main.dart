@@ -185,12 +185,22 @@ class _ShellState extends State<Shell> {
     AppMode.state.addListener(_modeChanged);
     Demo.state.addListener(_demoChanged);
     AppNav.homeRequests.addListener(_goHome);
+    AppNav.tabRequests.addListener(_openTab);
     AppMode.refresh();
   }
 
   /// The logo (AppNav.goHome): the Home tab.
   void _goHome() {
     if (mounted && _tab != 0) _selectTab(0);
+  }
+
+  /// A summary line's action (AppNav.openTab): the named tab, if this shell
+  /// has it.
+  void _openTab() {
+    final name = AppNav.tabRequests.value?.name;
+    if (!mounted || name == null) return;
+    final i = shellTabIndex(name, household: _household);
+    if (i != null && i != _tab) _selectTab(i);
   }
 
   void _demoChanged() {
@@ -202,6 +212,7 @@ class _ShellState extends State<Shell> {
     AppMode.state.removeListener(_modeChanged);
     Demo.state.removeListener(_demoChanged);
     AppNav.homeRequests.removeListener(_goHome);
+    AppNav.tabRequests.removeListener(_openTab);
     super.dispose();
   }
 
@@ -344,6 +355,12 @@ class AssistantButton extends StatelessWidget {
         label: const Text('Talk'),
       );
 }
+
+/// The index of a tab by name in this shell, or null when it has none (a
+/// household has no VAT or Ask tab; a business has no Budget or Goals tab).
+int? shellTabIndex(String name, {required bool household}) => household
+    ? const {'home': 0, 'review': 1, 'budget': 2, 'goals': 3, 'more': 4}[name]
+    : const {'home': 0, 'review': 1, 'ask': 2, 'vat': 3, 'more': 4}[name];
 
 /// The bottom tabs: the household app (personal books) has Budget and Goals
 /// where a business has Ask and VAT; there is no VAT tab for a household.
