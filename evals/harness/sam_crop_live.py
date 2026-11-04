@@ -19,18 +19,23 @@ import json
 import os
 import re
 import statistics
+import sys
 import time
 from pathlib import Path
 from typing import Any
 
 from PIL import Image
 
-from harness.crop_bench import GOLD_DIR, SCENES, kept, make_scene
-from harness.run_extraction import FIELDS, score
+REPO = Path(__file__).resolve().parents[2]
+for extra in (REPO / "services" / "runtime", REPO / "packages" / "ledger" / "src"):
+    if str(extra) not in sys.path:
+        sys.path.insert(0, str(extra))
 
-from app.ai import crop  # noqa: E402  (crop_bench puts the runtime on sys.path)
+from app.ai import crop  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
 from app.pipeline import process_image  # noqa: E402
+from harness.crop_bench import GOLD_DIR, SCENES, kept, make_scene  # noqa: E402
+from harness.run_extraction import FIELDS, score  # noqa: E402
 
 _MASK = re.compile(r"<\|mask;[^|]*\|>")
 BUSINESS = "Bramblewood Joinery Ltd"
