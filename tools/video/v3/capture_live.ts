@@ -539,8 +539,8 @@ const SHOTS: Record<string, Shot> = {
     setup: async ({ page }) => { await go(page, "/ask"); },
     run: async (c) => {
       await c.h.park(700, 300);
-      await askTyped(c, process.env.PROFIT_Q ?? "How much profit did we make this quarter?", 1);
-      await hoverText(c, /explanation by/, 1500);
+      await askTyped(c, process.env.PROFIT_Q ?? "How much profit did we make this quarter?", 1, false, ANSWERED);
+      await hoverText(c, /explanation by|Worked out by code/, 1500);
       await c.h.hold(800);
     },
   },
@@ -558,7 +558,8 @@ const SHOTS: Record<string, Shot> = {
       c.mark("approve");
       await h.click(approve, 300);
       c.mark("wait2");
-      await vis(page.getByText(/Added|Saved|Done|timesheet/i)).waitFor({ timeout: 60_000 }).catch(() => undefined);
+      await approve.waitFor({ state: "detached", timeout: 60_000 }).catch(() => undefined);
+      await page.waitForTimeout(700);
       c.mark("ready2");
       await h.hold(2400);
     },
@@ -567,8 +568,8 @@ const SHOTS: Record<string, Shot> = {
     setup: async ({ page }) => { await go(page, "/ask"); },
     run: async (c) => {
       await c.h.park(700, 300);
-      await askTyped(c, process.env.TILES_Q ?? "What tiles did we order for the Kitchen fit-out, Harrogate job?", 1);
-      await hoverText(c, /explanation by/, 1500);
+      await askTyped(c, process.env.TILES_Q ?? "What tiles did we order for the Kitchen fit-out, Harrogate job?", 1, false, ANSWERED);
+      await hoverText(c, /explanation by|Worked out by code/, 1500);
       await c.h.hold(800);
     },
   },
@@ -635,6 +636,8 @@ const SHOTS: Record<string, Shot> = {
   },
 };
 
+/** An Ask answer is in: worded by a model (checked) or worked out by code alone. */
+const ANSWERED = /explanation by (Glimmer|Muse)|^Worked out by code/;
 const ROUTE_Q = process.env.ROUTE_Q ?? "Who owes me the most?";
 async function openAiSettings(page: any) {
   await go(page, "/settings");
