@@ -328,7 +328,7 @@ export default function ActionCard({
    * The assistant's verbal approval: given a function that approves this card exactly as the button does, but sent
    * `via: "voice"` with what was heard (lib/voiceApproval.ts); given null when the card can no longer be approved.
    */
-  onVoiceReady?: (approve: ((heard: string) => Promise<RtActionResult | null>) | null) => void;
+  onVoiceReady?: (actionId: string, approve: ((heard: string) => Promise<RtActionResult | null>) | null) => void;
   account: AccountInfo;
   /** What the speech-to-text heard, for a spoken request: shown with the card's figures read back in words. */
   spoken?: string;
@@ -367,12 +367,15 @@ export default function ActionCard({
     }
   }
   const approveRef = useRef(approve);
-  approveRef.current = approve;
+  useEffect(() => {
+    approveRef.current = approve;
+  });
   const voiceOpen = !!onVoiceReady && state.step === "ready" && !expired;
   useEffect(() => {
     if (!onVoiceReady) return;
-    onVoiceReady(voiceOpen ? (heard: string) => approveRef.current(heard) : null);
-  }, [onVoiceReady, voiceOpen]);
+    onVoiceReady(action.id, voiceOpen ? (heard: string) => approveRef.current(heard) : null);
+    return () => onVoiceReady(action.id, null);
+  }, [onVoiceReady, voiceOpen, action.id]);
 
   async function reject() {
     setState({ step: "working" });

@@ -486,27 +486,31 @@ async def events_between(cal: CalendarProvider, start: date, end: date) -> list[
 
 
 def clash_line(e: CalendarEvent) -> str:
-    return f"{e.subject or '(no title)'}, {hhmm(e.start)}–{hhmm(e.end)}"
+    when = "all day" if e.is_all_day else f"{hhmm(e.start)}–{hhmm(e.end)}"
+    return f"{e.subject or '(no title)'}, {when}"
 
 
 async def _clashes(calendar: CalendarFactory | None, plan: EventPlan) -> list[CalendarEvent]:
-    """Timed events (not marked free) overlapping the planned one; none when the calendar can't be read just now
-    (the card is still offered; adding needs the write permission anyway)."""
+    """Events the planned one clashes with, by the Calendar page's rule (app/routes_calendar.py `clashes`: timed with
+    timed, all-day with all-day); none when the calendar can't be read just now (the card is still offered; adding
+    needs the write permission anyway)."""
     if calendar is None:
         return []
+    from app.routes_calendar import clashes  # the one rule, shared with POST /calendar/events
+
+    first, last = plan.start.astimezone(TZ).date(), (plan.end - timedelta(seconds=1)).astimezone(TZ).date()
 
     async def look(cal: CalendarProvider) -> list[CalendarEvent]:
-        return await cal.list_events(plan.start.date())
+        try:
+            return await cal.list_range(first, last)
+        except NotImplementedError:
+            return await events_between(cal, first, last)
 
     try:
         events = await _with_calendar(calendar, look)
     except (GraphError, LookupError, OSError):
         return []
-    return [
-        e
-        for e in events
-        if not e.is_all_day and e.show_as != "free" and e.start < plan.end and e.end > plan.start
-    ]
+    return clashes(plan.start, plan.end, plan.all_day, events)
 
 
 def _calendar_refused(exc: GraphError) -> bool:
@@ -657,7 +661,9 @@ async def handle(
     intent = spot(question, today)
     if intent is None:
         return None
-    now_local = now_local or datetime.now(TZ)
+    if now_local is None:  # the clock on the books' day (test mode and demos pin the day, not the clock)
+        clock = datetime.now(TZ)
+        now_local = clock if clock.date() == today else datetime.combine(today, clock.time(), TZ)
 
     if isinstance(intent, NoteAdd):
         text = _clean_note(intent.text)
@@ -692,7 +698,9 @@ async def handle(
         shown = notes[:10]
         head = "Your latest notes" if intent.label == "latest" else f"Your notes from {intent.label}"
         lines = [
-            f"- {n.text}" + (f" (due {uk_day(n.due)})" if n.due else "") + f" — {n.created.astimezone(TZ).day} {n.created.astimezone(TZ):%b}"
+            f"- {n.text}"
+            + (f" (due {uk_day(n.due)})" if n.due else "")
+            + f" — {n.created.astimezone(TZ).day} {n.created.astimezone(TZ):%b}"
             for n in shown
         ]
         more = f"\n\n…and {len(notes) - len(shown)} more on the Notes page." if len(notes) > len(shown) else ""
@@ -770,7 +778,7 @@ async def handle(
                 if plan.all_day
                 else f"{uk_day(plan.start.date())}, {plan.start:%H:%M}–{plan.end:%H:%M}"
             )
-            clashes = [] if plan.all_day else await _clashes(calendar, plan)
+            clashes = await _clashes(calendar, plan)
             preview = {
                 "subject": plan.subject,
                 "start": plan.start.isoformat(),
@@ -791,9 +799,7 @@ async def handle(
             if clashes:
                 summary += " This clashes with " + "; ".join(clash_line(c) for c in clashes) + "."
             confirm = "Add it anyway" if clashes else "Add this to your calendar"
-            return _answer(
-                summary, period, proposed_action=sign("calendar_add_event", summary, preview, confirm)
-            )
+            return _answer(summary, period, proposed_action=sign("calendar_add_event", summary, preview, confirm))
 
         if isinstance(intent, CalRemove):
             text = intent.text

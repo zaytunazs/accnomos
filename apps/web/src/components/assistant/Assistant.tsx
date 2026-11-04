@@ -104,17 +104,9 @@ export default function Assistant() {
   const end = useRef<HTMLDivElement>(null);
   /** Each card on screen that can still be approved, by action id: approves it as the button does, but spoken. */
   const voiceApprovers = useRef(new Map<string, (heard: string) => Promise<RtActionResult | null>>());
-  const readyHooks = useRef(new Map<string, (fn: ((heard: string) => Promise<RtActionResult | null>) | null) => void>());
-  const voiceReady = useCallback((id: string) => {
-    let hook = readyHooks.current.get(id);
-    if (!hook) {
-      hook = (fn) => {
-        if (fn) voiceApprovers.current.set(id, fn);
-        else voiceApprovers.current.delete(id);
-      };
-      readyHooks.current.set(id, hook);
-    }
-    return hook;
+  const voiceReady = useCallback((id: string, fn: ((heard: string) => Promise<RtActionResult | null>) | null) => {
+    if (fn) voiceApprovers.current.set(id, fn);
+    else voiceApprovers.current.delete(id);
   }, []);
 
   const put = useCallback((next: Turn[]) => {
@@ -487,7 +479,7 @@ export default function Assistant() {
                       account={account}
                       receivedAt={t.at}
                       spoken={t.voice ? t.question : undefined}
-                      onVoiceReady={voiceReady(t.answer.proposed_action.id)}
+                      onVoiceReady={voiceReady}
                       onChange={() => {
                         setInput(t.question);
                         inputRef.current?.focus();

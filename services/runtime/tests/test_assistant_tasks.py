@@ -270,10 +270,8 @@ def test_calendar_add_by_ask_and_tap(client) -> None:
 )
 def test_which_cards_need_a_tap(kind: str, preview: dict[str, Any], tap: bool) -> None:
     """The one classification (app/actions.py needs_tap); every action kind is listed here."""
-    from typing import get_args
 
     from app import actions
-    from app.schemas import ActionKind
 
     assert actions.needs_tap(kind, preview) is tap
     card = actions.new_action(actions.Draft(kind, "x", preview, "Do it"), TOKEN)
@@ -345,8 +343,13 @@ def test_voice_yes_is_audited_as_spoken(client, books: Books) -> None:
     import json
 
     c, _cal = client
-    card = c.post("/books/ask", json={"question": "take a note: ring the scaffolder"}, headers=H).json()["proposed_action"]
-    assert c.post("/actions/approve", json={"action": card, "via": "voice", "heard": "do it"}, headers=H).status_code == 200
+    card = c.post("/books/ask", json={"question": "take a note: ring the scaffolder"}, headers=H).json()[
+        "proposed_action"
+    ]
+    assert (
+        c.post("/actions/approve", json={"action": card, "via": "voice", "heard": "do it"}, headers=H).status_code
+        == 200
+    )
     path = f"_System/audit/actions/{card['created_at'][:7]}.jsonl"
     rows = [json.loads(x) for x in asyncio.run(books.storage.read(path)).decode().splitlines()]
     claimed = [r for r in rows if r.get("via") == "voice"]
@@ -361,7 +364,7 @@ def test_transcribe_only_hears(client, monkeypatch: pytest.MonkeyPatch) -> None:
 
     class Heard:
         text = "yes please"
-        by = Transcription(provider="muse", label="Muse Voice Transcribe")
+        by = Transcription(provider="muse", label="Muse Voice Transcribe", model="muse-voice-transcribe-1.0")
 
     async def fake_transcribe(wav, providers, **_):
         return Heard()

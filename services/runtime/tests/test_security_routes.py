@@ -489,6 +489,7 @@ NO_USER_NEEDED = {
     "POST /contacts/import/check": "marks which of the phone's rows are already in the books; saves nothing",
     "POST /books/ask": "answers, or proposes a signed action that only /actions/approve (X-User) runs",
     "POST /books/ask/voice": "as /books/ask",
+    "POST /books/ask/transcribe": "speech to text only; writes nothing (the approval it leads to needs X-User)",
     "POST /mail/scan": (
         "the intake agent copies receipts to 00 Inbox; audited as agent:intake (user: when X-User is sent)"
     ),
