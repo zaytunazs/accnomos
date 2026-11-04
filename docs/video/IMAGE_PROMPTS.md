@@ -269,3 +269,38 @@ use: cover of docs/howto/voice-chat.md
 
 Two rounded speech bubbles with abstract wavy lines (no letters) becoming a card with a check mark, teal and
 off-white on deep ledger green, the left half empty.
+
+## howto-notes-tasks
+
+size: 1280x720
+use: cover of docs/howto/notes-tasks.md
+
+A small notepad and a calendar page with a check mark beside a rounded speech bubble, off-white and brass on deep ledger green, the left half empty.
+
+## howto-goals
+
+size: 1280x720
+use: cover of docs/howto/goals.md
+
+A rising progress bar reaching a small brass flag, with a few coins stacked beside it, on deep ledger green, the left half empty.
+
+## howto-calendar
+
+size: 1280x720
+use: cover of docs/howto/calendar.md
+
+A calendar page with one day ringed in brass and a small bell above it, off-white on deep ledger green, the left half empty.
+
+## howto-personal-finances
+
+size: 1280x720
+use: cover of docs/howto/personal-finances.md
+
+A house outline above three short budget bars and a piggy bank, off-white and brass on deep ledger green, the left half empty.
+
+## howto-import-contacts
+
+size: 1280x720
+use: cover of docs/howto/import-contacts.md
+
+Three simple contact cards sliding into an open address book, off-white and brass on deep ledger green, the left half empty.

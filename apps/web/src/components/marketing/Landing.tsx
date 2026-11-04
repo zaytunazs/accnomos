@@ -2,6 +2,7 @@ import Link from "next/link";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
 import JoinForm from "@/components/sign-up/JoinForm";
+import { GUIDES, GUIDES_URL } from "@/lib/howto-guides";
 import { HONESTY_URL, LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
@@ -265,6 +266,7 @@ export default function Landing() {
       <Models />
       <Status />
       <Pricing />
+      <Guides />
       <Faq />
       {/* "Get 3 months free": the neutral form in the submission build (JoinForm); the pre-launch build shows its own
           EarlyAccessForm, which is in neither the HTML nor the payload of a submission build. Same list either way. */}
@@ -806,6 +808,52 @@ function Status() {
           <a href={HONESTY_URL} className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
             Read the full list in docs/HONESTY.md
           </a>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/** How-to guides: the featured guides from docs/howto as cards, each with a screenshot from the guide (sample books). */
+function Guides() {
+  const featured = GUIDES.filter((g) => g.featured);
+  const link = "font-bold text-teal-dark underline underline-offset-2 hover:text-teal";
+  return (
+    <section id="guides" aria-labelledby="guides-title" className="scroll-mt-20 border-t border-border bg-ground py-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHead
+          id="guides-title"
+          title="How-to guides"
+          lead="Step-by-step guides with a screenshot for every step, taken from the demo's fictional sample books, with the Android app where it differs."
+        />
+        <ul aria-label="How-to guides" className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {featured.map((g) => (
+            <li
+              key={g.file}
+              className="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-white focus-within:ring-2 focus-within:ring-teal hover:border-teal"
+            >
+              <Shot src={`/howto/${g.file}.webp`} width={640} height={400} alt={g.alt} className="border-b border-border" />
+              <div className="flex flex-1 flex-col p-5">
+                <h3 className="text-lg font-extrabold">
+                  <a
+                    href={`${GUIDES_URL}/${g.file}.md`}
+                    className="after:absolute after:inset-0 after:content-[''] focus:outline-none"
+                  >
+                    {g.title}
+                  </a>
+                </h3>
+                <p className="mt-1 text-[15px] leading-relaxed text-muted">{g.summary}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+          <a href={`${GUIDES_URL}/README.md`} className={link}>
+            All {GUIDES.length} guides
+          </a>
+          <Link href="/how-it-works#guides" className={link}>
+            The guides on How it works
+          </Link>
         </p>
       </div>
     </section>

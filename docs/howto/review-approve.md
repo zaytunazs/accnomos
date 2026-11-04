@@ -1,31 +1,41 @@
 # Review and approve
 
-![Review and approve](img/review-approve-cover.png)
+Who this is for: an owner clearing the Review queue. The AI proposes, code
+checks, you approve: nothing reaches your books until you tap Approve.
 
-Who this is for: an owner clearing the Review queue. AI proposes, code checks,
-you approve: nothing posts on its own.
-
-1. Open Review (`/review`) and read the queue counts.
-   ![the Review page with ready proposals counted separately from Needs a look.](img/review-approve-1.png)
-   If this goes wrong: the queue is empty after a scan, so check the intake
-   log for dropped files.
-2. Open one card and compare every field against the receipt image.
-   ![the receipt image beside supplier, VAT number, date, net, VAT and total, with the reader line naming the Meta model.](img/review-approve-2.png)
+1. Open **Review** (`/review`). At the top, **Scan 00 Inbox now** and **Add a
+   receipt** bring documents in; **Approved by Autopilot** lists what your own
+   rules approved, each with **Undo**; below it, the count of documents
+   waiting for you.
+   ![Review in the company demo: Scan 00 Inbox now, Add a receipt, and Approved by Autopilot with six utility bills, each with an Undo button.](img/review-approve-1.png)
+   If this goes wrong: the queue is empty after a scan, so check the file
+   landed in `00 Inbox` and is a photo, PDF or CSV.
+2. Open the document from its card and compare it with the reading: supplier,
+   VAT number, date, net, VAT and total.
+   ![The original document for Fictional Plastics Ltd, £126.00, opened over the Review page, with its VAT number and invoice date.](img/review-approve-2.png)
    If this goes wrong: the image is unreadable, so reject the card and
    photograph the receipt again.
-3. Read the code checks and the second reading before deciding.
-   ![the checks list (arithmetic, VAT number, duplicates) and the Verifier line, agreed or disagreeing.](img/review-approve-3.png)
-   If this goes wrong: the two readings disagree, so the card sits in
-   *Needs a look* with both values; pick the one the image supports.
-4. Press Approve, Edit, or Reject.
-   ![the Approve, Edit and Reject buttons, and after approving, the posted confirmation.](img/review-approve-4.png)
-   If this goes wrong: Approve stays disabled, so fill the highlighted missing
-   field first.
-5. Optional: tick *Always do this for this supplier* for Autopilot L1.
-   ![the Autopilot tick box on the Approve card and the rule saved notice.](img/review-approve-5.png)
-   If this goes wrong: later receipts from that supplier still wait in Review,
-   so check the rule totals: Autopilot only posts under twice the usual.
-6. Undo a mistake from the ledger entry, never by deleting.
-   ![the entry's Undo button and the reversing entry it creates.](img/review-approve-6.png)
-   If this goes wrong: the period is already submitted, so the correction is
-   dated today in the open period instead.
+3. Read the **Why** line, the second reading and the code checks, and the
+   proposed entry (what goes to Box 4, what will match a bank line). Then
+   press **Approve (post to books)**, **Edit** or **Reject**.
+   ![One proposal: Why: 3 lines, totals add up, category Office supplies; checks by code 11 of 11 passed; Always do this for Fictional Plastics Ltd; and the Approve (post to books), Edit and Reject buttons.](img/review-approve-3.png)
+   If this goes wrong: the two readings disagree, so the card sits in *Needs
+   a look* with both values; pick the one the document supports.
+4. The next card opens. Keys work too: **J**/**K** move, **A** approves,
+   **E** edits, **R** rejects and **U** undoes the last approval.
+   ![The next proposal, Northgate Timber & Hardware Supplies £643.80, read by Muse Spark at 97 %, with its proposed entry.](img/review-approve-4.png)
+5. Tick **Always do this for …** on a supplier you trust and Autopilot approves
+   their next documents that pass every check. Undo any of them from
+   **Approved by Autopilot**: Undo adds a reversing entry, it never deletes.
+   ![Approved · posted to your books · U to undo, above the Approved by Autopilot list with its Undo buttons.](img/review-approve-5.png)
+   If this goes wrong: a supplier's bill is unusually large, so it waits in
+   Review even with a rule: Autopilot only posts up to twice the usual.
+
+## On Android
+
+**Review** is a tab of its own, one card at a time (*Review 1 of 6*), with the
+same checks, the **Always do this** tick and **Approve**, **Edit** and
+**Reject**. The camera button at the top photographs a receipt straight into
+`00 Inbox`.
+
+![Android Review 1 of 6: Fictional Plastics Ltd £126.00, 97 % sure, read by Muse Spark, with net, VAT to reclaim, the supplier VAT number, Check VAT number, and Approve, Edit and Reject.](img/android-review.png)
