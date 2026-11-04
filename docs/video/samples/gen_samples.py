@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E501
 """Ten extra fictional sample documents (proposal, 4 Nov 2026), written by hand in code: no model involved.
 
     python3 docs/video/samples/gen_samples.py        # rewrites S01..S10 .json and .png in this folder

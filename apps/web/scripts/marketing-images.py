@@ -24,7 +24,8 @@ JOBS: dict[str, tuple[Path, tuple[int, int, int, int] | None, int]] = {
     "hero-review-640": (SHOTS / "04-scan.png", None, 640),
     "hero-phone": (SHOTS / "05-proposal-phone.png", None, 390),
     "hero-phone-200": (SHOTS / "05-proposal-phone.png", None, 200),  # shown at about 130-200 px wide
-    # The five steps of the process animation (main column of the 232 px sidebar layout, 1016 x 635 scaled to 816 x 510 at 16:10; the highlight boxes in
+    # The five steps of the process animation (main column of the 232 px sidebar layout, 1016 x 635 scaled to 816
+    # x 510 at 16:10; the highlight boxes in
     # src/components/marketing/ProcessDemo.tsx are percentages of these crops).
     "step-1-receipt": (ROOT / "apps/web/public/sample-receipt.png", None, 750),
     "step-2-read": (SHOTS / "05-proposal.png", (248, 66, 1264, 701), 816),
