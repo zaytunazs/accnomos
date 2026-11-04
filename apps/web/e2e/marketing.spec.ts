@@ -70,17 +70,15 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("button", { name: "Ask about Accnomos" }).first()).toBeVisible();
   });
 
-  test("FAQ answers open and close; the honest status is on the page", async ({ page }) => {
+  test("FAQ answers open and close; the home page is for users, not a test report", async ({ page }) => {
     await page.goto("/#faq");
     const q = page.getByText("Does it file to HMRC?");
     await q.click();
     await expect(page.getByText(/sandbox only, for VAT and for self-employed Income Tax/)).toBeVisible();
     await q.click();
     await expect(page.getByText(/sandbox only, for VAT and for self-employed Income Tax/)).toBeHidden();
-    const status = page.getByRole("region", { name: "What is tested, and what is not" });
-    await expect(status).toContainText("Tested on fakes");
-    await expect(status).toContainText("Production HMRC filing (sandbox only)");
-    await expect(page.getByRole("region", { name: "Six Meta models, each with its status" })).toContainText("Unit-tested only, not called live");
+    await expect(page.getByRole("region", { name: "What is tested, and what is not" })).toHaveCount(0);
+    await expect(page.getByText("Unit-tested only, not called live")).toHaveCount(0);
   });
 
   test("images: the hero loads at once, everything below the fold is lazy and has a description", async ({ page }) => {

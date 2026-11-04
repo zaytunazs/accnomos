@@ -2,7 +2,7 @@ import Link from "next/link";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
 import JoinForm from "@/components/sign-up/JoinForm";
-import { HONESTY_URL, LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
+import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
 import DemoLink from "./DemoLink";
@@ -115,51 +115,6 @@ function BlockText({ block }: { block: Block }) {
   );
 }
 
-const MODELS: { name: string; where: string; job: string; status: string; tone: "good" | "plain" | "off" }[] = [
-  {
-    name: "Muse Glimmer 30B",
-    where: "Open weights, run by us",
-    job: "Reads documents; writes Ask answers, inbox triage and reminders",
-    status: "Measured on 400 synthetic documents",
-    tone: "good",
-  },
-  {
-    name: "Muse Spark Open",
-    where: "Hosted open weights, key mode",
-    job: "Independent second reading (the Verifier)",
-    status: "Measured on 400 synthetic documents",
-    tone: "good",
-  },
-  {
-    name: "Muse Spark 1.3",
-    where: "Meta Model API, with your own key",
-    job: "The same jobs as Glimmer, without a GPU",
-    status: "Unit-tested only, not called live",
-    tone: "plain",
-  },
-  {
-    name: "Muse Voice Transcribe",
-    where: "Meta Model API (a local fallback model if it fails)",
-    job: "Spoken questions and instructions on Ask and Android",
-    status: "Unit-tested only, no live microphone run",
-    tone: "plain",
-  },
-  {
-    name: "SAM 3.1",
-    where: "Meta Model API, key mode",
-    job: "Crops a messy receipt photo before reading",
-    status: "Off by default; a code crop is used",
-    tone: "off",
-  },
-  {
-    name: "Muse Image",
-    where: "Build time only",
-    job: "Made the brand art; not in the running product",
-    status: "Run once, 12 images",
-    tone: "plain",
-  },
-];
-
 /** COPY.md's ten questions; answers 1 and 10 corrected (REVIEW.md). The last two are pre-launch build only. */
 const FAQ: { q: string; a: React.ReactNode }[] = [
   {
@@ -262,8 +217,6 @@ export default function Landing() {
       <Android />
       <Accountants />
       <YourData />
-      <Models />
-      <Status />
       <Pricing />
       <Faq />
       {/* "Get 3 months free": the neutral form in the submission build (JoinForm); the pre-launch build shows its own
@@ -693,120 +646,6 @@ function YourData() {
             alt="Files: the Accnomos folder in OneDrive with 00 Inbox, 01 Receipts, 02 Needs a look, 03 Sales, 04 Bank statements, 05 Payroll, 06 VAT returns, 07 Reports, README.txt and _System."
           />
         </BrowserFrame>
-      </div>
-    </section>
-  );
-}
-
-function Models() {
-  const tone = {
-    good: "bg-teal-tint text-teal-dark",
-    plain: "bg-ground text-muted",
-    off: "bg-warn-bg text-warn-ink",
-  };
-  return (
-    <section id="models" aria-labelledby="models-title" className="on-dark scroll-mt-20 bg-ledger py-20 text-ground">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="max-w-2xl">
-          <h2 id="models-title" className="text-3xl font-extrabold leading-tight tracking-[-0.02em] sm:text-4xl">
-            Six Meta models, each with its status
-          </h2>
-          <p className="mt-3 text-lg leading-relaxed text-ground/80">
-            Models read and write words. Money is always code. Here is where each one runs and how far it has been
-            tested.
-          </p>
-        </div>
-        <div className="mt-10 overflow-x-auto rounded-2xl bg-white text-ink" tabIndex={0} aria-label="Meta models table">
-          <table className="w-full min-w-[640px] text-left text-[15px]">
-            <thead className="border-b border-border text-sm text-muted">
-              <tr>
-                <th scope="col" className="px-5 py-3 font-bold">Model</th>
-                <th scope="col" className="px-5 py-3 font-bold">Runs on</th>
-                <th scope="col" className="px-5 py-3 font-bold">What it does here</th>
-                <th scope="col" className="px-5 py-3 font-bold">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MODELS.map((m) => (
-                <tr key={m.name} className="border-b border-border last:border-0">
-                  <th scope="row" className="px-5 py-4 font-extrabold">{m.name}</th>
-                  <td className="px-5 py-4 text-muted">{m.where}</td>
-                  <td className="px-5 py-4">{m.job}</td>
-                  <td className="px-5 py-4">
-                    <span className={`inline-block rounded-full px-3 py-1 text-[13px] font-bold ${tone[m.tone]}`}>
-                      {m.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-4 text-sm text-ground/70">
-          Accuracy, all on synthetic documents: every field right on 85 % (clean) and 80 % (messy) of 200 documents
-          each for Glimmer, and 91 % and 93 % for Spark Open.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function Status() {
-  const cols = [
-    {
-      title: "Ran for real",
-      items: [
-        "Microsoft sign-in and creating the folder",
-        "A receipt read by Glimmer on our Spark, approved, posted to the ledger and counted in the VAT boxes",
-        "The model evaluations reported above",
-      ],
-      foot: "On the maintainers' own accounts; no log is committed.",
-    },
-    {
-      title: "Tested on fakes",
-      items: [
-        "Everything else: invoicing, bank, contacts, reports, Ask, actions, Autopilot",
-        "About 1,260 runtime tests, 208 browser tests and 248 Android tests",
-        "In-memory OneDrive and mailbox, stubbed models, mocked HMRC",
-      ],
-      foot: "This proves our logic, not Microsoft, Meta or HMRC.",
-    },
-    {
-      title: "Not in this build",
-      items: [
-        "Production HMRC filing (sandbox only)",
-        "Sending payroll (RTI) to HMRC",
-        ...(SUBMISSION_MODE ? [] : ["An iPhone app"]),
-      ],
-      foot: "The full list of gaps is kept in docs/HONESTY.md in the public repository.",
-    },
-  ];
-  return (
-    <section id="status" aria-labelledby="status-title" className="scroll-mt-20 py-20">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <SectionHead
-          id="status-title"
-          title="What is tested, and what is not"
-          lead="A hackathon build, described as it is. Demo data is synthetic."
-        />
-        <div className="mt-10 grid gap-px overflow-hidden rounded-2xl border border-border bg-border md:grid-cols-3">
-          {cols.map((c) => (
-            <div key={c.title} className="bg-white p-6">
-              <h3 className="text-lg font-extrabold">{c.title}</h3>
-              <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-relaxed">
-                {c.items.map((i) => (
-                  <li key={i}>{i}</li>
-                ))}
-              </ul>
-              <p className="mt-4 text-sm text-muted">{c.foot}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 text-[15px]">
-          <a href={HONESTY_URL} className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
-            Read the full list in docs/HONESTY.md
-          </a>
-        </p>
       </div>
     </section>
   );

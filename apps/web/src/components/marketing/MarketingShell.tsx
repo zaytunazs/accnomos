@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { VersionStrip } from "@/components/StatusStrips";
-import { CONTACT_EMAIL, DEMO_GUIDE, HONESTY_URL } from "@/lib/public-site";
+import { CONTACT_EMAIL, DEMO_GUIDE } from "@/lib/public-site";
 import { LogoMark } from "./Marks";
 import PublicHeader from "./PublicHeader";
 
@@ -76,8 +76,7 @@ function SiteFooter() {
           links={[
             { href: "/privacy", text: "Privacy policy" },
             { href: "/terms", text: "Terms of use" },
-            { href: "/#status", text: "What is tested" },
-            { href: HONESTY_URL, text: "What is not tested (HONESTY.md)" },
+            { href: "/meta-models", text: "The Meta models we use" },
           ]}
         />
         <FooterLinks
