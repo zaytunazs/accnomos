@@ -33,8 +33,11 @@ with what existed before the hackathon and what was built during it.
 | 2:32.1–2:50.1 | s8 | End card with the how-to guides | — |
 | 2:50.1–2:55.9 | judges | Judges' slide (silent) | Muse Image credited here only |
 
-New live takes (4 Nov, accnomos.com): `w-route` (main `bf1de521`), `w-profit`, `w-timesheet`, `w-tiles` (main
-`e1fcfcd7`), `w-bankfeed` (main `3c83782c`). Everything else is v2 footage.
+New live takes (4 Nov, accnomos.com): `w-route` (main `bf1de521`), `w-timesheet` (main `e1fcfcd7`), `w-bankfeed` (main
+`3c83782c`), and `w-profit` and `w-tiles` re-taken at 20:40 UK on main `b5ab4604` for **v3.1** (the submitted file,
+`accnomos-demo-v3.1.mp4`, same 175.9 s): the Ask answer's cited files now read "Ledger · Oct 2026 (2 entries)" instead of
+five event file paths (`apps/web/src/components/ask/AnswerCard.tsx`). Only scene s4b was re-rendered (`edit.py . --keep`
+with `work/s4b_0.mp4` and `work/s4b_2.mp4` removed). Everything else is v2 footage.
 
 ## What changed from v2
 
