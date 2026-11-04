@@ -1,8 +1,15 @@
 import Link from "next/link";
 import type { ReactNode, Ref } from "react";
 import ByWhom from "@/components/ByWhom";
+import StatusBadge from "@/components/StatusBadge";
 import type { Proposal } from "@/lib/sample-review";
 import { taxLabel } from "@/lib/region";
+
+/**
+ * The card's weight, top to bottom: the supplier and the amount; the evidence (the document, the facts read from
+ * it) and any check that failed; the proposed entry; then, lighter, the checker's reasoning, the second reading
+ * when it agrees, and which model read it. A verifier that disagrees stays loud (amber), as do failed checks.
+ */
 
 /** The card's facts; "VAT" is the books' own tax name outside the UK (lib/region.ts). */
 const facts = (tax: string) => [
@@ -57,17 +64,13 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
         <div className="min-w-0 flex-1">
           <h2
             id={`proposal-${proposal.id}`}
-            className="break-words text-xl font-extrabold tracking-tight"
+            className="break-words text-[22px] font-extrabold leading-tight tracking-tight sm:text-2xl"
           >
-            {proposal.supplier} · {proposal.total}
+            {proposal.supplier} · <span className="tabular-nums">{proposal.total}</span>
           </h2>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <span className="rounded-full bg-teal-tint px-3 py-1 text-[13px] font-bold text-teal-dark">
-              {proposal.confidence}
-            </span>
-            <span className="rounded-full bg-ground px-3 py-1 text-[13px] font-semibold text-muted">
-              {proposal.source}
-            </span>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <StatusBadge tone="neutral">{proposal.confidence}</StatusBadge>
+            <span className="text-[13px] text-muted">{proposal.source}</span>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {facts(taxLabel()).map((fact) => (
@@ -126,18 +129,18 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
         </table>
       </div>
 
+      {/* The checker's reasoning and the second reading: the technical trail, lighter than the facts above. A
+          verifier that disagrees keeps the amber box. */}
       {proposal.reviewerNote && (
-        <p className="mt-4 break-words rounded-xl bg-ground p-4 text-[15px] leading-7">
+        <p className="mt-4 break-words rounded-xl bg-ground px-4 py-3 text-[14px] leading-6 text-muted">
           {proposal.reviewerNote}
         </p>
       )}
       <div
-        className={`mt-3 break-words rounded-xl p-4 text-[15px] leading-7 ${
+        className={`mt-3 break-words ${
           proposal.verifierTone === "differ"
-            ? "border border-warn-border bg-warn-bg text-warn-ink"
-            : proposal.verifierTone === "none"
-              ? "bg-ground text-muted"
-              : "bg-teal-tint text-teal-dark"
+            ? "rounded-xl border border-warn-border bg-warn-bg p-4 text-[15px] leading-7 text-warn-ink"
+            : "px-1 text-[13px] leading-5 text-muted"
         }`}
       >
         <p>{proposal.verifierNote}</p>
@@ -163,9 +166,9 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
         )}
       </div>
 
-      <ByWhom className="mt-3" code="Checked by code" ai="read by AI" />
+      <ByWhom className="mt-2 px-1" code="Checked by code" ai="read by AI" />
       {proposal.servedLine && (
-        <p data-testid="served-by" className="mt-2 break-words text-[13px] font-semibold text-muted">
+        <p data-testid="served-by" className="mt-1 break-words px-1 text-[12px] leading-5 text-muted">
           {proposal.servedLine} ·{" "}
           <Link href="/models" className="text-teal-dark underline underline-offset-2 hover:text-teal">
             Meta models at work

@@ -11,6 +11,8 @@ import { KIND_LABEL, KINDS, trackScanJob, untrackScanJob, updateScanJob, useScan
  * confirm the type → checking → ready to review) and one for the whole job. When the AI has said what a file is,
  * its guess and how sure it is are shown with a choice of type; nothing is read in full, filed or posted until the
  * user confirms. Finished rows say where the file went (Review, Bank, Needs a look) or why it was not read.
+ * A finished job folds into a quiet, compact row (its bars are full and gone; Dismiss stays); a job still reading,
+ * waiting on a type, or with a file that failed keeps the full card so the progress and the errors stand out.
  */
 export default function ScanProgress({ account }: { account: AccountInfo }) {
   const jobs = useScanJobs(account);
@@ -95,10 +97,17 @@ function JobCard({ job, account }: { job: RtScanJob; account: AccountInfo }) {
     }
   }
 
+  // Done, and nothing went wrong: the compact row. (A file that was not read keeps the full card: errors stay loud.)
+  const quiet = job.status === "done" && !job.counts.failed && stopped.length === 0 && !error;
+
   return (
-    <section aria-label={`Scan: ${SOURCE[job.source]}`} className="rounded-2xl border border-border bg-white p-4">
+    <section
+      aria-label={`Scan: ${SOURCE[job.source]}`}
+      data-scan-quiet={quiet ? "" : undefined}
+      className={quiet ? "rounded-2xl border border-border bg-ground px-4 py-2" : "rounded-2xl border border-border bg-white p-4"}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[15px] font-bold" aria-live="polite">
+        <p className={quiet ? "text-sm font-semibold text-ink" : "text-[15px] font-bold"} aria-live="polite">
           {headline(job)}
         </p>
         <div className="flex flex-wrap gap-2">
@@ -127,29 +136,38 @@ function JobCard({ job, account }: { job: RtScanJob; account: AccountInfo }) {
             <button
               type="button"
               onClick={() => untrackScanJob(job.id)}
-              className="h-11 rounded-xl border border-border bg-white px-4 text-sm font-bold"
+              className={`h-11 rounded-xl px-4 text-sm font-bold ${quiet ? "text-teal-dark hover:bg-white" : "border border-border bg-white"}`}
             >
               Dismiss
             </button>
           )}
         </div>
       </div>
-      <p className="mt-1 text-xs text-muted">
-        {SOURCE[job.source]} · it carries on if you leave this page
+      <p className={`${quiet ? "" : "mt-1"} text-xs text-muted`}>
+        {SOURCE[job.source]}
+        {job.status === "done" ? "" : " · it carries on if you leave this page"}
         {job.interrupted ? " · the reader restarted part-way" : ""}
       </p>
-      <div className="mt-2">
-        <Bar value={job.progress} label="Overall progress" />
-      </div>
+      {!quiet && (
+        <div className="mt-2">
+          <Bar value={job.progress} label="Overall progress" />
+        </div>
+      )}
       {error && <p className="mt-2 text-sm font-semibold text-warn-ink">{error}</p>}
-      <ul className="mt-3 flex flex-col divide-y divide-border">
+      <ul className={`${quiet ? "mt-1" : "mt-3"} flex flex-col divide-y divide-border`}>
         {job.files.map((f, i) => (
-          <li key={f.name} className="flex flex-col gap-2 py-3" data-scan-job={job.id} data-scan-file={f.name} data-stage={f.stage}>
+          <li
+            key={f.name}
+            className={`flex flex-col ${quiet ? "gap-0.5 py-1.5" : "gap-2 py-3"}`}
+            data-scan-job={job.id}
+            data-scan-file={f.name}
+            data-stage={f.stage}
+          >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <span className="min-w-0 break-all text-sm font-bold">{f.name}</span>
-              <span className="text-xs font-semibold text-teal-dark">{f.stage_label}</span>
+              <span className={`min-w-0 break-all ${quiet ? "text-[13px] font-semibold text-ink" : "text-sm font-bold"}`}>{f.name}</span>
+              <span className={`text-xs font-semibold ${f.stage === "failed" ? "text-warn-ink" : "text-teal-dark"}`}>{f.stage_label}</span>
             </div>
-            <Bar value={f.progress} label={`${f.name}: ${f.stage_label}`} />
+            {!quiet && <Bar value={f.progress} label={`${f.name}: ${f.stage_label}`} />}
             {f.stage === "confirm" && f.guess && (
               <div className="flex flex-wrap items-end gap-2">
                 <p className="basis-full text-sm">
@@ -183,14 +201,16 @@ function JobCard({ job, account }: { job: RtScanJob; account: AccountInfo }) {
                 </button>
               </div>
             )}
-            {f.message && <p className={`text-sm ${f.stage === "failed" ? "font-semibold text-warn-ink" : "text-muted"}`}>{f.message}</p>}
+            {f.message && (
+              <p className={f.stage === "failed" ? "text-sm font-semibold text-warn-ink" : `${quiet ? "text-[13px]" : "text-sm"} text-muted`}>{f.message}</p>
+            )}
             {f.stage !== "failed" && f.route === "bank" && (
-              <Link href="/bank" className="text-sm font-bold text-teal underline underline-offset-2">
+              <Link href="/bank" className={`${quiet ? "text-[13px]" : "text-sm"} inline-block py-1 font-bold text-teal-dark underline underline-offset-2`}>
                 Match the lines on Bank
               </Link>
             )}
             {f.stage === "ready" && f.route === "sales" && (
-              <p className="text-sm text-muted">In Review as a sale: approving it posts it to Sales.</p>
+              <p className={`${quiet ? "text-[13px]" : "text-sm"} text-muted`}>In Review as a sale: approving it posts it to Sales.</p>
             )}
           </li>
         ))}
