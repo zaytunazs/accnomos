@@ -2,8 +2,8 @@
 
 Sources: docs/submission/shots/ (the web app in test mode with the fictional sample books, taken by e2e/demo.spec.ts,
 e2e/shots.spec.ts and, for the hero, e2e/hero-shots.spec.ts in the demo sandbox), apps/mobile/screenshots/ (the Android
-app on an emulator, company demo, labelled sample data) and apps/web/public/sample-receipt.png. Every output is a crop or
-resize of one of those: nothing is drawn or edited.
+app on an emulator, company demo, labelled sample data) and apps/web/public/sample-receipt.png. Every output is a
+crop or resize of one of those: nothing is drawn or edited.
 Run from the repo root: `python apps/web/scripts/marketing-images.py` (needs Pillow with WebP).
 """
 
