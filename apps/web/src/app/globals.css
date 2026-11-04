@@ -1,21 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  /* Signed-in app palette (docs: CLAUDE_DESIGN_ONLY_BRIEF, 2 Nov 2026): a light grey-blue page, white cards,
-     teal for primary actions and selected states, a dark-teal sidebar. Text on page/tint/white is >= 5.6:1. */
-  --color-ink: #172b35;
-  --color-teal: #0f6e63;
-  --color-teal-dark: #0a4f47;
-  --color-teal-tint: #e8f4f1;
-  --color-ground: #f5f8fa;
-  --color-muted: #52626d;
-  --color-border: #dce5e9;
+  /* App palette: the Zaytuna brand (zaytunauk.co.uk, chosen by the owner 4 Nov 2026). A warm off-white page, white
+     cards, Zaytuna brown (#5A2D00) for primary actions and selected states, a deep-brown sidebar; gold is an accent
+     only. The token names keep "teal" so no component changes; the values are brown. Text on page/tint/white is
+     >= 6.5:1 (muted #5C534B on #F4EDE5); white on #5A2D00 is 11.8:1. */
+  --color-ink: #1f1a16;
+  --color-teal: #5a2d00;
+  --color-teal-dark: #3f2000;
+  --color-teal-tint: #f4ede5;
+  --color-ground: #f8f6f3;
+  --color-muted: #5c534b;
+  --color-border: #e6ded4;
   --color-warn-bg: #fff4dc;
   --color-warn-border: #ebc77a;
   --color-warn-ink: #8a470d;
   --color-amber: #b45309;
-  --color-sidebar: #0b3f43;
-  --color-sidebar-active: #17666a;
+  --color-sidebar: #2a1a0d;
+  --color-sidebar-active: #5a2d00;
   --color-pos-ink: #166534;
   --color-pos-tint: #ecfdf3;
   --color-neg-ink: #a12626;
@@ -139,11 +141,11 @@ td.text-right {
 /* ---- Public website (components/marketing) ------------------------------------------------------------------ */
 
 @theme {
-  --color-ledger: #0a4f47;
-  --color-ledger-deep: #073b35;
-  --color-brass: #d9b55a;
-  --color-brass-light: #e6c97c;
-  --shadow-frame: 0 1px 2px rgb(7 59 53 / 0.08), 0 18px 40px -16px rgb(7 59 53 / 0.35);
+  --color-ledger: #3f2000;
+  --color-ledger-deep: #2a1a0d;
+  --color-brass: #c9a45c;
+  --color-brass-light: #d9bb78;
+  --shadow-frame: 0 1px 2px rgb(42 26 13 / 0.08), 0 18px 40px -16px rgb(42 26 13 / 0.35);
 }
 
 /* The green bands: a soft light from the top corner, no pattern. They used to carry faint ruled lines (a 1 px
@@ -153,7 +155,7 @@ td.text-right {
   background-image: radial-gradient(120% 90% at 85% 0%, rgb(244 243 238 / 0.07), transparent 60%);
 }
 
-/* On the green bands the teal focus ring would vanish: brass instead (≥ 4.5:1 on #0a4f47). */
+/* On the dark-brown bands the brown focus ring would vanish: gold instead (≥ 4.5:1 on #3f2000). */
 .on-dark :where(a, button, summary, [tabindex]):focus-visible {
   outline-color: var(--color-brass);
 }
@@ -214,7 +216,7 @@ td.text-right {
   border-radius: 10px;
   box-shadow:
     0 0 0 3px var(--color-brass),
-    0 0 0 900px rgb(7 59 53 / 0.28);
+    0 0 0 900px rgb(42 26 13 / 0.28);
   opacity: 0;
   transition: opacity 0.45s ease-out 0.25s;
   pointer-events: none;

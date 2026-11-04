@@ -354,7 +354,7 @@ function Spark({ cash, width, box }: { cash: RtCashSeries; width: number; box: R
           aria-label={`Forecast bank balance over the next 90 days, from ${pounds(cash.opening_balance_pence)} today to ${pounds(last.balance_pence)} on ${shortDate(last.date)}. ${lowest}.${cash.below_zero_on ? ` It goes below £0 on ${shortDate(cash.below_zero_on)}.` : ""}`}
           className="block"
         >
-          <polygon points={area} fill="#e8f4f1" />
+          <polygon points={area} fill="#f4ede5" />
           {negative && <line x1={SPARK_PAD.left} x2={W - SPARK_PAD.right} y1={y(0)} y2={y(0)} stroke={MUTED} strokeDasharray="3 3" strokeWidth={1} />}
           <polyline points={line} fill="none" stroke={SALES} strokeWidth={2} strokeLinejoin="round" />
           {pts.map((p) => (

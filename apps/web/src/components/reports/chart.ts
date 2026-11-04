@@ -5,7 +5,7 @@
 
 // Teal for sales, amber for purchases, ink for net. Each series also differs by shape (solid, dashed, dotted, bars
 // against a line), and every chart has a legend, point titles and the same figures as a table.
-export const SALES = "#0f6e63";
+export const SALES = "#5a2d00";
 export const PURCHASES = "#b45309";
 export const NET = "#1b1f24";
 export const GRID = "#e3e1d8";

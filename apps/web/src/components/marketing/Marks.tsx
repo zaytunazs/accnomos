@@ -1,16 +1,25 @@
-/** The Accnomos mark (the hexagon with a tick), as in the app shell, in any colour pair. */
-export function LogoMark({ className = "bg-teal", stroke = "#F4F3EE" }: { className?: string; stroke?: string }) {
+/**
+ * The Accnomos mark (4 Nov 2026, Zaytuna brand): an olive branch whose stem is a tick, with a gold smile under it, on a
+ * Zaytuna-brown tile. `className` adds classes to the tile (e.g. a ring on dark bands); `stroke` is kept for old call
+ * sites and ignored: the mark has its own colours. Masters: public/brand/zaytuna/icon.svg (and icon-small.svg).
+ */
+export function LogoMark({ className = "" }: { className?: string; stroke?: string }) {
   return (
-    <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${className}`}>
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z" stroke={stroke} strokeWidth="1.8" strokeLinejoin="round" />
+    <span aria-hidden="true" className={`flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg ${className}`}>
+      <svg width="36" height="36" viewBox="0 0 108 108" role="presentation">
+        <rect width="108" height="108" rx="24" fill="#5A2D00" />
         <path
-          d="M7 10.2l2.1 2.1L13.2 8"
-          stroke={stroke}
-          strokeWidth="1.8"
+          d="M33 50c8 6 14 12 18 20 7-21 17-35 25-45"
+          fill="none"
+          stroke="#F4EDE5"
+          strokeWidth="7"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+        <ellipse cx="45" cy="38" rx="5.5" ry="12" transform="rotate(-40 45 38)" fill="#C9A45C" />
+        <ellipse cx="64" cy="32" rx="5" ry="11" transform="rotate(35 64 32)" fill="#C9A45C" />
+        <ellipse cx="72" cy="49" rx="4.5" ry="10" transform="rotate(70 72 49)" fill="#8A9A3B" />
+        <path d="M32 78q22 16 44 0" fill="none" stroke="#C9A45C" strokeWidth="6.5" strokeLinecap="round" />
       </svg>
     </span>
   );

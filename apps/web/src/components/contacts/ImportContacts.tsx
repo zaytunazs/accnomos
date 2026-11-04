@@ -244,7 +244,7 @@ function ImportRow({
     .join(" · ");
   return (
     <li className="flex flex-wrap items-center gap-3 px-3 py-2.5">
-      <input id={id} type="checkbox" checked={checked} onChange={onToggle} className="h-5 w-5 shrink-0 accent-[#0F6E63]" />
+      <input id={id} type="checkbox" checked={checked} onChange={onToggle} className="h-5 w-5 shrink-0 accent-[#5A2D00]" />
       <label htmlFor={id} className="min-w-0 flex-1">
         <span className="block font-bold">{c.name}</span>
         {details && <span className="block truncate text-[13px] text-muted">{details}</span>}

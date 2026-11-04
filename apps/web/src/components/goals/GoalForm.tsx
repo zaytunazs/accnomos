@@ -124,7 +124,7 @@ export default function GoalForm({
                     checked={on}
                     disabled={Boolean(initial)}
                     onChange={() => pick(t.kind)}
-                    className="h-4 w-4 accent-[#0F6E63]"
+                    className="h-4 w-4 accent-[#5A2D00]"
                   />
                   <span className="text-[15px] font-bold text-ink">
                     {t.kind === "earn" && household ? (t.household ?? t.title) : t.title}
@@ -204,11 +204,11 @@ export default function GoalForm({
             <fieldset className="flex flex-col gap-2 sm:col-span-2">
               <legend className={`${label} mb-1`}>How should progress be counted?</legend>
               <label className="flex min-h-11 items-center gap-2 text-[15px]">
-                <input type="radio" name={`${uid}-measure`} checked={measure === "manual"} onChange={() => setMeasure("manual")} className="h-4 w-4 accent-[#0F6E63]" />
+                <input type="radio" name={`${uid}-measure`} checked={measure === "manual"} onChange={() => setMeasure("manual")} className="h-4 w-4 accent-[#5A2D00]" />
                 I&apos;ll record what I put aside
               </label>
               <label className="flex min-h-11 items-center gap-2 text-[15px]">
-                <input type="radio" name={`${uid}-measure`} checked={measure === "net_cash"} onChange={() => setMeasure("net_cash")} className="h-4 w-4 accent-[#0F6E63]" />
+                <input type="radio" name={`${uid}-measure`} checked={measure === "net_cash"} onChange={() => setMeasure("net_cash")} className="h-4 w-4 accent-[#5A2D00]" />
                 Count money in minus money out on my bank lines
               </label>
             </fieldset>

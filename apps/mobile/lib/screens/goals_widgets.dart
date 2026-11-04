@@ -18,7 +18,7 @@ class ToneColors {
         'positive' => const ToneColors(Color(0xFF166534), Color(0xFFECFDF3)),
         'warning' => const ToneColors(Color(0xFF8A470D), Color(0xFFFFF4DC)),
         'negative' => const ToneColors(Color(0xFFA12626), Color(0xFFFFF0F0)),
-        _ => const ToneColors(Color(0xFF52626D), Color(0xFFEEF2F4)),
+        _ => const ToneColors(Color(0xFF5C534B), Color(0xFFEEF2F4)),
       };
 }
 

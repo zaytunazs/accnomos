@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launch screen: the brand dark teal with the app icon in the middle (as BrandSplash in lib/main.dart). -->
+<!-- Launch screen: the brand deep brown with the app icon in the middle (as BrandSplash in lib/main.dart). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/accnomos_ledger" />
     <item

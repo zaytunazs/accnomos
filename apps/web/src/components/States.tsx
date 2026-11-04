@@ -66,13 +66,13 @@ export function EmptyState({
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path
             d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z"
-            stroke="#0A4F47"
+            stroke="#3F2000"
             strokeWidth="1.8"
             strokeLinejoin="round"
           />
           <path
             d="M7 10.2l2.1 2.1L13.2 8"
-            stroke="#0A4F47"
+            stroke="#3F2000"
             strokeWidth="1.8"
             strokeLinecap="round"
             strokeLinejoin="round"

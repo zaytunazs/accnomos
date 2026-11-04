@@ -63,7 +63,7 @@ export default function ChooseAi() {
   }
 
   const card = (active: boolean) =>
-    `block w-full rounded-2xl border bg-white p-4 text-left ${active ? "border-2 border-[#0F6E63]" : "border-[#E3E1D8]"}`;
+    `block w-full rounded-2xl border bg-white p-4 text-left ${active ? "border-2 border-[#5A2D00]" : "border-[#E3E1D8]"}`;
   const input = "mt-1 h-11 w-full rounded-xl border border-[#D9D6CC] bg-[#F9F8F4] px-3 text-[15px] text-[#1B1F24]";
 
   return (
@@ -71,7 +71,7 @@ export default function ChooseAi() {
       <button type="button" onClick={() => setMode("local")} className={card(mode === "local")} aria-pressed={mode === "local"}>
         <div className="flex items-center justify-between">
           <span className="text-[17px] font-extrabold">On my own machine</span>
-          <span className="rounded-full bg-[#E6F1EF] px-2 py-0.5 text-[11px] font-extrabold text-[#0A4F47]">MOST PRIVATE</span>
+          <span className="rounded-full bg-[#F4EDE5] px-2 py-0.5 text-[11px] font-extrabold text-[#3F2000]">MOST PRIVATE</span>
         </div>
         <p className="mt-1 text-sm text-[#4B5159]">
           Muse Glimmer 30B, open weights, running on your computer. Receipts never leave your network.
@@ -107,7 +107,7 @@ export default function ChooseAi() {
           />
           <p className="mt-2 text-xs text-[#4B5159]">
             Stays on this device — stored in this browser only and sent straight to your runtime.{" "}
-            <a className="font-bold text-[#0F6E63]" href="https://dev.meta.ai" target="_blank" rel="noreferrer">Get a key at dev.meta.ai</a>
+            <a className="font-bold text-[#5A2D00]" href="https://dev.meta.ai" target="_blank" rel="noreferrer">Get a key at dev.meta.ai</a>
           </p>
         </div>
       )}
@@ -116,7 +116,7 @@ export default function ChooseAi() {
         <button type="button" onClick={test} disabled={testing} className="h-12 rounded-xl border border-[#D9D6CC] bg-white px-5 text-[15px] font-bold disabled:opacity-60">
           {testing ? "Testing…" : "Test connection"}
         </button>
-        <button type="button" onClick={save} className="h-12 flex-1 rounded-xl bg-[#0F6E63] px-5 text-[15px] font-extrabold text-white">
+        <button type="button" onClick={save} className="h-12 flex-1 rounded-xl bg-[#5A2D00] px-5 text-[15px] font-extrabold text-white">
           {saved ? "Saved · Continue" : "Save and continue"}
         </button>
       </div>
@@ -130,7 +130,7 @@ export default function ChooseAi() {
       {result && (
         <div
           role="status"
-          className={`rounded-2xl border p-4 text-sm ${result.ok ? "border-[#0F6E63] bg-[#E6F1EF] text-[#0A4F47]" : "border-[#F3C892] bg-[#FFF7ED] text-[#8A3F06]"}`}
+          className={`rounded-2xl border p-4 text-sm ${result.ok ? "border-[#5A2D00] bg-[#F4EDE5] text-[#3F2000]" : "border-[#F3C892] bg-[#FFF7ED] text-[#8A3F06]"}`}
         >
           {result.ok ? (
             <p><strong>Connected</strong>{result.model ? ` · ${result.model}` : ""} · {result.detail}</p>
@@ -141,7 +141,7 @@ export default function ChooseAi() {
                 type="button"
                 onClick={test}
                 disabled={testing}
-                className="mt-3 h-11 rounded-xl bg-[#0F6E63] px-5 text-sm font-extrabold text-white disabled:opacity-60"
+                className="mt-3 h-11 rounded-xl bg-[#5A2D00] px-5 text-sm font-extrabold text-white disabled:opacity-60"
               >
                 {testing ? "Testing…" : "Try again"}
               </button>
