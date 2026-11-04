@@ -2,7 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
-import { runtime, type RtDeadlineStatus } from "@/lib/runtime";
+import { runtime, type RtCalendarClash, type RtDeadlineStatus } from "@/lib/runtime";
+
+/** "‘Site visit, Hartwell’ 10:00–11:00" or "‘Holiday’ (all day)". */
+export function clashLabel(c: RtCalendarClash): string {
+  const t = (s: string) => s.slice(11, 16);
+  return `‘${c.subject}’ ${c.all_day ? "(all day)" : `${t(c.start)}–${t(c.end)}`}`;
+}
 
 /** "updated 01:15" today, else "updated 3 Nov". */
 export function updatedLabel(iso: string | null): string {
@@ -42,7 +48,9 @@ export function useDeadlineSync(account: AccountInfo | null | undefined, auto: b
         r.updated && `${r.updated} moved`,
         r.removed && `${r.removed} removed`,
       ].filter(Boolean);
-      setMessage(parts.length ? `Done: ${parts.join(", ")}.` : "Your calendar already has every deadline.");
+      const said = parts.length ? `Done: ${parts.join(", ")}.` : "Your calendar already has every deadline.";
+      const clashes = r.conflicts.map((c) => `${c.a.subject} is on the same day as ${clashLabel(c.b)}`);
+      setMessage(clashes.length ? `${said} Note: ${clashes.join("; ")}.` : said);
       setStatus(await runtime.deadlinesStatus(account));
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Couldn't add the deadlines just now.");

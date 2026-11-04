@@ -5,8 +5,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
 import SignInCta from "@/components/SignInCta";
 import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
-import { runtime, type RtCalendarEvent } from "@/lib/runtime";
-import CalendarSync from "./CalendarSync";
+import { runtime, type RtCalendarClash, type RtCalendarEvent, type RtCalendarEventIn } from "@/lib/runtime";
+import CalendarSync, { clashLabel } from "./CalendarSync";
 
 const primary = "inline-flex h-11 items-center rounded-lg bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60";
 const secondary = "inline-flex h-11 items-center rounded-lg border border-border bg-white px-4 text-[15px] font-bold text-ink hover:bg-ground disabled:opacity-60";
@@ -67,6 +67,7 @@ function Signed({ account }: { account: AccountInfo }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [form, setForm] = useState({ subject: "", date: start, time: "", location: "" });
   const [formError, setFormError] = useState<string | null>(null);
+  const [clashes, setClashes] = useState<RtCalendarClash[] | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -78,7 +79,7 @@ function Signed({ account }: { account: AccountInfo }) {
   }, [account, start, end]);
 
   useEffect(() => {
-    void load();
+    queueMicrotask(() => void load());
   }, [load]);
 
   const byDay = useMemo(() => {
@@ -90,21 +91,44 @@ function Signed({ account }: { account: AccountInfo }) {
     return [...groups.entries()];
   }, [events]);
 
+  function draft(): RtCalendarEventIn {
+    return {
+      subject: form.subject.trim(),
+      start: form.time ? `${form.date}T${form.time}` : form.date,
+      ...(form.location.trim() ? { location: form.location.trim() } : {}),
+    };
+  }
+
+  async function write(allowConflict: boolean) {
+    const made = await runtime.addCalendarEvent(account, { ...draft(), ...(allowConflict ? { allow_conflict: true } : {}) });
+    setNotice(`Added “${made.subject}”.`);
+    setAdding(false);
+    setClashes(null);
+    setForm({ subject: "", date: start, time: "", location: "" });
+    await load();
+  }
+
+  /** Check the calendar first; a clash is shown with Add anyway / Cancel, never added silently. */
   async function add(ev: React.FormEvent) {
     ev.preventDefault();
     setFormError(null);
     if (!form.subject.trim()) return setFormError("Give the event a title.");
     setBusy(true);
     try {
-      const made = await runtime.addCalendarEvent(account, {
-        subject: form.subject.trim(),
-        start: form.time ? `${form.date}T${form.time}` : form.date,
-        ...(form.location.trim() ? { location: form.location.trim() } : {}),
-      });
-      setNotice(`Added “${made.subject}”.`);
-      setAdding(false);
-      setForm({ subject: "", date: start, time: "", location: "" });
-      await load();
+      const { conflicts } = await runtime.checkCalendarEvent(account, draft());
+      if (conflicts.length) setClashes(conflicts);
+      else await write(false);
+    } catch (e) {
+      setFormError(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function addAnyway() {
+    setBusy(true);
+    try {
+      await write(true);
     } catch (e) {
       setFormError(errorText(e));
     } finally {
@@ -154,8 +178,19 @@ function Signed({ account }: { account: AccountInfo }) {
             <input className={input} value={form.location} maxLength={200} onChange={(e) => setForm({ ...form, location: e.target.value })} />
           </label>
           {formError && <p role="alert" className="text-[13px] font-semibold text-warn-ink sm:col-span-2">{formError}</p>}
+          {clashes && (
+            <div role="alert" data-clash="" className="flex flex-col gap-2 rounded-lg border border-warn-border bg-warn-bg px-3 py-2 sm:col-span-2">
+              <p className="text-[14px] font-semibold text-warn-ink">
+                Clashes with {clashes.map(clashLabel).join(", ")}
+              </p>
+              <div className="flex gap-2">
+                <button type="button" className={primary} disabled={busy} onClick={() => void addAnyway()}>Add anyway</button>
+                <button type="button" className={secondary} onClick={() => setClashes(null)}>Cancel</button>
+              </div>
+            </div>
+          )}
           <div className="flex gap-2 sm:col-span-2">
-            <button type="submit" className={primary} disabled={busy}>{busy ? "Adding…" : "Add to calendar"}</button>
+            <button type="submit" className={primary} disabled={busy || !!clashes}>{busy ? "Checking…" : "Add to calendar"}</button>
             <button type="button" className={secondary} onClick={() => setAdding(false)}>Cancel</button>
           </div>
         </form>
