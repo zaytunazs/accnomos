@@ -12,7 +12,7 @@ import pytest
 from PIL import Image, ImageDraw
 
 from app.ai import crop
-from app.ai.config import AiConfig
+from app.ai.config import AiConfig, apply_route
 from app.ai.crop import code_box, crop_document, iou, pad_box, parse_sam_boxes, pick_sam_box
 
 FIXTURE = json.loads((Path(__file__).parent / "fixtures" / "sam_response.json").read_text())
@@ -44,12 +44,41 @@ def _env(monkeypatch):
 # --- SAM parser ---------------------------------------------------------------
 
 
-def test_parser_reads_fixture_and_picks_largest_confident_box():
+def test_parser_reads_captured_reply():
     boxes = parse_sam_boxes(FIXTURE)
+    # x2/y2 are inclusive on the wire; boxes here are half-open
+    assert boxes == [((21, 187, 637, 716), pytest.approx(0.93361, abs=1e-4))]
+    assert pick_sam_box(boxes, (959, 733)) == (21, 187, 637, 716)
+
+
+def _reply(text: str) -> dict:
+    return {"output": [{"type": "message", "content": [{"type": "output_text", "text": text}]}]}
+
+
+def test_parser_box_tokens_by_key_and_picks_largest_confident_box():
+    text = (
+        "<0f>0<|box;x1=212;y1=88;x2=730;y2=1203;w=1000;h=1300;c=0.97|><|mask;x=0;y=0;c=0.97;data=1,1,!a|>"
+        ",1<|box;y1=900;x1=800;y2=1099;x2=959;h=1300;w=1000;c=0.62|><|mask;x=0;y=0;data=1,1,~b|>"
+        ",2<|box;x1=0;y1=0;x2=999;y2=1299;w=1000;h=1300;c=0.21|><|mask;x=0;y=0;data=1,1,!c|>\n"
+    )
+    boxes = parse_sam_boxes(_reply(text))
     assert [b for b, _ in boxes] == [(212, 88, 731, 1204), (800, 900, 960, 1100), (0, 0, 1000, 1300)]
     assert [s for _, s in boxes] == [0.97, 0.62, 0.21]
     # the full-frame box has score 0.21 and is ignored
     assert pick_sam_box(boxes, (1000, 1300)) == (212, 88, 731, 1204)
+    # no confidence asked for: the box still counts
+    assert parse_sam_boxes(_reply("<0f>0<|box;x1=1;y1=2;x2=9;y2=9;w=10;h=10|><|mask;x=0;y=0;data=1,1,!a|>")) == [
+        ((1, 2, 10, 10), None)
+    ]
+    # zero matches is an empty output_text, not an error
+    assert parse_sam_boxes(_reply("")) == []
+    assert parse_sam_boxes({"output": []}) == []
+
+
+def test_parser_tolerates_json_detections():
+    js = {"detections": [{"score": 0.97, "box": [212, 88, 731, 1204]}, {"score": 0.21, "box": [0, 0, 9, 9]}]}
+    boxes = parse_sam_boxes({"output_text": json.dumps(js)})
+    assert boxes == [((212, 88, 731, 1204), 0.97), ((0, 0, 9, 9), 0.21)]
 
 
 def test_parser_tolerates_other_shapes():
@@ -220,9 +249,101 @@ async def test_phone_mpo_jpeg_stays_jpeg_and_other_formats_pass_through():
 def test_request_body_shape():
     body = crop.sam_request_body("receipt", "data:image/png;base64,AAA")
     assert body["model"] == "sam-3.1"
+    assert body["input"][0]["type"] == "message" and body["input"][0]["role"] == "user"
     content = body["input"][0]["content"]
     assert content[0] == {"type": "input_text", "text": "receipt"}
-    assert content[1]["type"] == "input_image"
+    assert content[1] == {"type": "input_image", "image_url": "data:image/png;base64,AAA"}
+    # the docs want strings here, not JSON booleans
+    assert body["metadata"] == {"include_confidence": "true", "mask_encoding": "one_bit"}
+
+
+# --- SAM on the server's chain ------------------------------------------------
+
+
+def _chain(*names: str, route=None) -> AiConfig:
+    """The server's chain, as app/ai/providers.py builds it (no network)."""
+    from app.ai import providers
+
+    env = {"AI_PROVIDERS": ",".join(names), "META_API_KEY": "server-key", "OLLAMA_BASE": "http://glimmer.test"}
+    cfg = providers.chain_config(env)
+    return apply_route(cfg, route) if route else cfg
+
+
+def test_sam_config_picks_the_meta_provider_from_the_chain(monkeypatch):
+    monkeypatch.setenv("SAM_CROP", "1")
+    meta_first = _chain("meta", "spark")
+    assert crop.sam_config(meta_first).provider == "meta"
+    glimmer_first = _chain("spark", "meta")  # the meta provider is a fallback: SAM still uses it
+    sam = crop.sam_config(glimmer_first)
+    assert sam is not None and sam.provider == "meta" and sam.auth_headers() == {"Authorization": "Bearer server-key"}
+    assert crop.sam_config(_chain("spark")) is None  # no Meta key on this server
+    own = crop.sam_config(KEY_CFG)  # the user's own key
+    assert own is not None and own.api_key == "test"
+    # routes that keep work off the Meta API
+    assert crop.sam_config(_chain("meta", "spark", route="local_only")) is None
+    assert crop.sam_config(_chain("meta", "spark", route="local_first")) is None
+    assert crop.sam_config(_chain("meta", "spark", route="meta_first")).provider == "meta"
+    monkeypatch.delenv("SAM_CROP")
+    assert crop.sam_config(meta_first) is None
+
+
+async def test_sam_runs_on_server_chain_and_falls_back_to_code_on_timeout(monkeypatch):
+    import httpx
+
+    monkeypatch.setenv("SAM_CROP", "1")
+    used: list[tuple[str, str]] = []
+
+    async def fake(noun, data_url, cfg):
+        used.append((cfg.provider, cfg.api_key))
+        return _reply("<0f>0<|box;x1=190;y1=140;x2=659;y2=1059;w=900;h=1200;c=0.95|><|mask;x=0;y=0;data=1,1,!a|>")
+
+    monkeypatch.setattr(crop, "_call_sam", fake)
+    r = await crop_document(_photo(), _chain("spark", "meta"))
+    assert used == [("meta", "server-key")]
+    assert r.method == "sam" and r.box == pad_box((190, 140, 660, 1060), (900, 1200))
+
+    async def slow(noun, data_url, cfg):
+        raise httpx.ReadTimeout("timed out")
+
+    monkeypatch.setattr(crop, "_call_sam", slow)
+    r = await crop_document(_photo(), _chain("meta", "spark"))
+    assert r.method == "code" and r.details["sam"]["reason"] == "error: ReadTimeout"
+
+    async def never(noun, data_url, cfg):
+        raise AssertionError("SAM must not be called")
+
+    monkeypatch.setattr(crop, "_call_sam", never)
+    assert (await crop_document(_photo(), _chain("meta", "spark", route="local_only"))).method == "code"
+    monkeypatch.setenv("CROP_MODE", "code")
+    assert (await crop_document(_photo(), _chain("meta", "spark"))).method == "code"
+
+
+async def test_call_sam_sends_the_chain_providers_auth(monkeypatch):
+    import httpx
+
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["url"] = str(request.url)
+        seen["auth"] = request.headers.get("authorization")
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(200, json=FIXTURE)
+
+    real = httpx.AsyncClient
+
+    def client(*a, **kw):
+        kw["transport"] = httpx.MockTransport(handler)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(crop.httpx, "AsyncClient", client)
+    monkeypatch.setenv("SAM_CROP", "1")
+    meta = crop.sam_config(_chain("spark", "meta"))
+    assert meta is not None
+    data = await crop._call_sam("receipt", "data:image/png;base64,AAA", meta)
+    assert seen["url"] == "https://api.meta.ai/v1/responses"
+    assert seen["auth"] == "Bearer server-key"
+    assert seen["body"]["model"] == "sam-3.1"
+    assert parse_sam_boxes(data)[0][0] == (21, 187, 637, 716)
 
 
 # --- pipeline wiring ----------------------------------------------------------

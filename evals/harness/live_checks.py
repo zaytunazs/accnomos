@@ -69,6 +69,29 @@ def _ask_keep(b: dict[str, Any]) -> dict[str, Any]:
     return {k: b[k] for k in keys if k in b} | {"keys": sorted(b)}
 
 
+def _poll(k: Checker, jid: str, wait: float, label: str) -> dict[str, Any]:
+    before = k.calls()
+    t0 = time.perf_counter()
+    job: dict[str, Any] = {}
+    while time.perf_counter() - t0 < wait:
+        job = k.c.get(f"{k.api}/books/scan/jobs/{jid}", headers=k.h).json()
+        if job.get("status") != "working":
+            break
+        time.sleep(3)
+    k.out.append(
+        {
+            "check": label,
+            "request": f"GET /books/scan/jobs/{{id}} (polled until not working, max {wait:.0f} s)",
+            "status": 200,
+            "s": round(time.perf_counter() - t0, 2),
+            "result": {"status": job.get("status"), "files": job.get("files"), "counts": job.get("counts")},
+            "ai_calls": _new_calls(before, k.calls()),
+        }
+    )
+    print(json.dumps({"check": label, "status": job.get("status")}), flush=True)
+    return job
+
+
 def _proposal_keep(b: dict[str, Any]) -> dict[str, Any]:
     ex = b.get("extracted") or {}
     return {x: b.get(x) for x in ("status", "model", "crop", "served_by")} | {
@@ -140,23 +163,17 @@ def main() -> None:
     job: dict[str, Any] = {}
     if r.status_code < 400:
         jid = r.json()["id"]
-        before = k.calls()
-        t0 = time.perf_counter()
-        while time.perf_counter() - t0 < args.scan_wait:
-            job = k.c.get(f"{k.api}/books/scan/jobs/{jid}", headers=k.h).json()
-            if job.get("status") != "working":
-                break
-            time.sleep(3)
-        k.out.append(
-            {
-                "check": "scan job result",
-                "request": f"GET /books/scan/jobs/{{id}} (polled until not working, max {args.scan_wait:.0f} s)",
-                "status": 200,
-                "s": round(time.perf_counter() - t0, 2),
-                "result": {"status": job.get("status"), "files": job.get("files"), "counts": job.get("counts")},
-                "ai_calls": _new_calls(before, k.calls()),
-            }
-        )
+        job = _poll(k, jid, args.scan_wait, "scan job: classify")
+        guess = next((f.get("guess") for f in job.get("files") or [] if f.get("stage") == "confirm"), None)
+        if guess:  # the owner's tap on "Confirm the type", with the type the AI guessed
+            k.step(
+                "confirm the type (as guessed)",
+                "POST",
+                f"/books/scan/jobs/{jid}/confirm",
+                keep=lambda b: {"status": b.get("status")},
+                json={"files": [{"name": name, "kind": guess["kind"]}]},
+            )
+            job = _poll(k, jid, args.scan_wait, "scan job: read")
         pid = next((f.get("proposal_id") for f in job.get("files") or [] if f.get("proposal_id")), None)
         if pid:
             k.step(

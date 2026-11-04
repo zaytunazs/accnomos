@@ -1,6 +1,5 @@
 {
-  "_note": "ILLUSTRATIVE, NOT CAPTURED. Shape assumed from the research note (Responses API; output text carries boxes in source pixels plus base85 masks). Replace with a real sam-3.1 response before enabling SAM_CROP=1.",
-  "id": "resp_fixture",
+  "_note": "Shape of a real sam-3.1 reply (Meta Model API /responses, non-streamed, metadata include_confidence 'true'), captured 4 Nov 2026 for evals/runs/sam_crop_live case 001_standard on a 959x733 scene. The box token and usage are verbatim; the response id is dropped and the one-bit mask payload is shortened (the parser ignores masks).",
   "object": "response",
   "model": "sam-3.1",
   "output": [
@@ -10,9 +9,17 @@
       "content": [
         {
           "type": "output_text",
-          "text": "{\"detections\": [{\"label\": \"receipt\", \"score\": 0.97, \"box\": [212, 88, 731, 1204], \"mask\": \"0R9~Gb%d?Y\"}, {\"label\": \"receipt\", \"score\": 0.62, \"box\": [800, 900, 960, 1100], \"mask\": \"9jqo^\"}, {\"label\": \"receipt\", \"score\": 0.21, \"box\": [0, 0, 1000, 1300], \"mask\": \"F)Po,\"}]}"
+          "text": "<0f>0<|box;x1=21;y1=187;x2=636;y2=715;w=959;h=733;c=0.9336099624633789|><|mask;x=0;y=0;c=0.9336099624633789;data=529,616,!shortened|>\n"
         }
       ]
     }
-  ]
+  ],
+  "usage": {
+    "input_tokens": 0,
+    "input_tokens_details": {"cached_tokens": 0},
+    "output_tokens": 0,
+    "output_tokens_details": {"reasoning_tokens": 0},
+    "total_tokens": 0,
+    "images_processed": 1
+  }
 }
