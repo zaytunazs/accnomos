@@ -127,6 +127,15 @@ const TIMEOUT_CODES = new Set(["timed_out", "monitor_window_timeout", "block_ifr
 export const SIGN_IN_SLOW =
   "Microsoft took too long to confirm your sign-in, so nothing was loaded. Try again; if it keeps happening, sign in again.";
 
+/**
+ * Microsoft sent the user to its consent page for these scopes a moment ago and still says consent is needed: the
+ * grant is not being kept (seen with a work account whose organisation has not allowed this unverified app, 4 Nov
+ * 2026). Shown instead of sending the user round again.
+ */
+export const CONSENT_NOT_KEPT =
+  "Microsoft keeps asking for permission for this account and does not keep the answer, so nothing was loaded. " +
+  "With a work or school account your organisation's admin may need to allow Accnomos first; a personal Microsoft account works without that.";
+
 export function isSignInTimeout(e: unknown): boolean {
   const code = (e as { errorCode?: unknown } | null)?.errorCode;
   if (typeof code === "string" && TIMEOUT_CODES.has(code)) return true;
@@ -144,6 +153,27 @@ function redirectedRecently(scopes: string[]): boolean {
     return Date.now() - (seen[scopes.join(" ")] ?? 0) < REDIRECT_WINDOW_MS;
   } catch {
     return true; // no session storage: never risk a redirect loop
+  }
+}
+
+const CONSENT_PROBLEM = "accnomos.auth.consent_not_kept";
+
+/** Remembered in this tab so the error note can say what happened (components/States.tsx SignInSlowNote). */
+function noteConsentProblem(on: boolean): void {
+  try {
+    if (on) window.sessionStorage.setItem(CONSENT_PROBLEM, "1");
+    else window.sessionStorage.removeItem(CONSENT_PROBLEM);
+  } catch {
+    /* nothing to remember */
+  }
+}
+
+/** Whether the last token request in this tab failed because Microsoft would not keep the consent. */
+export function consentProblem(): boolean {
+  try {
+    return window.sessionStorage.getItem(CONSENT_PROBLEM) === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -170,10 +200,18 @@ export async function getToken(scopes: string[]): Promise<string> {
   try {
     const result = await msal.acquireTokenSilent({ scopes, account });
     markRedirect(scopes, false);
+    noteConsentProblem(false);
     return result.accessToken;
   } catch (e) {
     const { InteractionRequiredAuthError } = await import("@azure/msal-browser");
     if (e instanceof InteractionRequiredAuthError) {
+      // One trip to Microsoft per five minutes for these scopes: if it still wants interaction after the user came
+      // back, going again would loop on the consent page for ever.
+      if (redirectedRecently(scopes)) {
+        noteConsentProblem(true);
+        throw new Error(CONSENT_NOT_KEPT);
+      }
+      markRedirect(scopes, true);
       await msal.acquireTokenRedirect({ scopes, account });
       throw new Error("redirecting for consent");
     }

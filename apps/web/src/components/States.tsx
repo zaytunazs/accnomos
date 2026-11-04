@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { SIGN_IN_SLOW } from "@/lib/msal";
+import { CONSENT_NOT_KEPT, consentProblem, SIGN_IN_SLOW } from "@/lib/msal";
 
 const card = "rounded-2xl border border-border bg-white p-5 sm:p-6";
 
@@ -39,7 +39,11 @@ export function isAuthError(message: string): boolean {
 
 /** A silent Microsoft token request that timed out (lib/msal.ts getToken), in our words or MSAL's. */
 export function isSignInSlow(message: string): boolean {
-  return message.startsWith(SIGN_IN_SLOW) || /\b(timed_out|monitor_window_timeout)\b|\(MSAL\)/.test(message);
+  return (
+    message.startsWith(SIGN_IN_SLOW) ||
+    message.startsWith(CONSENT_NOT_KEPT) ||
+    /\b(timed_out|monitor_window_timeout)\b|\(MSAL\)/.test(message)
+  );
 }
 
 /** A server fault: HTTP 5xx. The runtime logs it under the correlation id. */
@@ -185,10 +189,11 @@ export function AuthErrorStrip() {
 /** Microsoft did not confirm the sign-in in time: try again, or sign in again. Never MSAL's own error text. */
 export function SignInSlowNote({ onRetry }: { onRetry?: () => void }) {
   const path = usePathname() ?? "/";
+  const consent = consentProblem(); // Microsoft would not keep the consent (a work account not allowed by its admin)
   return (
     <ErrorNote
-      title="Microsoft didn't answer in time"
-      body={SIGN_IN_SLOW}
+      title={consent ? "Microsoft keeps asking for permission" : "Microsoft didn't answer in time"}
+      body={consent ? CONSENT_NOT_KEPT : SIGN_IN_SLOW}
       action={
         <span className="flex flex-wrap items-center gap-3">
           <RetryButton onRetry={onRetry} />

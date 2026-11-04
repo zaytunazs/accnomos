@@ -10,6 +10,11 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## What is real, and what is not
 
+- **Work (Microsoft 365) accounts: untested, and the owner's own hit a consent loop on 4 Nov 2026.** Signing in works
+  (`User.Read`), but *Create my Accnomos folder* asks for `Files.ReadWrite` and Microsoft's consent page came back after
+  every *Accept* (admin consent ticked; the app is an unverified publisher). The cause was not found before the deadline.
+  Since `claude/consent-loop-guard` the app sends the user to Microsoft once per five minutes for a scope and then says
+  plainly that Microsoft is not keeping the consent, instead of looping. Personal Microsoft accounts are the tested path.
 - **Real runs** are the maintainers' own, on 26–27 Oct: Microsoft sign-in on a personal account, folder creation, upload → scan →
   Glimmer on our own server → approve → ledger event → VAT boxes. No log is committed. The committed evidence is the eval reports in `evals/`.
   **Run live with a committed record (4 Nov 2026):** the Meta paths on the public server in a demo session (Ask typed and spoken, the Home summary, the goals note, a scan: `evals/runs/live_checks_2026-11-04/report.md`), SAM 3.1 on 20 synthetic scenes (`evals/runs/sam_crop_live/report.md`), the demo's VAT return to HMRC's sandbox (`docs/HMRC_SANDBOX_DEMO.md`) and the demo's bank feed against TrueLayer's sandbox (`docs/BANK_FEED_SANDBOX_DEMO.md`); the Android app on the owner's own phone and the emulator.
