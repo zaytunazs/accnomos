@@ -7,7 +7,7 @@
 Your books are files in your own OneDrive (no Accnomos database); Meta models read and check the paperwork; you approve; code calculates the VAT.
 
 - **Works today (tested, mostly on fakes):** upload a receipt → Muse Glimmer 30B (or Muse Spark) reads it → code checks + an independent second reading → you approve → immutable ledger event → VAT nine boxes by code → HMRC **sandbox** submission (web) → `Books.xlsx`; plus Ask, bank statements, invoicing, jobs, mileage, pay-run estimates, a day planner and an Android app. One row each in the table below.
-- **Not yet:** production HMRC filing, Google Drive, and any run of most features against a real OneDrive, a real model key or a real phone. `docs/HONESTY.md` lists every known gap.
+- **Not yet:** production HMRC filing and any run of most features against a real OneDrive, a real model key or a real phone. `docs/HONESTY.md` lists every known gap.
 - **Run it:** `uv sync --all-packages --all-extras && uv run pytest -q`; `cd apps/web && pnpm install && pnpm run build`; services and web dev servers in `docs/DEV.md`.
 - **Docs:** [Architecture](docs/ARCHITECTURE.md) · [Meta models and evals](docs/META_MODELS.md) · [4-minute demo](docs/DEMO.md) · [Honesty](docs/HONESTY.md) · [What remains](docs/REMAINING.md)
 
@@ -171,7 +171,7 @@ model:** in local mode it is Glimmer on your machine, so the document stays ther
 Open on Baseten only if the server owner has switched it on (`BASETEN_ENABLED=1` plus `BASETEN_API_KEY`; off on the live server since 2 Nov 2026), otherwise muse-spark-1.3 with your key, or the Meta chain on the server.
 `VERIFIER=off` disables it. First numbers (20 messy receipts, Glimmer/Glimmer): 94% full agreement, 0 errors caught
 beyond what the code checks already caught, 1 false alarm. See `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`.
-Not built: Google Drive (OneDrive only), production HMRC filing, `muse-wonder` multi-step planning, filing RTI to HMRC (payroll RTI files are prepared, not sent), an iPhone app.
+Not built: production HMRC filing, `muse-wonder` multi-step planning, filing RTI to HMRC (payroll RTI files are prepared, not sent), an iPhone app.
 
 ## Honesty notes
 

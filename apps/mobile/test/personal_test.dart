@@ -244,7 +244,7 @@ void main() {
       await tester.pumpAndSettle();
       // The entry sits below the fold: scroll before asserting.
       await tester.dragUntilVisible(
-        find.text('Audit trail'),
+        find.text('Personal'),
         find.byType(ListView),
         const Offset(0, -300),
       );

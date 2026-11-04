@@ -775,7 +775,7 @@ function Status() {
       title: "Not in this build",
       items: [
         "Production HMRC filing (sandbox only)",
-        "Google Drive, and sending payroll (RTI) to HMRC",
+        "Sending payroll (RTI) to HMRC",
         ...(SUBMISSION_MODE ? [] : ["An iPhone app"]),
       ],
       foot: "The full list of gaps is kept in docs/HONESTY.md in the public repository.",
