@@ -88,6 +88,15 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('with items, summary_md is the headline above the list', (tester) async {
+    await tester.pumpWidget(card(HomeSummary.fromHomeJson(
+        home(items, md: '3 things need you today; 1 is due this week.'))!));
+    final headline = find.byKey(const Key('summary-headline'));
+    expect(headline, findsOneWidget);
+    expect(tester.getTopLeft(headline).dy,
+        lessThan(tester.getTopLeft(find.byKey(const Key('summary-item-review'))).dy));
+  });
+
   testWidgets('falls back to the paragraph when the server sends no items', (tester) async {
     await tester.pumpWidget(
         card(HomeSummary.fromHomeJson(home(const [], md: 'You had £18,166.11 in the bank.'))!));

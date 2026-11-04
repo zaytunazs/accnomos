@@ -383,6 +383,15 @@ class SummaryCard extends StatelessWidget {
             key: ValueKey(items.map((i) => '${i.id}:${i.title}').join('|')),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // With items, summary_md is the one-line headline above them.
+              if (summary.text.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(summary.text,
+                      key: const Key('summary-headline'),
+                      style: const TextStyle(
+                          color: AccnomosColors.ink, height: 1.4)),
+                ),
               for (final (n, item) in items.indexed)
                 SummaryItemRow(
                   item: item,
