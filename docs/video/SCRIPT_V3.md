@@ -1,0 +1,30 @@
+# Demo video script v3 (4 Nov 2026)
+
+v3 is v2 with the owner's changes and the organisers' rules (Cerebral Valley, 4 Nov): **3:00 or less** (judges stop at
+3:00; we aim for at most 2:58) and **open with one line on what existed before and what was built this week**.
+Voice: Kokoro bm_lewis on the Spark (`tools/video/v3/tts.py`); the lines below are spoken and captioned verbatim
+(spoken-only fixes: "26 October" is said "the twenty-sixth of October", "£450", "CSV", "HMRC", "OneDrive" and
+"accnomos.com" as in v2). Lines `s1`–`s7` are the owner's v2 lines unchanged; `s8` is the v2 line cut for time plus
+the how-to pointer. Edit: `tools/video/v3/edit.py` (EDL at the top), notes in `docs/video/V3_EDIT.md`.
+
+Final length 2:55.9; scene times are in `docs/video/V3_EDIT.md`.
+
+| # | Scene | On screen | Voice |
+|---|---|---|---|
+| title | Title + provenance | Title card; band: "Before 26 Oct: only our own AI server hardware. Built during the hackathon, 26 Oct – 4 Nov: its local model setup, the web and Android app, and every feature." | Before 26 October we had only our own AI server hardware. Everything else, even its local model setup, we built during the hackathon. |
+| f1 | Feature list | Brown card, two columns, lines rising in one by one: Receipts & invoices · Bank matching · Invoices & quotes · Jobs & timesheets · Payroll estimates · VAT to HMRC (sandbox) · MTD income tax for sole traders & landlords · Household budgets & goals · Calendar, notes & tasks by voice · Reports & CSV exports · Your own OneDrive · Your choice of Meta model (local or API) | Books, tax and household money, in one app. |
+| s1 | Home | Web Home (summary item by item) beside the phone | Most accounting apps are built for accountants. They're boring, full of jargon, and they don't teach you anything about your own money. We wanted the opposite: an app that keeps you up to date with your business in plain English, and helps you set goals and actually meet them. |
+| s2 | Goals and spending | Regular costs; Goals & progress with the AI note | Once you can see your numbers clearly, you make better decisions. You trim the costs you don't need, set clear goals and watch your progress every week. |
+| s3 | Talk | Home → Review; Talk: spoken "Add a site visit tomorrow at ten" → calendar card → Approve | This is Accnomos, running on Meta's Muse models. Home tells me what needs me now, in order, with a button for each. I can just talk: "add a site visit tomorrow at ten". It checks my calendar for clashes and asks before it changes anything. |
+| s4 | Receipts and invoices | Phone receipt → "Read by Muse Spark"; web Ask "send a £450 invoice to Hartwell" → card → Approve | Snap a receipt and Muse Spark reads it. Code checks every number, and I approve. Typing works too: "send a £450 invoice to Hartwell". Anything that moves money needs a tap, never just my voice. The AI proposes, code does the maths, and I decide. |
+| s4b | Ask showcase | Ask: "How much profit did we make this quarter?"; "Add 2 hours for Ellie on the Kitchen fit-out, Harrogate job, including 1 hour overtime at double rate" → timesheet card → Approve; "What tiles did we order for the Kitchen fit-out, Harrogate job?" | Ask it anything: how much profit did we make this quarter? Add two hours for Ellie on the Harrogate kitchen fit-out, one of them overtime at double rate. It drafts the timesheet, and I approve. Or ask what tiles we ordered for that job. |
+| s5a | Bank feed | Bank: Connect the test bank → TrueLayer's sandbox consent (Allow) → back: "mock · test bank, sample data only", lines fetched | Connect your bank, and new lines arrive from the bank feed, ready to match. |
+| s5 | Reports and VAT | Reports, Export to OneDrive; VAT nine boxes → HMRC sandbox test user (password blurred) → HMRC's sandbox pages → Submit → HMRC's receipt | Reports and CSV exports are one click. When the quarter ends, code works out the VAT return from the ledger, and I submit it to HMRC with one tap. |
+| s6 | Sole traders, landlords, households | Self-employment and Property; the Harrison household (web + phone); household goals | It isn't only for companies. Sole traders and landlords get their quarterly Making Tax Digital updates. And at home, the same app runs your household budget, puts your bills in your calendar and keeps your savings goals on track. |
+| s7 | Your choice of Meta model | Settings › AI → Local model only → Ask "Who owes me the most?" → byline "Numbers by code · explanation by Glimmer 30B"; Settings › AI → Meta Model API first → same question → "explanation by Muse Spark"; Files (OneDrive folder, Books.xlsx); Settings › Files & backups | You choose which Meta model answers first: Muse Spark on the Meta API, or Muse Glimmer, Meta's open-weight model, running on your own computer, so nothing leaves it. Your books live in your own OneDrive, with its backups and version history. We write the code. The data, the drive and the AI are yours. |
+| s8 | End card | Accnomos · accnomos.com · Try the demo, no sign-in · "Step-by-step how-to guides: accnomos.com · github.com/zaytunazs/accnomos/tree/main/docs/howto" · HMRC sandbox note | We hope Accnomos takes the stress out of money, for businesses and for families. In this demo, HMRC filing goes to HMRC's sandbox. Step-by-step how-to guides are on accnomos.com and on GitHub. |
+| judges | Judges' slide (silent) | As v2: Meta models at run time (Muse Image credited here only), measured figures, provenance, try it, limits | — |
+
+Cut from v2 for time: the `/ai/calls` page (replaced by the in-app byline), the Settings-only AI shot (the switch is now
+shown in use), and from `s8` "less time on paperwork, more time on what matters" and "because live filing needs HMRC to
+approve the software first" (the sandbox limit stays on the lower third, the end card and the judges' slide).

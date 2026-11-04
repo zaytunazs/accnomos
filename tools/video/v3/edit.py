@@ -1,0 +1,1184 @@
+#!/usr/bin/env python3
+# ruff: noqa  (one-off video edit script; kept as it was run)
+"""Demo video v3: cut the live footage, the voice-over and the cards into the submission video (ffmpeg + Pillow).
+
+    python3 edit.py ROOT [--only s3] [--keep]
+ROOT holds raw/ (capture_live.ts WebMs + phone.ps1 MP4s, each with its marks), vo/<scene>.wav (title, f1, s1..s8, s4b), cards/ (the Muse Image
+art: judges-title.png, section-demo.png, section-meta-ai.png) and fonts/ (Atkinson Hyperlegible). Writes ROOT/out/:
+
+  accnomos-demo-v3.mp4          1080p H.264, voice-over + burned-in UK English captions
+  accnomos-demo-v3-novo.mp4     the same picture without voice or captions, for a new voice-over
+  accnomos-demo-v3-vo.wav       the voice-over alone, timed to the picture (48 kHz)
+  accnomos-demo-v3.srt          the captions
+  accnomos-demo-v3-contact-sheet.jpg, timeline.json
+
+The edit is data: EDL below. Each scene has a voice line (vo/<id>.wav, starting `lead` seconds into the scene) and
+shots played back to back; a shot's `segs` pick seconds of its source ("a..b", where a/b are numbers, "end", or a
+mark name from the capture, optionally +/- seconds), joined with a short crossfade, then fitted to `dur`.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+import wave
+from pathlib import Path
+
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+W, H, FPS = 1920, 1080, 30
+BROWN, CREAM, GOLD, DARK = "#5A2D00", "#F8F6F3", "#C9A45C", "#2A1A0D"
+ENC = [
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "16",
+    "-pix_fmt",
+    "yuv420p",
+    "-r",
+    str(FPS),
+    "-video_track_timescale",
+    "15360",
+]
+XF = 0.3  # crossfade between the kept parts of one recording
+
+# --------------------------------------------------------------------------------------------------------------------
+# The edit. Lower thirds: (feature, the Meta model at work). Text on screen: UK English, Meta models only.
+# The judges stop at 3:00: keep the total <= 2:58.
+# A scene whose footage is missing from raw/ is left out (with a warning), so the edit still renders without it.
+# the bank feed: the button, TrueLayer's sandbox consent (Allow), back connected with the lines fetched
+BANK_SEGS = ["connect-0.8..connect+0.6", "tl+3.6..tl+5.0", "back+0.3..back+3.8"]
+HMRC_PW = [
+    {"from": "userReady-0.15", "until": "hmrc", "box": [596, 838, 200, 54]}
+]  # the sandbox test user's password, blurred
+EDL: list[dict] = [
+    {"id": "title", "lead": 0.3, "card": "title", "dur": 11.4},
+    {"id": "f1", "lead": 0.3, "card": "features", "dur": 5.2},
+    {
+        "id": "s1",
+        "lead": 0.3,
+        "lt": ("Home, in plain English", "Summary worded by Muse Spark · figures by code"),
+        "shots": [
+            {
+                "layout": "split",
+                "src": "w-home",
+                "segs": ["0..end"],
+                "phone": "p-home",
+                "psegs": ["0..end"],
+                "dur": 17.1,
+            },
+        ],
+    },
+    {
+        "id": "s2",
+        "lead": 0.3,
+        "lt": ("Goals and spending", "Progress note by Muse Spark"),
+        "shots": [
+            {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 4.6, "crop": [640, 220, 1280, 720]},
+            {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 6.0},
+        ],
+    },
+    {
+        "id": "s3",
+        "lead": 0.3,
+        "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"),
+        "shots": [
+            {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 3.6},
+            {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.0},
+            {
+                "layout": "full",
+                "src": "w-talk",
+                "segs": ["1.0..speak+2.2", "ready-0.3..end"],
+                "dur": 10.1,
+                "crop": [560, 0, 1360, 765],
+            },
+        ],
+    },
+    {
+        "id": "s4",
+        "lead": 0.3,
+        "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"),
+        "shots": [
+            {
+                "layout": "phone",
+                "src": "p-receipt",
+                "segs": ["1.6..gallery+0.4", "ready-0.2..wait2+0.8", "ready2+2.0..ready2+7.5"],
+                "dur": 7.0,
+                "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve."),
+            },
+            {
+                "layout": "full",
+                "src": "w-invoice",
+                "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"],
+                "dur": 12.0,
+            },
+        ],
+    },
+    {
+        "id": "s4b",
+        "lead": 0.3,
+        "lt": ("Ask anything, in plain words", "Muse Spark · figures by code"),
+        "shots": [
+            {
+                "layout": "full",
+                "src": "w-profit",
+                "segs": ["wait..wait+0.6", "ready-0.2..ready+3.9"],
+                "dur": 4.4,
+                "crop": "ASK",
+            },
+            {
+                "layout": "full",
+                "src": "w-timesheet",
+                "segs": ["ready-0.2..ready+3.8", "approve-1.2..approve+0.4", "ready2-0.2..end"],
+                "dur": 7.6,
+                "crop": [376, 60, 1504, 846],
+            },
+            {
+                "layout": "full",
+                "src": "w-tiles",
+                "segs": ["wait..wait+0.6", "ready-0.2..ready+3.6"],
+                "dur": 4.0,
+                "crop": "ASK",
+            },
+        ],
+    },
+    {
+        "id": "s5a",
+        "lead": 0.3,
+        "shots": [
+            {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[0]], "dur": 1.6},
+            {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[1]], "dur": 1.4},
+            {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[2]], "dur": 3.0, "crop": [376, 300, 1280, 720]},
+        ],
+    },
+    {
+        "id": "s5",
+        "lead": 0.3,
+        "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"),
+        "shots": [
+            {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 3.2},
+            {
+                "layout": "full",
+                "src": "w-vat-hmrc",
+                "segs": [
+                    "0.5..3.0",
+                    "user+0.3..userReady+0.8",
+                    "hmrc+3.0..hmrc+4.4",
+                    "back-2.6..back-0.9",
+                    "submit-1.0..submit+0.4",
+                    "receipt+0.3..receipt+3.8",
+                ],
+                "dur": 9.7,
+                "blur": HMRC_PW,
+            },
+        ],
+    },
+    {
+        "id": "s6",
+        "lead": 0.3,
+        "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"),
+        "shots": [
+            {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 4.6},
+            {
+                "layout": "split",
+                "src": "w-personal",
+                "segs": ["0..end"],
+                "phone": "p-personal",
+                "psegs": ["0..end"],
+                "dur": 7.0,
+            },
+            {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 4.4},
+        ],
+    },
+    {
+        "id": "s7",
+        "lead": 0.3,
+        "lt": ("Your choice of Meta model", "Muse Glimmer 30B (open weights) · Muse Spark (Meta API)"),
+        "shots": [
+            {"layout": "full", "src": "w-route", "segs": ["set1+0.2..ask1-0.2"], "dur": 4.2, "crop": "SET"},
+            {
+                "layout": "full",
+                "src": "w-route",
+                "segs": ["ask1..wait+0.5", "ready-0.2..by1+2.4"],
+                "dur": 4.6,
+                "crop": "ANS",
+            },
+            {"layout": "full", "src": "w-route", "segs": ["set2+0.2..ask2-0.2"], "dur": 2.2, "crop": "SET"},
+            {
+                "layout": "full",
+                "src": "w-route",
+                "segs": ["ask2..wait2+0.5", "ready2-0.2..by2+2.4"],
+                "dur": 4.4,
+                "crop": "ANS",
+            },
+            {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 3.4},
+            {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 2.4},
+        ],
+    },
+    {"id": "s8", "lead": 0.4, "card": "end", "dur": 18.0},
+    {"id": "judges", "card": "judges", "dur": 6.0},
+]
+# 16:9 crops of the 1920 x 1080 frame, filled in once the takes are looked at (None = whole frame)
+CROPS: dict[str, list[int] | None] = {
+    "ASK": [376, 140, 1504, 846],
+    "SET": [240, 40, 1600, 900],
+    "ANS": [376, 140, 1504, 846],
+}
+
+
+def pick(edl: list[dict], raw: Path) -> list[dict]:
+    """The scenes with named crops resolved; a scene without its footage is left out."""
+    out = []
+    for sc in edl:
+        sc = dict(sc)
+        if "shots" in sc:
+            shots = []
+            for sh in sc["shots"]:
+                sh = dict(sh)
+                if isinstance(sh.get("crop"), str):
+                    sh["crop"] = CROPS[sh["crop"]]
+                shots.append(sh)
+            missing = [
+                s
+                for sh in shots
+                for s in (sh["src"], sh.get("phone"))
+                if s and not any((raw / f"{s}{e}").exists() for e in (".webm", ".mp4"))
+            ]
+            if missing:
+                print(f"SKIP {sc['id']}: no footage for {sorted(set(missing))}", file=sys.stderr)
+                continue
+            sc["shots"] = shots
+        out.append(sc)
+    return out
+
+
+# --------------------------------------------------------------------------------------------------------------------
+
+
+def run(cmd: list[str]) -> None:
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.stderr.write(r.stderr[-3000:])
+        raise SystemExit(f"ffmpeg failed: {' '.join(cmd[:8])} …")
+
+
+def probe_dur(p: Path) -> float:
+    r = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)],
+        capture_output=True,
+        text=True,
+    )
+    return float(r.stdout.strip() or 0)
+
+
+def wav_dur(p: Path) -> float:
+    with wave.open(str(p)) as w:
+        return w.getnframes() / w.getframerate()
+
+
+class Fonts:
+    def __init__(self, root: Path):
+        d = root / "fonts"
+        self.bold = str(d / "AtkinsonHyperlegible-Bold.ttf")
+        self.reg = str(d / "AtkinsonHyperlegible-Regular.ttf")
+
+    def b(self, size: int) -> ImageFont.FreeTypeFont:
+        return ImageFont.truetype(self.bold, size)
+
+    def r(self, size: int) -> ImageFont.FreeTypeFont:
+        return ImageFont.truetype(self.reg, size)
+
+
+def wrap(draw: ImageDraw.ImageDraw, text: str, font, width: int) -> list[str]:
+    out, line = [], ""
+    for word in text.split():
+        t = f"{line} {word}".strip()
+        if draw.textlength(t, font=font) <= width or not line:
+            line = t
+        else:
+            out.append(line)
+            line = word
+    if line:
+        out.append(line)
+    return out
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Marks and segments
+
+
+def marks_of(raw: Path, src: str) -> dict[str, float]:
+    m: dict[str, float] = {}
+    j = raw / f"{src}.marks.json"
+    t = raw / f"{src}.marks.txt"
+    if j.exists():
+        m.update(json.loads(j.read_text(encoding="utf-8-sig")).get("marks", {}))
+    if t.exists():
+        for line in t.read_text(encoding="utf-8-sig", errors="replace").splitlines():
+            p = line.split()
+            if len(p) == 3 and p[0] == "MARK":
+                m[p[1]] = float(p[2])
+    return m
+
+
+def source(raw: Path, src: str) -> Path:
+    for ext in (".webm", ".mp4"):
+        if (raw / f"{src}{ext}").exists():
+            return raw / f"{src}{ext}"
+    raise FileNotFoundError(f"raw/{src}.webm|mp4")
+
+
+def resolve(expr: str, marks: dict[str, float], end: float) -> float:
+    m = re.fullmatch(r"\s*([A-Za-z_][\w]*|[\d.]+)\s*(?:([+-])\s*([\d.]+))?\s*", expr)
+    if not m:
+        raise ValueError(expr)
+    base = m[1]
+    if re.fullmatch(r"[\d.]+", base):
+        v = float(base)
+    elif base == "end":
+        v = end
+    elif base in marks:
+        v = marks[base]
+    else:
+        raise KeyError(f"mark {base!r} missing (have {sorted(marks)})")
+    if m[2]:
+        v += float(m[3]) * (1 if m[2] == "+" else -1)
+    return max(0.0, min(end, v))
+
+
+def segments(raw: Path, src: str, segs: list[str]) -> list[tuple[float, float]]:
+    p = source(raw, src)
+    end = probe_dur(p)
+    marks = marks_of(raw, src)
+    out = []
+    for s in segs:
+        a, b = s.split("..")
+        try:
+            ta, tb = resolve(a, marks, end), resolve(b, marks, end)
+        except KeyError as e:  # a step that did not happen on this take: keep the whole source
+            print(f"  {src}: {e}; using 0..end", file=sys.stderr)
+            return [(0.0, end)]
+        if tb - ta > 0.2:
+            out.append((ta, tb))
+    return out or [(0.0, end)]
+
+
+MAX_SPEED = 1.45
+
+
+def squeeze(segs: list[tuple[float, float]], dur: float) -> list[tuple[float, float]]:
+    """Footage longer than `dur` at MAX_SPEED loses its middle (the opening and the payoff at the end stay)."""
+    total = sum(b - a for a, b in segs) - XF * (len(segs) - 1)
+    keep = dur * MAX_SPEED
+    if total <= keep:
+        return segs
+    head, cut = keep * 0.4, total - keep + XF
+    out, t = [], 0.0
+    for a, b in segs:
+        ln = b - a
+        s0, s1 = t, t + ln  # this part's place on the joined timeline
+        lo, hi = head, head + cut  # the stretch to drop
+        if s1 <= lo or s0 >= hi:
+            out.append((a, b))
+        else:
+            if s0 < lo:
+                out.append((a, a + (lo - s0)))
+            if s1 > hi:
+                out.append((a + (hi - s0), b))
+        t += ln - XF
+    return [(a, b) for a, b in out if b - a > 0.35]
+
+
+def chain(label_in: str, segs: list[tuple[float, float]], dur: float, tag: str, pre: str = "") -> tuple[str, str]:
+    """Filter text: the kept parts of one input joined with crossfades, fitted to `dur` (sped up a little if long,
+    held on the last frame if short; very long footage loses its middle first). Returns (filter, output label)."""
+    segs = squeeze(segs, dur)
+    f = []
+    labels = []
+    for i, (a, b) in enumerate(segs):
+        lab = f"{tag}p{i}"
+        f.append(
+            f"[{label_in}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS,fps={FPS},{pre}format=yuv420p,settb=1/{FPS * 512}[{lab}]"
+        )
+        labels.append((lab, b - a))
+    # split the input once per segment
+    if len(segs) > 1:
+        f.insert(0, f"[{label_in}]split={len(segs)}" + "".join(f"[{tag}in{i}]" for i in range(len(segs))))
+        f[1:] = [s.replace(f"[{label_in}]", f"[{tag}in{i}]", 1) for i, s in enumerate(f[1:])]
+    cur, cur_len = labels[0]
+    for i, (lab, ln) in enumerate(labels[1:], 1):
+        out = f"{tag}x{i}"
+        off = max(0.05, cur_len - XF)
+        f.append(f"[{cur}][{lab}]xfade=transition=fade:duration={XF}:offset={off:.3f}[{out}]")
+        cur, cur_len = out, cur_len + ln - XF
+    total = cur_len
+    speed = 1.0
+    if total > dur:
+        speed = min(total / dur, MAX_SPEED + 0.08)
+    out = f"{tag}fit"
+    f.append(
+        f"[{cur}]setpts=PTS/{speed:.4f},fps={FPS},tpad=stop_mode=clone:stop_duration={dur + 1:.2f},trim=duration={dur:.3f},setpts=PTS-STARTPTS[{out}]"
+    )
+    if speed > 1.02:
+        print(
+            f"  {tag}: {total:.1f}s of footage in {dur:.1f}s (x{speed:.2f}){'  TRIMMED' if total / dur > MAX_SPEED + 0.08 else ''}",
+            file=sys.stderr,
+        )
+    return ";".join(f), out
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Graphics (Pillow): phone frame, lower thirds, cards
+
+
+def phone_assets(work: Path, sw: int, sh: int) -> tuple[Path, Path, int, int]:
+    """A dark device frame for a sw x sh screen, and the screen's rounded-corner mask. Returns (frame, mask, fw, fh)."""
+    bez, r = 16, 46
+    fw, fh = sw + 2 * bez, sh + 2 * bez
+    frame = Image.new("RGBA", (fw + 60, fh + 60), (0, 0, 0, 0))
+    sh_ = Image.new("RGBA", frame.size, (0, 0, 0, 0))
+    ImageDraw.Draw(sh_).rounded_rectangle((30, 40, 30 + fw, 40 + fh), r + bez, fill=(0, 0, 0, 110))
+    frame = Image.alpha_composite(frame, sh_.filter(ImageFilter.GaussianBlur(16)))
+    d = ImageDraw.Draw(frame)
+    d.rounded_rectangle((30, 30, 30 + fw, 30 + fh), r + bez, fill=(22, 16, 12, 255))
+    d.rounded_rectangle((31, 31, 29 + fw, 29 + fh), r + bez, outline=(90, 70, 55, 255), width=2)
+    d.rounded_rectangle((30 + bez, 30 + bez, 30 + bez + sw, 30 + bez + sh), r, fill=(0, 0, 0, 0))
+    fp = work / f"phone_frame_{sw}x{sh}.png"
+    frame.save(fp)
+    mask = Image.new("L", (sw, sh), 0)
+    ImageDraw.Draw(mask).rounded_rectangle((0, 0, sw - 1, sh - 1), r, fill=255)
+    mp = work / f"phone_mask_{sw}x{sh}.png"
+    mask.save(mp)
+    return fp, mp, fw + 60, fh + 60
+
+
+def lower_third(work: Path, fonts: Fonts, sid: str, title: str, model: str) -> Path:
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    ft, fm = fonts.b(34), fonts.r(26)
+    tw = max(d.textlength(title, font=ft), d.textlength(model, font=fm))
+    x, y, pad = 48, 64, 22
+    box = (x, y, x + tw + 2 * pad + 10, y + 112)
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle((box[0] + 4, box[1] + 6, box[2] + 4, box[3] + 6), 14, fill=(0, 0, 0, 90))
+    img = Image.alpha_composite(img, shadow.filter(ImageFilter.GaussianBlur(10)))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle(box, 14, fill=(90, 45, 0, 240))
+    d.rounded_rectangle((box[0], box[1], box[0] + 10, box[3]), 5, fill=GOLD)
+    d.text((x + pad + 10, y + 16), title, font=ft, fill=CREAM)
+    d.text((x + pad + 10, y + 64), model, font=fm, fill="#E8D7AE")
+    p = work / f"lt_{sid}.png"
+    img.save(p)
+    return p
+
+
+def side_panel(work: Path, fonts: Fonts, tag: str, head: str, body: str, x0: int, x1: int) -> Path:
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    fh, fb = fonts.b(76), fonts.r(40)
+    y = 330
+    for line in wrap(d, head, fh, x1 - x0):
+        d.text((x0, y), line, font=fh, fill=BROWN)
+        y += 92
+    d.rectangle((x0, y + 18, x0 + 110, y + 26), fill=GOLD)
+    y += 64
+    for line in wrap(d, body, fb, x1 - x0):
+        d.text((x0, y), line, font=fb, fill=DARK)
+        y += 56
+    p = work / f"side_{tag}.png"
+    img.save(p)
+    return p
+
+
+def fill(img: Image.Image) -> Image.Image:
+    s = max(W / img.width, H / img.height)
+    img = img.resize((round(img.width * s), round(img.height * s)), Image.LANCZOS)
+    l, t = (img.width - W) // 2, (img.height - H) // 2
+    return img.crop((l, t, l + W, t + H)).convert("RGB")
+
+
+def card_image(root: Path, work: Path, fonts: Fonts, kind: str) -> Path:
+    cards = root / "cards"
+    if kind == "title":
+        img = fill(Image.open(cards / "judges-title.png"))
+        # what existed before the hackathon, and what was built during it (Cerebral Valley asks for this first)
+        band = Image.new("RGBA", (1420, 210), (42, 26, 13, 215))
+        img.paste(band, (0, 668), band)
+        d = ImageDraw.Draw(img)
+        d.text((150, 150), "Accnomos", font=fonts.b(150), fill=CREAM)
+        d.rectangle((156, 340, 296, 350), fill=GOLD)
+        d.text((150, 388), "Your business and household money,", font=fonts.r(52), fill=CREAM)
+        d.text((150, 456), "in plain English.", font=fonts.r(52), fill=CREAM)
+        d.text((150, 566), "Running on Meta's Muse models", font=fonts.b(38), fill=GOLD)
+        d.text((150, 690), "Before 26 Oct: only our own AI server hardware.", font=fonts.r(38), fill=CREAM)
+        d.text((150, 750), "Built during the hackathon, 26 Oct – 4 Nov:", font=fonts.b(38), fill=GOLD)
+        d.text(
+            (150, 802),
+            "its local model setup, the web and Android app, and every feature.",
+            font=fonts.b(38),
+            fill=GOLD,
+        )
+    elif kind == "end":
+        img = fill(Image.open(cards / "section-demo.png"))
+        d = ImageDraw.Draw(img)
+        cx = W // 2
+
+        def centre(y: int, text: str, font, colour: str) -> None:
+            d.text((cx - d.textlength(text, font=font) / 2, y), text, font=font, fill=colour)
+
+        centre(556, "Accnomos", fonts.b(96), BROWN)
+        centre(676, "accnomos.com  ·  Try the demo, no sign-in", fonts.b(44), DARK)
+        centre(748, "Step-by-step how-to guides:", fonts.b(36), BROWN)
+        centre(796, "accnomos.com  ·  github.com/zaytunazs/accnomos/tree/main/docs/howto", fonts.r(36), DARK)
+        centre(862, "HMRC filing in this demo goes to HMRC's sandbox.", fonts.r(30), "#6b5a48")
+    elif kind == "judges":
+        img = fill(Image.open(cards / "section-meta-ai.png"))
+        scrim = Image.new("RGBA", (W, H), (42, 26, 13, 215))
+        img = Image.alpha_composite(img.convert("RGBA"), scrim).convert("RGB")
+        d = ImageDraw.Draw(img)
+        x, y = 110, 80
+        d.text((x, y), "For the judges", font=fonts.b(58), fill=GOLD)
+        y += 100
+        rows = [
+            (
+                "Meta models at run time",
+                "Muse Spark 1.3 (Meta Model API, the default) · Muse Glimmer 30B (Meta open weights, on our own GPU server or the user's computer) · Muse Voice Transcribe. Muse Image made the art at build time.",
+            ),
+            (
+                "Measured",
+                "Share of 200 synthetic documents with every field right, clean / messy:  Muse Spark 1.3  95 % / 96 %  ·  Glimmer  85 % / 80 %",
+            ),
+            ("Provenance", "Live call records for both models: docs/submission/OPEN_WEIGHTS.md"),
+            (
+                "Try it",
+                "accnomos.com, then Try the demo. Android APK on GitHub Releases; the Play listing is in review.",
+            ),
+            ("Limits", "HMRC filing is sandbox only. The demo data is fictional."),
+        ]
+        fl, fb = fonts.b(34), fonts.r(32)
+        for head, body in rows:
+            d.text((x, y), head, font=fl, fill=CREAM)
+            yy = y
+            for line in wrap(d, body, fb, W - 2 * x - 470):
+                d.text((x + 470, yy), line, font=fb, fill="#EFE6D8")
+                yy += 44
+            y = max(y + 52, yy) + 34
+    else:
+        raise ValueError(kind)
+    p = work / f"card_{kind}.png"
+    img.save(p)
+    return p
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Rendering
+
+
+def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot: dict, out: Path) -> None:
+    raw = root / "raw"
+    dur = shot["dur"]
+    inputs: list[str] = []
+    fl: list[str] = []
+    tag = f"{scene['id']}_{i}"
+    layout = shot["layout"]
+    inputs += ["-i", str(source(raw, shot["src"]))]
+    if layout == "full":
+        pre = f"scale={W}:{H}:flags=lanczos,"
+        if shot.get("crop"):  # [x, y, w, h] of the 1920 x 1080 frame, enlarged to fill it (16:9 crops only)
+            x, y, cw, ch = shot["crop"]
+            pre += f"crop={cw}:{ch}:{x}:{y},scale={W}:{H}:flags=lanczos,"
+        src_in = "0:v"
+        for k, b in enumerate(shot.get("blur", [])):  # blur a box of the source until a mark (e.g. a password)
+            mk, end = marks_of(raw, shot["src"]), probe_dur(source(raw, shot["src"]))
+            since, until = resolve(b.get("from", "0"), mk, end), resolve(b["until"], mk, end)
+            bx, by, bw, bh = b["box"]
+            fl.append(
+                f"[{src_in}]split[bz{k}a][bz{k}b];[bz{k}b]crop={bw}:{bh}:{bx}:{by},boxblur=lr=12:lp=4:cr=6:cp=4[bz{k}c];"
+                f"[bz{k}a][bz{k}c]overlay={bx}:{by}:enable='between(t,{since:.3f},{until:.3f})'[bz{k}]"
+            )
+            src_in = f"bz{k}"
+        f, v = chain(src_in, segments(raw, shot["src"], shot["segs"]), dur, "a", pre=pre)
+        fl.append(f)
+        base = v
+        n = 1
+    else:
+        sw, sh = (450, 1000) if layout == "phone" else (404, 898)
+        frame, mask, fw, fh = phone_assets(work, sw, sh)
+        psrc = shot["src"] if layout == "phone" else shot["phone"]
+        psegs = shot["segs"] if layout == "phone" else shot["psegs"]
+        if layout == "split":
+            inputs += ["-i", str(source(raw, psrc))]
+            pin = "1:v"
+            n = 2
+        else:
+            pin = "0:v"
+            n = 1
+        inputs += ["-loop", "1", "-i", str(frame), "-loop", "1", "-i", str(mask)]
+        fi, mi = n, n + 1
+        n += 2
+        f, pv = chain(pin, segments(raw, psrc, psegs), dur, "p", pre=f"scale={sw}:{sh}:flags=lanczos,")
+        fl.append(f)
+        fl.append(
+            f"[{mi}:v]format=gray,trim=duration={dur:.3f},fps={FPS}[pm];[{pv}]format=rgba[pva];[pva][pm]alphamerge[pmasked]"
+        )
+        bg = f"color=c={'0xF8F6F3' if layout == 'phone' else '0x2A1A0D'}:s={W}x{H}:r={FPS}:d={dur:.3f}"
+        fl.append(f"{bg}[bg]")
+        if layout == "split":
+            ww, wh = 1392, 783
+            f, wv = chain(
+                "0:v", segments(raw, shot["src"], shot["segs"]), dur, "w", pre=f"scale={ww}:{wh}:flags=lanczos,"
+            )
+            fl.append(f)
+            wx, wy = 56, 200
+            px = wx + ww + (W - (wx + ww) - fw) // 2 + 8
+            py = (H - fh) // 2 + 4
+            fl.append(f"[bg][{wv}]overlay={wx}:{wy}[b1]")
+            prev = "b1"
+        else:
+            px, py = 1180, (H - fh) // 2 + 4
+            head, body = shot.get("side", ("", ""))
+            sp = side_panel(work, fonts, tag, head, body, 150, 1040)
+            inputs += ["-loop", "1", "-i", str(sp)]
+            si = n
+            n += 1
+            fl.append(f"[bg][{si}:v]overlay=0:0:shortest=1[b1]")
+            prev = "b1"
+        fl.append(
+            f"[{fi}:v]trim=duration={dur:.3f},fps={FPS}[fr];[{prev}][fr]overlay={px}:{py}[b2];[b2][pmasked]overlay={px + 46}:{py + 46}[b3]"
+        )
+        base = "b3"
+    if i == 0 and scene.get("lt"):
+        lt = lower_third(work, fonts, scene["id"], *scene["lt"])
+        inputs += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(lt)]
+        li = n
+        n += 1
+        fl.append(
+            f"[{li}:v]format=rgba,fade=t=in:st=0.25:d=0.4:alpha=1,fade=t=out:st={min(4.8, dur - 0.5):.2f}:d=0.5:alpha=1[lt];[{base}][lt]overlay=0:0:shortest=1[lto]"
+        )
+        base = "lto"
+    fl.append(f"[{base}]trim=duration={dur:.3f},setpts=PTS-STARTPTS,format=yuv420p[vout]")
+    tmp = out.with_name(out.stem + ".part.mp4")
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *inputs,
+            "-filter_complex",
+            ";".join(fl),
+            "-map",
+            "[vout]",
+            "-an",
+            *ENC,
+            "-t",
+            f"{dur:.3f}",
+            str(tmp),
+        ]
+    )
+    tmp.rename(out)
+
+
+FEATURES = [
+    "Receipts & invoices",
+    "Bank matching",
+    "Invoices & quotes",
+    "Jobs & timesheets",
+    "Payroll estimates",
+    "VAT to HMRC (sandbox)",
+    "MTD income tax for sole traders & landlords",
+    "Household budgets & goals",
+    "Calendar, notes & tasks by voice",
+    "Reports & CSV exports",
+    "Your own OneDrive",
+    "Your choice of Meta model (local or API)",
+]
+
+
+def render_features(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) -> None:
+    """The feature list: brand brown, two columns, each line fading and rising in a beat after the one before."""
+    dur = scene["dur"]
+    n = round(dur * FPS)
+    base = Image.new("RGBA", (W, H), BROWN)
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(glow).ellipse((-300, -500, W + 300, H + 200), fill=(120, 66, 14, 150))
+    base = Image.alpha_composite(base, glow.filter(ImageFilter.GaussianBlur(160)))
+
+    def layer(draw_fn, size):
+        im = Image.new("RGBA", size, (0, 0, 0, 0))
+        draw_fn(ImageDraw.Draw(im))
+        return im
+
+    fh, fi = fonts.b(76), fonts.b(37)
+    head = layer(
+        lambda d: (
+            d.text((0, 0), "What Accnomos does", font=fh, fill=CREAM),
+            d.rectangle((4, 112, 150, 121), fill=GOLD),
+        ),
+        (1200, 130),
+    )
+    items = []
+    for t in FEATURES:
+        items.append(
+            layer(
+                lambda d, t=t: (d.ellipse((0, 16, 20, 36), fill=GOLD), d.text((44, 0), t, font=fi, fill=CREAM)),
+                (880, 60),
+            )
+        )
+    cols, x0s, y0, pitch = 6, (150, 1000), 300, 104
+    pos = [(x0s[i // cols], y0 + (i % cols) * pitch) for i in range(len(items))]
+
+    def ease(u: float) -> float:
+        u = max(0.0, min(1.0, u))
+        return 1 - (1 - u) ** 3
+
+    tmp = out.with_name(out.stem + ".part.mp4")
+    p = subprocess.Popen(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-s",
+            f"{W}x{H}",
+            "-r",
+            str(FPS),
+            "-i",
+            "-",
+            *ENC,
+            str(tmp),
+        ],
+        stdin=subprocess.PIPE,
+    )
+    for f in range(n):
+        t = f / FPS
+        img = base.copy()
+        for lay, (x, y), st in [(head, (150, 120), 0.05)] + [
+            (it, xy, 0.45 + i * 0.14) for i, (it, xy) in enumerate(zip(items, pos))
+        ]:
+            a = ease((t - st) / 0.45)
+            if a <= 0:
+                continue
+            l2 = lay.copy()
+            l2.putalpha(l2.getchannel("A").point(lambda v, a=a: int(v * a)))
+            img.alpha_composite(l2, (x, int(y + 22 * (1 - a))))
+        if t > dur - 0.35:  # dip towards the next scene
+            img = Image.blend(img, Image.new("RGBA", (W, H), BROWN), (t - (dur - 0.35)) / 0.35 * 0.6)
+        p.stdin.write(img.convert("RGB").tobytes())
+    p.stdin.close()
+    if p.wait() != 0:
+        raise SystemExit("ffmpeg failed: features card")
+    tmp.rename(out)
+
+
+def render_card(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) -> None:
+    if scene["card"] == "features":
+        return render_features(root, work, fonts, scene, out)
+    img = card_image(root, work, fonts, scene["card"])
+    dur = scene["dur"]
+    # a slow push-in (3 %) so a long card does not look frozen; fade in from black on the first card
+    z = {"title": 0.03, "end": 0.02, "judges": 0.0}[scene["card"]]
+    vf = (
+        f"scale={W * 2}:{H * 2},zoompan=z='1+{z}*on/({dur * FPS:.0f})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={round(dur * FPS)}:s={W}x{H}:fps={FPS},"
+        f"format=yuv420p"
+    )
+    if scene["card"] == "title":
+        vf += ",fade=t=in:st=0:d=0.5"
+    if scene["card"] == "judges":
+        vf += f",fade=t=out:st={dur - 0.6:.2f}:d=0.6"
+    tmp = out.with_name(out.stem + ".part.mp4")
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(img),
+            "-vf",
+            vf,
+            "-frames:v",
+            str(round(dur * FPS)),
+            *ENC,
+            str(tmp),
+        ]
+    )
+    tmp.rename(out)
+
+
+# --------------------------------------------------------------------------------------------------------------------
+# Captions and audio
+
+
+def silences(p: Path) -> list[tuple[float, float]]:
+    r = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-i", str(p), "-af", "silencedetect=noise=-38dB:d=0.22", "-f", "null", "-"],
+        capture_output=True,
+        text=True,
+    )
+    st = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", r.stderr)]
+    en = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", r.stderr)]
+    return list(zip(st, en))
+
+
+def chunks(text: str, limit: int = 84) -> list[str]:
+    """Caption-sized pieces (at most two lines), split at sentence and clause ends."""
+    out: list[str] = []
+    for sent in re.split(r"(?<=[.!?:])\s+", text.strip()):
+        parts = [sent]
+        while any(len(p) > limit for p in parts):
+            nxt = []
+            for p in parts:
+                if len(p) <= limit:
+                    nxt.append(p)
+                    continue
+                cut = max(
+                    (m.end() for m in re.finditer(r"[,;:]\s", p) if m.end() < len(p) - 8 and m.end() > 12),
+                    key=lambda e: -abs(e - len(p) / 2),
+                    default=None,
+                )
+                if cut is None:
+                    words = p.split()
+                    half = len(words) // 2
+                    nxt += [" ".join(words[:half]), " ".join(words[half:])]
+                else:
+                    nxt += [p[:cut].strip(), p[cut:].strip()]
+            parts = nxt
+        out += parts
+    merged: list[str] = []
+    for c in out:  # a short lead-in ("One note:") rides with the next piece
+        if merged and len(merged[-1]) < 22 and len(merged[-1]) + len(c) < limit:
+            merged[-1] = f"{merged[-1]} {c}"
+        else:
+            merged.append(c)
+    return merged
+
+
+def timed_captions(text: str, wav: Path) -> list[tuple[float, float, str]]:
+    """Each chunk gets a share of the line's length; chunk boundaries snap to the pauses the voice leaves."""
+    d = wav_dur(wav)
+    sil = [(a, b) for a, b in silences(wav) if 0.3 < a < d - 0.3]
+    cs = chunks(text)
+    tot = sum(len(c) for c in cs)
+    t, raw_b = 0.0, []
+    lead = sil[0][1] if sil and sil[0][0] < 0.05 else 0.0
+    speak = d - lead
+    acc = 0
+    for c in cs[:-1]:
+        acc += len(c)
+        raw_b.append(lead + speak * acc / tot)
+    mids = [(a + b) / 2 for a, b in sil]
+    bounds: list[float] = []
+    for b in raw_b:
+        near = min(mids, key=lambda m: abs(m - b), default=None)
+        v = near if near is not None and abs(near - b) < 0.9 else b
+        if bounds and v < bounds[-1] + 0.8:  # two pieces snapped to one pause: keep the estimate
+            v = max(b, bounds[-1] + 0.8)
+        bounds.append(min(v, d - 0.5))
+    edges = [0.0, *bounds, d]
+    return [(edges[i], edges[i + 1], c) for i, c in enumerate(cs)]
+
+
+def ts_srt(t: float) -> str:
+    ms = round(t * 1000)
+    return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
+
+
+def ts_ass(t: float) -> str:
+    cs = round(t * 100)
+    return f"{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}"
+
+
+def write_subs(caps: list[tuple[float, float, str]], srt: Path, ass: Path) -> None:
+    srt.write_text(
+        "".join(f"{i}\n{ts_srt(a)} --> {ts_srt(b)}\n{t}\n\n" for i, (a, b, t) in enumerate(caps, 1)), encoding="utf-8"
+    )
+    head = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {W}
+PlayResY: {H}
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Cap,Atkinson Hyperlegible,46,&H00FFFFFF,&H00FFFFFF,&H5A1A0D2A,&H5A1A0D2A,1,0,0,0,100,100,0,0,3,14,0,2,260,260,44,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+"""
+    ass.write_text(
+        head + "".join(f"Dialogue: 0,{ts_ass(a)},{ts_ass(b - 0.04)},Cap,,0,0,0,,{t}\n" for a, b, t in caps),
+        encoding="utf-8",
+    )
+
+
+# --------------------------------------------------------------------------------------------------------------------
+
+
+def contact_sheet(video: Path, timeline: list[dict], dest: Path) -> None:
+    """One frame from the middle of every shot, 4 across, with its time."""
+    times = []
+    for sc in timeline:
+        t0 = sc["start"]
+        for sh in sc["shots"]:
+            times.append((t0 + sh["dur"] / 2, f"{sc['scene']} {sh['src']}"))
+            t0 += sh["dur"]
+    tiles = []
+    for t, label in times:
+        f = dest.with_name(f".cs_{len(tiles)}.jpg")
+        run(
+            [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{t:.2f}",
+                "-i",
+                str(video),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=480:270",
+                str(f),
+            ]
+        )
+        im = Image.open(f).convert("RGB")
+        d = ImageDraw.Draw(im)
+        d.rectangle((0, 0, 480, 26), fill=(0, 0, 0))
+        d.text((6, 4), f"{int(t // 60)}:{t % 60:05.2f}  {label}", fill=(255, 255, 255))
+        tiles.append(im)
+        f.unlink()
+    cols = 4
+    rows = (len(tiles) + cols - 1) // cols
+    sheet = Image.new("RGB", (cols * 480, rows * 270), "white")
+    for i, im in enumerate(tiles):
+        sheet.paste(im, ((i % cols) * 480, (i // cols) * 270))
+    sheet.save(dest, quality=85)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("root")
+    ap.add_argument("--only", default="")
+    ap.add_argument("--keep", action="store_true", help="reuse scene files already rendered")
+    a = ap.parse_args()
+    root = Path(a.root).resolve()
+    work, out = root / "work", root / "out"
+    stem = "accnomos-demo-v3"
+    work.mkdir(exist_ok=True)
+    out.mkdir(exist_ok=True)
+    fonts = Fonts(root)
+    only = set(filter(None, a.only.split(",")))
+    lines = {x["id"]: x["text"] for x in json.loads((root / "vo_lines.json").read_text(encoding="utf-8"))}
+
+    files, timeline, caps, vo_parts = [], [], [], []
+    t = 0.0
+    for sc in pick(EDL, root / "raw"):
+        sid = sc["id"]
+        wav = root / "vo" / f"{sid}.wav"
+        vo_len = wav_dur(wav) if wav.exists() else 0.0
+        if "card" in sc:
+            pieces = [(work / f"{sid}.mp4", sc["dur"], None)]
+        else:
+            pieces = [(work / f"{sid}_{i}.mp4", s["dur"], s) for i, s in enumerate(sc["shots"])]
+        sdur = sum(p[1] for p in pieces)
+        lead = sc.get("lead", 0.3)
+        if vo_len and lead + vo_len > sdur - 0.2:
+            print(
+                f"WARNING {sid}: voice {vo_len:.1f}s + lead {lead}s is longer than the scene ({sdur:.1f}s)",
+                file=sys.stderr,
+            )
+        for i, (f, d, shot) in enumerate(pieces):
+            if (not only or sid in only) and not (a.keep and f.exists()):
+                print(f"render {f.name} ({d:.1f}s)", file=sys.stderr, flush=True)
+                if shot is None:
+                    render_card(root, work, fonts, sc, f)
+                else:
+                    render_shot(root, work, fonts, sc, i, shot, f)
+            files.append(f)
+        if vo_len:
+            vo_parts.append((wav, t + lead))
+            caps += [(t + lead + x, t + lead + y, c) for x, y, c in timed_captions(lines[sid], wav)]
+        timeline.append(
+            {
+                "scene": sid,
+                "start": round(t, 2),
+                "dur": round(sdur, 2),
+                "vo_start": round(t + lead, 2) if vo_len else None,
+                "vo_len": round(vo_len, 2),
+                "shots": [
+                    {
+                        "src": (p[2] or {}).get("src", sc.get("card")),
+                        "layout": (p[2] or {}).get("layout", "card"),
+                        "dur": p[1],
+                    }
+                    for p in pieces
+                ],
+                "text": lines.get(sid, ""),
+            }
+        )
+        t += sdur
+    total = t
+    print(f"total {total:.2f}s", file=sys.stderr)
+    if only:
+        return
+
+    lst = work / "concat.txt"
+    lst.write_text("".join(f"file '{f}'\n" for f in files))
+    clean = work / "clean.mp4"
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(lst),
+            "-c",
+            "copy",
+            str(clean),
+        ]
+    )
+
+    # voice-over track, timed to the picture, loudness-normalised (-16 LUFS, web)
+    vo = out / f"{stem}-vo.wav"
+    ins, flt = [], []
+    for k, (w, st) in enumerate(vo_parts):
+        ins += ["-i", str(w)]
+        flt.append(f"[{k}:a]aresample=48000,adelay={round(st * 1000)}:all=1[a{k}]")
+    flt.append(
+        "".join(f"[a{k}]" for k in range(len(vo_parts)))
+        + f"amix=inputs={len(vo_parts)}:normalize=0,apad,atrim=duration={total:.3f},loudnorm=I=-16:TP=-1.5:LRA=7[vo]"
+    )
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *ins,
+            "-filter_complex",
+            ";".join(flt),
+            "-map",
+            "[vo]",
+            "-ar",
+            "48000",
+            "-ac",
+            "1",
+            str(vo),
+        ]
+    )
+
+    srt, ass = out / f"{stem}.srt", work / "captions.ass"
+    write_subs(caps, srt, ass)
+    fontsdir = str(root / "fonts")
+    final = out / f"{stem}.mp4"
+    tmp = final.with_name(f"{stem}.part.mp4")
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(clean),
+            "-i",
+            str(vo),
+            "-vf",
+            f"subtitles=filename={ass}:fontsdir={fontsdir}",
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ac",
+            "2",
+            "-movflags",
+            "+faststart",
+            "-shortest",
+            str(tmp),
+        ]
+    )
+    tmp.rename(final)
+    novo = out / f"{stem}-novo.mp4"
+    tmp = novo.with_name(f"{stem}-novo.part.mp4")
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(clean),
+            "-f",
+            "lavfi",
+            "-t",
+            f"{total:.3f}",
+            "-i",
+            "anullsrc=r=48000:cl=stereo",
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-movflags",
+            "+faststart",
+            "-shortest",
+            str(tmp),
+        ]
+    )
+    tmp.rename(novo)
+    contact_sheet(final, timeline, out / f"{stem}-contact-sheet.jpg")
+    (out / "timeline.json").write_text(
+        json.dumps({"total": round(total, 2), "scenes": timeline}, indent=1, ensure_ascii=False), encoding="utf-8"
+    )
+    print(f"DONE {final} {probe_dur(final):.2f}s", file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()
