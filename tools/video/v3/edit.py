@@ -132,6 +132,12 @@ EDL: list[dict] = [
         ],
     },
     {
+        "id": "s5a",
+        "lead": 0.3,
+        "lt": ("Automatic bank feed", "TrueLayer sandbox · matched by code"),
+        "shots": [{"layout": "full", "src": "w-bankfeed", "segs": ["0..end"], "dur": 4.8}],
+    },
+    {
         "id": "s5",
         "lead": 0.4,
         "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"),
@@ -481,25 +487,21 @@ def card_image(root: Path, work: Path, fonts: Fonts, kind: str) -> Path:
     cards = root / "cards"
     if kind == "title":
         img = fill(Image.open(cards / "judges-title.png"))
-        d = ImageDraw.Draw(img)
-        d.text((150, 330), "Accnomos", font=fonts.b(150), fill=CREAM)
-        d.rectangle((156, 520, 296, 530), fill=GOLD)
-        d.text((150, 572), "Your business and household money,", font=fonts.r(52), fill=CREAM)
-        d.text((150, 640), "in plain English.", font=fonts.r(52), fill=CREAM)
-        d.text((150, 760), "Running on Meta's Muse models", font=fonts.b(38), fill=GOLD)
         # what existed before the hackathon, and what was built during it (Cerebral Valley asks for this first)
-        band = Image.new("RGBA", (W, 150), (42, 26, 13, 200))
-        img.paste(band, (0, 900), band)
+        band = Image.new("RGBA", (1420, 210), (42, 26, 13, 215))
+        img.paste(band, (0, 668), band)
+        d = ImageDraw.Draw(img)
+        d.text((150, 150), "Accnomos", font=fonts.b(150), fill=CREAM)
+        d.rectangle((156, 340, 296, 350), fill=GOLD)
+        d.text((150, 388), "Your business and household money,", font=fonts.r(52), fill=CREAM)
+        d.text((150, 456), "in plain English.", font=fonts.r(52), fill=CREAM)
+        d.text((150, 566), "Running on Meta's Muse models", font=fonts.b(38), fill=GOLD)
+        d.text((150, 690), "Before 26 Oct: only our own AI server hardware.", font=fonts.r(38), fill=CREAM)
+        d.text((150, 750), "Built during the hackathon, 26 Oct – 4 Nov:", font=fonts.b(38), fill=GOLD)
         d.text(
-            (150, 922),
-            "Before 26 Oct: only our own AI server with a local model runtime.",
-            font=fonts.r(34),
-            fill=CREAM,
-        )
-        d.text(
-            (150, 972),
-            "Built during the hackathon, 26 Oct – 4 Nov: the app (web and Android) and every feature you will see.",
-            font=fonts.b(34),
+            (150, 802),
+            "its local model setup, the web and Android app, and every feature.",
+            font=fonts.b(38),
             fill=GOLD,
         )
     elif kind == "end":
@@ -510,11 +512,11 @@ def card_image(root: Path, work: Path, fonts: Fonts, kind: str) -> Path:
         def centre(y: int, text: str, font, colour: str) -> None:
             d.text((cx - d.textlength(text, font=font) / 2, y), text, font=font, fill=colour)
 
-        centre(470, "Accnomos", fonts.b(104), BROWN)
-        centre(600, "accnomos.com  ·  Try the demo, no sign-in", fonts.b(46), DARK)
-        centre(684, "Step-by-step how-to guides:", fonts.b(36), BROWN)
-        centre(734, "accnomos.com  ·  github.com/zaytunazs/accnomos/tree/main/docs/howto", fonts.r(36), DARK)
-        centre(806, "HMRC filing in this demo goes to HMRC's sandbox.", fonts.r(30), "#6b5a48")
+        centre(556, "Accnomos", fonts.b(96), BROWN)
+        centre(676, "accnomos.com  ·  Try the demo, no sign-in", fonts.b(44), DARK)
+        centre(748, "Step-by-step how-to guides:", fonts.b(36), BROWN)
+        centre(796, "accnomos.com  ·  github.com/zaytunazs/accnomos/tree/main/docs/howto", fonts.r(36), DARK)
+        centre(862, "HMRC filing in this demo goes to HMRC's sandbox.", fonts.r(30), "#6b5a48")
     elif kind == "judges":
         img = fill(Image.open(cards / "section-meta-ai.png"))
         scrim = Image.new("RGBA", (W, H), (42, 26, 13, 215))
