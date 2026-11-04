@@ -41,7 +41,7 @@ EDL: list[dict] = [
         {"layout": "split", "src": "w-home", "segs": ["0..end"], "phone": "p-home", "psegs": ["0..end"], "dur": 19.2},
     ]},
     {"id": "s2", "lead": 0.4, "lt": ("Goals and spending", "Progress note by Muse Spark"), "shots": [
-        {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 7.6},
+        {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 8.2},
         {"layout": "full", "src": "w-spending", "segs": ["0..end"], "dur": 5.2},
     ]},
     {"id": "s3", "lead": 0.4, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
@@ -51,10 +51,10 @@ EDL: list[dict] = [
     {"id": "s4", "lead": 0.4, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
         {"layout": "phone", "src": "p-receipt", "segs": ["1.0..gallery+0.5", "queued-0.6..wait+0.8", "ready-0.2..wait2+0.8", "ready2-0.6..ready2+2.2"], "dur": 11.4,
          "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve.")},
-        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 9.8},
+        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 10.6},
     ]},
     {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Worked out by code from the ledger"), "shots": [
-        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 6.4},
+        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 7.0},
         {"layout": "full", "src": "w-vat", "segs": ["0.5..5.5", "13.0..15.5", "17.5..end"], "dur": 10.0},
     ]},
     {"id": "s6", "lead": 0.4, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
@@ -64,8 +64,8 @@ EDL: list[dict] = [
         {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 3.2},
     ]},
     {"id": "s7", "lead": 0.4, "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"), "shots": [
-        {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 9.0, "crop": [240, 40, 1600, 900]},
-        {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 5.6},
+        {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 9.8, "crop": [240, 40, 1600, 900]},
+        {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 6.0},
         {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 5.4},
         {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 2.8},
     ]},
@@ -180,9 +180,36 @@ def segments(raw: Path, src: str, segs: list[str]) -> list[tuple[float, float]]:
     return out or [(0.0, end)]
 
 
+MAX_SPEED = 1.45
+
+
+def squeeze(segs: list[tuple[float, float]], dur: float) -> list[tuple[float, float]]:
+    """Footage longer than `dur` at MAX_SPEED loses its middle (the opening and the payoff at the end stay)."""
+    total = sum(b - a for a, b in segs) - XF * (len(segs) - 1)
+    keep = dur * MAX_SPEED
+    if total <= keep:
+        return segs
+    head, cut = keep * 0.4, total - keep + XF
+    out, t = [], 0.0
+    for a, b in segs:
+        ln = b - a
+        s0, s1 = t, t + ln  # this part's place on the joined timeline
+        lo, hi = head, head + cut  # the stretch to drop
+        if s1 <= lo or s0 >= hi:
+            out.append((a, b))
+        else:
+            if s0 < lo:
+                out.append((a, a + (lo - s0)))
+            if s1 > hi:
+                out.append((a + (hi - s0), b))
+        t += ln - XF
+    return [(a, b) for a, b in out if b - a > 0.35]
+
+
 def chain(label_in: str, segs: list[tuple[float, float]], dur: float, tag: str, pre: str = "") -> tuple[str, str]:
     """Filter text: the kept parts of one input joined with crossfades, fitted to `dur` (sped up a little if long,
-    held on the last frame if short). Returns (filter, output label)."""
+    held on the last frame if short; very long footage loses its middle first). Returns (filter, output label)."""
+    segs = squeeze(segs, dur)
     f = []
     labels = []
     for i, (a, b) in enumerate(segs):
@@ -202,11 +229,11 @@ def chain(label_in: str, segs: list[tuple[float, float]], dur: float, tag: str, 
     total = cur_len
     speed = 1.0
     if total > dur:
-        speed = min(total / dur, 1.6)
+        speed = min(total / dur, MAX_SPEED + 0.08)
     out = f"{tag}fit"
     f.append(f"[{cur}]setpts=PTS/{speed:.4f},fps={FPS},tpad=stop_mode=clone:stop_duration={dur + 1:.2f},trim=duration={dur:.3f},setpts=PTS-STARTPTS[{out}]")
     if speed > 1.02:
-        print(f"  {tag}: {total:.1f}s of footage in {dur:.1f}s (x{speed:.2f}){'  TRIMMED' if total / dur > 1.6 else ''}", file=sys.stderr)
+        print(f"  {tag}: {total:.1f}s of footage in {dur:.1f}s (x{speed:.2f}){'  TRIMMED' if total / dur > MAX_SPEED + 0.08 else ''}", file=sys.stderr)
     return ";".join(f), out
 
 
@@ -410,7 +437,7 @@ def render_card(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) ->
     img = card_image(root, work, fonts, scene["card"])
     dur = scene["dur"]
     # a slow push-in (3 %) so a long card does not look frozen; fade in from black on the first card
-    z = 0.03
+    z = {"title": 0.03, "end": 0.02, "judges": 0.0}[scene["card"]]
     vf = (f"scale={W * 2}:{H * 2},zoompan=z='1+{z}*on/({dur * FPS:.0f})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={round(dur * FPS)}:s={W}x{H}:fps={FPS},"
           f"format=yuv420p")
     if scene["card"] == "title":
