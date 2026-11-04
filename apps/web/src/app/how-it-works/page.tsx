@@ -56,7 +56,7 @@ const features: Feature[] = [
     does: "Ask answers questions about your books (“how much did I spend with Screwfix?”) and can plan a day (“plan my Thursday”). The web streams the answer: key figures first, then the wording. On the mic button you can speak the question instead of typing it.",
     ai: "The model only writes the words. Key figures and quotes come from a facts pack that code builds from your ledger, and code checks every figure the model writes.",
     code: "Code routes the question to the right books and period, checks each figure against the facts, and replaces any invented or wrong-period figure with the quoted facts.",
-    gap: "Not verified yet: voice (Muse Voice Transcribe, with a local fallback model if it fails) has been used live from the Android app on one phone and in our live checks with synthetic speech (4 Nov 2026), not from a browser microphone in our checks; CI fakes it. Bank, payroll, jobs and deadlines are not in the facts pack.",
+    gap: "Not verified yet: voice (Muse Voice Transcribe, with a local fallback model if it fails) has been used live from the Android app on the owner's phone, from Chrome on his computer with a real microphone, and in our live checks with synthetic speech (4 Nov 2026); other browsers and phones untried; CI fakes it. Bank, payroll, jobs and deadlines are not in the facts pack.",
   },
   {
     id: "actions",
