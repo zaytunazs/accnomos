@@ -117,7 +117,7 @@ Duplicates by kind:
 
 ## Set-up
 
-Model: muse-glimmer:30b (local); verifier on = the same model with the verifier prompt (ollama:muse-glimmer:30b). Books: `tools/seed_demo.py` plan for Bramblewood Joinery Ltd, today 2026-10-27. Rules: {'history': 26, 'regular': 123}. Passes: inbox, clean_1of2, clean_2of2, messy_1of2, messy_2of2, dupes.
+Model: muse-glimmer:30b (local); verifier on = the same model with the verifier prompt (muse-glimmer:30b, local). Books: `tools/seed_demo.py` plan for Bramblewood Joinery Ltd, today 2026-10-27. Rules: {'history': 26, 'regular': 123}. Passes: inbox, clean_1of2, clean_2of2, messy_1of2, messy_2of2, dupes.
 
 Reproduce: `cd evals && python -m harness.autopilot_sim --verifier on && python -m harness.autopilot_sim --verifier off && python -m harness.autopilot_sim --report`. `--passes clean --shard 1/2` runs part of it (each shard starts from fresh seeded books).
 
@@ -144,7 +144,7 @@ Reproduce: `cd evals && python -m harness.autopilot_sim --verifier on && python 
   decision (in this run it removed no false post and cost expected posts).
 - **Shards and timing:** the clean and messy passes were run as two shards of 100 (`--shard k/2`), each on fresh
   seeded books, so a document in the second half never sees a proposal from the first half (gold documents are
-  distinct, so only the same-document condition could notice). Other work on the same machine used Ollama during
+  distinct, so only the same-document condition could notice). Other work on the same machine used the local model server during
   the day, and from the verifier-on clean pass onwards two of these runs shared the GPU, so the times in the table
   above are inflated. The least disturbed measurement is the verifier-on inbox and dupes run on the old code
   (`before_tightening/on_inbox_dupes.log`, 67 documents): **26.1 s mean, 26.2 s median, 34.9 s max per document**,

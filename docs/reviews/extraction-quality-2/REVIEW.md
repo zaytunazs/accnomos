@@ -69,7 +69,7 @@ Second-agent review of the receipt extraction-quality branch (brief: `TASK_BRIEF
 From `services/runtime` run `pytest -q tests/test_repair.py tests/test_second_read.py` (fake extractor, under a second). From
 `evals` run `python -m harness.replay runs/glimmer_messy_200 --show`: it lists every document the repairs change, with the note
 the card would show, and the before/after table including false passes (005 and 027 are the two new ones). For a live check,
-start the runtime against Ollama (Glimmer), upload `evals/gold` receipt 081 or 123 rendered messy, and confirm the card says
+start the runtime against the local model server (Glimmer), upload `evals/gold` receipt 081 or 123 rendered messy, and confirm the card says
 "Figures repaired by code from the receipt's own arithmetic: Net £… was the VAT-inclusive total …". For the eval itself, run
 `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'` once from
 `../repo-lane-d-before/evals` (baseline) and once here, then compare with `harness.report_200 … --note '<what changed>'`.

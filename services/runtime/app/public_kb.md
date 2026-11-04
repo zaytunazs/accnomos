@@ -119,7 +119,7 @@ into text (unit-tested only). SAM 3.1 can crop a messy receipt photo but is off 
 plain-code crop is used instead. Muse Image made the brand art at build time and is not in the running product. "Local"
 means the machine running the Accnomos runtime (for the demo, the team's own server), not your own laptop. The page
 /meta-models lists every model, the jobs it does and how it scored.
-Keywords: ai, model, models, meta, llama, muse, glimmer, spark, open weights, sam, voice, transcribe, image, gpu, local, key, api key, which ai, meta models
+Keywords: ai, model, models, meta, muse, glimmer, spark, open weights, sam, voice, transcribe, image, gpu, local, key, api key, which ai, meta models
 
 ## How accurate it is {#accuracy}
 

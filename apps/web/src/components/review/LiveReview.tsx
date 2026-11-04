@@ -127,7 +127,7 @@ export default function LiveReview() {
         const acct = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
         if (!acct) return setMode("demo");
         setAccount(acct);
-        warmServerAi(); // a cold Modal container starts now, not on the first upload
+        warmServerAi(); // a cold hosted GPU container starts now, not on the first upload
         await load(acct);
         setMode("live");
       } catch (e) {

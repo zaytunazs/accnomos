@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Landlord gold with Qwen3.8-27B (local vLLM on the Spark, :8000): letting agents' monthly statements and the
+"""Landlord gold with a second open-weight model (local, :8000): letting agents' monthly statements and the
 property bills of a fictional landlord with two lets, for the property pages (services/runtime/app/property.py).
 
     python evals/gold/gen_gold_landlord.py [--landlords 2] [--seed 7]

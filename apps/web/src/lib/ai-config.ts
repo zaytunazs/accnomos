@@ -8,7 +8,7 @@ export type AiMode = "local" | "key";
 
 export interface AiConfig {
   mode: AiMode;
-  baseUrl: string; // local: the user's agent (Ollama/runtime) URL · key: Meta Model API base
+  baseUrl: string; // local: the user's agent (local model server/runtime) URL · key: Meta Model API base
   model: string;
   apiKey?: string; // key mode only; never leaves the device except to the runtime over HTTPS
 }
@@ -44,10 +44,19 @@ export function saveAiConfig(cfg: AiConfig): void {
 /** Fired on `window` by [saveAiConfig] so same-tab readers follow the choice. */
 export const AI_CONFIG_EVENT = "accnomos:ai-config";
 
-/** Short human name for a model id the UI shows. */
+/**
+ * Short human name for a model id the UI shows: "muse-spark-1.3-contributor" -> "Muse Spark". A provider prefix the
+ * runtime records ("meta:", the local server's or a host's) is dropped. The Android app mirrors this
+ * (apps/mobile/lib/models/model_names.dart).
+ */
 export function shortModelName(model: string): string {
-  const m = model.trim();
+  const m = model
+    .trim()
+    .replace(/^(meta|ollama|baseten|modal|spark|local|key|test):/i, "")
+    .replace(/^meta-models\//i, "");
   if (/^muse-glimmer:30b$/i.test(m)) return "Glimmer 30B";
+  if (/^muse-glimmer/i.test(m)) return "Muse Glimmer";
+  if (/^muse-spark-open/i.test(m)) return "Muse Spark Open";
   if (/^muse-spark/i.test(m)) return "Muse Spark";
   return m || "a model";
 }

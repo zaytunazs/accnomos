@@ -53,7 +53,7 @@ Real phone photos will score lower. Ask: 32 of 32 figures exact. Every known gap
 ## 5/5 (240 characters)
 
 ```text
-Built from scratch during the hackathon with Claude, Muse Code and a local Qwen; every merge reviewed. Only my DGX Spark with Ollama existed before.
+Built from scratch during the hackathon with Muse Code and other AI tools; every merge reviewed. Only my own AI server with a local model runtime existed before.
 
 Android now, iPhone coming. Open source (MIT):
 github.com/zaytunazs/accnomos
@@ -66,5 +66,5 @@ github.com/zaytunazs/accnomos
 - *Does it file with HMRC?* "Not for real yet: the Making Tax Digital flow is built against HMRC's sandbox. Production filing is the next step."
 - *How accurate is it?* "On 200 synthetic documents, every field right on 91–93 % for Muse Spark Open and 80–85 % for Glimmer. Real photos will be lower, which is why you approve every entry."
 - *Where is my data?* "In your own OneDrive. Accnomos keeps no database; disconnect and the files are still yours."
-- *What existed before the hackathon?* "Only my DGX Spark with Ollama. The timeline is in docs/PROVENANCE.md."
+- *What existed before the hackathon?* "Only my own AI server with a local model runtime. The timeline is in docs/PROVENANCE.md."
 - Anything else: link `docs/HONESTY.md`.

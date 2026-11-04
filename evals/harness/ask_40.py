@@ -1,4 +1,5 @@
-"""Ask eval: 40 prompts over the seeded fictional books, through the app's own Ask path, Glimmer and Qwen.
+"""Ask eval: 40 prompts over the seeded fictional books, through the app's own Ask path, Glimmer and a
+second open-weight model.
 
     cd evals && python -m harness.ask_40                  # both models; writes runs/ask_40/{report.md,result.json}
     cd evals && python -m harness.ask_40 --models glimmer  # one model

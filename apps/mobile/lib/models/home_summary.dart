@@ -1,3 +1,5 @@
+import 'model_names.dart';
+
 /// The summary at the top of Home, from `GET /books/home`
 /// (services/runtime/app/home_overview.py, app/ai/home_summary.py): code
 /// works out every figure; the user's AI, if set up, only words them, and
@@ -32,7 +34,8 @@ class HomeSummary {
 
   /// The "who did what" line under the summary.
   String get byLine => byAi
-      ? 'Every figure by code from your books · worded by your AI ($model), '
+      ? 'Every figure by code from your books · worded by your AI '
+          '(${friendlyModelName(model)}), '
           'numbers checked by code'
       : 'Every figure by code from your books · '
           '${fallbackReason ?? 'written by code'}';

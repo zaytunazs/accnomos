@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/ask_answer.dart';
 import '../models/ask_suggestions.dart';
 import '../models/day_plan.dart';
+import '../models/model_names.dart';
 import '../models/readback.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
@@ -42,14 +43,18 @@ const householdAskQuestions = [
 /// The model that writes Ask's words. A demo, or no AI of your own (the
 /// default), uses the reader service's Meta model chain: its first set-up
 /// model from `GET /health`. Your own local machine or key: that model.
+/// Shown by name ("Muse Spark"), never as a raw id.
 String askModelLabel(AppSettings? settings, Map<String, dynamic>? health,
     {required bool demo}) {
   final own = settings != null &&
       !demo &&
       (settings.aiMode == 'key' ||
           (settings.aiMode == 'local' && settings.aiBaseUrl.trim().isNotEmpty));
-  if (own && settings.aiModel.trim().isNotEmpty) return settings.aiModel;
-  return RuntimeClient.serverModel(health) ?? 'a Meta model';
+  if (own && settings.aiModel.trim().isNotEmpty) {
+    return friendlyModelName(settings.aiModel);
+  }
+  final server = RuntimeClient.serverModel(health);
+  return server == null ? 'a Meta model' : friendlyModelName(server);
 }
 
 /// The empty-thread note above the starter questions.
@@ -1116,7 +1121,8 @@ class _AskScreenState extends State<AskScreen> {
           ],
           const SizedBox(height: 8),
           Text(
-            'numbers by code · explanation by ${a.model}$elapsed',
+            'numbers by code · explanation by '
+            '${friendlyModelName(a.model)}$elapsed',
             style: const TextStyle(fontSize: 12, color: AccnomosColors.muted),
           ),
           if (a.suggestedActions.any((s) => s.kind != 'none')) ...[

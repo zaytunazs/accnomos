@@ -1,7 +1,7 @@
 """Read a CIS payment and deduction statement, or a subcontractor's reverse-charge invoice, with the user's AI.
 
-Same AI setup and transport as reading receipts (app/ai/extract.py): Glimmer over Ollama in local mode, Muse Spark
-over the Meta Model API in key mode, one strict JSON schema, the document's own text passed as data between
+Same AI setup and transport as reading receipts (app/ai/extract.py): Glimmer over the local model server in local mode,
+Muse Spark over the Meta Model API in key mode, one strict JSON schema, the document's own text passed as data between
 markers. The model only reads figures as printed; app/cis.py checks them in code and the user approves before
 anything is kept or posted (AI proposes, user approves, code calculates).
 """

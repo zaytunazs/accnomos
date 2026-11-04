@@ -16,7 +16,7 @@ this one is written at merge time.
 
 ## Checks made
 
-* Only the local Ollama endpoint is called (`DEFAULT_OLLAMA_BASE`); no Meta, Baseten or Modal calls, and no
+* Only the local model server endpoint is called (`DEFAULT_OLLAMA_BASE`); no Meta or hosted-model calls, and no
   secrets.
 * `--stub` runs end to end offline (120 docs; the stub's canned replies deliberately include refusals, so its
   scores are not a model result).

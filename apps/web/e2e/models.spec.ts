@@ -11,7 +11,7 @@ test("/models shows the chain in order, each provider's health and the eval head
   const chain = page.getByRole("list", { name: "Provider chain" });
   await expect(chain.getByRole("listitem")).toHaveCount(3);
   await expect(chain.getByRole("listitem").nth(0)).toContainText("1st");
-  await expect(chain.getByTestId("provider-modal")).toContainText("Modal");
+  await expect(chain.getByTestId("provider-modal")).toContainText("hosted GPU");
   await expect(chain.getByTestId("provider-meta")).toContainText("Meta Model API");
   await expect(chain.getByTestId("provider-spark")).toContainText("our own server");
   await expect(chain.getByTestId("provider-modal")).toContainText("Warm"); // test mode probes the stub
@@ -34,7 +34,7 @@ test("signed in on the server's chain: the Review card names the Meta model and 
   const novex = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });
   await expect(novex).toBeVisible();
   const line = novex.getByTestId("served-by");
-  await expect(line).toContainText(/^Read by Test stub \(Modal\) · \d+\.\d s · checked by Test stub \(Modal\)/);
+  await expect(line).toContainText(/^Read by Test stub \(hosted GPU\) · \d+\.\d s · checked by Test stub \(hosted GPU\)/);
   await expect(novex).toContainText("Verifier agrees");
 
   await line.getByRole("link", { name: "Meta models at work" }).click();
@@ -42,7 +42,7 @@ test("signed in on the server's chain: the Review card names the Meta model and 
   const calls = page.getByRole("table", { name: "Recent AI calls" });
   // The log is the whole runtime's (other workers chose the stub directly), so look for this chain's rows.
   for (const task of ["Read a document", "Second reading"]) {
-    await expect(calls.getByRole("row").filter({ hasText: task }).filter({ hasText: "Test stub (Modal)" }).first()).toBeVisible();
+    await expect(calls.getByRole("row").filter({ hasText: task }).filter({ hasText: "Test stub (hosted GPU)" }).first()).toBeVisible();
   }
 });
 

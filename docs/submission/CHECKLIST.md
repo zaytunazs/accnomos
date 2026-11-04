@@ -35,7 +35,7 @@ run the secrets check in section 8 now, not last.
 - [ ] If it worked: tell the maintainers (README and HONESTY change "not yet run end to end") and film the full flow
       (shot 7). If not: film up to the declaration card only, with the extra caption.
 
-## 3. Meta, Baseten and Modal: billing and keys
+## 3. Meta and the model hosts: billing and keys
 
 - [ ] **Meta Model API billing.** dev.meta.ai → your app → billing: add a payment method or credit, set a monthly spend
       cap, and note the remaining balance. Without it, key mode (Muse Spark 1.3) fails for judges who choose it.
@@ -45,10 +45,10 @@ run the secrets check in section 8 now, not last.
 - [ ] Optional, if you have credit: the first Muse Spark 1.3 numbers,
       `cd evals && python -m harness.run_extraction --mode key --out runs/<name>`. Until a report exists say
       "unit-tested only".
-- [ ] **Baseten** (`BASETEN_API_KEY` on the runtime, set 27 Oct): check the balance or a spend limit covers judging; the
+- [ ] **The open-weights host** (`BASETEN_API_KEY` on the runtime, set 27 Oct): check the balance or a spend limit covers judging; the
       key-mode Verifier (Muse Spark Open) stops without it.
-- [ ] **Modal**: the 27 Oct Glimmer evals record a Modal endpoint (`config.base_url` in
-      `evals/runs/glimmer_200_v2/summary.json`). If the demo's Glimmer runs on Modal, check the workspace's spending
+- [ ] **The hosted GPU**: the 27 Oct Glimmer evals record a hosted GPU endpoint (`config.base_url` in
+      `evals/runs/glimmer_200_v2/summary.json`). If the demo's Glimmer runs on a hosted GPU, check the workspace's spending
       limit and that the app does not scale to zero during judging (or that a cold start is acceptable); if it runs on the
       Spark, keep the Spark on (section 4).
 - [ ] Do **not** film the mic or turn on `SAM_CROP`: neither has run live.
@@ -62,8 +62,8 @@ run the secrets check in section 8 now, not last.
       it in a private window and check it works signed out. Put any sign-in details in the form's private field, never
       in the repo.
 - [ ] `curl https://api.accnomos.com/health` returns `"ok": true`; one dummy scan warms the model.
-- [ ] **Keep the model host up until results are announced**, not just until you submit: the DGX Spark (sleep and
-      automatic updates off) and/or the Modal app. Check `/health` once a day.
+- [ ] **Keep the model host up until results are announced**, not just until you submit: our own server (sleep and
+      automatic updates off) and/or the hosted GPU app. Check `/health` once a day.
 - [x] Server keys set (27 Oct): `ACTIONS_SIGNING_KEY`, the HMRC sandbox client id and secret on the relay,
       `BASETEN_API_KEY` on the runtime.
 
@@ -103,9 +103,9 @@ Check the form's own field list on the day; this is what the repo has for each l
 | Live demo | `https://accnomos.com` (and `/judges` only if merged and checked) |
 | Judge access | private field: the judges' account from section 4, or "press Load sample books on your own account" |
 | Android app | Play listing URL and its real status from section 1 |
-| Meta models / tools used | `docs/submission/META_MODELS.md`: Muse Glimmer 30B, Muse Spark 1.3 (unit-tested only), Muse Spark Open on Baseten, Muse Voice Transcribe and SAM 3.1 (unit-tested only), Muse Image; Muse Code as a coding assistant |
-| What pre-existed | `docs/PROVENANCE.md`: the DGX Spark with Ollama, nothing else; first commit 6 h 29 min after kickoff |
-| AI coding assistants | Claude, Muse Code, a local Qwen; every merge reviewed (`docs/reviews/`) |
+| Meta models / tools used | `docs/submission/META_MODELS.md`: Muse Glimmer 30B, Muse Spark 1.3 (unit-tested only), Muse Spark Open (hosted open weights), Muse Voice Transcribe and SAM 3.1 (unit-tested only), Muse Image; Muse Code as a coding assistant |
+| What pre-existed | `docs/PROVENANCE.md`: the owner's own AI server with a local model runtime, nothing else; first commit 6 h 29 min after kickoff |
+| AI coding assistants | Muse Code and other AI tools; every merge reviewed (`docs/reviews/`) |
 | X post (Most Viral) | from section 6 |
 | Known limitations | link `docs/HONESTY.md` |
 
@@ -132,7 +132,7 @@ git log --all -p -G'(HMRC_CLIENT_SECRET|MODEL_API_KEY|META_API_KEY|BASETEN_API_K
 #    expected hits: 86d7073 (a parser line) and 50424fb (a "…" placeholder); nothing else
 
 # 4. Your own values: grep for them directly (paste the real strings, do not save this command)
-git grep -n -F -e '<your HMRC client secret>' -e '<your Meta key>' -e '<your Baseten key>'
+git grep -n -F -e '<your HMRC client secret>' -e '<your Meta key>' -e '<your hosted-verifier key>'
 git log --all -p -S'<your HMRC client secret>' --oneline | head
 
 # 5. Personal details to decide on (not secrets)
@@ -140,7 +140,7 @@ git grep -n -E 'zohai|C:\\Users' -- tools          # tools/*.ps1 and brand_muse.
 git grep -n '192\.168\.1\.176'                      # your LAN address is the default AI URL in web, mobile and compose
 ```
 - [ ] If any hit is real: **rotate that credential at once** (the repo is public, so assume it was copied): HMRC Developer
-      Hub (client secret), Meta developer console (model key), Baseten (API key), Modal (token). Rewriting history does not
+      Hub (client secret), Meta developer console (model key), the open-weights host (API key), the hosted GPU (token). Rewriting history does not
       un-publish it.
 - [ ] Never commit `.env`, `key.properties`, a keystore, or a `.v`/`.venv` folder; check `git status` before every push.
 - [ ] Open the repo in a private window: `README.md` → *For judges* → `docs/PROVENANCE.md` and `docs/HONESTY.md` load.
@@ -150,7 +150,7 @@ git grep -n '192\.168\.1\.176'                      # your LAN address is the de
 - [ ] Re-run the tests and update the figures if they moved: `uv run pytest -q`, `pnpm run e2e` in `apps/web`,
       `flutter test` in `apps/mobile` (28 Oct gates: runtime 1260, evals 258, relay 119, Playwright 208, Flutter 248).
 - [ ] Re-run the commands at the end of `docs/PROVENANCE.md` and update its commits-per-day table.
-- [ ] When the month-end close agent, profiles, the Modal models panel or `/judges` merge, ask the maintainers to add each
+- [ ] When the month-end close agent, profiles, the models panel or `/judges` merge, ask the maintainers to add each
       to `DESCRIPTION.md`, `JUDGING.md` and `README.md` with how it was tested.
 - [ ] Last hour: run the demo path once on the real site; `/health` is `"ok": true`; fill the form; **submit by 18:00 UK
       time on Wed 4 Nov** (the hard deadline is 02:00 UK time on Thu 5 Nov).

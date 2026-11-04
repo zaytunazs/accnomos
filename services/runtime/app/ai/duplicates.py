@@ -1,7 +1,7 @@
 """The model's view on one group of possible duplicate contacts.
 
-Same AI setup as reading documents (app/ai/extract.py): Glimmer over Ollama in
-local mode, Muse Spark over the Meta Model API in key mode, one strict JSON
+Same AI setup as reading documents (app/ai/extract.py): Glimmer over the local model
+server in local mode, Muse Spark over the Meta Model API in key mode, one strict JSON
 schema. The answer is advisory only: code finds the candidates, the user
 approves, and code merges. Groups with a different VAT number on each side
 never reach the model: code rules those out itself.

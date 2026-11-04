@@ -1,4 +1,4 @@
-"""Accnomos teaser 1: 44 s, original synthesised music, Kokoro TTS voice-over, real app screenshots only.
+"""Accnomos teaser 1: 44 s, original synthesised music, open-source voice-model voice-over, real app screenshots only.
 
     python tools/teaser/build.py                                  # 16:9 and 1:1, social and submission cuts, thumbnail
     python tools/teaser/build.py --formats 9x16 --variants social # other formats: 16x9, 1x1, 9x16

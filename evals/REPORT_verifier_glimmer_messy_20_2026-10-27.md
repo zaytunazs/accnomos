@@ -1,7 +1,7 @@
 # Verifier eval: Glimmer extracts, Glimmer verifies (different prompt), 20 messy gold receipts
 
-Run 27 Oct 2026 on our DGX Spark: `cd evals && python -m harness.run_extraction --mode local --limit 20 --messy --verify`.
-Extractor and Verifier are both `muse-glimmer:30b` via Ollama (local mode never sends documents to Baseten). Baseten
+Run 27 Oct 2026 on our own server: `cd evals && python -m harness.run_extraction --mode local --limit 20 --messy --verify`.
+Extractor and Verifier are both `muse-glimmer:30b` via the local model server (local mode never sends documents to the open-weights host). The open-weights host
 Muse Spark Open and the Meta API verifier paths are unit-tested only, not run here.
 
 ## What it shows (read this first)
@@ -54,7 +54,7 @@ Docs: 20 | errors: 0 | messy: True | all fields correct: 80% | mean 28.83 s (max
 | standard | 3 | 100% | 100% | 0 |
 | zero | 2 | 50% | 100% | 0 |
 
-## Verifier: ollama:muse-glimmer:30b
+## Verifier: muse-glimmer:30b (local)
 
 Docs: 20 | passed checks (so verified): 18 | verified OK: 18 | verifier errors: 0 | all fields agree: 94% | mean 7.57 s
 

@@ -67,3 +67,38 @@ def test_architecture_lists_the_books_xlsx_sheets_the_code_writes():
     arch = (ROOT / "docs/ARCHITECTURE.md").read_text(encoding="utf-8")
     row = next(ln for ln in arch.splitlines() if ln.startswith("| `Books.xlsx`"))
     assert re.findall(r"`([\w&]+)`", row.split("sheets", 1)[1])[: len(SHEETS)] == list(SHEETS)
+
+
+# Owner's rule (4 Nov 2026): the public docs name Meta's models only; anything else is generic ("a local open-weight
+# model", "a hosted GPU", "other AI tools"). Prose only: code spans keep env names and ids (`BASETEN_API_KEY`,
+# `modal,meta,spark`), and `claude/...` branch names are git refs. The same list guards the public chat
+# (tests/test_public_chat.py) and every rendered web page (apps/web/scripts/prelaunch-words.mjs).
+NON_META_NAMES = re.compile(
+    r"whisper|kokoro|ollama|vllm|qwen|comfyui|\bdgx\b|\bnvidia\b|\bl40s\b|baseten|\bmodal\b|\bllama\b|\bclaude\b(?!/)"
+    r"|anthropic|openai|\bchatgpt\b|\bgpt-\d|\bgemini\b|\bmistral\b|deepseek|hugging ?face|systran|speaches",
+    re.IGNORECASE,
+)
+PUBLIC_DOCS = sorted(
+    {
+        "README.md",
+        "evals/README.md",
+        "services/runtime/app/public_kb.md",
+        *(p.relative_to(ROOT).as_posix() for p in (ROOT / "docs").glob("*.md")),
+        *(p.relative_to(ROOT).as_posix() for p in (ROOT / "docs/submission").rglob("*.md")),
+    }
+)
+
+
+def _prose(text: str) -> str:
+    text = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
+    return re.sub(r"`[^`\n]*`", "", text)
+
+
+@pytest.mark.parametrize("doc", PUBLIC_DOCS)
+def test_public_docs_name_no_non_meta_model_or_vendor(doc: str):
+    hits = [
+        m.group(0) + ": " + line.strip()[:120]
+        for line in _prose((ROOT / doc).read_text(encoding="utf-8")).splitlines()
+        for m in NON_META_NAMES.finditer(line)
+    ]
+    assert hits == [], f"{doc} names a non-Meta model, tool, host or vendor in its prose"

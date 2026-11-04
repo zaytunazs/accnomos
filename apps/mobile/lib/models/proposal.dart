@@ -1,4 +1,5 @@
 import '../services/review_rules.dart';
+import 'model_names.dart';
 
 /// Static sample proposals for the Review screen. Demo data only.
 ///
@@ -510,8 +511,7 @@ const _verifierFieldLabels = {
 
 String _verifierName(String model) {
   if (model.startsWith('baseten:')) return 'Muse Spark Open';
-  if (model.startsWith('meta:')) return 'Muse Spark';
-  return model.replaceFirst(RegExp(r'^ollama:'), '');
+  return friendlyModelName(model);
 }
 
 String _shown(Object? value) {

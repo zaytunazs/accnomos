@@ -19,7 +19,7 @@ the day you record.
 | Verifier sending a reading to *Needs a look* | Built and measured | Film a real disagreement; say "caught" only if the first reading was the wrong one |
 | **Month-end close agent** | **Not on `main`** | Film only once merged and run; else use the fallback row |
 | **Profiles: company, sole trader, personal, each its own OneDrive** | **Not on `main`** | As above |
-| **Meta models panel (Glimmer on Modal first, Meta API second)** | **Not on `main`**; today's equivalent is *Connect → Choose your AI* | As above |
+| **Meta models panel (Glimmer on a hosted GPU first, Meta API second)** | **Not on `main`**; today's equivalent is *Connect → Choose your AI* | As above |
 | **`/judges` (no sign-in)** | **Not on `main`**; today judges press *Load sample books* on their own account (never run against a real OneDrive) | As above |
 | iPhone | **Not built** | Say "coming soon", nothing more |
 
@@ -42,7 +42,7 @@ real mailbox.
 
 | # | Time | Shot | Voice-over | On-screen caption |
 |---|---|---|---|---|
-| 1 | 0:00–0:07 | Black card, white text | "Before the hackathon I had only my DGX Spark with Ollama. Everything else was built after kickoff." | `Pre-existing: owner's DGX Spark + Ollama only. All code and Meta model set-up made after kickoff, 26 Oct 2026 (docs/PROVENANCE.md)` |
+| 1 | 0:00–0:07 | Black card, white text | "Before the hackathon I had only my own AI server with a local model runtime. Everything else was built after kickoff." | `Pre-existing: owner's own AI server + local model runtime only. All code and Meta model set-up made after kickoff, 26 Oct 2026 (docs/PROVENANCE.md)` |
 | 2 | 0:07–0:17 | Hand-held: a shoebox of receipts, then the phone | "UK small businesses must keep digital VAT records. Accnomos does the typing with Meta models, and you stay in charge." | `Accnomos · bookkeeping + MTD VAT for UK small businesses` |
 | 3 | 0:17–0:32 | **Android app**: Review → *Photograph a receipt* → *Take a photo* of the printed receipt → crop preview → *Read with Meta AI* | "I snap the receipt on my Android phone. It goes into my own OneDrive and a Meta model reads it." | `Android app · photo saved to your OneDrive · read by a Meta model` (if filmed in the browser: `Phone browser, 390 px`) |
 | 4 | 0:32–0:46 | **Web Review**: the same receipt's card; point at the reader line, the code checks and *Verifier agrees · all 6 fields match*; press Approve | "On the web it's waiting in Review. Code checked the sums; a second reading agrees on six fields. Nothing posts until I approve." | `AI proposes · code checks · you approve` (add `sped up` if the wait is cut) |
@@ -53,7 +53,7 @@ real mailbox.
 | 9 | 1:28–1:42 | **Ask**: "How much VAT do I owe this quarter?"; hold on the answer, its figures and the cited file | "Ask in plain English. Every figure in the answer is checked against figures code worked out from my books; a number the model invents is replaced." | `Every figure checked against the books · measured: 32 of 32 exact` |
 | 10 | 1:42–1:54 | **Month-end close agent** run on the sample books: its checklist and what it proposes | "At month end an agent works through the close and proposes what's left. I approve each step." | `Month-end close · proposes, you approve` |
 | 11 | 1:54–2:04 | **Profile switcher**: company → sole trader → personal; each opens a different OneDrive | "One app for my company, my sole-trader work and my own money: each profile is its own OneDrive." | `Company · sole trader · personal — each its own OneDrive` |
-| 12 | 2:04–2:16 | **Meta models panel**: Glimmer on Modal first, Meta API second; press the test button | "Muse Glimmer, Meta's open-weights model, runs first; the Meta Model API with my own key is second. In key mode Muse Spark Open on Baseten is the second reader." | `Muse Glimmer 30B (open weights) → Meta Model API · Muse Spark Open verifier` |
+| 12 | 2:04–2:16 | **Meta models panel**: Glimmer on a hosted GPU first, Meta API second; press the test button | "Muse Glimmer, Meta's open-weights model, runs first; the Meta Model API with my own key is second. In key mode Muse Spark Open (hosted open weights) is the second reader." | `Muse Glimmer 30B (open weights) → Meta Model API · Muse Spark Open verifier` |
 | 13 | 2:16–2:30 | Full-screen card: the eval table below | "We measured it on 200 synthetic documents, clean and messy: every field right on 91 and 93 per cent for Muse Spark Open, 85 and 80 for Glimmer. Real photos will score lower." | the eval card (below) |
 | 14 | 2:30–2:38 | **Files** → *Open in OneDrive*: `Books.xlsx` and the folders | "Accnomos keeps no database. The books are files in your OneDrive. Disconnect, and they're still yours." | `No Accnomos database · your books stay in your OneDrive` |
 | 15 | 2:38–2:44 | Phone in hand, then a plain card | "Android today. iPhone is coming." | `Android now · iPhone coming soon` |
@@ -70,7 +70,7 @@ Keep the timings; swap the row.
 |---|---|---|---|
 | 10 | **Invoices**: open an invoice, *Record payment* for part of it (fakes-tested only: run it first, else cut) | "Invoices, part payments and credit notes are code too." | `Invoices · part payments · credit notes, by code` |
 | 11 | **Home** with Autopilot's level in Settings | "Autopilot is off by default. Measured on Glimmer: no false posts on 154 clean documents, 17 in 467 overall, all re-dated copies." | `Autopilot L2 eval: 0/154 clean · 17/467 overall · synthetic` |
-| 12 | **Connect → Choose your AI** → *Test connection* (cut the Modal words) | "Muse Glimmer, Meta's open-weights model, runs first; or the Meta Model API with your key. In key mode the second reader is Muse Spark Open on Baseten." | `Muse Glimmer 30B · or Muse Spark with your key` |
+| 12 | **Connect → Choose your AI** → *Test connection* (cut the hosting words) | "Muse Glimmer, Meta's open-weights model, runs first; or the Meta Model API with your key. In key mode the second reader is Muse Spark Open (hosted open weights)." | `Muse Glimmer 30B · or Muse Spark with your key` |
 | 16 | **Home → Try it with sample books → Load sample books** on a throwaway account, sped up (never run against a real OneDrive: run it first) | "Judges can load six months of a fictional joinery's books into their own OneDrive with one button." | `Load sample books · fictional data · sped up` |
 
 If the whole cut runs long, drop shot 8 (Outlook), then 10. Never drop shots 1, 7's sandbox caption, 13 or 17.

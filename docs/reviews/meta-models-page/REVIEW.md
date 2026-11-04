@@ -1,7 +1,7 @@
 # Review: one public page saying which Meta model does what (`claude/meta-models-page`)
 
 Branch from `origin/main` (`c353bd4`) with `origin/claude/muse-transcribe` merged in (clean merge; it adds Muse Voice
-Transcribe, which is not on main yet). No push to main, no PR. Meta's API, Baseten and Modal were not called.
+Transcribe, which is not on main yet). No push to main, no PR. Meta's API, the open-weights host and the hosted GPU were not called.
 
 Owner's request: "one page that says which Meta model is used for what work and what they do in the app."
 
@@ -10,7 +10,7 @@ Owner's request: "one page that says which Meta model is used for what work and 
 | What | Where |
 |---|---|
 | Every runtime model call | `git grep` for `call_json_model`, `extract_document`, `verify`, `read_cis_document`, `read_property_document`, `app.ai.*` imports: `app/ai/{extract,verify,ask,cis_read,property_read,home_summary,close_summary,spending,triage,remind,plan,items,duplicates,stt,voice,crop}.py`, `app/actions.py` (chat/voice intents), `app/bank_reconcile.py` (`suggest_ai`), `app/cashflow.py` (`explain`), `app/public_chat.py` |
-| Backends and order | `app/ai/config.py` (local = Ollama/Glimmer, key = Meta Model API/`muse-spark-1.3`), `app/ai/providers.py` (`AI_PROVIDERS`, recommended `modal,meta,spark`), `app/ai/chain.py` (failover, breaker), `app/ai/verify.py` (Spark Open first for the Verifier), `app/ai/stt.py` (Muse first, local fallback second), `app/ai/crop.py` (`SAM_CROP=1`, key mode) |
+| Backends and order | `app/ai/config.py` (local = local Glimmer, key = Meta Model API/`muse-spark-1.3`), `app/ai/providers.py` (`AI_PROVIDERS`, recommended `modal,meta,spark`), `app/ai/chain.py` (failover, breaker), `app/ai/verify.py` (Spark Open first for the Verifier), `app/ai/stt.py` (Muse first, local fallback second), `app/ai/crop.py` (`SAM_CROP=1`, key mode) |
 | Screens | the web callers: `components/review`, `cis`, `property`, `ask`, `home/OverviewCards.tsx`, `home/InboxTriage.tsx`, `home/PlanToday.tsx`, `month-end/MonthEnd.tsx`, `spending/LiveSpending.tsx`, `accounting/CashFlow.tsx` (`/reports/cashflow`), `bank/BankReconcile.tsx`, `contacts/LiveContacts.tsx`, `spending/LivePrices.tsx` (`/prices`), invoices reminder draft |
 | Muse Image | `tools/brand_muse.py`, `tools/teaser/build.py` (thumbnail and title art use the brand art) |
 | Figures | `evals/runs/{glimmer_200_v2,glimmer_messy_200_v2,spark_open_200,spark_open_messy_200,cis_read,property_docs}/summary.json`, `ask_40/result.json`, `autopilot_l2/summary.json`, `mail_intake/result.json`; `evals/REPORT_crop_code_20_2026-10-27.md` |
@@ -27,9 +27,9 @@ Owner's request: "one page that says which Meta model is used for what work and 
   Runs that carry no date of their own use their commit date, typed in and commented. Bank coding and speech-to-text
   read `evals/runs/bank_ai/` and `evals/runs/stt/` if present (stub runs ignored) and say "Not measured yet" until then.
 - **Wording**: only Meta's models and the Meta Model API are named. No hardware, no other company's engine; the voice
-  fallback is "a local fallback model". **Modal is named** in the chain order because the owner's brief used it as the
-  example ("Modal first, Meta API second"); Baseten is not (Spark Open is "hosted open weights the server owner sets
-  up"); the owner's own server is "our own server". If Modal should go too, it is two strings in
+  fallback is "a local fallback model". **The hosted GPU is named** in the chain order because the owner's brief used it as the
+  example ("the hosted GPU first, Meta API second"); the open-weights host is not (Spark Open is "hosted open weights the server owner sets
+  up"); the owner's own server is "our own server". If the hosted GPU should go too, it is two strings in
   `meta-models-page.ts` and one row in the spec. No launch, "coming soon", "beta" or "early access" words.
 - **Links**: public footer (Help › Meta models used), app footer (About › Meta models used), `/judges` ("What is real"),
   the Home summary card under its who-wrote-it line, and README (next to the models table).
@@ -45,7 +45,7 @@ Owner's request: "one page that says which Meta model is used for what work and 
 - `apps/web/e2e/meta-models-page.spec.ts` (4 tests): the table lists all six models, every row link lands on its
   section with the four sub-headings, the CIS 92.5 % / property 89.8 % / Ask 32/32 / Spark Open 91 % figures come
   through, every report link is a file that exists in the checkout, every in-page anchor lands, and the page text has
-  none of DGX, Ollama, vLLM, Whisper, Kokoro, Qwen, ComfyUI, Baseten, L40S or launch words (signed out and signed in);
+  none of the listed non-Meta tool, engine, host or hardware names, nor launch words (signed out and signed in);
   the public footer, `/judges`, the Home summary card and the app footer reach it; at 360 px the cards show, the table
   is hidden and nothing scrolls sideways.
 - `/meta-models` added to `e2e/pages.ts` (axe signed out and signed in, phone smoke) and to the public set in
@@ -61,28 +61,28 @@ Owner's request: "one page that says which Meta model is used for what work and 
 model":
 
 - **Public chat KB** (`services/runtime/app/public_kb.md`): voice fallback, Glimmer "run by the team", Spark Open
-  "hosted open weights", "the team's own server"; Baseten/DGX/Ollama dropped from the retrieval keywords and
+  "hosted open weights", "the team's own server"; non-Meta host, hardware and runtime names dropped from the retrieval keywords and
   `meta models` added.
 - **Labels the runtime sends to the UI**: the STT fallback's label is now "a local fallback model" (`app/ai/stt.py`,
   shown as "Transcribed by …" on web and Android) and the chain's `spark` provider is "our own server"
   (`app/ai/providers.py`). Code comments and env names keep the real names.
 - **Web**: `/how-it-works` (voice gap, Verifier gap, local-mode FAQ, "not tested" FAQ, the models list), the landing
-  page's models table, the Ask help text, `/privacy` (Glimmer example; Baseten listed as "a hosted inference provider
+  page's models table, the Ask help text, `/privacy` (Glimmer example; the open-weights host listed as "a hosted inference provider
   chosen by the server owner"), the Settings label "Local agent address", and the provider labels on `/models` and the
-  Review card line (`lib/meta-models.ts`, `lib/evals.ts`: "our own server", "hosted open weights", "Modal" without
+  Review card line (`lib/meta-models.ts`, `lib/evals.ts`: "our own server", "hosted open weights", "the hosted GPU" without
   the GPU name). Two `/how-it-works` lines were also out of date (Spark Open "unit-tested only, model name
   unconfirmed"); they now give the measured figures, as `/meta-models` does. `/judges` and `/meta-models` had no such
   names.
-- **Checks**: `e2e/submission-mode.spec.ts` now also fails on Whisper, Kokoro, Ollama, vLLM, Qwen, ComfyUI, DGX or
-  Baseten in any rendered page's text, title, meta description or accessible-name attributes, signed out, signed in
+- **Checks**: `e2e/submission-mode.spec.ts` now also fails on any listed non-Meta tool, engine, host or hardware
+  name in any rendered page's text, title, meta description or accessible-name attributes, signed out, signed in
   and with the phone menu open (list `THIRD_PARTY_NAMES` in `scripts/prelaunch-words.mjs`; not applied to the export's
-  JS files, which keep provider ids like `baseten:` to map them to Meta names).
+  JS files, which keep provider ids to map them to Meta names).
   `tests/test_public_chat.py::test_notes_name_no_non_meta_tool_engine_or_hardware` checks the KB in both build modes.
 - **Not changed**: repository docs (`docs/submission/*.md`, README, `docs/META_MODELS.md`, HONESTY) still use the full
   names where they explain the engineering; tell me if the judge-facing submission docs should follow the same rule.
-  The privacy page now names a category rather than Baseten (UK GDPR art. 13(1)(e) asks for "the recipients or categories
+  The privacy page now names a category rather than the open-weights host (UK GDPR art. 13(1)(e) asks for "the recipients or categories
   of recipients", from knowledge: **not re-checked**, legislation.gov.uk is not reachable from this sandbox, 29 Oct
-  2026; the owner or their adviser should confirm a category is enough); Modal, which the server chain also sends documents to, was already not listed there, which is a gap
+  2026; the owner or their adviser should confirm a category is enough); the hosted GPU, which the server chain also sends documents to, was already not listed there, which is a gap
   for the owner to decide on.
 
 - Gate totals after the follow-up (29 Oct 2026): runtime `pytest -q` 2392 passed, 2 skipped; `ruff check`,
@@ -95,12 +95,12 @@ model":
 
 - The live server runs `AI_PROVIDERS=meta,spark`. `/meta-models` now lists **Muse Spark first** (it carries the job
   list) and Muse Glimmer 30B second as "a local fallback model ... on our own server", plus local mode. The chain
-  sentence reads "1st Muse Spark on the Meta Model API; last, a local fallback model"; Modal appears once, as "an
+  sentence reads "1st Muse Spark on the Meta Model API; last, a local fallback model"; hosted GPU appears once, as "an
   optional extra provider" the code supports, "not what runs live". A highlighted line under the intro says the same
   and: "Your data goes only to standard Muse Spark, never to Contributor mode, which lets Meta train on the content
   sent to it." The Muse Spark section repeats it.
 - `docs/submission/META_MODELS.md`: Spark row first with the live order and the Contributor sentence; Glimmer row
-  "last on the live server", Modal optional and not deployed; a note on what backs the Contributor claim.
+  "last on the live server", the hosted GPU optional and not deployed; a note on what backs the Contributor claim.
 - What backs it in code: the app's key mode always sends `muse-spark-1.3` (`lib/ai-config.ts` `DEFAULT_KEY`; Settings
   has no model field for key mode) and the chain's `meta` provider uses `MODEL_API_MODEL`, default `muse-spark-1.3`.
   Not checked: how Contributor mode is selected at Meta (dev.meta.ai is not reachable from here), and a direct API
@@ -108,7 +108,7 @@ model":
 - Consequence recorded in HONESTY: the model answering first live (Muse Spark) has no measured figure; every number on
   the page is Glimmer's or Spark Open's.
 - `e2e/meta-models-page.spec.ts` now checks the live-order line, the Contributor sentence, Muse Spark as the first row,
-  the chain sentence, and that every line naming Modal calls it an optional extra provider.
+  the chain sentence, and that every line naming the hosted GPU calls it an optional extra provider.
 
 ## Follow-up: Contributor mode on the live server (owner's correction, 29 Oct 2026)
 

@@ -1,4 +1,4 @@
-"""Speech-to-text provider chain: Muse Voice Transcribe first, the owner's Whisper on the DGX Spark as the fallback.
+"""Speech-to-text provider chain: Muse Voice Transcribe first, a local speech-to-text model on our own server second.
 
 The same idea as the text chain (app/ai/providers.py, app/ai/chain.py): try each configured provider in order and fall
 over to the next on an error, a timeout or a limit, so a spoken question does not depend on one service.
@@ -9,12 +9,11 @@ over to the next on an error, a timeout or a limit, so a spoken question does no
              (app/ai/voice.py has the documented wire format). The key: the user's own X-Meta-Api-Key when they chose
              key mode, else the server's META_API_KEY (the chain's `meta` provider, or the env on its own).
              Base URL: the user's key-mode base, else MODEL_API_BASE (default https://api.meta.ai/v1).
-* whisper -> Whisper on the owner's DGX Spark behind an OpenAI-compatible server (for example faster-whisper-server /
-             speaches): `POST {SPARK_WHISPER_URL}/audio/transcriptions`, multipart `file`, `model`, `language=en`,
-             `response_format=json` -> `{"text": ...}` (the OpenAI audio API shape,
-             https://platform.openai.com/docs/api-reference/audio/createTranscription, checked 29 Oct 2026).
-             SPARK_WHISPER_URL (e.g. http://<spark>:8000/v1; empty = not configured), SPARK_WHISPER_MODEL (default
-             Systran/faster-whisper-large-v3), SPARK_WHISPER_KEY (optional bearer token).
+* whisper -> a local speech-to-text model on our own server behind a standard `/audio/transcriptions` API:
+             `POST {SPARK_WHISPER_URL}/audio/transcriptions`, multipart `file`, `model`, `language=en`,
+             `response_format=json` -> `{"text": ...}` (the widely used audio-transcription API shape, checked
+             29 Oct 2026). SPARK_WHISPER_URL (e.g. http://<server>:8000/v1; empty = not configured),
+             SPARK_WHISPER_MODEL (default DEFAULT_WHISPER_MODEL below), SPARK_WHISPER_KEY (optional bearer token).
 
 Timeouts (whole request, seconds): MUSE_STT_TIMEOUT_S (default 45), WHISPER_STT_TIMEOUT_S (default 90).
 Test mode (ACCNOMOS_TEST_MODE=1) has no speech-to-text: no recording may reach a real service from a test run.
@@ -141,10 +140,10 @@ def describe(env: Mapping[str, str] | None = None) -> list[dict[str, object]]:
 async def whisper_transcribe(
     wav: bytes, c: SttProvider, client: httpx.AsyncClient | None = None, *, prompt: str | None = None
 ) -> str:
-    """Whisper behind an OpenAI-compatible `/audio/transcriptions` endpoint. Errors never carry the key."""
+    """The local speech-to-text model behind a standard `/audio/transcriptions` endpoint. Errors never carry the key."""
     data = {"model": c.model, "language": "en", "response_format": "json", "temperature": "0"}
     if prompt:
-        data["prompt"] = prompt[:800]  # Whisper reads up to ~224 tokens of prompt; names help with spelling
+        data["prompt"] = prompt[:800]  # the model reads up to ~224 tokens of prompt; names help with spelling
     headers = {"Authorization": f"Bearer {c.key}"} if c.key else {}
     own = client is None
     http = client or httpx.AsyncClient(timeout=c.timeout_s)
@@ -156,22 +155,24 @@ async def whisper_transcribe(
             headers=headers,
         )
     except httpx.TimeoutException as exc:
-        raise voice.VoiceError(504, f"Whisper on the Spark took longer than {c.timeout_s:g} s") from exc
+        raise voice.VoiceError(504, f"The local speech-to-text model took longer than {c.timeout_s:g} s") from exc
     except httpx.HTTPError as exc:
-        raise voice.VoiceError(502, f"Whisper on the Spark could not be reached ({type(exc).__name__})") from exc
+        raise voice.VoiceError(
+            502, f"The local speech-to-text model could not be reached ({type(exc).__name__})"
+        ) from exc
     finally:
         if own:
             await http.aclose()
     if r.status_code in (401, 403):
-        raise voice.VoiceError(502, "Whisper on the Spark refused the server's credentials")
+        raise voice.VoiceError(502, "The local speech-to-text model refused the server's credentials")
     if r.status_code == 413:
-        raise voice.VoiceError(413, "Whisper on the Spark says the recording is too large")
+        raise voice.VoiceError(413, "The local speech-to-text model says the recording is too large")
     if r.status_code >= 400:
-        raise voice.VoiceError(502, f"Whisper on the Spark returned HTTP {r.status_code}")
+        raise voice.VoiceError(502, f"The local speech-to-text model returned HTTP {r.status_code}")
     try:
         body = r.json()
     except ValueError:
-        raise voice.VoiceError(502, "Whisper on the Spark returned something that isn't JSON") from None
+        raise voice.VoiceError(502, "The local speech-to-text model returned something that isn't JSON") from None
     text = (body.get("text") if isinstance(body, dict) else "") or ""
     if not isinstance(text, str) or not text.strip():
         raise voice.VoiceError(422, "Didn't catch any words in that recording")
@@ -197,7 +198,9 @@ async def transcribe(
     key, a size or length limit, rate limiting, no words heard). When every provider fails, raises the first one's
     error (the preferred service's reason is the useful one), noting that the fallback failed too."""
     if not providers:
-        raise voice.VoiceError(400, "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server")
+        raise voice.VoiceError(
+            400, "Voice needs Muse Voice Transcribe (a Meta API key) or a local speech-to-text model on our own server"
+        )
     words = list(keywords or [])
     failures: list[tuple[SttProvider, voice.VoiceError]] = []
     for p in providers:

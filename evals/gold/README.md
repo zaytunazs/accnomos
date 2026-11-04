@@ -5,14 +5,14 @@ bank statements and mailbox fixtures built from the 140 newest. Every supplier, 
 every document carries the label `SAMPLE — FICTIONAL COMPANY` (in the `label` field for 001-060, and also printed on the
 document for 061-200).
 
-- Generated during the hackathon by gen_gold.py (Qwen3.8-27B on our DGX Spark as a *test-data generator*; it is not part of the product runtime). Arithmetic is validated in code; invalid outputs were dropped.
+- Generated during the hackathon by gen_gold.py (a second open-weight model, not Meta's, on our own server as a *test-data generator*; it is not part of the product runtime). Arithmetic is validated in code; invalid outputs were dropped.
 - Cases: standard, mixed-rate, reduced (5%), zero-rated, exempt, cash/no VAT, no VAT number over GBP 250, full VAT invoice, sales invoice, deliberate arithmetic error, EUR reverse-charge.
 - Every supplier and company is fictional. label = "SAMPLE - FICTIONAL COMPANY". Day 2 renders printed_text to receipt images (clean + messy photos) for the vision tests.
 
 ## Bank statements (`bank/`)
 
 Four October 2026 statement CSVs for fictional businesses (label "SAMPLE - FICTIONAL COMPANY" in `expected.json`; the account numbers, customers, references and amounts are made up, while card-payment payees such as Screwfix or Shell are real UK merchants named only as they would appear on a statement) in the three layouts the bank reader handles (see `packages/ledger/src/accnomos_ledger/bank.py`): `barclays.csv` and `monzo.csv` (one signed Amount column), `starling.csv` (signed amount + counter party + balance), `tide.csv` (Paid in / Paid out). Hand-written, not generated. `expected.json` lists the posted ledger events they are matched against and, per line, the expected match (exact/suggested) or the suggested action for an unmatched line. Graded by `packages/ledger/tests/test_bank_gold.py` and `services/runtime/tests/test_bank_gold.py`. Column layouts are modelled on the banks' public export formats; check them against a real export before relying on the bank name.
-The generated data is for tests only. Qwen3.8-27B (local vLLM on the DGX Spark) is a *test-data generator*, not a product model.
+The generated data is for tests only. A second open-weight model (a local model server on our own server) is a *test-data generator*, not a product model.
 
 ## Layout
 
@@ -20,8 +20,8 @@ The generated data is for tests only. Qwen3.8-27B (local vLLM on the DGX Spark) 
 |---|---|
 | `receipts/NNN_<case>.json` | One gold document: supplier, date, lines, totals, `printed_text` (what the renderer draws) |
 | `manifest.json` | One entry per document. 061+ carry the full gold fields (pence, VAT code, side, expected status) minus `printed_text` |
-| `gen_gold.py` | Generator for 001-060 (Qwen writes whole documents; arithmetic validated in code) |
-| `gen_gold_v2.py` | Generator for 061-200 (Qwen invents names, addresses and items; **code** does VRNs, dates, arithmetic in pence, layouts) |
+| `gen_gold.py` | Generator for 001-060 (a second open-weight model writes whole documents; arithmetic validated in code) |
+| `gen_gold_v2.py` | Generator for 061-200 (a second open-weight model invents names, addresses and items; **code** does VRNs, dates, arithmetic in pence, layouts) |
 | `gen_bank_mail.py` | Builds `bank/` and `mail/` from the gold documents (pure code, seeded) |
 | `bank/` | 6 statement CSVs + `expected_matches.json` (the truth: which row pays which document) |
 | `mail/MNN.json`, `mail/attachments/` | 20 Graph-style mailbox fixtures and their attachment files |
@@ -50,7 +50,7 @@ per-line `vat_code`, and `damage` (`handwritten` / `faded` / `torn`, used by the
 - `edge_foreign_gbp`: the printed document shows EUR or USD and the rate, but the amount charged and the gold totals are in GBP, with no UK VAT (`T9`). 176 and 184 are over £250 with no VAT number, so they expect `needs_a_look` since 27 Oct 2026 (they were `proposed`): the reading has no supplier address, so code cannot tell an overseas supplier from a UK one, and the user answers the question once per supplier.
 - `edge_reverse_charge`: UK labour-only construction invoice, VAT not charged. The note says what VAT *would* have been (a trap for readers that grab any "VAT" figure). Gold VAT is 0.
 - `edge_handwritten`: lines drawn with `~` are rendered in blue italic as stand-in handwriting. `edge_torn_faded`: faded thermal paper, or a torn bottom edge and corner.
-- Duplicate supplier names: Qwen reused one name (a supplier appears twice); kept and left in the manifest.
+- Duplicate supplier names: a second open-weight model reused one name (a supplier appears twice); kept and left in the manifest.
 
 ### VAT numbers
 
@@ -90,7 +90,7 @@ M01-M09 one document each (PNG photo or image-only PDF), M10-M12 two documents, 
 M15 newsletter (inline images, tracking pixel), M16 marketing PDF, M17 calendar invite, M18 signature images, M19 invoice plus
 signature logo, M20 unsupported zip with no invoice.
 
-## Spark-generated sets (made on the DGX Spark, not committed until generated)
+## Spark-generated sets (made on our own server, not committed until generated)
 
 - `ledger2/`: credit notes, part-paid invoices and overlapping bank pairs (`gen_gold2.py`).
 - `ledger4/` (`gen_gold4.py`): about 120 price-history receipts from five fictional suppliers over six months, with
@@ -104,5 +104,5 @@ signature logo, M20 unsupported zip with no invoice.
   owner, and the Property Business API 6.0 bodies `app/property.py` should produce. Not generated yet: run
   `python evals/gold/gen_gold_landlord.py` on the Spark; `evals/tests/test_gen_gold_landlord.py` runs it on the stub.
 
-Qwen only names things; code sets every figure. See `evals/README.md` for the commands and `spark_gen.py` for the label
+A second open-weight model only names things; code sets every figure. See `evals/README.md` for the commands and `spark_gen.py` for the label
 guard (every generated file must contain the exact label with the em dash, U+2014).

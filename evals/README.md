@@ -2,8 +2,8 @@
 
 Synthetic gold sets (`gold/`), the harness that grades the product against them (`harness/`), offline tests (`tests/`)
 and the committed reports (`runs/`, `REPORT_*.md`). Every document in a gold set is fictional and labelled
-`SAMPLE — FICTIONAL COMPANY` (em dash, U+2014). The gold generators call **Qwen3.8-27B** (vLLM, `127.0.0.1:8000`) as a
-test-data generator only; the product models are **Muse Glimmer 30B** (Ollama, `127.0.0.1:11434`) and Muse Spark.
+`SAMPLE — FICTIONAL COMPANY` (em dash, U+2014). The gold generators call **A second open-weight model** (a local model server, `127.0.0.1:8000`) as a
+test-data generator only; the product models are **Muse Glimmer 30B** (the local model server, `127.0.0.1:11434`) and Muse Spark.
 
 ```sh
 cd evals && python -m pytest -q tests      # offline, no model; needs the repo's Python environment
@@ -11,8 +11,8 @@ cd evals && ruff check . && ruff format --check .
 ```
 
 Existing evals are described in `docs/META_MODELS.md` and `gold/README.md` (`run_extraction`, `bank_match`, `ask_40`,
-`mail_intake`, `bench_runtime`). The jobs below were added for the DGX Spark, which has both models running all the time.
-Each has a way to try it without a model, and each was tested here only against stubs: **no real Glimmer or Qwen call
+`mail_intake`, `bench_runtime`). The jobs below were added for our own server, which has both models running all the time.
+Each has a way to try it without a model, and each was tested here only against stubs: **no real Glimmer or second-model call
 has been made by this code yet**.
 
 ## The Spark jobs
@@ -22,25 +22,25 @@ has been made by this code yet**.
 | `harness/bank_ai.py` | Glimmer | accuracy, refusals, invalid JSON and latency of the bank-rule AI coding (`suggest_ai`) over every gold bank line | `--dry-run`, `--stub` |
 | `harness/cis_read.py` | Glimmer | per-field accuracy, check codes, latency and misses of the CIS reader (`read_cis_document` + code checks) over every gold CIS statement and reverse-charge invoice | `--dry-run`, `--stub` |
 | `harness/property_docs.py` | Glimmer | category, property, amount and date accuracy of the generic extraction reader over the gold landlord statements and bills (no property-specific reader exists yet) | `--dry-run`, `--stub` |
-| `gold/gen_gold4.py` | Qwen | `gold/ledger4/`: about 120 price-history receipts, five suppliers, six months, `expectations.json` | `--dry-run`, `--stub` |
-| `gold/gen_personal.py` | Qwen | `gold/personal/NN_name/`: six months of a household's bank statement and `expectations.json` | `--dry-run`, `--stub` |
+| `gold/gen_gold4.py` | A second open-weight model | `gold/ledger4/`: about 120 price-history receipts, five suppliers, six months, `expectations.json` | `--dry-run`, `--stub` |
+| `gold/gen_personal.py` | A second open-weight model | `gold/personal/NN_name/`: six months of a household's bank statement and `expectations.json` | `--dry-run`, `--stub` |
 | `harness/public_chat_eval.py` | the chat route's model | pass rates for `POST /public/chat`: product facts, refusals, injections | `--dry-run`, `--stub` |
-| `harness/stt.py` | Muse Voice Transcribe, Whisper on the Spark | word error rate, number and pound-amount accuracy, latency per provider over the teaser voice-over and 20 accounting clips (`gold/voice/`, made with Kokoro TTS by `--generate`) | `--dry-run`, `--stub` |
+| `harness/stt.py` | Muse Voice Transcribe, a local speech-to-text model on our own server | word error rate, number and pound-amount accuracy, latency per provider over the teaser voice-over and 20 accounting clips (`gold/voice/`, made with an open-source voice model by `--generate`) | `--dry-run`, `--stub` |
 | `tools/spark_queue.sh` | both | runs the jobs above one after another, `stt` last | `--dry-run` |
 
-### `stt`: Muse Voice Transcribe against Whisper
+### `stt`: Muse Voice Transcribe against the local speech-to-text model
 
 ```sh
 cd evals && python -m harness.stt --dry-run                  # samples and which providers are configured
 cd evals && python -m harness.stt --stub                     # the whole pipeline against faked replies
-cd evals && python -m harness.stt --generate                 # make gold/voice/v01-v20.wav with Kokoro, then run both
+cd evals && python -m harness.stt --generate                 # make gold/voice/v01-v20.wav with an open-source voice model, then run both
 KOKORO_URL=http://127.0.0.1:8880/v1 META_API_KEY=… SPARK_WHISPER_URL=http://127.0.0.1:8000/v1 python -m harness.stt --generate
 ```
 
 Runs the runtime's own clients (`app.ai.stt`), each provider alone (no fallback), after the same ffmpeg conversion the
-runtime does. Kokoro is reached at its OpenAI-compatible `POST /v1/audio/speech` (Kokoro-FastAPI; voices `bm_george`
-and `bf_emma`); the docs had no Kokoro endpoint written down, so `KOKORO_URL` defaults to Kokoro-FastAPI's port 8880.
-Writes `runs/stt/{results.jsonl, summary.json, report.md}`. Not run yet: it needs the Spark (Whisper, Kokoro) and a
+runtime does. The open-source voice model is reached at its standard-API `POST /v1/audio/speech` (voices `bm_george`
+and `bf_emma`); the docs had no voice-model endpoint written down, so `KOKORO_URL` defaults to the voice-model server's default port 8880.
+Writes `runs/stt/{results.jsonl, summary.json, report.md}`. Not run yet: it needs the Spark (the local speech-to-text and voice models) and a
 Meta key, and no key is used from CI.
 
 ### `bank_ai`: does Glimmer code bank lines?
@@ -62,16 +62,16 @@ HMRC, payroll, drawings, transfers) are asked but not scored.
 ### `gen_gold4`: price history across suppliers
 
 ```sh
-python evals/gold/gen_gold4.py --dry-run                   # stub Qwen, plan checked, nothing written
+python evals/gold/gen_gold4.py --dry-run                   # stub model, plan checked, nothing written
 python evals/gold/gen_gold4.py                             # 120 receipts, then PNGs to evals/runs/gold4_png/
 python evals/gold/gen_gold4.py 150 --no-render             # more receipts, skip the PNGs
 python evals/gold/gen_gold4.py --fresh                     # throw away the saved catalogue and start over
 ```
 
-Qwen names the suppliers and products and writes each supplier's wording; code sets stock, pack sizes, prices, VAT,
+a second open-weight model names the suppliers and products and writes each supplier's wording; code sets stock, pack sizes, prices, VAT,
 dates and totals, and `expectations.json` (normalised ex-VAT unit price per supplier, cheapest supplier by latest price
 and by mean, and a per-line "cheaper elsewhere" hint) is computed from the finished receipts. The catalogue is saved
-after each Qwen step, so a stopped run resumes; receipts already on disk are kept. Feed the receipts to the extraction
+after each second-model step, so a stopped run resumes; receipts already on disk are kept. Feed the receipts to the extraction
 eval with `python -m harness.run_extraction --mode local --messy --gold-dir gold/ledger4/receipts`.
 The PNGs are not committed (`evals/runs/*` is ignored); the longest receipts are a little over the 300 KB that
 `render_gold` allows for the older set.
@@ -84,11 +84,11 @@ python evals/gold/gen_personal.py                          # 2 households, Starl
 python evals/gold/gen_personal.py --households 4 --layout tide
 ```
 
-Qwen names the payees; code fixes every amount, date and recurrence. `statement.csv` starts with the label on its own
+a second open-weight model names the payees; code fixes every amount, date and recurrence. `statement.csv` starts with the label on its own
 line (the importer skips lines above the header) and reads through `accnomos_ledger.bank.parse_bank_csv`. 
 `expectations.json` lists the recurring series (monthly, weekly, four-weekly; price rises; one cancelled, one started
 late), the lookalikes that must not be flagged, the monthly committed total, category totals per month, and the
-category of every row. Resumable per household and per Qwen batch.
+category of every row. Resumable per household and per second-model batch.
 
 ### `public_chat_eval`: the public chat route
 
@@ -124,4 +124,4 @@ re-run that step). Everything runs under `nice -n 19` and `ionice -c3`, one job 
 server does not answer is skipped (and tried again next run). The script never runs git, installs nothing, and writes
 only under `evals/` (gold and runs) and the jobs folder. Set `SPARK_PYTHON` to the environment's interpreter if
 `.venv/bin/python` in the checkout is not the one to use. The GPU is shared with the production runtime:
-`nice` does not stop a long Qwen or Glimmer request from slowing a live user, so start it when the site is quiet.
+`nice` does not stop a long second-model or Glimmer request from slowing a live user, so start it when the site is quiet.

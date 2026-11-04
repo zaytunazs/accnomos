@@ -33,7 +33,7 @@ const num = (x: unknown) => (typeof x === "number" ? String(x) : "n/a");
 
 function where(cfg: unknown): string {
   const url = typeof cfg === "object" && cfg && "base_url" in cfg ? String((cfg as Json).base_url) : "";
-  if (url.includes("modal.run")) return "Modal";
+  if (url.includes("modal.run")) return "hosted GPU";
   if (url.includes("baseten")) return "hosted open weights";
   if (url.includes("localhost") || url.includes("127.0.0.1")) return "our own server";
   return "Meta Model API";

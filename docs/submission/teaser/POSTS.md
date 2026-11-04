@@ -64,7 +64,7 @@ The hackathon has no official hashtag in our docs, so the posts use topic hashta
 >
 > AI by Meta Muse models (Muse Glimmer 30B on our own hardware, with Muse Spark Open as an independent second reader). The VAT boxes are calculated by code, never by the model. HMRC submission is tested against HMRC's sandbox only.
 >
-> All screens are from the app with a fictional sample company. Music is original, synthesised in code for this video. Voice: Kokoro TTS (Apache-2.0).
+> All screens are from the app with a fictional sample company. Music is original, synthesised in code for this video. Voice: an open-source voice model (Apache-2.0).
 >
 > Launching November 2026 · https://accnomos.com
 
@@ -76,7 +76,7 @@ For the submission upload (`*_submission.mp4`) replace the last line with "Try t
 
 ## Credits
 
-- Voice: Kokoro TTS (Apache-2.0), voice bm_george. Captions in the video are the spoken words.
+- Voice: an open-source voice model (Apache-2.0), voice bm_george. Captions in the video are the spoken words.
 - Music: original, synthesised in code (`tools/teaser/music.py`); no samples.
 - Illustration and app icon: made with Meta Muse Image (`tools/brand_muse.py`).
 - Screens: the Accnomos web and Android apps with fictional sample data.

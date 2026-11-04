@@ -17,7 +17,7 @@ judge re-run, README / HONESTY numbers.
   plus 19 non-`none` verdicts on the 19 documents it scores wrong.
 - **Read the diff:** the matcher change (60-day window for payments on terms, nearer document wins a tie), grounding that
   accepts figures from the user's own question, the judge cap (4,000 tokens) and `stop_reason`, the three harnesses, the
-  `.gitignore` exceptions, the seed and its doc. Looked for secrets: none found (`api_key="local-vllm"` is the local vLLM
+  `.gitignore` exceptions, the seed and its doc. Looked for secrets: none found (the `api_key` placeholder is the local model server
   placeholder). Nothing is written server-side and no user data is involved: everything is synthetic, built on fake storage.
   Wording is UK English. Pence handling in the matcher is unchanged (integer pence, ±1p).
 - **Docs against the code:** README rows, `docs/HONESTY.md`, `docs/META_MODELS.md`, `tools/seed_demo.md` and the
@@ -44,7 +44,7 @@ judge re-run, README / HONESTY numbers.
 
 ## What remains
 
-- The model parts were **not re-run in this review**: Ask on Glimmer and Qwen, triage categories on Glimmer, and the Claude judge
+- The model parts were **not re-run in this review**: Ask on Glimmer and a second open-weight model, triage categories on Glimmer, and the AI judge
   (no API key here). Their numbers are checked only by regenerating the reports from the committed result files.
 - `ruff` not run on the changed files.
 - Product gaps the evals expose, documented in HONESTY and not fixed here:
@@ -64,7 +64,7 @@ judge re-run, README / HONESTY numbers.
 From `evals/`, run `python -m pytest -q tests`; it should report 158 passed. Then run `python -m harness.bank_match`; it should
 print precision 83/83 and recall 83/106, and `git diff runs/bank_matching` should be empty. Run
 `python -m harness.mail_intake --no-model --out /tmp/mail`; it should print 12/17 documents kept, 11/11 decoys dropped and triage
-keep/drop 13/13. With Ollama (Glimmer on :11434) and vLLM (Qwen on :8000) up, `python -m harness.ask_40` re-runs the 40 prompts
-in about 40 minutes. Expect numbers exact near 28/32 for Glimmer and 31/32 for Qwen; the model output varies. In the app, seed the demo books
+keep/drop 13/13. With Glimmer (:11434) and the second open-weight model (:8000) up, `python -m harness.ask_40` re-runs the 40 prompts
+in about 40 minutes. Expect numbers exact near 28/32 for Glimmer and 31/32 for a second open-weight model; the model output varies. In the app, seed the demo books
 (`tools/seed_demo.md`) and open `/bank`. Jul–Sep should show 16 suggested matches. Two of them are customer payments 10 days
 after the invoice, each marked *suggested* with "paid 10 days after the document", never as exact.

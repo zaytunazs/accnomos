@@ -12,7 +12,7 @@ Scanned every commit reachable from any ref (283 commits, 12 root snapshots):
   each of the 12 root snapshots that carry them. All three are deliberate fakes (below).
 - `trufflehog` 3.88.0 (`trufflehog git file://. --no-verification`): 0 hits.
 - By hand over `git log --all -p`: names of every file ever added (`.env*`, `*.pem`, `*.key`, keystores,
-  `google-services.json`, `key.properties`, `.venv`, `.v`), `BEGIN … PRIVATE KEY`, provider key shapes (OpenAI,
+  `google-services.json`, `key.properties`, `.venv`, `.v`), `BEGIN … PRIVATE KEY`, provider key shapes (AI vendors,
   AWS, GitHub, Slack, Google, Meta `EAA…`/`LLM|…`), `client_secret`/`password` assignments, filled-in
   `HMRC_CLIENT_*`/`*_API_KEY`/`ACTIONS_SIGNING_KEY` values, e-mail addresses, UK mobile numbers, NI numbers, and the
   committed images (receipt sample, screenshots).
@@ -40,7 +40,7 @@ real secret would stand out.
   server's look-up keys gets the Graph token through `get_books` or a sibling dependency (`routes_contacts`,
   `routes_invoices`, `routes_mail`, `routes_actions`, `routes_lookup`) and answers 401 without it. Five routes are
   public, each for a reason; a new test now fails if a sixth appears. Storage is always the token's own OneDrive.
-- **SSRF.** Every outbound URL is built from a base the server knows (Graph, allow-listed AI bases, Baseten,
+- **SSRF.** Every outbound URL is built from a base the server knows (Graph, allow-listed AI bases, the open-weights host,
   Companies House, `HMRC_RELAY_URL`). Company numbers and VRNs are normalised to `[A-Z0-9]{8}` / 9 or 12 digits
   before they go into a path. The Graph token never follows a link off `graph.microsoft.com`. No change needed.
 - **Path traversal.** `check_name` and `_safe_path` refuse `.`/`..`, separators, drive paths and control characters;
@@ -77,7 +77,7 @@ real secret would stand out.
 |---|---|---|---|---|---|
 | 1 | Medium | `services/hmrc-relay/relay/fraud_headers.py` | Client facts had no caps; `device_id` and `browser_js_user_agent` went to HMRC unencoded with any characters (a CR/LF or non-ASCII value became a 500, a huge one an oversized header) | **Fixed**: every string and list capped; raw values printable ASCII; 422 otherwise | `test_client_facts_are_capped_and_header_safe`, `test_mobile_facts_are_capped` |
 | 2 | Medium | `services/runtime/app/security.py`, `relay/security.py` | Server-held keys (`META_API_KEY`, `BASETEN_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `MODEL_API_KEY`, `ACTIONS_SIGNING_KEY`, `HMRC_CLIENT_SECRET`) were redacted only next to a header name or `Bearer`; quoted bare in an upstream error they would reach logs | **Fixed**: redacted by value | `test_scrub_removes_the_servers_own_keys`, `test_the_client_secret_is_scrubbed_wherever_it_appears` |
-| 3 | Medium | `/extract`, `/ai/test`, `app/ai/config.py` | Anonymous, and with no `X-AI-*` headers run on the server's default model (`AI_MODE=local` → the operator's Ollama; key mode → `META_API_KEY` if set). `/ai/test` in local mode lists the operator's model names | **Recommended**: require a validated Graph token (breaks pre-sign-in scanning on Android), or refuse server-default AI on public routes | — |
+| 3 | Medium | `/extract`, `/ai/test`, `app/ai/config.py` | Anonymous, and with no `X-AI-*` headers run on the server's default model (`AI_MODE=local` → the operator's local model server; key mode → `META_API_KEY` if set). `/ai/test` in local mode lists the operator's model names | **Recommended**: require a validated Graph token (breaks pre-sign-in scanning on Android), or refuse server-default AI on public routes | — |
 | 4 | Medium | `apps/mobile` manifest, `settings.dart` | `usesCleartextTraffic="true"` app-wide; the Meta key is in shared preferences (a TODO in the code) | **Recommended**: refuse to send credentials over `http://` except to private/loopback addresses; move the key to encrypted storage | — |
 | 5 | Low | `services/runtime/app/projection.py` | Formula guard missed a leading tab or carriage return | **Fixed** | `test_books_xlsx_never_writes_text_as_a_formula`, `test_report_xlsx_writes_a_contact_name_as_text` |
 | 6 | Low | `services/runtime/app/routes_extract.py` | 502 detail quoted the model provider's error body unscrubbed | **Fixed** | `test_extract_502_never_quotes_the_callers_key` |

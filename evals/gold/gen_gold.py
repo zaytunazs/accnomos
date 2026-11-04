@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate a synthetic gold set of UK receipts/invoices with Qwen3.8-27B (vLLM on the Spark).
+"""Generate a synthetic gold set of UK receipts/invoices with a second open-weight model (not Meta's) on our own server.
 Every document is fictional and labelled. Arithmetic is validated in code; invalid ones are dropped.
 Output: ~/spark/accnomos/gold/receipts/NNN.json + manifest.json
 """

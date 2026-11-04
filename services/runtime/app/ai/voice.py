@@ -1,7 +1,8 @@
 """Voice questions: browser/phone audio -> WAV mono 16 kHz (ffmpeg) -> speech-to-text -> text.
 
-Which speech-to-text service hears it is app/ai/stt.py (Muse Voice Transcribe first, the owner's Whisper on the
-DGX Spark as the fallback). This module holds the conversion and the Muse Voice Transcribe client. Audio lives in a
+Which speech-to-text service hears it is app/ai/stt.py (Muse Voice Transcribe first, a local speech-to-text
+model on our own server as the fallback).
+This module holds the conversion and the Muse Voice Transcribe client. Audio lives in a
 temporary directory for the length of the conversion and is deleted straight after; nothing is kept.
 
 Muse Voice Transcribe one-shot endpoint, as documented by Meta (checked 29 Oct 2026; dev.meta.ai itself is not

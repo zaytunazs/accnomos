@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate 140 more synthetic gold documents (receipts 061-200) with Qwen3.8-27B (local vLLM).
+"""Generate 140 more synthetic gold documents (receipts 061-200) with a second open-weight model (local).
 
     python evals/gold/gen_gold_v2.py [--dry-run]
 

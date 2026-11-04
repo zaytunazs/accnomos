@@ -12,7 +12,7 @@ connectors' Graph calls (`msgraph.py`: mail send, calendar create, folder rename
 2. **Input bounds**: every `StrictBody`; lengths on free text (invoice lines, notes, to-dos, reply bodies); money as int pence only;
    dates parsed strictly; file names through the safe-name helper; the logo upload is image-only (sniffed) and ≤ 1 MB; PDF text is
    escaped for fpdf (no font-injection surprises).
-3. **Outbound**: the only hosts the runtime calls are Graph, the AI base URLs on the allow-list, Baseten and the relay; no URL from a
+3. **Outbound**: the only hosts the runtime calls are Graph, the AI base URLs on the allow-list, the open-weights host and the relay; no URL from a
    document, email or to-do is ever fetched (SSRF); mail bodies never include raw user HTML; draft replies are text.
 4. **Signed actions**: replay and tamper tests on `POST /actions/approve`; an approved action cannot run twice; the `approving` lock
    expires or can be cleared by a documented path.

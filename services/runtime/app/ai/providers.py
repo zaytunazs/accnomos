@@ -4,17 +4,17 @@
 
 Every provider serves a Meta model (a judging requirement, and the product's promise):
 
-* modal -> Muse Glimmer 30B on Modal (tools/modal_glimmer.py: Ollama on an L40S behind a Modal web endpoint).
+* modal -> Muse Glimmer 30B on a hosted GPU (tools/modal_glimmer.py: a cloud GPU behind a web endpoint).
            MODAL_GLIMMER_URL (the endpoint, e.g. https://<workspace>--accnomos-glimmer-serve.us-east.modal.run),
            MODAL_MODEL (default muse-glimmer:30b), and, when the endpoint is deployed with proxy auth
            (MODAL_PROXY_AUTH=1 in tools/modal_glimmer.py), MODAL_PROXY_TOKEN_ID + MODAL_PROXY_TOKEN_SECRET.
 * meta  -> Muse Spark on the Meta Model API with the server's key: META_API_KEY, MODEL_API_BASE, MODEL_API_MODEL.
-* spark -> Muse Glimmer 30B on the owner's DGX Spark (Ollama): OLLAMA_BASE, OLLAMA_MODEL. The last resort.
+* spark -> Muse Glimmer 30B on our own server (local model runtime): OLLAMA_BASE, OLLAMA_MODEL. The last resort.
 
 A provider without its settings (no URL, no key) is left out of the chain and shown as "not configured".
 Timeouts per provider, in seconds: <NAME>_CONNECT_S, <NAME>_FIRST_TOKEN_S (the longest wait for a reply to start,
-which covers a Modal cold start), <NAME>_REQUEST_S (the longest one attempt may take in all); NAME is MODAL, META or
-SPARK. Test mode keeps the chain's names and order but points every provider at the stub AI.
+which covers a hosted GPU cold start), <NAME>_REQUEST_S (the longest one attempt may take in all); NAME is MODAL,
+META or SPARK. Test mode keeps the chain's names and order but points every provider at the stub AI.
 """
 
 from __future__ import annotations
@@ -40,7 +40,8 @@ ProviderName = Literal["modal", "meta", "spark"]
 KNOWN: tuple[ProviderName, ...] = ("modal", "meta", "spark")
 RECOMMENDED = "modal,meta,spark"
 
-#: (connect, first token, whole request) seconds by default. Modal: a cold start loads ~18 GB from a volume (60-120 s).
+#: (connect, first token, whole request) seconds by default.
+#: Hosted GPU: a cold start loads ~18 GB from a volume (60-120 s).
 DEFAULT_TIMEOUTS: dict[str, tuple[float, float, float]] = {
     "modal": (10.0, 150.0, 240.0),
     "meta": (10.0, 90.0, 120.0),
@@ -48,7 +49,7 @@ DEFAULT_TIMEOUTS: dict[str, tuple[float, float, float]] = {
 }
 
 LABELS: dict[str, str] = {
-    "modal": "Modal",
+    "modal": "hosted GPU",  # shown to users: no non-Meta host names
     "meta": "Meta Model API",
     "spark": "our own server",  # shown to users: no hardware or non-Meta names
     "local": "your machine",
@@ -192,7 +193,7 @@ def describe(env: Mapping[str, str] | None = None) -> list[ProviderInfo]:
         cfg = _test_config(name) if is_test_mode() else provider_config(name, env)
         why = None
         if cfg is None:
-            why = "MODAL_GLIMMER_URL is not set" if name == "modal" else "META_API_KEY is not set"
+            why = "the hosted GPU endpoint is not set" if name == "modal" else "META_API_KEY is not set"
         if cfg is not None:
             model = cfg.model
         elif name == "modal":

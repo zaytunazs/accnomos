@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Price-history gold set with Qwen3.8-27B (local vLLM on the Spark, :8000): joinery consumables that recur across
+"""Price-history gold set with a second open-weight model (local, :8000): joinery consumables that recur across
 five fictional suppliers at different prices over six months, for price-history and "cheaper elsewhere" features.
 
     python evals/gold/gen_gold4.py [N]            # N receipts (default 120), PNGs rendered at the end

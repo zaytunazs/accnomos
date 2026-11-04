@@ -46,7 +46,7 @@ export function HomeData({ children }: { children: React.ReactNode }) {
       }
       if (!account) return setState({ mode: "sample" });
       setState({ mode: "loading", account });
-      warmServerAi(); // a cold Modal container starts now, not on the first upload
+      warmServerAi(); // a cold hosted GPU container starts now, not on the first upload
       // With no saved business the query is empty, so the runtime assumes calendar quarters and says so
       // (`vat.assumed`) instead of the app sending a default. Annual returns are worked out only when annual
       // accounting is saved in the books (Settings › VAT scheme); until then Home says they are not.

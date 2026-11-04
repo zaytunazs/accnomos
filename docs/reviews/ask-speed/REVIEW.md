@@ -19,12 +19,12 @@ budget, period-aware grounding, `POST /books/ask?stream=1` (SSE) used by the web
 
 ## What I fixed
 
-- `12abd5e`: a garbled streamed chunk from Ollama or an OpenAI-style server (`json.loads` on a bad line) escaped
+- `12abd5e`: a garbled streamed chunk from the local model server or a standard-API server (`json.loads` on a bad line) escaped
   `answer()`/`answer_stream()` as a 500, or cut the stream off with no `answer` event, even though both say they never raise
   for model trouble. Such a chunk is now an `httpx.DecodingError` ("sent a reply that could not be read") and gets the code
   fallback. The same commit fixes a regression: `app/ai/plan.py` uses `ask_ai._call_model`, which now streams and can raise
   `AiStalled`, and the day-plan rationale did not catch it (a 500 instead of the code rationale). New tests: both wire
-  formats through `httpx.MockTransport` (Ollama NDJSON with `num_predict`, OpenAI SSE with `max_tokens`), a garbled
+  formats through `httpx.MockTransport` (the local model server NDJSON with `num_predict`, standard SSE with `max_tokens`), a garbled
   chunk → fallback in both plain and streamed modes, and a stalled model → code rationale for the day plan.
 - `73a1c23`: a sentence naming the other period as "Apr-Jun 2026" (hyphen, not en dash) was treated as not naming it,
   so a correct answer was replaced by the fallback. Hyphens and em dashes now match the label; test extended.
@@ -33,13 +33,13 @@ budget, period-aware grounding, `POST /books/ask?stream=1` (SSE) used by the web
 
 ## What remains
 
-- On Glimmer the streamed explanation arrives in one piece (Ollama 0.40 holds back a schema-constrained reply), so
+- On Glimmer the streamed explanation arrives in one piece (the local model server 0.40 holds back a schema-constrained reply), so
   only the first `start` event is early there, and the 90 s first-chunk wait is in effect a whole-reply timeout. The
-  per-chunk timeout only helps on servers that stream token by token (Qwen/vLLM).
+  per-chunk timeout only helps on servers that stream token by token (the second open-weight model).
 - Glimmer's raw "no invented figure" is 34/35 against 31/31 before. The before run never scored its 4 timed-out replies,
   and in both runs no invented figure reached the user (`corp_tax`'s "600" was replaced by the fallback). Strictly, that is
   not "unchanged or better" on the raw row.
-- The eval was not re-run after this review's fixes; it needs Glimmer and Qwen. The fixes only touch error paths
+- The eval was not re-run after this review's fixes; it needs Glimmer and a second open-weight model. The fixes only touch error paths
   and accept one more way of writing a period label, so they can only reduce fallbacks.
 - Web: if the stream breaks after it starts, or is refused (4xx/5xx), the web falls back to `POST /books/ask`,
   which asks the model again: a second wait, or a repeat of the same error. A non-model exception after the `start` event
@@ -59,7 +59,7 @@ Start the runtime in test mode (`ACCNOMOS_TEST_MODE=1`, as the web e2e config do
 *Ask about Jul–Sep 2026*, and ask "How much VAT do I owe this quarter?". The key numbers table (Net VAT (Box 5), 26A3)
 should appear at once with "…is writing the explanation", then the words, then the checked answer. In dev tools,
 check that one request went to `/books/ask?stream=1` and that it returned `event: start`, `token` events and `event: answer`.
-With Glimmer on Ollama :11434, ask "How much VAT did I reclaim last quarter?". The answer should quote the Apr–Jun
+With Glimmer on the local model server :11434, ask "How much VAT did I reclaim last quarter?". The answer should quote the Apr–Jun
 Box 4 figure and cite the 2026-04…06 ledger folders. If the model quotes this quarter's figure without saying so, the
 answer shows the warning band and code's figures for the asked period. To check speed and timeouts, run
 `cd evals && python -m harness.ask_40` and compare with `evals/runs/ask_40/report.md`.

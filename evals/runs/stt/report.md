@@ -4,11 +4,11 @@
 |---|---|---|---|---|---|---|---|---|
 | Muse Voice Transcribe | `muse-voice-transcribe-1.0` | 14 | 0 | 0.1269 | 0.1669 | 50.0 % | n/a | 1.714 / 1.707 / 2.436 s |
 
-Not configured, so not run: whisper.
+Not configured, so not run: the local speech-to-text fallback.
 
 ## Number misses and failures
 
 - `teaser/t1_08` muse: 'Echnomos launching November 2026.' (said: 'Accnomos. Launching November twenty twenty-six.')
 - `teaser/t2_06` muse: 'Egnomos, launching November 2026.' (said: 'Accnomos. Launching November twenty twenty-six.')
 
-Synthetic Kokoro speech, one clean voice per clip: real phone audio will score worse. See harness/stt.py.
+Synthetic speech from an open-source voice model, one clean voice per clip: real phone audio will score worse. See harness/stt.py.

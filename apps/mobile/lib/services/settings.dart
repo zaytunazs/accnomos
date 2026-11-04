@@ -46,7 +46,7 @@ class AppSettings {
   /// Muse Spark via your own API key.
   final String aiMode;
 
-  /// Address of the on-machine model (Ollama). Empty until the user types
+  /// Address of the on-machine model server. Empty until the user types
   /// their own: no address on anyone's home network is shipped as a default.
   final String aiBaseUrl;
 

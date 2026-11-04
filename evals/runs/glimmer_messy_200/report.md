@@ -1,6 +1,6 @@
 # Extraction eval: Glimmer on 200 messy documents (muse-glimmer:30b, local)
 
-Docs: **200** (60 original + 140 new from Qwen) | messy phone-photo renders | errors: 0 | mean 22.16 s per document (max 39.81 s)
+Docs: **200** (60 original + 140 new from a second open-weight model) | messy phone-photo renders | errors: 0 | mean 22.16 s per document (max 39.81 s)
 
 Run: `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'`; no extraction code was changed. Differences from the 60-document report: `side` is a new scored field, expected status is explicit per document on 061-200, and the books owner's name is passed to the pipeline so sale/purchase orientation runs.
 
@@ -87,9 +87,9 @@ Checks that did not pass (documents):
 | utility | 15 | 100% | 100% | 100% | 0 |
 | zero | 6 | 83% | 100% | 100% | 0 |
 
-## Claude judge
+## AI judge
 
-Judge: claude-haiku-5-5, escalating disagreements to claude-sonnet-5-5. Judged 200, skipped 0, first-pass disagreements with the code comparison 174, escalated 174.
+Judge: an AI judge (a smaller model, escalating disagreements to a larger one). Judged 200, skipped 0, first-pass disagreements with the code comparison 174, escalated 174.
 
 | Final severity | Docs |
 |---|---:|
