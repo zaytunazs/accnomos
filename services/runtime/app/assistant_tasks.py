@@ -620,12 +620,14 @@ def event_subject(text: str) -> str:
     t = re.sub(r"\b(\d{1,2}(?::\d{2})?)\s*o'?clock\b", r"at \1", t, flags=re.I)
     t = re.sub(r"\b(?:start(?:ing)?|starts)\s*$", " ", t.strip(), flags=re.I)
     t = DAY_RE.sub(" ", t)
+    t = re.sub(r",?\s*\ball[- ]day\b", " ", t, flags=re.I)
     t = AT_TIME_RE.sub(" ", t)
     t = DURATION_RE.sub(" ", t)
     t = UNTIL_RE.sub(" ", t)
     t = re.sub(r"\bat\s+(?=[A-Z])", " at ", t)  # keep "at the Hendon site" (a place) as said
     t = re.sub(r"^\s*(?:an?|the)\s+", "", t.strip(), flags=re.I)
-    t = re.sub(r"\s+(?:on|at|for|from|this|next|by)\s*$", "", " ".join(t.split()), flags=re.I)
+    t = re.sub(r"\s+(?:on|at|for|from|this|next|by)\s*(?=[,.;:]|$)", "", " ".join(t.split()), flags=re.I)
+    t = re.sub(r"\s*,\s*(?=[,.;:]|$)", "", t)
     t = t.strip(" ,.;:-–")
     return (t[:1].upper() + t[1:])[:120] if t else ""
 

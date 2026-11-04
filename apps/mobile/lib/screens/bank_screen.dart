@@ -1,3 +1,4 @@
+import '../widgets/bank_sync.dart';
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
@@ -332,6 +333,8 @@ class _BankScreenState extends State<BankScreen> {
           const SizedBox(height: 4),
           ImportStatementButton(
               clientFor: _booksClient, onImported: () => _reload(quiet: true)),
+          BankSyncCard(
+              clientFor: _booksClient, onSynced: () => _reload(quiet: true)),
           const SizedBox(height: 8),
           if (_summary['label'] != null) _summaryLine(),
           if (_household) ...[

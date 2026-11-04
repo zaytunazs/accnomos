@@ -62,7 +62,8 @@ ITEMS_PROMPT = (
     "same order. Rules: 1) title is at most 60 characters, a short plain statement of the matter (no full stop); "
     "detail is at most 140 characters, one sentence of context or why it matters, or null. 2) Quote figures, counts, "
     "dates and percentages exactly as they appear in that item's FACTS or code's words; never calculate, round or add "
-    "a figure. 3) No links, no advice about tax law, no promises. 4) A household (KIND is personal) is never told "
+    'a figure. 3) No links, no advice about tax law, no promises; say "coming up", never "soon". '
+    "4) A household (KIND is personal) is never told "
     "about VAT, turnover, profit or invoices. 5) headline is one short sentence (at most 100 characters) saying how "
     "many things need attention now and soon, from COUNTS; never say nothing needs doing when COUNTS.now or "
     "COUNTS.soon is above zero. Plain, friendly UK English."
@@ -80,6 +81,9 @@ class ItemsOutput(BaseModel):
     items: list[_ItemWords]
 
 
+NOT_YET = re.compile(r"\b(?:soon|coming next|not yet available)\b", re.I)
+
+
 def item_problem(title: str, detail: str | None, draft: Draft) -> str | None:
     """Why the model's words for one item cannot be shown, or None when they check out."""
     if not title.strip() or len(title) > TITLE_MAX:
@@ -89,6 +93,8 @@ def item_problem(title: str, detail: str | None, draft: Draft) -> str | None:
     text = f"{title} {detail or ''}"
     if LINK.search(text):
         return "contains a link"
+    if NOT_YET.search(text):
+        return "promises something for later"
     known = {**draft.facts, "code_title": draft.item.title, "code_detail": draft.item.detail or ""}
     if invented := KnownNumbers(known).unknown(text, all_tokens=False):
         return f"figures not in the books ({', '.join(dict.fromkeys(invented[:3]))})"
@@ -319,6 +325,7 @@ async def summarise_items(facts: dict[str, Any], cfg: AiConfig | None, drafts: l
         not line
         or len(line) > 120
         or LINK.search(line)
+        or NOT_YET.search(line)
         or ((head_facts["counts"]["now"] or head_facts["counts"]["soon"]) and ALL_CLEAR.search(line))
         or KnownNumbers(head_facts).unknown(line, all_tokens=False)
     ):

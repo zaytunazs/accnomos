@@ -212,6 +212,21 @@ async def test_all_clear_headline_and_model_failure_fall_back(monkeypatch: pytes
     assert s.items[0].title == "1 invoice overdue: £405.00"
 
 
+async def test_model_words_that_promise_later_are_not_shown(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def soon(messages, cfg, schema, name):
+        return json.dumps(
+            {
+                "headline": "2 things need attention now and more soon",
+                "items": [{"id": "review", "title": "3 receipts to approve soon", "detail": None}],
+            }
+        )
+
+    monkeypatch.setattr(hs, "call_json_model", soon)
+    s = await hs.summarise({"kind": "company"}, CFG, _drafts())
+    assert "soon" not in s.summary_md.lower()
+    assert all("soon" not in i.title.lower() for i in s.items)
+
+
 async def test_no_items_keeps_the_paragraph() -> None:
     s = await hs.summarise({"kind": "company", "today": "3 Nov 2026"}, None, [])
     assert s.items == [] and s.summary_md.startswith("There is no bank balance yet")

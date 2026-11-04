@@ -1658,6 +1658,19 @@ class RuntimeClient {
   Future<List<Map<String, dynamic>>> personalGoals() =>
       _list('GET', '/personal/goals', what: 'load savings goals');
 
+  // Automatic bank sync (/books/bankfeeds, services/runtime/app/
+  // routes_bankfeeds.py). Connecting a bank happens on the web; the app shows
+  // the status and syncs.
+
+  /// `GET /books/bankfeeds`: whether feeds are available here, and each
+  /// connected bank with its last sync.
+  Future<Map<String, dynamic>> bankFeeds() =>
+      _map('GET', '/books/bankfeeds', what: 'load your bank sync');
+
+  /// `POST /books/bankfeeds/sync`: fetch new lines from every connected bank.
+  Future<Map<String, dynamic>> syncBankFeeds() =>
+      _map('POST', '/books/bankfeeds/sync', what: 'sync your bank');
+
   // Goals tracked against the books (/books/goals, services/runtime/app/
   // routes_goals.py). Same paths and bodies as the web's lib/goals.ts.
 

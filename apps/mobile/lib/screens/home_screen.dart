@@ -11,6 +11,7 @@ import '../services/books_events.dart';
 import '../services/runtime_client.dart' show RuntimeClient;
 import '../services/settings.dart';
 import '../services/summary_routes.dart';
+import '../widgets/home_goals.dart';
 import '../theme.dart';
 import '../widgets/calendar_sync.dart';
 import '../widgets/loading.dart';
@@ -42,6 +43,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   Dashboard? _data;
   HomeSummary? _summary;
+
+  /// The books' client once signed in (or in a demo), for the goals card.
+  RuntimeClient? _client;
 
   /// Code's summary is on screen and the AI's words are still coming.
   bool _summaryPending = false;
@@ -137,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // quarter); dashboard() sends it as stagger=/start_month=.
       final client =
           await booksClient(settings, _auth, account);
+      if (mounted) setState(() => _client = client);
       // The summary loads beside the tiles and never holds them up.
       _loadSummary(client);
       final json = await client.dashboard(today: _today());
@@ -290,6 +295,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ] else if (signedIn && _summaryPending) ...[
             const SizedBox(height: 14),
             const SummaryCardSkeleton(),
+          ],
+          if (signedIn && _client != null) ...[
+            const SizedBox(height: 14),
+            HomeGoalsCard(client: _client!, today: _today(), refresh: _refresh),
           ],
           if (_error != null) ...[
             const SizedBox(height: 10),

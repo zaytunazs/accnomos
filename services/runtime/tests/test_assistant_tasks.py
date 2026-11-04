@@ -458,3 +458,11 @@ async def test_spoken_meeting_at_ten_oclock_is_planned(books: Books) -> None:
     assert out is not None and out.proposed_action is not None
     p = out.proposed_action.preview
     assert p["subject"] == "Meeting" and p["start"].startswith("2026-11-05T10:00")
+
+
+async def test_all_day_bill_keeps_a_clean_title(books: Books) -> None:
+    cal = FakeCalendarProvider([])
+    out, _ = await ask("put the BT Broadband bill in my calendar on 8 November, all day", books, cal)
+    assert out is not None and out.proposed_action is not None
+    p = out.proposed_action.preview
+    assert p["subject"] == "BT Broadband bill" and p["all_day"] is True

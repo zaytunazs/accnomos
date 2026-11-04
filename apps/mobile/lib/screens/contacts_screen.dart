@@ -274,8 +274,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
 
   Widget _listView(List<Map<String, dynamic>> all, {bool sample = false}) {
     final rows = _filter(all);
-    return Column(
-      children: [
+    // One scroll for everything: the duplicates card, the search box and the
+    // contacts move together, so a tall card never hides the list.
+    final header = <Widget>[
         if (!sample) _duplicatesCard(),
         if (sample)
           Container(
@@ -337,19 +338,24 @@ class _ContactsScreenState extends State<ContactsScreen> {
             child: Text(_error!,
                 style: const TextStyle(color: AccnomosColors.muted)),
           ),
-        Expanded(
-          child: rows.isEmpty
-              ? const Center(child: Text('No contacts found.'))
-              : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: rows.length,
-                  separatorBuilder: (_, _) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, i) =>
-                      _row(context, rows[i], sample: sample),
-                ),
-        ),
-      ],
+    ];
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 96),
+      itemCount: header.length + (rows.isEmpty ? 1 : rows.length),
+      itemBuilder: (context, i) {
+        if (i < header.length) return header[i];
+        if (rows.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(32),
+            child: Center(child: Text('No contacts found.')),
+          );
+        }
+        final n = i - header.length;
+        return Padding(
+          padding: EdgeInsets.fromLTRB(16, n == 0 ? 0 : 8, 16, 0),
+          child: _row(context, rows[n], sample: sample),
+        );
+      },
     );
   }
 
