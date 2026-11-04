@@ -231,9 +231,11 @@ test.describe("Home attention tiles at 390 px", () => {
 test.describe("Home business snapshot at 390 px", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  /** The snapshot's panels stack, the chart is drawn within the screen, and nothing scrolls sideways. */
+  /** The year to date shows; the chart panels (Trend and cash) stack, the chart is drawn within the screen, and
+   *  nothing scrolls sideways. */
   const fits = async (page: Page) => {
-    const snap = page.getByRole("region", { name: /^Business snapshot( ?Sample)?$/ });
+    await expect(page.getByRole("region", { name: /^Business snapshot( ?Sample)?$/ }).getByRole("group", { name: "Turnover" })).toBeVisible();
+    const snap = page.getByRole("region", { name: /^Trend and cash( ?Sample)?$/ });
     const chart = snap.getByRole("img", { name: /^Sales and purchases as bars/ });
     await chart.scrollIntoViewIfNeeded();
     await expect(chart).toBeVisible();

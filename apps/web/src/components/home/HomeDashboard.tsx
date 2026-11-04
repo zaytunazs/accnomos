@@ -27,7 +27,7 @@ import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
 import SetupChecklist from "@/components/home/SetupChecklist";
-import { BusinessSnapshot } from "@/components/home/Snapshot";
+import { SnapshotCharts, SnapshotYear } from "@/components/home/Snapshot";
 import SpendingCard from "@/components/home/SpendingCard";
 import TodosTile from "@/components/home/TodosTile";
 
@@ -53,22 +53,26 @@ export default function HomeDashboard() {
           </div>
         </SignedOut>
         <OverviewData>
-          {/* The summary first: two to four sentences on the whole picture, then the detail below. */}
-          <SummaryCard />
           <HomeByKind
             business={
               <>
+              {/* The order, top to bottom: which books these are and anything wrong (the sample banner, an error);
+                  the summary, the ask bar under it, and what needs attention; the compact year to date; Goals &
+                  progress with its note; the monthly and cash charts; then the secondary cards and activity. */}
+              {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
+              <HomeSampleBooks />
+              <HomeError />
+              {/* The summary: two to four sentences on the whole picture, then the detail below. */}
+              <SummaryCard />
               <AskBar />
               {/* What needs attention, one tap from Review, Invoices and Bank (up to four tiles, 2 by 2 on a phone). */}
               <AttentionTiles />
-              <HomeError />
-              {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
-              <HomeSampleBooks />
-              {/* The business snapshot, full width before Today: the year to date against last year, the last 12 months
-                  and the 90-day cash line (GET /books/home snapshot, trend, cash_points). Personal books: nothing. */}
-              <BusinessSnapshot />
+              {/* The business snapshot's year to date against last year (GET /books/home snapshot); personal books: nothing. */}
+              <SnapshotYear />
               {/* Goals & progress: up to three goals, most urgent first, and the checked note (GET /books/goals). */}
               <HomeGoals />
+              {/* The last 12 months and the 90-day cash line (the same GET /books/home: trend, cash_points). */}
+              <SnapshotCharts />
               <SetupChecklist />
               {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
               <PreviousFilesNotice />
@@ -100,15 +104,18 @@ export default function HomeDashboard() {
               /* A household (personal books): no turnover, VAT or invoices. Its month, budgets, goals and regular bills,
                  all worked out by code from the imported statements (GET /personal/summary, /personal/recurring). */
               <HouseholdData>
+                {/* The same order as a business: anything wrong, the summary and what needs attention, the month so
+                    far, Goals & progress with its note, then budgets, bills, where the money went and the rest. */}
+                <HomeError />
+                <SummaryCard />
                 <AskBar example="where did my money go this month?" />
                 <HouseholdTiles />
-                <HomeError />
                 <ThisMonth />
+                <HomeGoals />
                 <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
                   <Budgets />
                   <Bills />
                 </div>
-                <HomeGoals />
                 <WhereItWent />
                 {/* A household that lets property or is self-employed still has Income Tax: these hide themselves
                     otherwise (GET /books/home returns null for their sections). */}

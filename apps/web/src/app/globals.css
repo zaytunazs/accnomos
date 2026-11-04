@@ -50,6 +50,16 @@ td.text-right {
   outline-offset: 2px;
 }
 
+/* Phones and small tablets (under the 900 px menu bar): the tab bar and the assistant's floating button are fixed over
+   the page's bottom 9 rem (AppNav, Assistant.tsx; AppShell pads the page by the same). Focus and anchors scroll
+   into view above them, not under them: with the on-screen keyboard open, a field that is tabbed or tapped into
+   lands clear of both. */
+@media (max-width: 899px) {
+  html {
+    scroll-padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
+}
+
 /* A date field's calendar button is a Tab stop inside the field, where the field itself is not :focus-visible
    and Chromium draws only a thin box round the icon: ring the whole field while any part of it has focus. */
 :where(input[type="date"]):focus-within {

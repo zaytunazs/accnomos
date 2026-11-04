@@ -8,6 +8,7 @@ import BankRules from "@/components/bank/BankRules";
 import BankFeeds from "@/components/bank/BankFeeds";
 import BankUpload from "@/components/bank/BankUpload";
 import SignInCta from "@/components/SignInCta";
+import StatusBadge, { badgeClass, type BadgeTone } from "@/components/StatusBadge";
 import { EmptyState, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
@@ -66,12 +67,13 @@ const STATUS_LABEL: Record<RtBankLine["status"], string> = {
   transfer: "Transfer",
   ignored: "Ignored",
 };
-const STATUS_CHIP: Record<RtBankLine["status"], string> = {
-  matched: "bg-teal-tint text-teal-dark",
-  suggested: "border border-warn-border bg-warn-bg text-warn-ink",
-  unmatched: "border border-border bg-white text-ink",
-  transfer: "bg-ground text-ink",
-  ignored: "bg-ground text-muted",
+/** The shared badge tones (components/StatusBadge.tsx): matched is done, suggested waits on you, the rest are quiet. */
+const STATUS_TONE: Record<RtBankLine["status"], BadgeTone> = {
+  matched: "success",
+  suggested: "warning",
+  unmatched: "neutral",
+  transfer: "neutral",
+  ignored: "neutral",
 };
 
 const CSV_HEAD = ["date", "description", "reference", "amount_pence", "balance_pence", "status", "match", "source_file"];
@@ -226,17 +228,11 @@ function StatementLines({ statement, lines }: { statement: RtBankStatement; line
               </span>
               <span className="font-bold whitespace-nowrap tabular-nums">{money(l.amount_pence)}</span>
               {statement.basis === "household" ? (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${
-                    l.household_sorted ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
-                  }`}
-                >
+                <StatusBadge tone={l.household_sorted ? "success" : "warning"}>
                   {l.household_sorted ? (l.household_category ?? "Sorted") : "No category"}
-                </span>
+                </StatusBadge>
               ) : (
-                <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${STATUS_CHIP[l.status]}`}>
-                  {STATUS_LABEL[l.status]}
-                </span>
+                <StatusBadge tone={STATUS_TONE[l.status]}>{STATUS_LABEL[l.status]}</StatusBadge>
               )}
               <span className="w-full text-[13px] font-medium tabular-nums text-muted">
                 Balance {l.balance_pence === null ? "—" : money(l.balance_pence)}
@@ -277,13 +273,9 @@ function Statements({ list, lines }: { list: RtBankStatement[]; lines: RtBankLin
                 <span className="text-[13px] font-medium tabular-nums text-muted">
                   in {money(st.money_in_pence)} · out {money(st.money_out_pence)}
                 </span>
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[13px] font-bold ${
-                    st.resolved === st.lines ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
-                  }`}
-                >
+                <StatusBadge tone={st.resolved === st.lines ? "success" : "warning"}>
                   {st.resolved}/{st.lines} {st.basis === "household" ? "sorted" : "done"}
-                </span>
+                </StatusBadge>
               </button>
               {expanded && <StatementLines statement={st} lines={lines} />}
             </li>
@@ -331,12 +323,7 @@ function ReasonChips({ reasons }: { reasons: string[] }) {
   return (
     <ul aria-label="Why this matches" className="flex flex-wrap gap-1">
       {chips.map((c, i) => (
-        <li
-          key={`${c.text}-${i}`}
-          className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${
-            c.warn ? "border border-warn-border bg-warn-bg text-warn-ink" : "bg-ground text-ink"
-          }`}
-        >
+        <li key={`${c.text}-${i}`} className={badgeClass(c.warn ? "warning" : "neutral")}>
           {c.text}
         </li>
       ))}
@@ -346,13 +333,7 @@ function ReasonChips({ reasons }: { reasons: string[] }) {
 
 function KindBadge({ kind }: { kind: RtBankSuggestion["kind"] }) {
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${
-        kind === "exact" ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
-      }`}
-    >
-      {kind === "exact" ? "Exact" : "Likely"}
-    </span>
+    <StatusBadge tone={kind === "exact" ? "success" : "warning"}>{kind === "exact" ? "Exact" : "Likely"}</StatusBadge>
   );
 }
 
@@ -607,9 +588,9 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
                         >
                           {x.label}
                           {primary && (
-                            <span className="ml-2 rounded-full bg-teal-tint px-2 py-0.5 text-[12px] font-bold text-teal-dark">
+                            <StatusBadge tone="brand" className="ml-2">
                               Suggested
-                            </span>
+                            </StatusBadge>
                           )}
                         </button>
                       </li>
@@ -696,9 +677,7 @@ function Done({ rows, busy, act }: { rows: RtBankLine[]; busy: string | null; ac
               {l.reference ? ` · ${l.reference}` : ""}
             </p>
             <p>
-              <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${STATUS_CHIP[l.status]}`}>
-                {DONE_LABEL[l.status]}
-              </span>
+              <StatusBadge tone={STATUS_TONE[l.status]}>{DONE_LABEL[l.status]}</StatusBadge>
             </p>
             <div className="mt-1">
               <UndoButton line={l} busy={busy} act={act} wide />
@@ -980,7 +959,7 @@ export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
               >
                 {t.label}
                 {t.count !== null && (
-                  <span className="rounded-full bg-ground px-2 text-[13px] font-bold tabular-nums">{t.count}</span>
+                  <StatusBadge tone="neutral" className="tabular-nums">{t.count}</StatusBadge>
                 )}
               </button>
             ))}
