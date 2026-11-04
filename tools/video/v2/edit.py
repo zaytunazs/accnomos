@@ -54,9 +54,9 @@ EDL: list[dict] = [
          "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve.")},
         {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 14.8},
     ]},
-    {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Worked out by code from the ledger"), "shots": [
-        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 5.0},
-        {"layout": "full", "src": "w-vat", "segs": ["0.5..5.5", "13.0..15.5", "17.5..end"], "dur": 11.0},
+    {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"), "shots": [
+        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 4.6},
+        {"layout": "full", "src": "w-vat-hmrc", "segs": ["0.5..4.5", "user+0.3..userReady+1.2", "hmrc+3.0..hmrc+5.0", "back-3.2..back-0.8", "submit-1.6..submit+0.6", "receipt+0.3..end"], "dur": 13.0},
     ]},
     {"id": "s6", "lead": 0.4, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
         {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 5.2},
