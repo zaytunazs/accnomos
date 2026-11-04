@@ -2,6 +2,7 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL, type AiConfig } from "./ai-config";
+import { aiRouteHeaders } from "./ai-route";
 import type { PlanVat } from "./business";
 import { vatQuery } from "./vat-period";
 import { DEMO_HEADER, demoSession } from "./demo";
@@ -263,6 +264,7 @@ export async function runtimeHeaders(
       "X-User": demo.user,
       "X-Business-Name": demo.business,
       ...(ai ? aiHeaders(ai) : {}),
+      ...aiRouteHeaders(),
     };
   }
   // An accountant inside a client's books (lib/accountant.ts): the token must reach another person's drive.
@@ -281,6 +283,7 @@ export async function runtimeHeaders(
     "X-User": account.username,
     ...(business && !client ? { "X-Business-Name": business } : {}),
     ...(ai ? aiHeaders(ai) : {}),
+    ...aiRouteHeaders(),
     ...clientHeaders(client),
   };
 }
@@ -370,7 +373,7 @@ export interface RtUndoResult {
 export async function runtimeAiTest(cfg: AiConfig): Promise<RtAiTest> {
   const res = await fetch(`${RUNTIME_URL}/ai/test`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...aiHeaders(cfg) },
+    headers: { "Content-Type": "application/json", ...aiHeaders(cfg), ...aiRouteHeaders() },
     body: JSON.stringify({ mode: cfg.mode, base_url: cfg.baseUrl, model: cfg.model }),
   });
   if (!res.ok) return { ok: false, mode: cfg.mode, detail: `runtime returned ${res.status}` };

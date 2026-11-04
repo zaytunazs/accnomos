@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/ai_route.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/demo.dart';
@@ -10,6 +11,7 @@ import '../services/proposal_editing.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
+import '../widgets/ai_route_picker.dart';
 import '../widgets/calendar_sync.dart';
 import '../theme.dart';
 import 'business_setup_screen.dart';
@@ -91,6 +93,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _stagger = 1;
   String _level = 'L1';
   bool _showPersonal = false;
+
+  /// Which AI answers first; null until the user picks one (no header sent).
+  String? _route;
 
   /// Groups currently expanded; all six start open.
   final _open = {'connection', 'ai', 'automation', 'business', 'personal', 'data'};
@@ -184,6 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     // This screen only offers L1/L2; anything else reads as L1 until saved.
     _level = settings.autopilotLevel == 'L2' ? 'L2' : 'L1';
     _showPersonal = settings.showPersonalFinances;
+    _route = settings.aiRoute;
     _startMonth.text = settings.vatStartMonth?.toString() ?? '';
   }
 
@@ -299,6 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         vatStartMonth: _startMonthValue() == -1 ? null : _startMonthValue(),
         autopilotLevel: _level,
         showPersonalFinances: _showPersonal,
+        aiRoute: _route,
       );
 
   /// Probe client for the AI test: no books headers, like the web's
@@ -605,6 +612,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Autopilot level saved')),
+    );
+  }
+
+  /// Which AI answers first: saved as soon as it is picked, like the
+  /// autopilot level, and sent as `X-AI-Route` from then on.
+  Future<void> _chooseRoute(String value) async {
+    if (!_signedIn || _route == value) return;
+    setState(() => _route = value);
+    await _current().save();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('AI choice saved')),
     );
   }
 
@@ -975,6 +994,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     ],
+                    const SizedBox(height: 16),
+                    AiRoutePicker(
+                      value: _route ?? kDefaultAiRoute,
+                      enabled: _signedIn,
+                      onChanged: _chooseRoute,
+                    ),
                     const SizedBox(height: 12),
                     _saveButton(
                       label: 'Save AI settings',
