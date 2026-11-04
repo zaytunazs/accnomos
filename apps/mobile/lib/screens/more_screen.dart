@@ -17,6 +17,7 @@ import 'goals_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
 import 'month_end_screen.dart';
+import 'notes_screen.dart';
 import 'payroll_screen.dart';
 import 'personal_screen.dart';
 import 'reports_screen.dart';
@@ -75,6 +76,8 @@ List<MoreEntry> moreEntries(List<String>? features,
         const ReportsScreen()),
     const MoreEntry(Icons.flag_outlined, 'Goals',
         'Targets tracked against your books', GoalsScreen()),
+    const MoreEntry(Icons.sticky_note_2_outlined, 'Notes',
+        'Typed, or said to the assistant', NotesScreen()),
     const MoreEntry(Icons.handshake_outlined, 'Your accountant',
         'Invite, remove access, answer queries', AccountantScreen()),
     const MoreEntry(Icons.history_outlined, 'Audit trail',
@@ -99,6 +102,8 @@ const householdMoreEntries = [
       'Your Accnomos folder in OneDrive', FilesScreen()),
   MoreEntry(Icons.people_outline, 'Contacts', 'People and payees',
       ContactsScreen()),
+  MoreEntry(Icons.sticky_note_2_outlined, 'Notes',
+      'Typed, or said to the assistant', NotesScreen()),
   MoreEntry(Icons.history_outlined, 'Audit trail',
       'Who did what in your books, with CSV export', AuditScreen()),
 ];

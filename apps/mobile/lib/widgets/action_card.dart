@@ -13,6 +13,11 @@ const actionKindLabels = <String, String>{
   'create_invoice': 'Invoice',
   'log_timesheet': 'Log hours',
   'record_payment': 'Record payment',
+  'save_note': 'Note',
+  'delete_note': 'Delete note',
+  'add_todo': 'To-do',
+  'calendar_add_event': 'Add to calendar',
+  'calendar_remove_event': 'Remove from calendar',
 };
 
 /// One signed card that does nothing until approved: summary, warnings,

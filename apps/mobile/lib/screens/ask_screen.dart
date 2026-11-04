@@ -19,6 +19,7 @@ import '../services/hands_free.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/tts.dart';
+import '../services/voice_approval.dart';
 import '../services/voice_turn.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
@@ -189,6 +190,9 @@ class _AskScreenState extends State<AskScreen> {
   String? _handsNote;
   final Speaker _speaker = Speaker();
 
+  /// The turn the last spoken question made, for the card's verbal approval.
+  _Turn? _lastSpoken;
+
   @override
   void initState() {
     super.initState();
@@ -335,10 +339,13 @@ class _AskScreenState extends State<AskScreen> {
   }
 
   /// Approve or reject a proposed action. Nothing happens before this.
-  Future<void> _decide(_Turn turn, {required bool approve}) async {
+  /// [heard]: approved by a spoken yes (what was heard goes with it).
+  /// Returns the result's summary, or null when nothing was done.
+  Future<String?> _decide(_Turn turn, {required bool approve, String? heard}) async {
     final settings = _settings;
     final action = turn.answer?.proposedAction;
-    if (settings == null || action == null || turn.actionBusy) return;
+    if (settings == null || action == null || turn.actionBusy) return null;
+    if (turn.actionResult != null) return null;
     setState(() {
       turn.actionBusy = true;
       turn.actionError = null;
@@ -346,18 +353,46 @@ class _AskScreenState extends State<AskScreen> {
     try {
       final client = await _client(settings);
       final result = approve
-          ? await client.approveAction(action)
+          ? await client.approveAction(action, heard: heard)
           : await client.rejectAction(action);
-      if (!mounted) return;
+      if (!mounted) return null;
       setState(() => turn.actionResult = result);
+      return approve ? result : null;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return null;
       setState(
         () => turn.actionError = e.toString().replaceFirst('Exception: ', ''),
       );
+      return null;
     } finally {
       if (mounted) setState(() => turn.actionBusy = false);
     }
+  }
+
+  /// The assistant's verbal approval for [turn]'s card: read it back, ask
+  /// "Shall I go ahead?", and approve on a clear yes (voice_approval.dart).
+  Future<bool> _approveByVoice(_Turn turn, {required bool Function() stopped}) async {
+    final settings = _settings;
+    final action = turn.answer?.proposedAction;
+    if (settings == null || action == null) return false;
+    final client = await _client(settings);
+    return approveByVoice(
+      action: action,
+      speak: _speaker.say,
+      listen: () => recordUntilSilence(
+        _mic,
+        stopped: stopped,
+        onLevel: (l) {
+          if (mounted) setState(() => _level = l);
+        },
+      ),
+      transcribe: client.transcribe,
+      approve: (heard) => _decide(turn, approve: true, heard: heard),
+      onState: (st) {
+        if (mounted) setState(() => _hands = st);
+      },
+      stopped: stopped,
+    );
   }
 
   /// Mic pressed: start a WAV 16 kHz mono recording. Refuses with the
@@ -534,6 +569,16 @@ class _AskScreenState extends State<AskScreen> {
           _input.text = transcript;
         }
       });
+      // Push-to-talk gets the same verbal approval as hands-free.
+      if (result.answer?.proposedAction != null && _loop == null) {
+        try {
+          await _approveByVoice(turn, stopped: () => !mounted || _loop != null);
+        } on MicRefused catch (e) {
+          if (mounted) setState(() => _voiceError = e.message);
+        } finally {
+          if (mounted) setState(() => _hands = HandsFreeState.off);
+        }
+      }
     } catch (e) {
       // Local mode or no transcription (400/503): show the runtime's
       // message and fall back to typing.
@@ -591,10 +636,12 @@ class _AskScreenState extends State<AskScreen> {
       _scrollToEnd();
       final a = result.answer;
       if (a == null) return null;
+      _lastSpoken = turn;
       return HandsFreeReply(
         transcript: transcript,
         answerMd: a.answerMd,
-        needsApproval: a.proposedAction != null || a.clarification != null,
+        needsApproval: a.clarification != null,
+        action: a.proposedAction,
       );
     } catch (e) {
       if (!mounted) return null;
@@ -630,6 +677,12 @@ class _AskScreenState extends State<AskScreen> {
       },
       onNote: (n) {
         if (mounted) setState(() => _handsNote = n);
+      },
+      approve: (_) async {
+        final turn = _lastSpoken;
+        final l = _loop;
+        if (turn == null || l == null) return false;
+        return _approveByVoice(turn, stopped: () => l.stopped);
       },
     );
     setState(() {
@@ -1168,6 +1221,21 @@ class _AskScreenState extends State<AskScreen> {
     'log_timesheet': 'Timesheet',
     'log_mileage': 'Mileage',
     'pay_overtime': 'Overtime pay',
+    'save_note': 'Note',
+    'delete_note': 'Delete note',
+    'add_todo': 'To-do',
+    'calendar_add_event': 'Add to calendar',
+    'calendar_remove_event': 'Remove from calendar',
+  };
+
+  /// Kinds whose preview is plain label/value rows worked out by code
+  /// (app/assistant_tasks.py): notes, to-dos and calendar changes.
+  static const _rowKinds = {
+    'save_note',
+    'delete_note',
+    'add_todo',
+    'calendar_add_event',
+    'calendar_remove_event',
   };
 
   /// One label/value row, like the web's action details.
@@ -1212,6 +1280,15 @@ class _AskScreenState extends State<AskScreen> {
         for (final i in v)
           if (i is Map) Map<String, dynamic>.from(i),
     ];
+    if (_rowKinds.contains(a.kind)) {
+      return [
+        for (final r in maps(p['rows']))
+          _detailRow(
+            str(r['label']),
+            Text(str(r['value']), style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+      ];
+    }
     if (a.kind == 'create_invoice') {
       final customer = p['customer'] is Map
           ? Map<String, dynamic>.from(p['customer'] as Map)
@@ -1374,7 +1451,10 @@ class _AskScreenState extends State<AskScreen> {
         if (str(p['note']).isNotEmpty) _detailRow('Note', Text(str(p['note']))),
       ];
     }
-    // log_mileage.
+    if (a.kind != 'log_mileage') {
+      // A kind this app has no layout for: the runtime's own summary.
+      return [Text(a.summaryMd.replaceAll('**', ''))];
+    }
     return [
       _detailRow('Vehicle', Text(str(p['vehicle_name']))),
       _detailRow('Journey', Text('${str(p['from'])} → ${str(p['to'])}')),
@@ -1449,6 +1529,14 @@ class _AskScreenState extends State<AskScreen> {
           for (final w in a.warnings) ...[
             const SizedBox(height: 8),
             _warnBox(w),
+          ],
+          if (a.tapOnly && t.actionResult == null && !expired) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'This one sends or moves money: it needs a tap on Approve, never a spoken yes.',
+              key: ValueKey('tap-only-note'),
+              style: TextStyle(fontSize: 12, color: AccnomosColors.muted),
+            ),
           ],
           const SizedBox(height: 12),
           if (t.actionResult != null)

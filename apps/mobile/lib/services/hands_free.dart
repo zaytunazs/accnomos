@@ -5,11 +5,15 @@
 /// to `POST /books/ask/voice` (Muse Voice Transcribe hears it; the Ask
 /// pipeline answers with every figure checked), reads the answer aloud, and
 /// listens again. The loop ends on Stop, a stop phrase ("stop", "that's
-/// all"…), two quiet turns in a row, or an answer that is a card needing the
-/// user's approval — nothing is ever approved by voice alone.
+/// all"…) or two quiet turns in a row. A card is read back and the user is
+/// asked "Shall I go ahead?" (services/voice_approval.dart): a clear yes
+/// approves it as the button does and the loop goes on; anything else, or a
+/// card that sends or moves money, leaves it on screen and pauses the loop.
 library;
 
 import 'dart:async';
+
+import '../models/ask_answer.dart';
 
 enum HandsFreeState { off, listening, thinking, speaking }
 
@@ -78,13 +82,17 @@ class HandsFreeReply {
     required this.transcript,
     required this.answerMd,
     this.needsApproval = false,
+    this.action,
   });
   final String transcript;
   final String answerMd;
 
-  /// A card that changes the books (or needs one more detail): shown on
-  /// screen, never approved by voice.
+  /// A question with choices on screen (or a card with no voice approval
+  /// wired): shown, and the loop pauses.
   final bool needsApproval;
+
+  /// A card to approve: read back, then "Shall I go ahead?".
+  final ProposedAction? action;
 }
 
 /// The loop itself, with the microphone, the Ask call and the voice injected
@@ -96,6 +104,7 @@ class HandsFreeLoop {
     required this.speak,
     required this.onState,
     this.onNote,
+    this.approve,
   });
 
   /// Record one turn; null when nothing was said or the loop was stopped.
@@ -108,7 +117,12 @@ class HandsFreeLoop {
   final void Function(HandsFreeState state) onState;
   final void Function(String note)? onNote;
 
+  /// The verbal approval dialogue for a card (voice_approval.dart
+  /// `approveByVoice`); true when a spoken yes approved it.
+  final Future<bool> Function(ProposedAction action)? approve;
+
   bool _stopped = false;
+  bool get stopped => _stopped;
   bool _running = false;
   bool get running => _running;
 
@@ -143,9 +157,17 @@ class HandsFreeLoop {
           break;
         }
         onState(HandsFreeState.speaking);
-        if (reply.needsApproval) {
+        final card = reply.action;
+        if (card != null && approve != null) {
+          final done = await approve!(card);
+          if (_stopped) break;
+          if (done) continue;
+          onNote?.call('Hands-free paused: the card is on screen to tap.');
+          break;
+        }
+        if (reply.needsApproval || card != null) {
           await speak(
-              "I've put that on screen for you to check. Nothing changes until you approve it.");
+              "I've put that on screen for you. Nothing changes until you choose.");
           onNote?.call('Hands-free paused: check the card on screen.');
           break;
         }

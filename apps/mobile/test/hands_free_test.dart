@@ -90,13 +90,13 @@ void main() {
       expect(states.last, HandsFreeState.off);
     });
 
-    test('a card to approve pauses hands-free; nothing is approved', () async {
+    test('a question with choices on screen pauses hands-free', () async {
       await loop([
         [1]
       ], [
-        HandsFreeReply(transcript: 'Record £40 parking', answerMd: 'Card', needsApproval: true),
+        HandsFreeReply(transcript: 'Log hours for Sam', answerMd: 'Which job?', needsApproval: true),
       ]).run();
-      expect(spoken.single, contains('Nothing changes until you approve it'));
+      expect(spoken.single, contains('Nothing changes until you choose'));
       expect(notes.single, contains('check the card'));
     });
 

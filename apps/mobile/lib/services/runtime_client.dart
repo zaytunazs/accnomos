@@ -604,8 +604,12 @@ class RuntimeClient {
 
   /// `POST /actions/approve`: runs the proposal once and returns the result's
   /// markdown summary (e.g. "Logged 7.5 hours for Sam on Elm Road.").
-  Future<String> approveAction(ProposedAction action) =>
-      _action('approve', action, 'Could not approve that');
+  ///
+  /// [heard]: approved by a spoken yes (the assistant's "Shall I go ahead?"):
+  /// sent as `via: "voice"` with what was heard; the runtime checks the words
+  /// again, refuses a card that sends or moves money, and audits both.
+  Future<String> approveAction(ProposedAction action, {String? heard}) =>
+      _action('approve', action, 'Could not approve that', heard: heard);
 
   /// `POST /actions/reject`: nothing happens except a line in the audit log.
   Future<String> rejectAction(ProposedAction action) =>
@@ -614,15 +618,21 @@ class RuntimeClient {
   Future<String> _action(
     String verb,
     ProposedAction action,
-    String what,
-  ) async {
+    String what, {
+    String? heard,
+  }) async {
     _requireBooks();
     final uri = Uri.parse('${settings.runtimeUrl}/actions/$verb');
     try {
       final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
-            body: json.encode({'action': action.raw}),
+            body: json.encode({
+              'action': action.raw,
+              if (heard != null) 'via': 'voice',
+              if (heard != null)
+                'heard': heard.length > 300 ? heard.substring(0, 300) : heard,
+            }),
           )
           .timeout(_timeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -1577,6 +1587,36 @@ class RuntimeClient {
   /// target_pence / percent / focus / measure / saved_pence).
   Future<Map<String, dynamic>> addGoal(Map<String, dynamic> goal) =>
       _map('POST', '/books/goals', body: goal, what: 'add that goal');
+
+  /// `GET /notes`: the user's notes, newest first (`_System/notes/notes.json`).
+  Future<List<Map<String, dynamic>>> notes() =>
+      _list('GET', '/notes', what: 'load your notes');
+
+  /// `POST /notes`: a typed note from the Notes screen (the assistant saves
+  /// spoken ones through a card).
+  Future<Map<String, dynamic>> addNote(String text) => _map('POST', '/notes',
+      body: {'text': text, 'source': 'typed'}, what: 'save that note');
+
+  /// `DELETE /notes/{id}`.
+  Future<void> deleteNote(String id) =>
+      _json('DELETE', '/notes/${_seg(id)}', what: 'delete that note');
+
+  /// `POST /books/ask/transcribe`: speech to text only — the reply to "Shall
+  /// I go ahead?". Nothing is answered or changed.
+  Future<String> transcribe(List<int> wavBytes) async {
+    _requireBooks();
+    final request = http.MultipartRequest('POST', _uri('/books/ask/transcribe'))
+      ..headers.addAll(_headers)
+      ..files.add(http.MultipartFile.fromBytes('audio', wavBytes,
+          filename: 'reply.wav'));
+    final streamed = await _http.send(request).timeout(_timeout);
+    final body = await streamed.stream.bytesToString();
+    if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+      _fail(streamed.statusCode, body.trim());
+    }
+    final decoded = json.decode(body);
+    return decoded is Map ? (decoded['transcript'] ?? '').toString() : '';
+  }
 
   /// `PATCH /books/goals/{id}`, e.g. `{saved_pence: …}` for money put aside.
   Future<Map<String, dynamic>> patchGoal(
