@@ -272,7 +272,7 @@ def _chain(*names: str, route=None) -> AiConfig:
 def test_sam_config_picks_the_meta_provider_from_the_chain(monkeypatch):
     monkeypatch.setenv("SAM_CROP", "1")
     meta_first = _chain("meta", "spark")
-    assert crop.sam_config(meta_first).provider == "meta"
+    assert getattr(crop.sam_config(meta_first), "provider", None) == "meta"
     glimmer_first = _chain("spark", "meta")  # the meta provider is a fallback: SAM still uses it
     sam = crop.sam_config(glimmer_first)
     assert sam is not None and sam.provider == "meta" and sam.auth_headers() == {"Authorization": "Bearer server-key"}
@@ -282,7 +282,7 @@ def test_sam_config_picks_the_meta_provider_from_the_chain(monkeypatch):
     # routes that keep work off the Meta API
     assert crop.sam_config(_chain("meta", "spark", route="local_only")) is None
     assert crop.sam_config(_chain("meta", "spark", route="local_first")) is None
-    assert crop.sam_config(_chain("meta", "spark", route="meta_first")).provider == "meta"
+    assert getattr(crop.sam_config(_chain("meta", "spark", route="meta_first")), "provider", None) == "meta"
     monkeypatch.delenv("SAM_CROP")
     assert crop.sam_config(meta_first) is None
 

@@ -188,18 +188,87 @@ def summarise(res: dict[str, Any]) -> dict[str, Any]:
     return s
 
 
+def write_report(s: dict[str, Any], rows: list[dict[str, Any]], out: Path) -> None:
+    lines = [
+        f"# SAM 3.1 crop, live on the Meta Model API ({s['n']} synthetic phone-photo scenes)",
+        "",
+        f"SAM model `{s['sam_model']}` and reader `{s['reader_model']}`, both at `{s['base_url']}`,",
+        "run from the owner's server with the server's key (never printed or stored).",
+        "Script: `evals/harness/sam_crop_live.py`; per-image rows: `rows.json` (boxes, timings, a mask-free",
+        "sample of each SAM reply, no response ids). Scenes: gold receipts placed on five cluttered backgrounds",
+        "with a known box (`harness.crop_bench.make_scene`), as in `evals/REPORT_crop_code_20_2026-10-27.md`.",
+        "",
+        "## SAM calls",
+        "",
+        f"- Calls: {s['sam_calls']}, answered 200: {s['sam_calls_ok']}; "
+        f"errors: {', '.join(s['sam_call_errors']) or 'none'}.",
+        f"- Latency per call: median {s['sam_call_latency_s']['median']} s, max {s['sam_call_latency_s']['max']} s.",
+        f"- A box was returned and used for {s['sam_box_returned']} of {s['n']} photos; fell back to the code crop for "
+        f"{s['sam_fell_back_to_code']}.",
+        "",
+        "## Crop box against the known receipt box",
+        "",
+        "| Method | Mean IoU | IoU ≥ 0.8 | Receipt fully inside | Mean share kept | Median time |",
+        "|---|---:|---:|---:|---:|---:|",
+    ]
+    for name, label in (("sam", "SAM 3.1 (with code fallback)"), ("code", "Code crop")):
+        m = s[name]
+        lines.append(
+            f"| {label} | {m['mean_iou']} | {m['iou_ge_0_8']}/{s['n']} | {m['receipt_fully_kept']}/{s['n']} | "
+            f"{m['mean_kept']} | {m['median_crop_s']} s |"
+        )
+    if "read_sam" in s:
+        lines += [
+            "",
+            f"## Reading each crop with `{s['reader_model']}`",
+            "",
+            "Same pipeline as the app (`process_image(..., crop=False)` on the given crop: code repairs, checks, one",
+            "re-read when unsure, the Verifier), scored field by field against the gold document.",
+            "",
+            "| Image read | Every field right | Errors |",
+            "|---|---:|---:|",
+        ]
+        for name, label in (("sam", "SAM crop"), ("code", "Code crop"), ("full", "Whole photo, no crop")):
+            r = s[f"read_{name}"]
+            lines.append(f"| {label} | {r['all_fields_correct']}/{s['n']} | {r['errors']} |")
+    worst = sorted(rows, key=lambda r: r["code"]["iou"])[:3]
+    lines += [
+        "",
+        "Lowest code-crop IoU: "
+        + "; ".join(f"{r['case']} ({r['scene']}): code {r['code']['iou']}, SAM {r['sam']['iou']}" for r in worst)
+        + ".",
+        "",
+        "## Limits",
+        "",
+        "- Synthetic scenes, not real phone photos; one rotation and one clutter pattern per scene.",
+        "- Where every crop (and the uncropped photo) reads the same, this run shows no reading gain from SAM on these",
+        "  scenes: they are legible uncropped. It shows that SAM does not hurt and gives a tighter box.",
+        "- Box only: the mask SAM returns is not used.",
+    ]
+    (out / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=20)
     ap.add_argument("--read", action="store_true", help="also read each crop with the reader model")
     ap.add_argument("--model", default=os.getenv("MODEL_API_MODEL") or "muse-spark-1.3")
     ap.add_argument("--out", default="runs/sam_crop_live")
+    ap.add_argument("--report-only", action="store_true", help="rewrite summary.json and report.md from rows.json")
     args = ap.parse_args()
-    res = asyncio.run(run(args))
     out = Path(args.out)
+    if args.report_only:
+        rows = json.loads((out / "rows.json").read_text(encoding="utf-8"))
+        cfg = AiConfig.resolve(mode="key", api_key="unused", model=args.model)
+        summary = summarise({"rows": rows, "model": cfg.model, "base_url": cfg.base_url})
+        (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+        write_report(summary, rows, out)
+        return
+    res = asyncio.run(run(args))
     (out / "rows.json").write_text(json.dumps(res["rows"], indent=2, default=str), encoding="utf-8")
     summary = summarise(res)
     (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    write_report(summary, res["rows"], out)
     print(json.dumps(summary, indent=2))
 
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -20,7 +21,13 @@ from typing import Any
 
 import httpx
 
-from harness.crop_bench import GOLD_DIR, make_scene
+REPO = Path(__file__).resolve().parents[2]
+for extra in (REPO / "services" / "runtime", REPO / "packages" / "ledger" / "src"):
+    if str(extra) not in sys.path:
+        sys.path.insert(0, str(extra))
+
+from app.paths import INBOX  # noqa: E402
+from harness.crop_bench import GOLD_DIR, make_scene  # noqa: E402
 
 QUESTIONS = ("How much did we spend on fuel this year?", "What is our VAT bill for this quarter?")
 
@@ -99,15 +106,134 @@ def _proposal_keep(b: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+NOTES = """
+**The spoken questions are synthetic speech** (text to speech on our own server, mono WAV, about 3 s each), used only
+as test input. Separately, the owner used spoken questions from the Android app on his own phone on 4 Nov 2026; that
+use is not recorded here.
+
+What this shows and does not show:
+
+- Each step's "Served by" is what the runtime's own call log (`GET /ai/calls`) recorded for that step. With
+  `X-AI-Route: local_first` and `local_only` a call served by `spark` is Muse Glimmer 30B on our own server.
+- The answers were not scored against an answer key; every figure an answer quotes is checked by code against the
+  books (the KnownNumbers check). Reading accuracy is measured separately on 200 synthetic documents:
+  `evals/runs/spark13_200` and `evals/runs/spark13_messy_200`; the word-error figure for transcription is in
+  `evals/runs/stt`. A few live calls are not a measurement.
+- The scanned photo is a synthetic scene (a gold receipt on a cluttered desk, `harness.crop_bench.make_scene`); its
+  reading is compared with that gold document below.
+"""
+
+
+def _call(x: dict[str, Any]) -> str:
+    fb = f" (fell back from {', '.join(x['fell_back_from'])})" if x.get("fell_back_from") else ""
+    return f"{x['task']}: {x['provider']} `{x['model']}`{fb}{'' if x['ok'] else ' FAILED'}"
+
+
+def _served(c: dict[str, Any]) -> str:
+    calls = c.get("ai_calls") or []
+    if not calls:
+        heard = (c.get("result") or {}).get("transcribed_by") if isinstance(c.get("result"), dict) else None
+        return f"{heard['label']} (`{heard['model']}`)" if heard else "no AI call"
+    out = [_call(x) for x in calls]
+    res = c.get("result")
+    heard = res.get("transcribed_by") if isinstance(res, dict) else None
+    if isinstance(heard, dict):
+        out.insert(0, f"transcribed by {heard['label']} (`{heard['model']}`)")
+    return "; ".join(out)
+
+
+def _what(c: dict[str, Any]) -> str:
+    r = c.get("result")
+    if not isinstance(r, dict):
+        return str(r)[:160] if r else ""
+    if "transcript" in r and "answer_md" not in r:
+        return f"heard: “{r['transcript']}”"
+    if "answer_md" in r:
+        t = f"heard: “{r['transcript']}”; " if r.get("transcript") else ""
+        return t + f"answer: “{r['answer_md']}”"
+    if "summary" in r:
+        return f"summary: “{(r['summary'] or {}).get('summary_md')}” (by {(r['summary'] or {}).get('model')})"
+    if "note" in r:
+        n = r.get("note") or {}
+        return f"{r.get('goals')} goals; note: “{n.get('note_md')}” (by {n.get('model')})"
+    if "files" in r:
+        f = (r.get("files") or [{}])[0]
+        g = f.get("guess") or {}
+        return f"job {r.get('status')}; file stage {f.get('stage_label')}; type guessed {g.get('kind')} ({g.get('confidence')}, by {g.get('by')})"  # noqa: E501
+    if "extracted" in r:
+        e = r["extracted"]
+        crop = r.get("crop") or {}
+        return (
+            f"status {r.get('status')}; read {e.get('supplier_name')}, {e.get('date')}, gross {e.get('gross_total')}; "
+            f"crop: {crop.get('note')}"
+        )
+    if "providers" in r:
+        return "; ".join(f"{p['name']} `{p['model']}` {p['status']}" for p in r["providers"])
+    return ", ".join(f"{k}={v}" for k, v in r.items())[:200]
+
+
+def write_report(data: dict[str, Any], out: Path, gold: dict[str, Any] | None = None) -> None:
+    rows = [
+        "| # | Check | Request | HTTP | Result | Served by (`/ai/calls`) | Time |",
+        "|---|---|---|---:|---|---|---:|",
+    ]
+    for i, c in enumerate(data["checks"], 1):
+        cell = _what(c).replace("|", "\\|").replace("\n", " ")
+        rows.append(f"| {i} | {c['check']} | `{c['request']}` | {c['status']} | {cell} | {_served(c)} | {c['s']} s |")
+    calls = [x for c in data["checks"] for x in c.get("ai_calls") or []]
+    meta = sum(x["provider"] == "meta" for x in calls)
+    fell = sum(bool(x.get("fell_back_from")) for x in calls)
+    failed = sum(not x["ok"] for x in calls)
+    stt = sum(
+        1
+        for c in data["checks"]
+        if isinstance(c.get("result"), dict) and (c["result"].get("transcribed_by") or {}).get("provider") == "muse"
+    )
+    g = ""
+    if gold:
+        g = (
+            f"\nGold for the scanned photo (`{gold['file']}`): supplier {gold['supplier']}, date {gold['date']}, gross "
+            f"{gold['gross']}, expected status {gold['status']}.\n"
+        )
+    text = (
+        f"# Live checks of the Meta paths\n\nRun at {data['at']} against `{data['api']}` in a company demo session "
+        "(`POST /demo/session?kind=company`, the fictional Bramblewood Joinery Ltd sample books). Script: "
+        "`evals/harness/live_checks.py`; raw results with every step's `/ai/calls` records: `checks.json`. The script "
+        "holds no key: the server uses its own.\n\n"
+        + "\n".join(rows)
+        + f"\n\nAI calls logged: {len(calls)} ({meta} to the Meta Model API), {fell} fell back, {failed} failed; "
+        f"{stt} transcriptions by Muse Voice Transcribe.\n" + g + NOTES
+    )
+    (out / "report.md").write_text(text, encoding="utf-8")
+
+
+def _gold_facts(path: Path) -> dict[str, Any]:
+    from harness.run_extraction import expected_status
+
+    gd = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        "file": path.name,
+        "supplier": gd["supplier"]["name"],
+        "date": gd["date"],
+        "gross": gd["gross_total"],
+        "status": expected_status(gd),
+    }
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--api", default="https://api.accnomos.com")
     ap.add_argument("--wav", action="append", default=[])
     ap.add_argument("--out", default="runs/live_checks")
     ap.add_argument("--scan-wait", type=float, default=240.0)
+    ap.add_argument("--report-only", action="store_true", help="rewrite report.md from checks.json, no requests")
     args = ap.parse_args()
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+    gold_path = sorted(GOLD_DIR.glob("*.json"))[20]
+    if args.report_only:
+        write_report(json.loads((out / "checks.json").read_text(encoding="utf-8")), out, _gold_facts(gold_path))
+        return
     k = Checker(args.api)
 
     r = k.step(
@@ -149,13 +275,13 @@ def main() -> None:
         )
 
     # A cluttered phone-photo style scene of a gold receipt, uploaded to the demo inbox, then scanned
-    gold = sorted(GOLD_DIR.glob("*.json"))[20]
+    gold = gold_path
     png, _truth = make_scene(json.loads(gold.read_text(encoding="utf-8"))["printed_text"], "dark_desk_mug", seed=4242)
     name = f"live-check-{gold.stem}.png"
     k.step(
         "upload a receipt photo to the demo inbox",
         "PUT",
-        f"/demo/graph/v1.0/me/drive/special/approot:/00 Inbox/{name}:/content",
+        f"/demo/graph/v1.0/me/drive/special/approot:/{INBOX}/{name}:/content",
         keep=lambda b: {"name": b.get("name")},
         content=png,
         headers={"Content-Type": "image/png"},
@@ -198,10 +324,9 @@ def main() -> None:
         "/books/goals",
         keep=lambda b: {"goals": len(b.get("goals") or []), "note": b.get("note")},
     )
-    (out / "checks.json").write_text(
-        json.dumps({"api": k.api, "at": datetime.now(UTC).isoformat(timespec="seconds"), "checks": k.out}, indent=2),
-        encoding="utf-8",
-    )
+    data = {"api": k.api, "at": datetime.now(UTC).isoformat(timespec="seconds"), "checks": k.out}
+    (out / "checks.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
+    write_report(data, out, _gold_facts(gold_path))
 
 
 if __name__ == "__main__":
