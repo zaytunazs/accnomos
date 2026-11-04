@@ -16,6 +16,7 @@ The edit is data: EDL below. Each scene has a voice line (vo/<id>.wav, starting 
 shots played back to back; a shot's `segs` pick seconds of its source ("a..b", where a/b are numbers, "end", or a
 mark name from the capture, optionally +/- seconds), joined with a short crossfade, then fitted to `dur`.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -30,45 +31,135 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H, FPS = 1920, 1080, 30
 BROWN, CREAM, GOLD, DARK = "#5A2D00", "#F8F6F3", "#C9A45C", "#2A1A0D"
-ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", "-r", str(FPS), "-video_track_timescale", "15360"]
+ENC = [
+    "-c:v",
+    "libx264",
+    "-preset",
+    "veryfast",
+    "-crf",
+    "16",
+    "-pix_fmt",
+    "yuv420p",
+    "-r",
+    str(FPS),
+    "-video_track_timescale",
+    "15360",
+]
 XF = 0.3  # crossfade between the kept parts of one recording
 
 # --------------------------------------------------------------------------------------------------------------------
 # The edit. Lower thirds: (feature, the Meta model at work). Text on screen: UK English, Meta models only.
 EDL: list[dict] = [
     {"id": "title", "card": "title", "dur": 2.6},
-    {"id": "s1", "lead": 0.4, "lt": ("Home, in plain English", "Summary worded by Muse Spark · figures by code"), "shots": [
-        {"layout": "split", "src": "w-home", "segs": ["0..end"], "phone": "p-home", "psegs": ["0..end"], "dur": 19.2},
-    ]},
-    {"id": "s2", "lead": 0.4, "lt": ("Goals and spending", "Progress note by Muse Spark"), "shots": [
-        {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 6.0, "crop": [640, 220, 1280, 720]},
-        {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 7.4},
-    ]},
-    {"id": "s3", "lead": 0.4, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
-        {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 4.8},
-        {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.4},
-        {"layout": "full", "src": "w-talk", "segs": ["1.0..speak+2.2", "ready-0.3..end"], "dur": 10.8, "crop": [560, 0, 1360, 765]},
-    ]},
-    {"id": "s4", "lead": 0.4, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
-        {"layout": "phone", "src": "p-receipt", "segs": ["1.6..gallery+0.4", "ready-0.2..wait2+0.8", "ready2+2.0..ready2+7.5"], "dur": 7.8,
-         "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve.")},
-        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 14.8},
-    ]},
-    {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"), "shots": [
-        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 4.6},
-        {"layout": "full", "src": "w-vat-hmrc", "segs": ["0.5..4.5", "user+0.3..userReady+1.2", "hmrc+3.0..hmrc+5.0", "back-3.2..back-0.8", "submit-1.6..submit+0.6", "receipt+0.3..end"], "dur": 13.0},
-    ]},
-    {"id": "s6", "lead": 0.4, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
-        {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 5.2},
-        {"layout": "split", "src": "w-personal", "segs": ["0..end"], "phone": "p-personal", "psegs": ["0..end"], "dur": 7.8},
-        {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 5.0},
-    ]},
-    {"id": "s7", "lead": 0.4, "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"), "shots": [
-        {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 6.6, "crop": [240, 40, 1600, 900]},
-        {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 4.8},
-        {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 6.4},
-        {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 5.0},
-    ]},
+    {
+        "id": "s1",
+        "lead": 0.4,
+        "lt": ("Home, in plain English", "Summary worded by Muse Spark · figures by code"),
+        "shots": [
+            {
+                "layout": "split",
+                "src": "w-home",
+                "segs": ["0..end"],
+                "phone": "p-home",
+                "psegs": ["0..end"],
+                "dur": 19.2,
+            },
+        ],
+    },
+    {
+        "id": "s2",
+        "lead": 0.4,
+        "lt": ("Goals and spending", "Progress note by Muse Spark"),
+        "shots": [
+            {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 6.0, "crop": [640, 220, 1280, 720]},
+            {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 7.4},
+        ],
+    },
+    {
+        "id": "s3",
+        "lead": 0.4,
+        "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"),
+        "shots": [
+            {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 4.8},
+            {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.4},
+            {
+                "layout": "full",
+                "src": "w-talk",
+                "segs": ["1.0..speak+2.2", "ready-0.3..end"],
+                "dur": 10.8,
+                "crop": [560, 0, 1360, 765],
+            },
+        ],
+    },
+    {
+        "id": "s4",
+        "lead": 0.4,
+        "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"),
+        "shots": [
+            {
+                "layout": "phone",
+                "src": "p-receipt",
+                "segs": ["1.6..gallery+0.4", "ready-0.2..wait2+0.8", "ready2+2.0..ready2+7.5"],
+                "dur": 7.8,
+                "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve."),
+            },
+            {
+                "layout": "full",
+                "src": "w-invoice",
+                "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"],
+                "dur": 14.8,
+            },
+        ],
+    },
+    {
+        "id": "s5",
+        "lead": 0.4,
+        "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"),
+        "shots": [
+            {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 4.6},
+            {
+                "layout": "full",
+                "src": "w-vat-hmrc",
+                "segs": [
+                    "0.5..4.5",
+                    "user+0.3..userReady+1.2",
+                    "hmrc+3.0..hmrc+5.0",
+                    "back-3.2..back-0.8",
+                    "submit-1.6..submit+0.6",
+                    "receipt+0.3..end",
+                ],
+                "dur": 13.0,
+            },
+        ],
+    },
+    {
+        "id": "s6",
+        "lead": 0.4,
+        "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"),
+        "shots": [
+            {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 5.2},
+            {
+                "layout": "split",
+                "src": "w-personal",
+                "segs": ["0..end"],
+                "phone": "p-personal",
+                "psegs": ["0..end"],
+                "dur": 7.8,
+            },
+            {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 5.0},
+        ],
+    },
+    {
+        "id": "s7",
+        "lead": 0.4,
+        "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"),
+        "shots": [
+            {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 6.6, "crop": [240, 40, 1600, 900]},
+            {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 4.8},
+            {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 6.4},
+            {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 5.0},
+        ],
+    },
     {"id": "s8", "lead": 0.5, "card": "end", "dur": 21.0},
     {"id": "judges", "card": "judges", "dur": 7.0},
 ]
@@ -84,7 +175,11 @@ def run(cmd: list[str]) -> None:
 
 
 def probe_dur(p: Path) -> float:
-    r = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)], capture_output=True, text=True)
+    r = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)],
+        capture_output=True,
+        text=True,
+    )
     return float(r.stdout.strip() or 0)
 
 
@@ -214,7 +309,9 @@ def chain(label_in: str, segs: list[tuple[float, float]], dur: float, tag: str, 
     labels = []
     for i, (a, b) in enumerate(segs):
         lab = f"{tag}p{i}"
-        f.append(f"[{label_in}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS,fps={FPS},{pre}format=yuv420p,settb=1/{FPS * 512}[{lab}]")
+        f.append(
+            f"[{label_in}]trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS,fps={FPS},{pre}format=yuv420p,settb=1/{FPS * 512}[{lab}]"
+        )
         labels.append((lab, b - a))
     # split the input once per segment
     if len(segs) > 1:
@@ -231,9 +328,14 @@ def chain(label_in: str, segs: list[tuple[float, float]], dur: float, tag: str, 
     if total > dur:
         speed = min(total / dur, MAX_SPEED + 0.08)
     out = f"{tag}fit"
-    f.append(f"[{cur}]setpts=PTS/{speed:.4f},fps={FPS},tpad=stop_mode=clone:stop_duration={dur + 1:.2f},trim=duration={dur:.3f},setpts=PTS-STARTPTS[{out}]")
+    f.append(
+        f"[{cur}]setpts=PTS/{speed:.4f},fps={FPS},tpad=stop_mode=clone:stop_duration={dur + 1:.2f},trim=duration={dur:.3f},setpts=PTS-STARTPTS[{out}]"
+    )
     if speed > 1.02:
-        print(f"  {tag}: {total:.1f}s of footage in {dur:.1f}s (x{speed:.2f}){'  TRIMMED' if total / dur > MAX_SPEED + 0.08 else ''}", file=sys.stderr)
+        print(
+            f"  {tag}: {total:.1f}s of footage in {dur:.1f}s (x{speed:.2f}){'  TRIMMED' if total / dur > MAX_SPEED + 0.08 else ''}",
+            file=sys.stderr,
+        )
     return ";".join(f), out
 
 
@@ -338,10 +440,19 @@ def card_image(root: Path, work: Path, fonts: Fonts, kind: str) -> Path:
         d.text((x, y), "For the judges", font=fonts.b(58), fill=GOLD)
         y += 100
         rows = [
-            ("Meta models at run time", "Muse Spark 1.3 (Meta Model API, the default) · Muse Glimmer 30B (Meta open weights, on our own GPU server or the user's computer) · Muse Voice Transcribe. Muse Image made the art at build time."),
-            ("Measured", "Share of 200 synthetic documents with every field right, clean / messy:  Muse Spark 1.3  95 % / 96 %  ·  Glimmer  85 % / 80 %"),
+            (
+                "Meta models at run time",
+                "Muse Spark 1.3 (Meta Model API, the default) · Muse Glimmer 30B (Meta open weights, on our own GPU server or the user's computer) · Muse Voice Transcribe. Muse Image made the art at build time.",
+            ),
+            (
+                "Measured",
+                "Share of 200 synthetic documents with every field right, clean / messy:  Muse Spark 1.3  95 % / 96 %  ·  Glimmer  85 % / 80 %",
+            ),
             ("Provenance", "Live call records for both models: docs/submission/OPEN_WEIGHTS.md"),
-            ("Try it", "accnomos.com, then Try the demo. Android APK on GitHub Releases; the Play listing is in review."),
+            (
+                "Try it",
+                "accnomos.com, then Try the demo. Android APK on GitHub Releases; the Play listing is in review.",
+            ),
             ("Limits", "HMRC filing is sandbox only. The demo data is fictional."),
         ]
         fl, fb = fonts.b(34), fonts.r(32)
@@ -397,12 +508,16 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
         n += 2
         f, pv = chain(pin, segments(raw, psrc, psegs), dur, "p", pre=f"scale={sw}:{sh}:flags=lanczos,")
         fl.append(f)
-        fl.append(f"[{mi}:v]format=gray,trim=duration={dur:.3f},fps={FPS}[pm];[{pv}]format=rgba[pva];[pva][pm]alphamerge[pmasked]")
+        fl.append(
+            f"[{mi}:v]format=gray,trim=duration={dur:.3f},fps={FPS}[pm];[{pv}]format=rgba[pva];[pva][pm]alphamerge[pmasked]"
+        )
         bg = f"color=c={'0xF8F6F3' if layout == 'phone' else '0x2A1A0D'}:s={W}x{H}:r={FPS}:d={dur:.3f}"
         fl.append(f"{bg}[bg]")
         if layout == "split":
             ww, wh = 1392, 783
-            f, wv = chain("0:v", segments(raw, shot["src"], shot["segs"]), dur, "w", pre=f"scale={ww}:{wh}:flags=lanczos,")
+            f, wv = chain(
+                "0:v", segments(raw, shot["src"], shot["segs"]), dur, "w", pre=f"scale={ww}:{wh}:flags=lanczos,"
+            )
             fl.append(f)
             wx, wy = 56, 200
             px = wx + ww + (W - (wx + ww) - fw) // 2 + 8
@@ -418,18 +533,40 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
             n += 1
             fl.append(f"[bg][{si}:v]overlay=0:0:shortest=1[b1]")
             prev = "b1"
-        fl.append(f"[{fi}:v]trim=duration={dur:.3f},fps={FPS}[fr];[{prev}][fr]overlay={px}:{py}[b2];[b2][pmasked]overlay={px + 46}:{py + 46}[b3]")
+        fl.append(
+            f"[{fi}:v]trim=duration={dur:.3f},fps={FPS}[fr];[{prev}][fr]overlay={px}:{py}[b2];[b2][pmasked]overlay={px + 46}:{py + 46}[b3]"
+        )
         base = "b3"
     if i == 0 and scene.get("lt"):
         lt = lower_third(work, fonts, scene["id"], *scene["lt"])
         inputs += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(lt)]
         li = n
         n += 1
-        fl.append(f"[{li}:v]format=rgba,fade=t=in:st=0.25:d=0.4:alpha=1,fade=t=out:st=4.8:d=0.5:alpha=1[lt];[{base}][lt]overlay=0:0:shortest=1[lto]")
+        fl.append(
+            f"[{li}:v]format=rgba,fade=t=in:st=0.25:d=0.4:alpha=1,fade=t=out:st=4.8:d=0.5:alpha=1[lt];[{base}][lt]overlay=0:0:shortest=1[lto]"
+        )
         base = "lto"
     fl.append(f"[{base}]trim=duration={dur:.3f},setpts=PTS-STARTPTS,format=yuv420p[vout]")
     tmp = out.with_name(out.stem + ".part.mp4")
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *inputs, "-filter_complex", ";".join(fl), "-map", "[vout]", "-an", *ENC, "-t", f"{dur:.3f}", str(tmp)])
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *inputs,
+            "-filter_complex",
+            ";".join(fl),
+            "-map",
+            "[vout]",
+            "-an",
+            *ENC,
+            "-t",
+            f"{dur:.3f}",
+            str(tmp),
+        ]
+    )
     tmp.rename(out)
 
 
@@ -438,14 +575,32 @@ def render_card(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) ->
     dur = scene["dur"]
     # a slow push-in (3 %) so a long card does not look frozen; fade in from black on the first card
     z = {"title": 0.03, "end": 0.02, "judges": 0.0}[scene["card"]]
-    vf = (f"scale={W * 2}:{H * 2},zoompan=z='1+{z}*on/({dur * FPS:.0f})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={round(dur * FPS)}:s={W}x{H}:fps={FPS},"
-          f"format=yuv420p")
+    vf = (
+        f"scale={W * 2}:{H * 2},zoompan=z='1+{z}*on/({dur * FPS:.0f})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={round(dur * FPS)}:s={W}x{H}:fps={FPS},"
+        f"format=yuv420p"
+    )
     if scene["card"] == "title":
         vf += ",fade=t=in:st=0:d=0.5"
     if scene["card"] == "judges":
         vf += f",fade=t=out:st={dur - 0.6:.2f}:d=0.6"
     tmp = out.with_name(out.stem + ".part.mp4")
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(img), "-vf", vf, "-frames:v", str(round(dur * FPS)), *ENC, str(tmp)])
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(img),
+            "-vf",
+            vf,
+            "-frames:v",
+            str(round(dur * FPS)),
+            *ENC,
+            str(tmp),
+        ]
+    )
     tmp.rename(out)
 
 
@@ -454,7 +609,11 @@ def render_card(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) ->
 
 
 def silences(p: Path) -> list[tuple[float, float]]:
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-i", str(p), "-af", "silencedetect=noise=-38dB:d=0.22", "-f", "null", "-"], capture_output=True, text=True)
+    r = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-i", str(p), "-af", "silencedetect=noise=-38dB:d=0.22", "-f", "null", "-"],
+        capture_output=True,
+        text=True,
+    )
     st = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", r.stderr)]
     en = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", r.stderr)]
     return list(zip(st, en))
@@ -471,7 +630,11 @@ def chunks(text: str, limit: int = 84) -> list[str]:
                 if len(p) <= limit:
                     nxt.append(p)
                     continue
-                cut = max((m.end() for m in re.finditer(r"[,;:]\s", p) if m.end() < len(p) - 8 and m.end() > 12), key=lambda e: -abs(e - len(p) / 2), default=None)
+                cut = max(
+                    (m.end() for m in re.finditer(r"[,;:]\s", p) if m.end() < len(p) - 8 and m.end() > 12),
+                    key=lambda e: -abs(e - len(p) / 2),
+                    default=None,
+                )
                 if cut is None:
                     words = p.split()
                     half = len(words) // 2
@@ -525,7 +688,9 @@ def ts_ass(t: float) -> str:
 
 
 def write_subs(caps: list[tuple[float, float, str]], srt: Path, ass: Path) -> None:
-    srt.write_text("".join(f"{i}\n{ts_srt(a)} --> {ts_srt(b)}\n{t}\n\n" for i, (a, b, t) in enumerate(caps, 1)), encoding="utf-8")
+    srt.write_text(
+        "".join(f"{i}\n{ts_srt(a)} --> {ts_srt(b)}\n{t}\n\n" for i, (a, b, t) in enumerate(caps, 1)), encoding="utf-8"
+    )
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
@@ -540,7 +705,10 @@ Style: Cap,Atkinson Hyperlegible,46,&H00FFFFFF,&H00FFFFFF,&H5A1A0D2A,&H5A1A0D2A,
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
-    ass.write_text(head + "".join(f"Dialogue: 0,{ts_ass(a)},{ts_ass(b - 0.04)},Cap,,0,0,0,,{t}\n" for a, b, t in caps), encoding="utf-8")
+    ass.write_text(
+        head + "".join(f"Dialogue: 0,{ts_ass(a)},{ts_ass(b - 0.04)},Cap,,0,0,0,,{t}\n" for a, b, t in caps),
+        encoding="utf-8",
+    )
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -557,7 +725,24 @@ def contact_sheet(video: Path, timeline: list[dict], dest: Path) -> None:
     tiles = []
     for t, label in times:
         f = dest.with_name(f".cs_{len(tiles)}.jpg")
-        run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-ss", f"{t:.2f}", "-i", str(video), "-frames:v", "1", "-vf", "scale=480:270", str(f)])
+        run(
+            [
+                "ffmpeg",
+                "-y",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-ss",
+                f"{t:.2f}",
+                "-i",
+                str(video),
+                "-frames:v",
+                "1",
+                "-vf",
+                "scale=480:270",
+                str(f),
+            ]
+        )
         im = Image.open(f).convert("RGB")
         d = ImageDraw.Draw(im)
         d.rectangle((0, 0, 480, 26), fill=(0, 0, 0))
@@ -599,7 +784,10 @@ def main() -> None:
         sdur = sum(p[1] for p in pieces)
         lead = sc.get("lead", 0.3)
         if vo_len and lead + vo_len > sdur - 0.2:
-            print(f"WARNING {sid}: voice {vo_len:.1f}s + lead {lead}s is longer than the scene ({sdur:.1f}s)", file=sys.stderr)
+            print(
+                f"WARNING {sid}: voice {vo_len:.1f}s + lead {lead}s is longer than the scene ({sdur:.1f}s)",
+                file=sys.stderr,
+            )
         for i, (f, d, shot) in enumerate(pieces):
             if (not only or sid in only) and not (a.keep and f.exists()):
                 print(f"render {f.name} ({d:.1f}s)", file=sys.stderr, flush=True)
@@ -611,9 +799,24 @@ def main() -> None:
         if vo_len:
             vo_parts.append((wav, t + lead))
             caps += [(t + lead + x, t + lead + y, c) for x, y, c in timed_captions(lines[sid], wav)]
-        timeline.append({"scene": sid, "start": round(t, 2), "dur": round(sdur, 2), "vo_start": round(t + lead, 2) if vo_len else None,
-                         "vo_len": round(vo_len, 2), "shots": [{"src": (p[2] or {}).get("src", sc.get("card")), "layout": (p[2] or {}).get("layout", "card"), "dur": p[1]} for p in pieces],
-                         "text": lines.get(sid, "")})
+        timeline.append(
+            {
+                "scene": sid,
+                "start": round(t, 2),
+                "dur": round(sdur, 2),
+                "vo_start": round(t + lead, 2) if vo_len else None,
+                "vo_len": round(vo_len, 2),
+                "shots": [
+                    {
+                        "src": (p[2] or {}).get("src", sc.get("card")),
+                        "layout": (p[2] or {}).get("layout", "card"),
+                        "dur": p[1],
+                    }
+                    for p in pieces
+                ],
+                "text": lines.get(sid, ""),
+            }
+        )
         t += sdur
     total = t
     print(f"total {total:.2f}s", file=sys.stderr)
@@ -623,7 +826,24 @@ def main() -> None:
     lst = work / "concat.txt"
     lst.write_text("".join(f"file '{f}'\n" for f in files))
     clean = work / "clean.mp4"
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(clean)])
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            str(lst),
+            "-c",
+            "copy",
+            str(clean),
+        ]
+    )
 
     # voice-over track, timed to the picture, loudness-normalised (-16 LUFS, web)
     vo = out / "accnomos-demo-v2-vo.wav"
@@ -631,26 +851,117 @@ def main() -> None:
     for k, (w, st) in enumerate(vo_parts):
         ins += ["-i", str(w)]
         flt.append(f"[{k}:a]aresample=48000,adelay={round(st * 1000)}:all=1[a{k}]")
-    flt.append("".join(f"[a{k}]" for k in range(len(vo_parts))) + f"amix=inputs={len(vo_parts)}:normalize=0,apad,atrim=duration={total:.3f},loudnorm=I=-16:TP=-1.5:LRA=7[vo]")
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", *ins, "-filter_complex", ";".join(flt), "-map", "[vo]", "-ar", "48000", "-ac", "1", str(vo)])
+    flt.append(
+        "".join(f"[a{k}]" for k in range(len(vo_parts)))
+        + f"amix=inputs={len(vo_parts)}:normalize=0,apad,atrim=duration={total:.3f},loudnorm=I=-16:TP=-1.5:LRA=7[vo]"
+    )
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            *ins,
+            "-filter_complex",
+            ";".join(flt),
+            "-map",
+            "[vo]",
+            "-ar",
+            "48000",
+            "-ac",
+            "1",
+            str(vo),
+        ]
+    )
 
     srt, ass = out / "accnomos-demo-v2.srt", work / "captions.ass"
     write_subs(caps, srt, ass)
     fontsdir = str(root / "fonts")
     final = out / "accnomos-demo-v2.mp4"
     tmp = final.with_name("final.part.mp4")
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(clean), "-i", str(vo), "-vf", f"subtitles=filename={ass}:fontsdir={fontsdir}",
-         "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
-         "-ac", "2", "-movflags", "+faststart", "-shortest", str(tmp)])
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(clean),
+            "-i",
+            str(vo),
+            "-vf",
+            f"subtitles=filename={ass}:fontsdir={fontsdir}",
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "192k",
+            "-ac",
+            "2",
+            "-movflags",
+            "+faststart",
+            "-shortest",
+            str(tmp),
+        ]
+    )
     tmp.rename(final)
     novo = out / "accnomos-demo-v2-novo.mp4"
     tmp = novo.with_name("novo.part.mp4")
-    run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-i", str(clean), "-f", "lavfi", "-t", f"{total:.3f}", "-i", "anullsrc=r=48000:cl=stereo",
-         "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "128k",
-         "-movflags", "+faststart", "-shortest", str(tmp)])
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            str(clean),
+            "-f",
+            "lavfi",
+            "-t",
+            f"{total:.3f}",
+            "-i",
+            "anullsrc=r=48000:cl=stereo",
+            "-map",
+            "0:v",
+            "-map",
+            "1:a",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "20",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-movflags",
+            "+faststart",
+            "-shortest",
+            str(tmp),
+        ]
+    )
     tmp.rename(novo)
     contact_sheet(final, timeline, out / "accnomos-demo-v2-contact-sheet.jpg")
-    (out / "timeline.json").write_text(json.dumps({"total": round(total, 2), "scenes": timeline}, indent=1, ensure_ascii=False), encoding="utf-8")
+    (out / "timeline.json").write_text(
+        json.dumps({"total": round(total, 2), "scenes": timeline}, indent=1, ensure_ascii=False), encoding="utf-8"
+    )
     print(f"DONE {final} {probe_dur(final):.2f}s", file=sys.stderr)
 
 
