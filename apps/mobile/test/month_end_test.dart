@@ -246,7 +246,7 @@ class _Fake extends RuntimeClient {
   }
 
   @override
-  Future<String> approveAction(ProposedAction action) async {
+  Future<String> approveAction(ProposedAction action, {String? heard}) async {
     approved.add(action.id);
     return 'October 2026 is closed.';
   }
