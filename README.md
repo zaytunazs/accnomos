@@ -10,6 +10,7 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 - **Outside the UK:** choose the country, the tax (VAT, GST or sales tax) and its rate, and the currency; bookkeeping, invoices, reports (with a Tax summary) and CSV exports work the same, and HMRC filing stays UK-only.
 - **Not yet:** production HMRC filing, and a run of most features against a real OneDrive; real phone photos in the evals (every accuracy figure is on synthetic documents). `docs/HONESTY.md` lists every known gap.
 - **Run it:** `uv sync --all-packages --all-extras && uv run pytest -q`; `cd apps/web && pnpm install && pnpm run build`; services and web dev servers in `docs/DEV.md`.
+- **Demo video:** [youtu.be/gTZCC_gadEE](https://youtu.be/gTZCC_gadEE) (2:56).
 - **Docs:** [Architecture](docs/ARCHITECTURE.md) · [Meta models and evals](docs/META_MODELS.md) · [Demo walkthrough](docs/DEMO.md) · [Honesty](docs/HONESTY.md) · [What remains](docs/REMAINING.md)
 
 ## For judges
@@ -20,7 +21,7 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 - **Android app for judges:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.19 at [accnomos-0.3.19-24.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.19-24/accnomos-0.3.19-24.apk)), allow installs from your browser, open it and press **Try the company demo** (or **Try the personal demo**): no account needed. The Google Play listing has been submitted and is in Google's review, which takes several days, so the APK is the way to try it now. Smoke-tested on the Android emulator on 4 Nov 2026 (`docs/reviews/final-audit-4nov/REPORT.md`).
 - **Try it:** press **Try the demo** on `https://accnomos.com` (no sign-in: your own copy of the fictional books, guide at `/judges`); or sign in with a throwaway Microsoft account and press **Load sample books** for six months of a fictional company (never yet run against a real OneDrive), or run it with no accounts in test mode ([JUDGING.md, last section](docs/submission/JUDGING.md#how-to-run-it-in-10-minutes-test-mode-no-accounts)).
 - **What is not real yet:** HMRC is sandbox only (the demo's VAT return goes to HMRC's sandbox with a test user HMRC makes for it, run end to end on 4 Nov 2026: `docs/HMRC_SANDBOX_DEMO.md`; never production); the bank feed has run against TrueLayer's sandbox only; the Android app has run on one real phone (the owner's, 4 Nov 2026) and the emulator, no others; most features are tested on fakes. Every gap: [docs/HONESTY.md](docs/HONESTY.md).
-- Video script and submission texts: [docs/submission/](docs/submission/).
+- **Demo video (2:56):** [youtu.be/gTZCC_gadEE](https://youtu.be/gTZCC_gadEE). Script, shot list and submission texts: [docs/submission/](docs/submission/).
 
 ## Layout
 
