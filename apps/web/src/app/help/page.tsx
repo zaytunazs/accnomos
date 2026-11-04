@@ -13,7 +13,7 @@ const GUIDES: { href: string; title: string; body: string }[] = [
   { href: "/ask", title: "Ask about your books", body: "Questions in plain words; the figures come from your ledger, not from the AI." },
   { href: "/meta-models", title: "Meta models at work", body: "Which Meta Muse models read your documents and how they scored on our test sets." },
   { href: "/settings", title: "Settings", body: "Your business, VAT periods, AI choice, your accountant, files and backups, your data." },
-  { href: "/judges", title: "For judges", body: "The demo sandbox and the guided tour of the sample books." },
+  { href: "/demo", title: "Demo guide", body: "A tour of the sample books: review and approve a receipt, ask, invoices, bank, VAT to HMRC's sandbox, goals." },
 ];
 
 /** Help and guides: one page that points at the guide for each part of the app (footer link). */

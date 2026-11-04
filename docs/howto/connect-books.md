@@ -10,10 +10,11 @@ and keep your own books in a folder in your own OneDrive.
    ![The Connect page: what signing in asks for, the Sign in with Microsoft button, and the two demo buttons below it.](img/connect-books-1.png)
    If this goes wrong: the page never loads, so check you are on
    accnomos.com and not an old test address.
-2. To try first, open **For judges** (`/judges`) and press **Start the demo**
-   (a fictional company) or **Start the personal demo** (a fictional
-   household). Each visitor gets their own copy, reset after 2 hours.
-   ![The judges' guide: Try Accnomos in one click, with Start the demo, Start the personal demo and what to try in order.](img/connect-books-2.png)
+2. To try first, open the **Demo guide** (`/demo`, where **Try the demo**
+   lands) and press **Start the demo** (a fictional company) or **Start the
+   personal demo** (a fictional household). Each visitor gets their own copy,
+   reset after 2 hours.
+   ![The demo guide: Your demo of Accnomos, with Start the demo, Start the personal demo and what to try.](img/connect-books-2.png)
    If this goes wrong: the button says the sample books are being prepared,
    so wait: the first demo of the day takes a minute or two to build.
 3. Read **Your summary** at the top of **Home**. It is a list sorted by what

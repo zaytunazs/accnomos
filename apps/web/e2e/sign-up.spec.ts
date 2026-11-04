@@ -87,7 +87,7 @@ test.describe("submission build (the default)", () => {
     await page.goto("/join");
     await expect(page).toHaveTitle("Join the waiting list · Accnomos");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Accnomos: bookkeeping you only have to check");
-    await expect(page.getByRole("main").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/judges");
+    await expect(page.getByRole("main").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/demo");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 
     const email = address("join-page");

@@ -159,7 +159,7 @@ prices this way, and add its host to whatever egress allow-list the server uses.
 ## 5. Demo sandbox for judges (runtime)
 
 Judges, and anyone else, can use the whole app on the sample books without a Microsoft sign-in: *Try the demo — no
-sign-in* on the signed-out Home and on Connect, or the guide at `/judges`. Each visitor gets their own copy of the
+sign-in* on the signed-out Home and on Connect, or the demo guide at `/demo` (the judges' notes at `/judges` start it too). Each visitor gets their own copy of the
 fictional Bramblewood Joinery Ltd books in the runtime's memory (`services/runtime/app/demo.py`); nothing is stored
 about them and no Microsoft or HMRC account is involved. Off by default; production turns it on.
 

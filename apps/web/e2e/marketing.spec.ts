@@ -32,10 +32,10 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
 
     await expect(page.getByRole("list", { name: "Apps" }).first()).toContainText("Available on Android");
-    // "Try the demo" goes to /judges (the demo sandbox guide; DemoLink.tsx starts the sandbox on the way); the
-    // footer's sample books to /try.
-    await expect(page.getByRole("main").getByRole("link", { name: "Try the demo", exact: true }).first()).toHaveAttribute("href", "/judges");
-    await expect(page.getByRole("banner").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/judges");
+    // "Try the demo" goes to /demo (the demo guide; DemoLink.tsx starts the sandbox on the way); the footer's sample
+    // books to /try.
+    await expect(page.getByRole("main").getByRole("link", { name: "Try the demo", exact: true }).first()).toHaveAttribute("href", "/demo");
+    await expect(page.getByRole("banner").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/demo");
     await page.getByRole("contentinfo").getByRole("link", { name: "Browse the sample books" }).click();
     await expect(page).toHaveURL(/\/try$/);
     await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
@@ -152,7 +152,7 @@ test.describe("process animation", () => {
 test.describe("at 360 px", () => {
   test.use({ viewport: { width: 360, height: 740 } });
 
-  for (const path of ["/", "/how-it-works", "/privacy", "/terms", "/judges", "/join"]) {
+  for (const path of ["/", "/how-it-works", "/privacy", "/terms", "/demo", "/judges", "/join"]) {
     test(`${path}: no sideways scroll`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");

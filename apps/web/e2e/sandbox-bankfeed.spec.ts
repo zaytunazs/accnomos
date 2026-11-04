@@ -11,7 +11,7 @@ const LABEL = "Bank sandbox (TrueLayer test bank) — no real bank data";
 
 async function startDemo(page: Page) {
   await page.clock.install({ time: TODAY });
-  await page.goto("/judges");
+  await page.goto("/demo");
   await page.getByRole("button", { name: "Start the personal demo" }).click();
   await expect(page).toHaveURL(/:\d+\/$/, { timeout: 60_000 });
 }

@@ -7,10 +7,10 @@ import { expect, test, TODAY } from "./fixtures";
 
 const bar = (page: Page) => page.getByRole("complementary", { name: "Demo sandbox" });
 
-test("the personal demo opens a household's books from /judges, and its bar offers the company demo", async ({ page }) => {
+test("the personal demo opens a household's books from /demo, and its bar offers the company demo", async ({ page }) => {
   test.setTimeout(120_000);
   await page.clock.install({ time: TODAY });
-  await page.goto("/judges");
+  await page.goto("/demo");
   await page.getByRole("button", { name: "Start the personal demo" }).click();
   await expect(page).toHaveURL(/:\d+\/$/, { timeout: 60_000 }); // Home, which is the household's own
   await expect(bar(page)).toContainText("SAMPLE — FICTIONAL HOUSEHOLD");
@@ -43,6 +43,6 @@ test("the personal demo opens a household's books from /judges, and its bar offe
 test("the landing page offers both demos", async ({ page }) => {
   await page.goto("/");
   const main = page.getByRole("main");
-  await expect(main.getByRole("link", { name: "Try the demo", exact: true }).first()).toHaveAttribute("href", "/judges");
-  await expect(main.getByRole("link", { name: "Try the personal demo" }).first()).toHaveAttribute("href", "/judges"); // the guide explains both when scripts or demos are off
+  await expect(main.getByRole("link", { name: "Try the demo", exact: true }).first()).toHaveAttribute("href", "/demo");
+  await expect(main.getByRole("link", { name: "Try the personal demo" }).first()).toHaveAttribute("href", "/demo"); // the guide explains both when scripts or demos are off
 });

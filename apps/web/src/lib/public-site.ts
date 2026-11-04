@@ -4,11 +4,12 @@
  */
 
 /**
- * Routes shown in the marketing shell to signed-out visitors. `/` is the landing page (signed in: Home); `/judges`
+ * Routes shown in the marketing shell to signed-out visitors. `/` is the landing page (signed in: Home); `/demo`
  * is the demo guide (inside a demo sandbox, which counts as signed in, it keeps the app shell and the demo bar);
- * `/meta-models` says which Meta model does which job.
+ * `/judges` is the hackathon judges' notes, linked from the footer and the repository only; `/meta-models` says
+ * which Meta model does which job.
  */
-export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/judges", "/join"]);
+export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/demo", "/judges", "/join"]);
 
 export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
 
@@ -33,8 +34,11 @@ export const LAUNCH = "November 2026";
 /** Where the chat and the footer send anything the site cannot answer (runtime: PUBLIC_CONTACT_EMAIL). */
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "zohaibsharif@gmail.com";
 
-/** "Try the demo": the judges' sandbox guide (src/app/judges); DemoLink.tsx starts the sandbox on the way there. */
-export const DEMO_GUIDE = "/judges";
+/** "Try the demo": the demo guide (src/app/demo); DemoLink.tsx starts the sandbox on the way there. */
+export const DEMO_GUIDE = "/demo";
+
+/** The hackathon judges' notes (src/app/judges): what is real, and how to run the code. Footer link only. */
+export const JUDGES_PAGE = "/judges";
 
 /** What is not tested against real services, kept in the public repository (docs/HONESTY.md). */
 export const HONESTY_URL = "https://github.com/zaytunazs/accnomos/blob/main/docs/HONESTY.md";

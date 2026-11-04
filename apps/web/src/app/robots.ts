@@ -32,6 +32,7 @@ const DISALLOWED = [
   "/setup",
   "/accountant",
   "/connect",
+  "/demo",
   "/judges",
   "/auth",
 ];

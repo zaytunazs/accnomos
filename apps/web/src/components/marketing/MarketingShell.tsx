@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { VersionStrip } from "@/components/StatusStrips";
-import { CONTACT_EMAIL, DEMO_GUIDE } from "@/lib/public-site";
+import { CONTACT_EMAIL, DEMO_GUIDE, JUDGES_PAGE } from "@/lib/public-site";
 import { LogoMark } from "./Marks";
 import PublicHeader from "./PublicHeader";
 
@@ -86,6 +86,7 @@ function SiteFooter() {
             { href: "/how-it-works", text: "How each feature works" },
             { href: "/meta-models", text: "Meta models used" },
             { href: `mailto:${CONTACT_EMAIL}`, text: "Contact us" },
+            { href: JUDGES_PAGE, text: "For judges" },
           ]}
         />
       </div>

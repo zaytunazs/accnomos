@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CONTACT_EMAIL } from "@/lib/public-site";
+import { CONTACT_EMAIL, DEMO_GUIDE, JUDGES_PAGE } from "@/lib/public-site";
 import { APP_VERSION } from "@/lib/version";
 
 const linkClass = "hover:text-teal-dark hover:underline underline-offset-2";
@@ -28,7 +28,8 @@ function useBuild(): string | null {
 }
 
 /**
- * The footer on every app page (AppShell): how it works, help, privacy, the Meta models, judges, contact, Settings
+ * The footer on every app page (AppShell): how it works, help, privacy, the Meta models, the demo guide, contact,
+ * Settings
  * (the last link on every page, where keyboard users leave it) and the version. The public site has its own footer (MarketingShell).
  */
 export default function AppFooter() {
@@ -51,7 +52,10 @@ export default function AppFooter() {
         <Link href="/meta-models" className={linkClass}>
           Meta models used
         </Link>
-        <Link href="/judges" className={linkClass}>
+        <Link href={DEMO_GUIDE} className={linkClass}>
+          Demo guide
+        </Link>
+        <Link href={JUDGES_PAGE} className={linkClass}>
           For judges
         </Link>
         <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
