@@ -53,11 +53,11 @@ XF = 0.3  # crossfade between the kept parts of one recording
 # A scene whose footage is missing from raw/ is left out (with a warning), so the edit still renders without it.
 HMRC_PW = [{"until": "hmrc", "box": [596, 838, 200, 54]}]  # the sandbox test user's password, blurred
 EDL: list[dict] = [
-    {"id": "title", "lead": 0.5, "card": "title", "dur": 8.8},
-    {"id": "f1", "lead": 0.4, "card": "features", "dur": 5.6},
+    {"id": "title", "lead": 0.3, "card": "title", "dur": 11.4},
+    {"id": "f1", "lead": 0.3, "card": "features", "dur": 5.2},
     {
         "id": "s1",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Home, in plain English", "Summary worded by Muse Spark · figures by code"),
         "shots": [
             {
@@ -66,25 +66,25 @@ EDL: list[dict] = [
                 "segs": ["0..end"],
                 "phone": "p-home",
                 "psegs": ["0..end"],
-                "dur": 17.2,
+                "dur": 17.1,
             },
         ],
     },
     {
         "id": "s2",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Goals and spending", "Progress note by Muse Spark"),
         "shots": [
-            {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 4.8, "crop": [640, 220, 1280, 720]},
+            {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 4.6, "crop": [640, 220, 1280, 720]},
             {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 6.0},
         ],
     },
     {
         "id": "s3",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"),
         "shots": [
-            {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 3.8},
+            {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 3.6},
             {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.0},
             {
                 "layout": "full",
@@ -97,27 +97,27 @@ EDL: list[dict] = [
     },
     {
         "id": "s4",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"),
         "shots": [
             {
                 "layout": "phone",
                 "src": "p-receipt",
                 "segs": ["1.6..gallery+0.4", "ready-0.2..wait2+0.8", "ready2+2.0..ready2+7.5"],
-                "dur": 7.3,
+                "dur": 7.0,
                 "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve."),
             },
             {
                 "layout": "full",
                 "src": "w-invoice",
                 "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"],
-                "dur": 12.8,
+                "dur": 12.0,
             },
         ],
     },
     {
         "id": "s4b",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Ask anything, in plain words", "Muse Spark · figures by code"),
         "shots": [
             {"layout": "full", "src": "w-profit", "segs": ["0..wait+0.6", "ready-0.3..end"], "dur": 5.0, "crop": "ASK"},
@@ -125,7 +125,7 @@ EDL: list[dict] = [
                 "layout": "full",
                 "src": "w-timesheet",
                 "segs": ["0..wait+0.6", "ready-0.3..approve+0.4", "ready2-0.3..end"],
-                "dur": 6.6,
+                "dur": 6.4,
                 "crop": "ASK",
             },
             {"layout": "full", "src": "w-tiles", "segs": ["0..wait+0.6", "ready-0.3..end"], "dur": 4.6, "crop": "ASK"},
@@ -135,14 +135,14 @@ EDL: list[dict] = [
         "id": "s5a",
         "lead": 0.3,
         "lt": ("Automatic bank feed", "TrueLayer sandbox · matched by code"),
-        "shots": [{"layout": "full", "src": "w-bankfeed", "segs": ["0..end"], "dur": 4.8}],
+        "shots": [{"layout": "full", "src": "w-bankfeed", "segs": ["0..end"], "dur": 5.6}],
     },
     {
         "id": "s5",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Reports and VAT", "Boxes by code · filed to HMRC's sandbox"),
         "shots": [
-            {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 3.4},
+            {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 3.2},
             {
                 "layout": "full",
                 "src": "w-vat-hmrc",
@@ -154,14 +154,14 @@ EDL: list[dict] = [
                     "submit-1.0..submit+0.4",
                     "receipt+0.3..receipt+3.8",
                 ],
-                "dur": 10.3,
+                "dur": 9.7,
                 "blur": HMRC_PW,
             },
         ],
     },
     {
         "id": "s6",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"),
         "shots": [
             {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 4.6},
@@ -171,38 +171,38 @@ EDL: list[dict] = [
                 "segs": ["0..end"],
                 "phone": "p-personal",
                 "psegs": ["0..end"],
-                "dur": 7.2,
+                "dur": 7.0,
             },
             {"layout": "full", "src": "w-personal-goals", "segs": ["0..end"], "dur": 4.4},
         ],
     },
     {
         "id": "s7",
-        "lead": 0.4,
+        "lead": 0.3,
         "lt": ("Your choice of Meta model", "Muse Glimmer 30B (open weights) · Muse Spark (Meta API)"),
         "shots": [
-            {"layout": "full", "src": "w-route", "segs": ["set1+0.2..ask1-0.2"], "dur": 4.6, "crop": "SET"},
+            {"layout": "full", "src": "w-route", "segs": ["set1+0.2..ask1-0.2"], "dur": 4.2, "crop": "SET"},
             {
                 "layout": "full",
                 "src": "w-route",
                 "segs": ["ask1..wait+0.5", "ready-0.2..by1+2.4"],
-                "dur": 4.8,
+                "dur": 4.6,
                 "crop": "ANS",
             },
-            {"layout": "full", "src": "w-route", "segs": ["set2+0.2..ask2-0.2"], "dur": 2.4, "crop": "SET"},
+            {"layout": "full", "src": "w-route", "segs": ["set2+0.2..ask2-0.2"], "dur": 2.2, "crop": "SET"},
             {
                 "layout": "full",
                 "src": "w-route",
                 "segs": ["ask2..wait2+0.5", "ready2-0.2..by2+2.4"],
-                "dur": 4.6,
+                "dur": 4.4,
                 "crop": "ANS",
             },
             {"layout": "full", "src": "w-files", "segs": ["0..3.5", "8.3..end"], "dur": 3.4},
             {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 2.4},
         ],
     },
-    {"id": "s8", "lead": 0.4, "card": "end", "dur": 22.4},
-    {"id": "judges", "card": "judges", "dur": 7.0},
+    {"id": "s8", "lead": 0.4, "card": "end", "dur": 18.0},
+    {"id": "judges", "card": "judges", "dur": 6.0},
 ]
 # 16:9 crops of the 1920 x 1080 frame, filled in once the takes are looked at (None = whole frame)
 CROPS: dict[str, list[int] | None] = {
@@ -638,7 +638,7 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
         li = n
         n += 1
         fl.append(
-            f"[{li}:v]format=rgba,fade=t=in:st=0.25:d=0.4:alpha=1,fade=t=out:st=4.8:d=0.5:alpha=1[lt];[{base}][lt]overlay=0:0:shortest=1[lto]"
+            f"[{li}:v]format=rgba,fade=t=in:st=0.25:d=0.4:alpha=1,fade=t=out:st={min(4.8, dur - 0.5):.2f}:d=0.5:alpha=1[lt];[{base}][lt]overlay=0:0:shortest=1[lto]"
         )
         base = "lto"
     fl.append(f"[{base}]trim=duration={dur:.3f},setpts=PTS-STARTPTS,format=yuv420p[vout]")
