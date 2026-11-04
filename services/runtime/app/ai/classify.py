@@ -139,7 +139,7 @@ async def classify(
             return content
 
     try:
-        raw, _served = await chain.run(cfg, "classify", attempt, vision=b64 is not None)
+        raw, _served = await chain.run(cfg, "classify", attempt, vision=b64 is not None, accept=chain.parses_as_json)
     except httpx.HTTPStatusError as exc:
         detail = " ".join(exc.response.text.split())[:200]  # the provider's own words, never our key (header auth)
         msg = f"{cfg.mode} backend HTTP {exc.response.status_code}"

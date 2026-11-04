@@ -257,15 +257,31 @@ async def _within[T](coro: Awaitable[T], c: AiConfig) -> T:
         raise error(f"{who} took longer than {limit:.0f} s") from None
 
 
+def escalates(c: AiConfig, has_next: bool) -> bool:
+    """True when an unclear reply from `c` goes on to the next provider: the user chose "local model first, Meta API
+    when unsure" (X-AI-Route: local_first), `c` is a local model and there is a Meta provider after it."""
+    return has_next and c.local and c.route == "local_first"
+
+
 async def run[T](
-    cfg: AiConfig, task: str, attempt: Callable[[AiConfig], Awaitable[T]], *, vision: bool = False
+    cfg: AiConfig,
+    task: str,
+    attempt: Callable[[AiConfig], Awaitable[T]],
+    *,
+    vision: bool = False,
+    accept: Callable[[T], bool] | None = None,
 ) -> tuple[T, ServedBy]:
     """`attempt` on each provider until one answers; returns its result and who served it. Raises the last
-    provider's error when none answers, or at once on an error that is not the provider's (see module doc)."""
+    provider's error when none answers, or at once on an error that is not the provider's (see module doc).
+
+    `accept(result)` says whether a reply is usable (it parses, it fits the schema). Only with the local-first route
+    does an unusable reply, or an error about the reply, from a local model move on to the Meta Model API; otherwise
+    the reply is the caller's to judge, as before."""
     fell: list[str] = []
     tried = candidates(cfg, vision=vision)
     for i, c in enumerate(tried):
         t0 = time.perf_counter()
+        has_next = i + 1 < len(tried)
         try:
             result = await _within(attempt(c), c)
         except OutOfTime:
@@ -273,6 +289,10 @@ async def run[T](
             raise
         except Exception as exc:
             down = fails_over(exc)
+            if not down and escalates(c, has_next):
+                _record(task, c, t0, False, fell, "unclear reply")
+                fell.append(c.provider or c.mode)
+                continue
             _record(task, c, t0, False, fell, why(exc))
             if c.in_chain and down:
                 BREAKER.failure(c.provider, why(exc))
@@ -282,10 +302,36 @@ async def run[T](
             raise
         if c.in_chain:
             BREAKER.success(c.provider)
+        if accept is not None and escalates(c, has_next) and not _accepts(accept, result):
+            _record(task, c, t0, False, fell, "unclear reply")
+            fell.append(c.provider or c.mode)
+            continue
         served = _record(task, c, t0, True, fell)
         _SERVED.set(served)
         return result, served
     raise ProviderDown("no AI provider to try")  # unreachable: chain() is never empty
+
+
+def _accepts[T](accept: Callable[[T], bool], result: T) -> bool:
+    try:
+        return bool(accept(result))
+    except Exception:  # a judge that cannot read the reply: the reply is unclear
+        return False
+
+
+def parses_as_json(text: object) -> bool:
+    """A reply usable as the model's JSON answer (the `accept` most callers pass)."""
+    from app.ai.extract import parse_model_json  # late: extract imports this module
+
+    if isinstance(text, tuple):
+        text = text[0]
+    if not isinstance(text, str) or not text.strip():
+        return False
+    try:
+        parse_model_json(text)
+    except Exception:
+        return False
+    return True
 
 
 async def stream(cfg: AiConfig, task: str, open_stream: Callable[[AiConfig], AsyncIterator[str]]) -> AsyncIterator[str]:

@@ -197,7 +197,9 @@ async def extract_document(
             return await _call_meta(client, b64, mime, c, schema, text)
 
     try:
-        (text_out, usage), served = await chain.run(cfg, "extract", attempt, vision=b64 is not None)
+        (text_out, usage), served = await chain.run(
+            cfg, "extract", attempt, vision=b64 is not None, accept=chain.parses_as_json
+        )
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text[:500]
         raise ExtractionError(f"{cfg.mode} backend HTTP {exc.response.status_code}: {detail}") from exc

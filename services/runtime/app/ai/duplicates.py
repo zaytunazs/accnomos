@@ -114,7 +114,7 @@ async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], c
                 return text
 
     try:
-        text, _ = await chain.run(cfg, "duplicate", attempt)
+        text, _ = await chain.run(cfg, "duplicate", attempt, accept=chain.parses_as_json)
     except httpx.HTTPError as exc:
         raise JudgementError(f"{cfg.mode} backend unreachable: {exc!r}") from exc
     try:

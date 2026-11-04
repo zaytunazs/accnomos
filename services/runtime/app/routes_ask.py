@@ -248,7 +248,7 @@ async def ask_voice(
     fails or is not configured. `transcribed_by` names the one that did."""
     providers = stt.chain(cfg)
     if not providers:
-        raise HTTPException(400, "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server")
+        raise HTTPException(400, _no_voice(cfg))
     try:
         when = AskPeriod.model_validate_json(period) if period else None
         turns = _TURNS.validate_json(history) if history else []
@@ -274,6 +274,15 @@ async def ask_voice(
     return AskVoiceAnswer(**answer.model_dump(), transcript=heard.text, transcribed_by=heard.by)
 
 
+def _no_voice(cfg: AiConfig) -> str:
+    if cfg.route == "local_only":
+        return (
+            "Voice input is off while Settings › AI is set to local model only: speech-to-text runs on the Meta "
+            "Model API. Type your question instead."
+        )
+    return "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server"
+
+
 class HeardReply(BaseModel):
     """POST /books/ask/transcribe: what was said, and which speech-to-text service heard it."""
 
@@ -291,7 +300,7 @@ async def transcribe(
     then sends to POST /actions/approve with `via: "voice"` (the runtime checks the words again there)."""
     providers = stt.chain(cfg)
     if not providers:
-        raise HTTPException(400, "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server")
+        raise HTTPException(400, _no_voice(cfg))
     try:
         voice.require_ffmpeg()
         data = await audio.read(voice.MAX_UPLOAD_BYTES + 1)

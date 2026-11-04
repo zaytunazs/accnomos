@@ -3,7 +3,8 @@
 The UI chooses the backend per request via headers; the server falls back to
 environment variables so the harness and CLI can run without a browser.
 
-Headers: X-AI-Mode (local|key|auto), X-AI-Base-Url, X-AI-Model, X-Meta-Api-Key.
+Headers: X-AI-Mode (local|key|auto), X-AI-Base-Url, X-AI-Model, X-Meta-Api-Key,
+         X-AI-Route (meta_first|local_first|local_only: which answers first, see `apply_route`).
 Env:     AI_MODE, OLLAMA_BASE, OLLAMA_MODEL, MODEL_API_BASE, MODEL_API_MODEL, META_API_KEY,
          AI_ALLOWED_BASE_URLS (extra base URLs a client may pick with X-AI-Base-Url),
          AI_PROVIDERS (the server's ordered provider chain, e.g. `modal,meta,spark`: app/ai/providers.py).
@@ -31,6 +32,8 @@ else:
         Request = Any
 
 AiMode = Literal["local", "key"]
+AiRoute = Literal["meta_first", "local_first", "local_only"]
+ROUTES: tuple[AiRoute, ...] = ("meta_first", "local_first", "local_only")
 
 DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "muse-glimmer:30b"
@@ -84,6 +87,8 @@ class AiConfig(BaseModel):
     vision: bool = True  # reads images
     voice: bool = False  # Muse Voice Transcribe (Meta Model API only)
     in_chain: bool = False  # one of the server's AI_PROVIDERS: failover and the circuit breaker apply
+    local: bool = False  # a local model (the user's own computer, or the server's own Glimmer): not the Meta API
+    route: AiRoute | None = None  # the user's X-AI-Route, when they chose one
     fallbacks: list[AiConfig] = Field(default_factory=list, repr=False)
 
     def chain(self) -> list[AiConfig]:
@@ -110,6 +115,20 @@ class AiConfig(BaseModel):
 
     @classmethod
     def resolve(
+        cls,
+        mode: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+        api_key: str | None = None,
+        route: str | None = None,
+    ) -> AiConfig:
+        """Build a config from explicit values, falling back to the environment, then order it by the user's
+        route when they chose one (`apply_route`)."""
+        cfg = cls._resolve(mode, base_url, model, api_key)
+        return apply_route(cfg, route)
+
+    @classmethod
+    def _resolve(
         cls,
         mode: str | None = None,
         base_url: str | None = None,
@@ -148,6 +167,7 @@ class AiConfig(BaseModel):
             api_key=key,
             provider=m,
             voice=m == "key",
+            local=m == "local",
         )
 
     @classmethod
@@ -166,11 +186,49 @@ class AiConfig(BaseModel):
             base_url=base_url,
             model=get("X-AI-Model"),
             api_key=get("X-Meta-Api-Key"),
+            route=get("X-AI-Route"),
         )
 
     def public(self) -> dict[str, str]:
         """Loggable view (never includes the key or auth headers)."""
         return {"mode": self.mode, "base_url": self.base_url, "model": self.model, "provider": self.provider}
+
+
+def apply_route(cfg: AiConfig, route: str | None) -> AiConfig:
+    """Order the providers by the user's choice of which answers first (X-AI-Route, Settings › AI):
+
+    * meta_first  - the Meta Model API (the user's own key, else the server's) first, a local model if it is down;
+    * local_first - a local model first; the Meta Model API when the local model is down or its reply does not come
+                    back in a usable form (`chain.run(..., accept=...)`), so most calls spend no Meta credit;
+    * local_only  - a local model and nothing else: nothing goes to the Meta Model API, voice included.
+
+    "Local" is the user's own computer when they chose it (X-AI-Mode: local), else the server's own Glimmer
+    (`spark`). No route (or an unknown one) leaves the config exactly as before. A route that leaves nothing to try
+    raises ValueError (HTTP 400), so local only never quietly reaches the Meta API.
+    """
+    from app.ai import providers  # late: providers builds AiConfigs
+
+    r = (route or "").strip().lower()
+    if r not in ROUTES or cfg.provider == "test":
+        return cfg
+    mine = cfg.chain()
+    if cfg.in_chain:  # the server's chain: its local ones and its hosted ones
+        local = [c for c in mine if c.local]
+        cloud = [c for c in mine if not c.local]
+    else:  # a backend the user chose, plus the server's chain for the other half
+        server = providers.chain_config().chain() if providers.chain_names() else []
+        if cfg.local:
+            local, cloud = mine, [c for c in server if not c.local]
+        else:
+            local, cloud = [c for c in server if c.local], mine
+    order = {"meta_first": cloud + local, "local_first": local + cloud, "local_only": local}[r]
+    if not order:
+        if r == "local_only":
+            raise ValueError("Local model only is chosen, but no local model is set up on this server")
+        return cfg
+    tagged = [c.model_copy(update={"route": r, "fallbacks": []}) for c in order]
+    head, *rest = tagged
+    return head.model_copy(update={"fallbacks": rest})
 
 
 def ai_config_from_request(request: Request) -> AiConfig:

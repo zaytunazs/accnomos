@@ -139,6 +139,7 @@ def provider_config(name: ProviderName, env: Mapping[str, str] | None = None) ->
         mode="local",
         base_url=(env.get("OLLAMA_BASE") or DEFAULT_OLLAMA_BASE).rstrip("/"),
         model=env.get("OLLAMA_MODEL") or DEFAULT_OLLAMA_MODEL,
+        local=True,  # the server's own Glimmer: a local model for X-AI-Route
         **common,
     )
 
@@ -159,6 +160,7 @@ def _test_config(name: ProviderName) -> AiConfig:
         request_s=total,
         voice=False,
         in_chain=True,
+        local=name == "spark",
     )
 
 
