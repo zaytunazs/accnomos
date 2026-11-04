@@ -52,7 +52,7 @@ XF = 0.3  # crossfade between the kept parts of one recording
 # The judges stop at 3:00: keep the total <= 2:58.
 # A scene whose footage is missing from raw/ is left out (with a warning), so the edit still renders without it.
 # the bank feed: the button, TrueLayer's sandbox consent (Allow), back connected with the lines fetched
-BANK_SEGS = ["connect-0.8..connect+0.6", "tl+3.6..tl+5.0", "back+0.3..back+3.4"]
+BANK_SEGS = ["connect-0.8..connect+0.6", "tl+3.6..tl+5.0", "back+0.3..back+3.8"]
 HMRC_PW = [
     {"from": "userReady-0.15", "until": "hmrc", "box": [596, 838, 200, 54]}
 ]  # the sandbox test user's password, blurred
@@ -153,7 +153,7 @@ EDL: list[dict] = [
         "shots": [
             {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[0]], "dur": 1.6},
             {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[1]], "dur": 1.4},
-            {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[2]], "dur": 2.6, "crop": [376, 300, 1280, 720]},
+            {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[2]], "dur": 3.0, "crop": [376, 300, 1280, 720]},
         ],
     },
     {
