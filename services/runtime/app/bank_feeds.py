@@ -531,9 +531,12 @@ def _account(raw: dict[str, Any]) -> FeedAccount | None:
 async def _describe(api: TrueLayerApi, access: str) -> tuple[str, str, datetime | None, datetime | None, list[Any]]:
     """(credentials id, bank name, consent created, consent expires, accounts) for a fresh access token."""
     me = await api.me(access)
-    cred = str(me.get("credentials_id") or "")
-    if not ID_RE.match(cred):
+    raw_cred = str(me.get("credentials_id") or "").strip()
+    if not raw_cred:
         raise BankFeedError("TrueLayer did not say which connection this is; connect again")
+    # TrueLayer's credentials_id is base64-like ("+", "/", "=" included, as the sandbox sends): our id goes in a URL
+    # path and a file, so an id that is not path-safe is stood in for by a stable hash of it.
+    cred = raw_cred if ID_RE.match(raw_cred) else "tl_" + hashlib.sha256(raw_cred.encode()).hexdigest()[:32]
     provider = me.get("provider") if isinstance(me.get("provider"), dict) else {}
     bank = str((provider or {}).get("display_name") or "Your bank")[:200]
     accounts = [a for a in (_account(r) for r in await api.accounts(access)) if a is not None]

@@ -214,3 +214,18 @@ def test_refused_in_a_demo_unless_the_server_is_on_the_sandbox(
         assert r.json()["detail"].startswith("Connecting a bank feed is switched off in the demo sandbox.")
         assert why in r.json()["detail"]
     assert not FAKES.requests  # nothing reached TrueLayer
+
+
+async def test_a_base64_credentials_id_from_truelayer_is_accepted() -> None:
+    """TrueLayer's sandbox sends credentials ids like "Ab+c/D==": kept as a stable, path-safe id."""
+
+    class Api:
+        async def me(self, access: str) -> dict:
+            return {"credentials_id": "6L7SJ6mNv5q+cqd5/TaHL5Ij5mIx==", "provider": {"display_name": "MOCK"}}
+
+        async def accounts(self, access: str) -> list:
+            return []
+
+    cred, bank, *_ = await bank_feeds._describe(Api(), "tok")  # noqa: SLF001
+    again, *_ = await bank_feeds._describe(Api(), "tok")  # noqa: SLF001
+    assert cred == again and cred.startswith("tl_") and bank_feeds.ID_RE.match(cred) and bank == "MOCK"
