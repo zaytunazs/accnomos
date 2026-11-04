@@ -1,7 +1,7 @@
 """Make the website's screenshots (apps/web/public/shots/*.webp) from the real ones in the repo.
 
 Sources: docs/submission/shots/ (the web app in test mode with the fictional sample books, taken by e2e/demo.spec.ts and
-e2e/shots.spec.ts), apps/mobile/screenshots/ (the Android app on an emulator, signed out, sample data) and
+e2e/shots.spec.ts), apps/mobile/screenshots/ (the Android app on an emulator, company demo, labelled sample data) and
 apps/web/public/sample-receipt.png. Every output is a crop or resize of one of those: nothing is drawn or edited.
 Run from the repo root: `python apps/web/scripts/marketing-images.py` (needs Pillow with WebP).
 """
@@ -39,7 +39,7 @@ JOBS: dict[str, tuple[Path, tuple[int, int, int, int] | None, int]] = {
     "feat-your-data": (SHOTS / "settings-your-data.png", (352, 40, 1160, 750), 808),
     "feat-ask": (SHOTS / "10-ask.png", (248, 96, 1264, 800), 808),
     "feat-action": (SHOTS / "11-invoice-card.png", (248, 100, 1264, 603), 808),
-    # Android (emulator, signed out, labelled sample data).
+    # Android (emulator, company demo, labelled sample data).
     "android-review": (MOBILE / "review.png", None, 360),
     "android-ask": (MOBILE / "ask.png", None, 360),
 }
