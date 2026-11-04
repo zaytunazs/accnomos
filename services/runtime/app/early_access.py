@@ -1,4 +1,4 @@
-"""Early-adopter list: people who sign up before the public launch get a place on the waiting list and one email at launch.
+"""The waiting list: people who leave their email get a place on it and one email when their place comes up.
 
 The one thing the runtime keeps. It is the operator's marketing list (controller: Zaytuna Business Services Ltd),
 not anyone's books, and it is off unless EARLY_ACCESS_ENABLED=1 (docs/SECURITY.md, docs/PRODUCTION.md).
@@ -42,8 +42,8 @@ except ImportError:  # pragma: no cover  Windows dev box: the in-process lock st
 
 # Shown next to the unticked checkbox and stored with every record, so each record says what the person agreed to.
 # The route refuses any other wording. CONSENT_TEXT is the pre-launch form's (apps/web/src/lib/early-access.ts);
-# SIGNUP_CONSENT_TEXT the neutral "Join the waiting list" form's (apps/web/src/lib/sign-up.ts), which the submission build
-# shows and which never mentions a launch. Both feed the same list.
+# SIGNUP_CONSENT_TEXT the neutral "Join the waiting list" form's (apps/web/src/lib/sign-up.ts), which the
+# submission build shows and which never mentions a launch. Both feed the same list.
 CONSENT_TEXT = "Email me once Accnomos launches. I can unsubscribe any time."
 SIGNUP_CONSENT_TEXT = "Email me when my place on the Accnomos waiting list comes up. I can unsubscribe any time."
 CONSENT_TEXTS: tuple[str, ...] = (CONSENT_TEXT, SIGNUP_CONSENT_TEXT)
