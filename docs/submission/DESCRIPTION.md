@@ -2,8 +2,8 @@
 
 Refreshed 4 Nov 2026. Every claim below comes from `README.md`, `docs/HONESTY.md`, `docs/PROVENANCE.md`,
 `docs/submission/META_MODELS.md` and the reports named there. Owner: Zohaib Sharif, Zaytuna Business Services Ltd (solo).
-**Word counts** (`wc -w` on the text between the rules, so `95 %` counts as two words): the 150-word text is **154**,
-the 400-word text **420**. The form's counter may differ; trim a sentence if it objects.
+**Word counts** (`wc -w` on the text between the rules, so `95 %` counts as two words): the 150-word text is **150**,
+the 400-word text **400**. The form's counter may differ; trim a sentence if it objects.
 
 Rules for editing:
 
@@ -28,27 +28,27 @@ Rules for editing:
 ---
 Accnomos is bookkeeping and MTD VAT for UK small businesses, sole traders, landlords and households. Your books are files in your own OneDrive; no database.
 
-Snap a receipt on the Android app, upload it on the web, or let it arrive by email, and a Meta model reads it: Muse Spark 1.3 on the Meta Model API first, Muse Glimmer 30B (open weights, our own server) as fallback or local mode. Code checks the arithmetic, you approve, and code calculates the nine VAT boxes for an HMRC sandbox submission. Ask, typed or spoken through Muse Voice Transcribe, answers with every figure checked against your books.
+Snap a receipt on the Android app, upload it on the web, or let it arrive by email; a Meta model reads it: Muse Spark 1.3 on the Meta Model API first, Muse Glimmer 30B (open weights, our own server) as fallback or local mode. Code checks the arithmetic, you approve, and code calculates the nine VAT boxes for an HMRC sandbox submission. Ask, typed or spoken (Muse Voice Transcribe), answers with every figure checked against your books.
 
-Measured on 200 synthetic documents each: every field right on 95 % clean and 96 % messy for Muse Spark 1.3, 85 % and 80 % for Glimmer.
+Measured on 200 synthetic documents each: every field right on 95 % clean, 96 % messy for Muse Spark 1.3; 85 % and 80 % for Glimmer.
 
-Honestly: HMRC and the bank feed are sandbox only, most features are tested on fakes, and real photos will score lower.
+Honestly: HMRC and the bank feed are sandbox only, most features are tested on fakes; real photos will score lower.
 ---
 
 ## 400-word version
 
 ---
-**The problem.** A VAT-registered UK small business must keep digital records and file through Making Tax Digital software, and someone has to turn a shoebox of receipts into those records. Accnomos asks whether AI can do the typing while the owner keeps control.
+**The problem.** A VAT-registered UK small business must keep digital records and file through Making Tax Digital software; someone has to turn a shoebox of receipts into those records. Accnomos asks whether AI can do the typing while the owner keeps control.
 
-**The approach.** *AI proposes*: snap a receipt on the Android app, upload it on the web, or let Outlook intake pick it up from email, and a Meta model reads it into strict JSON. *You approve*: nothing posts until you tap Approve. *Code calculates*: arithmetic checks, ledger events, the nine VAT boxes, invoices, payments, credit notes and reports are deterministic code with tests. In Ask, every figure is checked against the books; an invented number is replaced by the facts.
+**The approach.** *AI proposes*: snap a receipt on the Android app, upload it on the web, or let Outlook intake fetch it from email; a Meta model reads it into strict JSON. *You approve*: nothing posts until you tap Approve. *Code calculates*: arithmetic checks, ledger events, the nine VAT boxes, invoices, payments, credit notes and reports are deterministic, tested code. In Ask, every figure is checked against the books; an invented number is replaced by the facts.
 
-**Your books, your OneDrive.** The runtime is stateless: the ledger is append-only event files in your OneDrive, and `Books.xlsx` is regenerated for your accountant. Disconnect and every file is still yours.
+**Your books, your OneDrive.** The runtime is stateless: the ledger is append-only event files in your OneDrive; `Books.xlsx` is regenerated for your accountant. Disconnect and every file is still yours.
 
-**What is built.** Receipt capture, review and a second reading; contacts and ageing; invoicing with part payments and credit notes; bank statements, rules, reconciliation and an Open Banking feed; reports; an audit trail; the VAT return with an HMRC sandbox flow; MTD Income Tax figures for sole traders and landlords; jobs, mileage, payroll; household budgets and goals; Ask, a hands-free assistant and chat actions that wait for Approve; web and Android apps.
+**What is built.** Receipt capture, review and a second reading; contacts and ageing; invoicing with part payments and credit notes; bank statements, rules, reconciliation and an Open Banking feed; reports; audit trail; the VAT return with an HMRC sandbox flow; MTD Income Tax figures for sole traders and landlords; jobs, mileage, payroll; household budgets and goals; Ask, a hands-free assistant and chat actions that wait for Approve; web and Android apps.
 
-**The Meta models.** Muse Spark 1.3 on the Meta Model API answers first on the live server; Muse Glimmer 30B, Meta's open-weights model on our own server, is the fallback and the local mode. Muse Voice Transcribe hears spoken questions, SAM 3.1 crops receipt photos, Muse Image made the brand art, Muse Code helped write the app.
+**The Meta models.** Muse Spark 1.3 on the Meta Model API answers first on the live server; Muse Glimmer 30B, Meta's open-weights model on our own server, is the fallback and local mode. Muse Voice Transcribe hears spoken questions, SAM 3.1 crops receipt photos, Muse Image made the brand art, Muse Code helped write it.
 
-**Measured, and its limits.** On 200 synthetic documents, clean and messy, every field was right on 95 % and 96 % (Muse Spark 1.3) and 85 % and 80 % (Glimmer); real photos will score lower. Ask got 32 of 32 figures exact. Autopilot, off by default, made no false posts on 154 clean documents but 17 in 467 overall, all re-dated copies of receipts already posted.
+**Measured, and its limits.** On 200 synthetic documents, clean and messy, every field was right on 95 % and 96 % (Muse Spark 1.3), 85 % and 80 % (Glimmer); real photos score lower. Ask got 32 of 32 figures exact. Autopilot, off by default, made 17 false posts in 467 documents, all re-dated copies of posted receipts.
 
-**Honest status.** The Meta paths ran live on the public server on 4 Nov 2026, records committed. HMRC is sandbox only: the demo files to HMRC's sandbox with a test user. The bank feed has met TrueLayer's sandbox only; the Android app one real phone, the owner's. Most other features are tested on fakes. Demo data is fictional. Only the owner's own server predates the event; `docs/HONESTY.md` lists every gap.
+**Honest status.** The Meta paths ran live on the public server on 4 Nov 2026, records committed. HMRC is sandbox only: the demo files to HMRC's sandbox with a test user. The bank feed has met TrueLayer's sandbox only; the Android app one real phone. Other features are mostly tested on fakes; demo data is fictional. Only the owner's server predates the event; `docs/HONESTY.md` lists every gap.
 ---
