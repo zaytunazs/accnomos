@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa  (one-off video edit script; kept as it was run)
 """Demo video v2: cut the live footage, the voice-over and the cards into the submission video (ffmpeg + Pillow).
 
     python3 edit.py ROOT [--only s3] [--draft]

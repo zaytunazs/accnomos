@@ -1,3 +1,4 @@
+# ruff: noqa  (one-off video edit script; kept as it was run)
 """Kokoro (open-source, Apache-2.0) voice-over for the v2 demo video. Runs on the Spark in ~/spark/accnomos/tts/.venv.
 
     python tts.py LINES.json OUTDIR VOICE [--ids s1,s3] [--speed 1.0] [--suffix _x]
