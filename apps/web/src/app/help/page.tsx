@@ -6,6 +6,7 @@ export const metadata = { title: "Help and guides · Accnomos" };
 
 const GUIDES: { href: string; title: string; body: string }[] = [
   { href: "/how-it-works", title: "How it works", body: "From a receipt in your Inbox to an approved entry in your own OneDrive, step by step." },
+  { href: "/how-it-works#guides", title: "Step-by-step guides", body: "Fifteen how-to guides with a screenshot for every step: VAT, payroll, goals, calendar, contacts, voice and more." },
   { href: "/review", title: "Review and approve", body: "Every reading is a card: check it, change it if needed, approve it. Nothing is posted without you." },
   { href: "/files", title: "Files and backups", body: "Where your documents are, earlier files not read yet, Back up now and how to restore." },
   { href: "/vat", title: "VAT returns", body: "The nine boxes worked out from your approved entries, and the file ready for HMRC." },

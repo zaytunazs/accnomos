@@ -24,7 +24,7 @@ const input =
   "mt-1 w-full rounded-xl border border-border bg-white px-3 py-2.5 text-[15px] text-ink aria-[invalid=true]:border-warn-ink";
 
 /**
- * The "3 months free" sign-up (runtime app/early_access.py). The consent box starts unticked and its wording is
+ * The "a place on the waiting list" sign-up (runtime app/early_access.py). The consent box starts unticked and its wording is
  * stored with the sign-up; the short notice under the button is the point-of-collection privacy information
  * (/privacy#sign-up).
  */

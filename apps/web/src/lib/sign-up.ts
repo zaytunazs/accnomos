@@ -1,15 +1,15 @@
 import { RUNTIME_URL } from "@/lib/ai-config";
 
 /**
- * The "Get 3 months free" list (runtime app/early_access.py). Two forms feed it: the neutral one here, which every
+ * The "Join the waiting list" list (runtime app/early_access.py). Two forms feed it: the neutral one here, which every
  * build may show (POST /public/sign-up), and the pre-launch build's form (lib/early-access.ts). This module never
  * names a launch, so the submission build's bundle stays clear of pre-launch words (scripts/prelaunch-words.mjs).
  */
 
 /** Must match SIGNUP_CONSENT_TEXT in services/runtime/app/early_access.py: stored with each sign-up, any other
  * wording is refused. */
-export const SIGNUP_CONSENT_TEXT = "Email me to set up my 3 months free of Accnomos. I can unsubscribe any time.";
-export const SIGNUP_SUCCESS_TEXT = "Thanks — we'll email you to set up your 3 months free";
+export const SIGNUP_CONSENT_TEXT = "Email me when my place on the Accnomos waiting list comes up. I can unsubscribe any time.";
+export const SIGNUP_SUCCESS_TEXT = "Thanks — you're on the waiting list";
 
 export type BusinessType = "company" | "sole_trader" | "personal" | "accountant";
 export const BUSINESS_TYPES: { value: BusinessType; label: string }[] = [

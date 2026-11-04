@@ -87,9 +87,9 @@ Both are in Settings › Your accountant. An accountant can leave a query on a t
 
 (29 Oct 2026, claude/signup-accountants: the owner asked for both options to be spelled out; every line is what `app/accountant.py` and the portal on main do. "Where it is offered": the opt-in appears only when the server sets `ACCOUNTANT_TEAM_EMAIL`.)
 
-## Get 3 months free (every build)
+## Join the waiting list (every build)
 
-Get 3 months free. Leave your email and we will set you up with 3 months free. Hero link next to Try the demo, a section near the end of the landing page, a line in Pricing, a FAQ entry and `/join` (the page the social posts link to). No "coming soon", "beta", "early access", "launch", "testers" or "waiting list".
+Join the waiting list. Leave your email to join the waiting list. Hero link next to Try the demo, a section near the end of the landing page, a line in Pricing, a FAQ entry and `/join` (the page the social posts link to). No "coming soon", "beta", "early access", "launch" or "testers"; no offer or price.
 
 ## Trust
 
@@ -103,7 +103,7 @@ AI proposes, you approve. Every figure that reaches your books has passed code c
 4. Which banks are covered. You import bank statements as CSV files. Barclays, Starling, Tide and Monzo style layouts are read, along with HSBC and Lloyds style paid-in and paid-out columns.
 5. Can I use it on my phone. There is an Android app with capture, Review, Ask, VAT and reports. Everyday admin such as bank uploads and detailed settings stays on the web.
 6. Can I switch from Xero or QuickBooks. Export your lists and statements from your current software and bring them across as files. Your opening position is entered once, and new documents flow in from there.
-7. Does my accountant need an account. Only a Microsoft account. In Settings, Your accountant, you invite them by email and choose view only or view and edit: your Accnomos folder in OneDrive is shared with them, and they open your books in the Accountant portal. Remove access there at any time. (Added, 29 Oct 2026: "How do I get 3 months free?" and "Can an accountant review my books for me?", as on the landing page; the second avoids the words "to review", which the landing-page test reserves for app chrome.)
+7. Does my accountant need an account. Only a Microsoft account. In Settings, Your accountant, you invite them by email and choose view only or view and edit: your Accnomos folder in OneDrive is shared with them, and they open your books in the Accountant portal. Remove access there at any time. (Added, 29 Oct 2026: "How do I join the waiting list?" and "Can an accountant review my books for me?", as on the landing page; the second avoids the words "to review", which the landing-page test reserves for app chrome.)
 8. What can the AI get wrong. It can misread a total, a date or a VAT number, most often on crumpled photos or faint print. That is why every reading is checked by code and waits for your approval before it posts.
 9. How do I stop. Export your files first if you wish, then disconnect. Your books are already files in your OneDrive, so nothing is locked in.
 10. Is my data used to train models. No. Your documents are read to keep your books, and nothing else.

@@ -89,12 +89,29 @@ test.describe("landing page at 1280 px", () => {
     for (let i = 0; i < n; i++) {
       const img = imgs.nth(i);
       const src = (await img.getAttribute("src")) ?? "";
-      expect(src, "screens come from /shots").toMatch(/^\/shots\/.+\.webp$/);
+      expect(src, "screens come from /shots (and the guides' thumbnails from /howto)").toMatch(/^\/(shots|howto)\/.+\.webp$/);
       expect(await img.getAttribute("width")).toBeTruthy();
       const hero = src.startsWith("/shots/hero-");
       expect(await img.getAttribute("loading"), src).toBe(hero ? "eager" : "lazy");
     }
   });
+});
+
+test("how-to guides: cards with a screenshot, each linking to its guide, and a link to all of them", async ({ page }) => {
+  await page.goto("/");
+  const section = page.getByRole("region", { name: "How-to guides" });
+  const cards = section.getByRole("list", { name: "How-to guides" }).getByRole("listitem");
+  await expect(cards).toHaveCount(6);
+  for (const card of await cards.all()) {
+    await expect(card.getByRole("img")).toHaveAttribute("alt", /.{12,}/);
+    await expect(card.getByRole("heading", { level: 3 }).getByRole("link")).toHaveAttribute(
+      "href",
+      /^https:\/\/github\.com\/zaytunazs\/accnomos\/blob\/main\/docs\/howto\/[a-z-]+\.md$/,
+    );
+  }
+  await expect(section.getByRole("link", { name: /^All \d+ guides$/ })).toHaveAttribute("href", /docs\/howto\/README\.md$/);
+  await section.getByRole("link", { name: "Talk to Accnomos, by voice or chat" }).focus();
+  await expect(section.getByRole("link", { name: "Talk to Accnomos, by voice or chat" })).toBeFocused();
 });
 
 test.describe("process animation", () => {

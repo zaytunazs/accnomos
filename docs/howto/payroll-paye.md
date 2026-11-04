@@ -1,32 +1,40 @@
 # Run payroll and file with Basic PAYE Tools
 
-![Run payroll and file with Basic PAYE Tools](img/payroll-paye-cover.png)
+Who this is for: an employer running a pay run. Accnomos calculates PAYE, NI,
+student loans and pensions at HMRC's 2026-27 rates, approves the run into your
+books and prepares the files. It does not submit to HMRC: you file with HMRC's
+Basic PAYE Tools or your payroll provider, and pay HMRC and your staff
+yourself.
 
-Who this is for: an employer running a pay run. Accnomos estimates the run
-and prepares the files; it never files payroll or pays HMRC. You file with
-HMRC's Basic PAYE Tools or your payroll provider.
+1. Open **Payroll** (`/payroll`, under **More**). Fill in **Payroll settings**
+   once (employer name, HMRC office number, PAYE and Accounts Office
+   references, pension provider), then press **Add employee** and enter each
+   person: payroll ID, names, NI number, date of birth, start date, starter
+   declaration, tax code, NI category, pay frequency and pay.
+   ![The New employee form for a fictional employee, Tom Ellis: payroll ID E001, NI number QQ123456C, start date 06/04/2026, starter declaration A, tax code 1257L, monthly, annual salary £24,000, and Save employee.](img/payroll-paye-1.png)
+   If this goes wrong: the tax code changes as you pick the starter
+   declaration, so check it last: the code is suggested from the declaration.
+2. Under **Pay runs**, choose the frequency and pay date and press
+   **Calculate pay run**. The draft lists gross, tax, NI, student loan,
+   pension and net pay per employee and what is due to HMRC, marked
+   *Estimate — check before filing*.
+   ![A draft monthly pay run, month 7, paid 27 Oct 2026, marked Estimate — check before filing, with what is still missing for the FPS file and Recalculate, Send to Review and Discard draft.](img/payroll-paye-2.png)
+   If this goes wrong: the run says what is missing (for example your PAYE
+   reference, or no employees on this pay run), so fill that in and press
+   **Recalculate**.
+3. Press **Send to Review** and approve the run there: that posts the staff
+   costs to your books.
+4. Download the **FPS** for the run and the **EPS** for the tax month, the
+   pension schedule for your provider (Nest, The People's Pension, Smart
+   Pension, NOW: Pensions or a generic CSV), and the payroll reports
+   (payslips, P32, P11, P60, P45 figures).
+   ![RTI files (FPS and EPS): the note to file with HMRC's Basic PAYE Tools or your provider, Download FPS outlined, Download EPS, then the pension contribution schedule and payroll reports.](img/payroll-paye-3.png)
+5. File the FPS and EPS in Basic PAYE Tools yourself, using the files to check
+   what you send figure by figure; Basic PAYE Tools does not import them.
+6. Pay HMRC and your staff from the bank, then match those bank lines in
+   [Bank](reconcile-bank.md).
 
-1. Open Payroll (`/payroll`) and add each employee once.
-   ![the employee list with name, tax code and starter declaration for each.](img/payroll-paye-1.png)
-   If this goes wrong: a tax code changes while you type, so wait for the
-   starter-code suggestion to finish before typing.
-2. Enter this period's hours and rates.
-   ![the pay-run form with hours, rate and gross per employee.](img/payroll-paye-2.png)
-   If this goes wrong: the gross looks wrong, so check the rate belongs to the
-   right employee row.
-3. Confirm the run and read every line of the estimate.
-   ![gross, tax, National Insurance and net per employee, with the estimate marker.](img/payroll-paye-3.png)
-   If this goes wrong: a deduction is missing, so the employee record lacks
-   the detail behind it; fix the record and re-run.
-4. Download the payslips, the FPS and EPS files, and the pension schedule.
-   ![the download buttons for payslips, RTI files and the pension schedule, all for the same period.](img/payroll-paye-4.png)
-   If this goes wrong: a file is for the wrong period, so check the period
-   shown on the run before downloading again.
-5. File the FPS and EPS in HMRC's Basic PAYE Tools yourself.
-   ![Basic PAYE Tools with the filed submission beside the Accnomos files they came from.](img/payroll-paye-5.png)
-   If this goes wrong: the tool rejects a file, so use the Accnomos figures
-   to check what you typed; the files only stand beside your filing.
-6. Pay HMRC and your staff outside Accnomos, then record it.
-   ![the bank payment matched against the pay run in Bank.](img/payroll-paye-6.png)
-   If this goes wrong: the run still shows unpaid, so match the bank line to
-   it by hand.
+## On Android
+
+**More › Payroll** shows the pay runs to prepare, export and confirm. Setting
+up employees is easier on the web.

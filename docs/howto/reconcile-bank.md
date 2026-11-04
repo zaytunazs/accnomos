@@ -1,27 +1,36 @@
 # Reconcile bank lines
 
-![Reconcile bank lines](img/reconcile-bank-cover.png)
-
 Who this is for: an owner matching a bank statement against the books. Import
-a CSV; Accnomos never connects to your bank.
+a statement CSV, or connect a bank feed in the sandbox; matching never posts
+anything on its own.
 
-1. Open Bank (`/bank`) and import the statement CSV.
-   ![the Bank page with the file picker and the supported layouts note (Barclays, Starling, Tide, Monzo, HSBC, Lloyds).](img/reconcile-bank-1.png)
-   If this goes wrong: the file is refused, so save it as CSV with one header
-   row and try again.
-2. Check the imported lines saved under `04 Bank statements/`.
-   ![the saved statement file named by date and bank, with the line count.](img/reconcile-bank-2.png)
-   If this goes wrong: the same file imports twice, so check the hash: an
-   identical file is a no-op and adds nothing.
-3. Work through the suggested matches and press Confirm.
-   ![each suggestion with amount within 1p, date within 5 days, and the counterparty name.](img/reconcile-bank-3.png)
-   If this goes wrong: a match looks wrong, so leave it; Confirm only what the
-   statement supports.
-4. Deal with the unmatched lines one by one.
-   ![the Create expense proposal, Mark as transfer and Ignore buttons on an unmatched line.](img/reconcile-bank-4.png)
-   If this goes wrong: an expense claims VAT it should not, so the proposal
-   lands in Review with no VAT for you to check.
-5. Read the *Reconciled to date* tile and the Bank sheet.
-   ![the reconciled-to date on the tile and matching statuses in the Bank sheet of Books.xlsx.](img/reconcile-bank-5.png)
-   If this goes wrong: the date stops early, so an unmatched line is still
-   waiting above.
+1. Open **Bank** (`/bank`). The tiles show the **Reconciled to date**, how
+   many lines are matched, how many suggested matches wait **To confirm**, and
+   what is **Unmatched**. Drop a statement CSV in the box below (Barclays,
+   Starling, Tide, Monzo, HSBC, Lloyds and most UK bank exports); the same file
+   twice is ignored.
+   ![Bank in the company demo: Reconciled to date 3 Jul 2026, Matched 30, To confirm 16 suggested matches, Unmatched 0, the sandbox bank feed and the statement drop box.](img/reconcile-bank-1.png)
+   If this goes wrong: the file is refused, so save it as CSV with one
+   header row and try again.
+2. Open the **Reconcile** tab. Exact matches (same amount, a reference that
+   matches the invoice) can be confirmed together with **Confirm all exact
+   matches**; the rest are listed one by one with **Approve**, or **Suggest
+   with AI** where code found nothing certain.
+   ![The Reconcile tab: Confirm all 7 exact matches outlined, then Nimbus Home Energy Ltd −£102.80 matched exactly on reference INV-2026-99214-2 with Approve, and Suggest with AI.](img/reconcile-bank-2.png)
+   If this goes wrong: a match looks wrong, so leave it; confirm only what
+   the statement supports.
+3. For lines nothing matches, create an expense proposal (it lands in Review),
+   mark it as a transfer, or ignore it. **Create rule from this** turns a line
+   into a rule for next time.
+4. Open the **Rules** tab to see, reorder or edit your rules. Rules run in
+   order and the first match wins; matching is plain code, never the AI.
+   ![The Rules tab: Starling account fee and Business insurance rules, each with what it matches, the account and VAT code it sets, and Edit, Up, Down and Delete.](img/reconcile-bank-3.png)
+   If this goes wrong: a rule catches the wrong lines, so move the more
+   specific rule above it with **Up**.
+5. Check the **Reconciled to date** tile again: it moves forward once every
+   line up to that date is accounted for.
+
+## On Android
+
+**More › Bank** lists statements, unmatched lines and rules to check on the
+go. Uploading a statement and confirming matches are done on the web.

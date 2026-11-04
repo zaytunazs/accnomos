@@ -444,7 +444,7 @@ Review: `docs/reviews/app-shell/REVIEW.md`.
   with the runtime's sentence for books without VAT). `flutter analyze` and `flutter test` (279 tests) pass, on
   Flutter 3.47.8 in a Linux container; not run on a phone.
 
-## "Get 3 months free" sign-up (submission build)
+## "Join the waiting list" sign-up (submission build)
 
 Branch `claude/signup-accountants`; review in `docs/reviews/signup-accountants/REVIEW.md`.
 
@@ -454,7 +454,7 @@ Branch `claude/signup-accountants`; review in `docs/reviews/signup-accountants/R
   this server yet" with the team's email address.
 - **No email is sent by Accnomos.** The list is a file; the operator exports it (`python -m app.early_access export`)
   and emails people by hand or with a service named on the privacy page first. "We will set you up" depends on that.
-- **What "3 months free" means is not defined in the product.** There is no billing in this build; the offer is the
+- **What "a place on the waiting list" means is not defined in the product.** There is no billing in this build; the offer is the
   operator's commitment, recorded only as the consent wording each person ticked.
 - The accountant copy on the landing page describes `app/accountant.py` and the portal as they are on main; the
   "Accnomos accountants" opt-in shows only where the server sets `ACCOUNTANT_TEAM_EMAIL`, hence "where it is offered".
@@ -592,7 +592,7 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   "launch"/"launching", the early-adopter list): `e2e/submission-mode.spec.ts` reads every page's DOM text, title,
   description and labels, signed out and in (not the pixels of screenshots), and CI scans every file of the
   production export (`scripts/prelaunch-words.mjs`). Since 29 Oct 2026 (`docs/reviews/signup-accountants/REVIEW.md`)
-  the submission build also collects sign-ups for the same list, through a neutral "Get 3 months free" form
+  the submission build also collects sign-ups for the same list, through a neutral "Join the waiting list" form
   (`POST /public/sign-up`, on the landing page and `/join`), and the privacy page describes that list in every build. "Available on Android" on the landing page means the
   app exists and builds; per `docs/submission/JUDGING.md` the Play production listing was still in review on 27 Oct
   and no real-phone sign-in is recorded. "Try the demo" (`DemoLink.tsx`) starts a demo sandbox and opens `/judges`

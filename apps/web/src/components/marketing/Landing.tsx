@@ -2,6 +2,7 @@ import Link from "next/link";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
 import JoinForm from "@/components/sign-up/JoinForm";
+import { GUIDES, GUIDES_URL } from "@/lib/howto-guides";
 import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
@@ -142,8 +143,8 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     a: "Export your lists and statements from your current software and bring them across as files. Your opening position is entered once, and new documents flow in from there.",
   },
   {
-    q: "How do I get 3 months free?",
-    a: "Leave your email in the Get 3 months free form at the end of this page (or at accnomos.com/join) and we will set you up with 3 months free.",
+    q: "How do I join the waiting list?",
+    a: "Leave your email in the waiting-list form at the end of this page (or at accnomos.com/join).",
   },
   {
     q: "Does my accountant need an account?",
@@ -218,8 +219,9 @@ export default function Landing() {
       <Accountants />
       <YourData />
       <Pricing />
+      <Guides />
       <Faq />
-      {/* "Get 3 months free": the neutral form in the submission build (JoinForm); the pre-launch build shows its own
+      {/* "Join the waiting list": the neutral form in the submission build (JoinForm); the pre-launch build shows its own
           EarlyAccessForm, which is in neither the HTML nor the payload of a submission build. Same list either way. */}
       <div id="join" className="mx-auto max-w-3xl scroll-mt-20 px-4 pb-16 sm:px-6">
         {PRELAUNCH_IN_BUILD && (
@@ -236,7 +238,7 @@ export default function Landing() {
 
 /**
  * The calls to action. Submission build: "Try the demo" (the company), "Try the personal demo" (a household's own
- * money) and "Sign in with Microsoft", with "Get 3 months free"
+ * money) and "Sign in with Microsoft", with "Join the waiting list"
  * (the sign-up near the end of the page) between them in the hero. Pre-launch build: "get notified" by e-mail first,
  * the demo second (sign-in moves to the menu's "Early access / testers").
  */
@@ -263,7 +265,7 @@ function CtaPair({ dark = false, join = false }: { dark?: boolean; join?: boolea
       </DemoLink>
       {join && (
         <a href="#join" className={secondary}>
-          Get 3 months free
+          Join the waiting list
         </a>
       )}
       <Link href="/connect?next=%2F" className={secondary}>
@@ -559,7 +561,7 @@ function Pricing() {
           title="Pricing"
           lead={
             SUBMISSION_MODE
-              ? "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo needs no account and no card; your own books need only a Microsoft account. Leave your email and we will set you up with 3 months free."
+              ? "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo needs no account and no card; your own books need only a Microsoft account. Leave your email to join the waiting list."
               : "Free while we launch. The demo needs no account and no card; your own books need only a Microsoft account."
           }
         />
@@ -646,6 +648,52 @@ function YourData() {
             alt="Files: the Accnomos folder in OneDrive with 00 Inbox, 01 Receipts, 02 Needs a look, 03 Sales, 04 Bank statements, 05 Payroll, 06 VAT returns, 07 Reports, README.txt and _System."
           />
         </BrowserFrame>
+      </div>
+    </section>
+  );
+}
+
+/** How-to guides: the featured guides from docs/howto as cards, each with a screenshot from the guide (sample books). */
+function Guides() {
+  const featured = GUIDES.filter((g) => g.featured);
+  const link = "font-bold text-teal-dark underline underline-offset-2 hover:text-teal";
+  return (
+    <section id="guides" aria-labelledby="guides-title" className="scroll-mt-20 border-t border-border bg-ground py-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHead
+          id="guides-title"
+          title="How-to guides"
+          lead="Step-by-step guides with a screenshot for every step, taken from the demo's fictional sample books, with the Android app where it differs."
+        />
+        <ul aria-label="How-to guides" className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {featured.map((g) => (
+            <li
+              key={g.file}
+              className="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-white focus-within:ring-2 focus-within:ring-teal hover:border-teal"
+            >
+              <Shot src={`/howto/${g.file}.webp`} width={640} height={400} alt={g.alt} className="border-b border-border" />
+              <div className="flex flex-1 flex-col p-5">
+                <h3 className="text-lg font-extrabold">
+                  <a
+                    href={`${GUIDES_URL}/${g.file}.md`}
+                    className="after:absolute after:inset-0 after:content-[''] focus:outline-none"
+                  >
+                    {g.title}
+                  </a>
+                </h3>
+                <p className="mt-1 text-[15px] leading-relaxed text-muted">{g.summary}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+          <a href={`${GUIDES_URL}/README.md`} className={link}>
+            All {GUIDES.length} guides
+          </a>
+          <Link href="/how-it-works#guides" className={link}>
+            The guides on How it works
+          </Link>
+        </p>
       </div>
     </section>
   );

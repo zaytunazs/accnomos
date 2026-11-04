@@ -1,4 +1,4 @@
-"""Early-adopter list: people who sign up before the public launch get 3 months free and one email at launch.
+"""Early-adopter list: people who sign up before the public launch get a place on the waiting list and one email at launch.
 
 The one thing the runtime keeps. It is the operator's marketing list (controller: Zaytuna Business Services Ltd),
 not anyone's books, and it is off unless EARLY_ACCESS_ENABLED=1 (docs/SECURITY.md, docs/PRODUCTION.md).
@@ -42,10 +42,10 @@ except ImportError:  # pragma: no cover  Windows dev box: the in-process lock st
 
 # Shown next to the unticked checkbox and stored with every record, so each record says what the person agreed to.
 # The route refuses any other wording. CONSENT_TEXT is the pre-launch form's (apps/web/src/lib/early-access.ts);
-# SIGNUP_CONSENT_TEXT the neutral "Get 3 months free" form's (apps/web/src/lib/sign-up.ts), which the submission build
+# SIGNUP_CONSENT_TEXT the neutral "Join the waiting list" form's (apps/web/src/lib/sign-up.ts), which the submission build
 # shows and which never mentions a launch. Both feed the same list.
-CONSENT_TEXT = "Email me once Accnomos launches, with my 3 months free. I can unsubscribe any time."
-SIGNUP_CONSENT_TEXT = "Email me to set up my 3 months free of Accnomos. I can unsubscribe any time."
+CONSENT_TEXT = "Email me once Accnomos launches. I can unsubscribe any time."
+SIGNUP_CONSENT_TEXT = "Email me when my place on the Accnomos waiting list comes up. I can unsubscribe any time."
 CONSENT_TEXTS: tuple[str, ...] = (CONSENT_TEXT, SIGNUP_CONSENT_TEXT)
 BusinessType = Literal["company", "sole_trader", "personal", "accountant"]
 BUSINESS_TYPES: tuple[str, ...] = ("company", "sole_trader", "personal", "accountant")
@@ -193,7 +193,7 @@ class EarlyAccessOut(BaseModel):
 
 
 DONE = EarlyAccessOut(ok=True, message="You're on the list — we'll email you once at launch")
-SIGNUP_DONE = EarlyAccessOut(ok=True, message="Thanks — we'll email you to set up your 3 months free")
+SIGNUP_DONE = EarlyAccessOut(ok=True, message="Thanks — you're on the waiting list")
 
 
 def _text(value: str | None) -> str | None:
@@ -204,7 +204,7 @@ def _text(value: str | None) -> str | None:
 @router.post("/early-access", response_model=EarlyAccessOut)
 @router.post("/sign-up", response_model=EarlyAccessOut)
 async def early_access(body: EarlyAccessIn, request: Request) -> EarlyAccessOut | JSONResponse:
-    """Join the list (3 months free). No sign-in. New and repeat sign-ups get the same answer, so the form never
+    """Join the list (the waiting list). No sign-in. New and repeat sign-ups get the same answer, so the form never
     says whether an address is already on the list. `/sign-up` is the same handler under a neutral name, so the
     submission build's web bundle carries no "early access" wording (apps/web/scripts/prelaunch-words.mjs)."""
     if not enabled():

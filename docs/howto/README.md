@@ -1,24 +1,53 @@
 # How-to guides
 
-Short guides for owners. Each names who it is for, gives 4–8 numbered steps
-with the exact screen or route, a screenshot placeholder naming the capture and
-what must be visible in it, and a "what can go wrong" line per step. All data
-shown is the demo sandbox's sample company, labelled SAMPLE — FICTIONAL
-COMPANY. HMRC contact is sandbox only.
+Short guides for owners. Each says who it is for, gives numbered steps with the
+exact page and button, a screenshot for every step and a "what can go wrong"
+line where it helps. Where the Android app works differently, an **On Android**
+section shows the phone.
 
-Screenshots live in `img/` next to these files and are captured at 1280 × 720
-(web) or 390 px wide (phone) with no real names, keys, tokens or passwords in
-frame.
+Every screenshot comes from the demo sandbox's fictional sample books: the
+company demo (Bramblewood Joinery Ltd, labelled SAMPLE — FICTIONAL COMPANY) and
+the personal demo (the Harrison household, labelled SAMPLE — FICTIONAL
+HOUSEHOLD). HMRC contact is sandbox only. How the pictures are made is in
+[img/SHOTS.md](img/SHOTS.md).
+
+## Getting started
 
 | Guide | Who it is for |
 |---|---|
-| [Connect your books or try the demo](connect-books.md) | A new owner opening Accnomos for the first time |
-| [Add a mailbox](add-mailbox.md) | An owner collecting supplier receipts by email |
-| [Review and approve](review-approve.md) | An owner clearing the Review queue |
-| [Reconcile bank lines](reconcile-bank.md) | An owner matching a statement against the books |
-| [Do a VAT return](vat-return.md) | A VAT-registered owner filing through MTD |
-| [Income Tax quarterly update](income-tax-update.md) | A sole trader or landlord sending MTD updates |
-| [Run payroll and file with Basic PAYE Tools](payroll-paye.md) | An employer running a pay run |
-| [Invite your accountant](invite-accountant.md) | An owner giving their accountant access |
-| [Export for your accountant](export-accountant.md) | An owner sending a period's records away |
-| [Use voice and chat](voice-chat.md) | An owner asking in plain words, typed or spoken |
+| [Try the demo or connect your books](connect-books.md) | Opening Accnomos for the first time |
+| [Review and approve](review-approve.md) | Clearing the Review queue |
+| [Talk to Accnomos, by voice or chat](voice-chat.md) | Asking in plain words, typed or spoken |
+| [Import contacts](import-contacts.md) | Setting up customers and suppliers |
+
+## Everyday books
+
+| Guide | Who it is for |
+|---|---|
+| [Collect receipts by email](add-mailbox.md) | Collecting supplier receipts by email |
+| [Reconcile bank lines](reconcile-bank.md) | Matching a statement against the books |
+| [Notes, to-dos and events by voice](notes-tasks.md) | Capturing jobs and reminders on the go |
+| [Calendar and deadlines](calendar.md) | Keeping VAT, payroll and Income Tax dates in view |
+| [Set goals and track progress](goals.md) | Anyone with a target for the business or the household |
+| [Personal finances](personal-finances.md) | A household, or an owner keeping personal money apart |
+
+## Tax, payroll and your accountant
+
+| Guide | Who it is for |
+|---|---|
+| [Do a VAT return](vat-return.md) | VAT-registered and filing through MTD |
+| [Income Tax quarterly update](income-tax-update.md) | Sole traders and landlords sending MTD updates |
+| [Run payroll and file with Basic PAYE Tools](payroll-paye.md) | Employers running a pay run |
+| [Invite your accountant](invite-accountant.md) | Giving your accountant access |
+| [Export for your accountant](export-accountant.md) | Sending a period's records away |
+
+## Web and phone
+
+The web app has every page. The Android app has Home, Review, Ask and VAT along
+the bottom, a **More** tab with files, contacts, invoices, jobs, vehicles, bank, payroll,
+month-end, reports, goals, calendar, notes, your accountant and the audit trail, and the
+**Talk** button on every screen. In the personal books the bottom bar becomes
+Home, Review, Budget, Goals and More. Bank statement uploads, reconciling and
+HMRC submissions stay on the web.
+
+![The Android app's More tab in the company demo: Switch to the personal demo, then Files, Contacts, Invoices, Jobs, Vehicles and Bank, with the Talk button.](img/android-more.png)
