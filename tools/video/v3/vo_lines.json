@@ -1,12 +1,11 @@
 [
  {
   "id": "title",
-  "text": "Before 26 October, all we had was our own AI server with a local model. Everything you'll see, on the web and on Android, was built during the hackathon.",
-  "say": "Before the twenty-sixth of October, all we had was our own AI server with a local model. Everything you'll see, on the web and on Android, was built during the hackathon."
+  "text": "Before this hackathon, we had only our own AI server. Everything you'll see, we built in the last ten days."
  },
  {
   "id": "f1",
-  "text": "Accnomos does the books, the tax and the household money, all in one app."
+  "text": "Books, tax and household money, in one app."
  },
  {
   "id": "s1",
