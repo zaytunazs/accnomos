@@ -203,6 +203,17 @@ export interface RtCalendarEventIn {
   location?: string;
   body?: string;
   reminder_minutes?: number;
+  /** The user saw the clash and chose "Add anyway". */
+  allow_conflict?: boolean;
+}
+
+/** An event the new one would clash with (timed with timed; all-day only with all-day). */
+export interface RtCalendarClash {
+  id: string;
+  subject: string;
+  start: string;
+  end: string;
+  all_day: boolean;
 }
 
 export interface RtDeadlineSync {
@@ -211,6 +222,7 @@ export interface RtDeadlineSync {
   unchanged: number;
   removed: number;
   events: RtCalendarEvent[];
+  conflicts: { a: RtCalendarClash; b: RtCalendarClash }[];
 }
 
 export interface RtDeadlineStatus {
@@ -544,6 +556,10 @@ export const runtime = {
     call<RtCalendarEvent[]>(a, `/calendar/events?start=${start}&end=${end}`, {}, CALENDAR_READ_SCOPES),
   addCalendarEvent: (a: AccountInfo, body: RtCalendarEventIn) =>
     call<RtCalendarEvent>(a, "/calendar/events", { method: "POST", body: JSON.stringify(body) }, CALENDAR_SCOPES),
+  /** POST /calendar/events with check_only: the clashes, nothing written. Always run before adding. */
+  checkCalendarEvent: (a: AccountInfo, body: RtCalendarEventIn) =>
+    call<{ conflicts: RtCalendarClash[] }>(a, "/calendar/events", { method: "POST", body: JSON.stringify({ ...body, check_only: true }) }, CALENDAR_READ_SCOPES),
+  calendarConflicts: (a: AccountInfo) => call<{ a: RtCalendarClash; b: RtCalendarClash }[]>(a, "/calendar/conflicts", {}, CALENDAR_READ_SCOPES),
   removeCalendarEvent: (a: AccountInfo, id: string) =>
     call<void>(a, `/calendar/events/${encodeURIComponent(id)}`, { method: "DELETE", body: JSON.stringify({ confirm: true }) }, CALENDAR_SCOPES),
   /** POST /calendar/deadlines/sync: every upcoming deadline as an all-day event; safe to repeat (never duplicates). */
