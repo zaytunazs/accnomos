@@ -9,7 +9,7 @@ import type { GoalKind, RtGoal, RtGoalIn } from "@/lib/goals";
  * Editing keeps the kind: a different kind of goal is a new goal.
  */
 
-const input = "h-11 w-full min-w-0 rounded-lg border border-border bg-white px-3 text-base text-ink";
+const input = "h-11 w-full min-w-0 rounded-xl border border-border bg-white px-3 text-base text-ink";
 const label = "text-sm font-semibold text-ink";
 const hint = "text-[13px] text-muted";
 
@@ -112,7 +112,7 @@ export default function GoalForm({
             return (
               <label
                 key={t.kind}
-                className={`flex min-h-11 cursor-pointer flex-col rounded-lg border px-3 py-2.5 ${
+                className={`flex min-h-11 cursor-pointer flex-col rounded-xl border px-3 py-2.5 ${
                   on ? "border-teal bg-teal-tint" : "border-border bg-white hover:bg-ground"
                 }`}
               >
@@ -124,7 +124,7 @@ export default function GoalForm({
                     checked={on}
                     disabled={Boolean(initial)}
                     onChange={() => pick(t.kind)}
-                    className="h-4 w-4 accent-[#5A2D00]"
+                    className="h-4 w-4 accent-teal"
                   />
                   <span className="text-[15px] font-bold text-ink">
                     {t.kind === "earn" && household ? (t.household ?? t.title) : t.title}
@@ -204,11 +204,11 @@ export default function GoalForm({
             <fieldset className="flex flex-col gap-2 sm:col-span-2">
               <legend className={`${label} mb-1`}>How should progress be counted?</legend>
               <label className="flex min-h-11 items-center gap-2 text-[15px]">
-                <input type="radio" name={`${uid}-measure`} checked={measure === "manual"} onChange={() => setMeasure("manual")} className="h-4 w-4 accent-[#5A2D00]" />
+                <input type="radio" name={`${uid}-measure`} checked={measure === "manual"} onChange={() => setMeasure("manual")} className="h-4 w-4 accent-teal" />
                 I&apos;ll record what I put aside
               </label>
               <label className="flex min-h-11 items-center gap-2 text-[15px]">
-                <input type="radio" name={`${uid}-measure`} checked={measure === "net_cash"} onChange={() => setMeasure("net_cash")} className="h-4 w-4 accent-[#5A2D00]" />
+                <input type="radio" name={`${uid}-measure`} checked={measure === "net_cash"} onChange={() => setMeasure("net_cash")} className="h-4 w-4 accent-teal" />
                 Count money in minus money out on my bank lines
               </label>
             </fieldset>
@@ -223,16 +223,16 @@ export default function GoalForm({
       </div>
 
       {shown ? (
-        <p role="alert" className="rounded-lg bg-[#FFF0F0] px-3 py-2 text-[15px] text-[#A12626]">
+        <p role="alert" className="rounded-xl bg-neg-tint px-3 py-2 text-[15px] text-neg-ink">
           {shown}
         </p>
       ) : null}
       <p className={hint}>A goal only reads your books: it never posts, changes or approves anything.</p>
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={busy} className="h-11 rounded-lg bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60">
+        <button type="submit" disabled={busy} className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60">
           {busy ? "Saving…" : initial ? "Save changes" : "Add goal"}
         </button>
-        <button type="button" onClick={onCancel} className="h-11 rounded-lg border border-border bg-white px-5 text-[15px] font-bold text-ink hover:bg-ground">
+        <button type="button" onClick={onCancel} className="h-11 rounded-xl border border-border bg-white px-5 text-[15px] font-bold text-ink hover:bg-ground">
           Cancel
         </button>
       </div>
