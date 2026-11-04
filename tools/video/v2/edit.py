@@ -37,39 +37,39 @@ XF = 0.3  # crossfade between the kept parts of one recording
 # The edit. Lower thirds: (feature, the Meta model at work). Text on screen: UK English, Meta models only.
 EDL: list[dict] = [
     {"id": "title", "card": "title", "dur": 2.6},
-    {"id": "s1", "lead": 0.3, "lt": ("Home, in plain English", "Summary worded by Muse Spark · figures by code"), "shots": [
-        {"layout": "split", "src": "w-home", "segs": ["0..end"], "phone": "p-home", "psegs": ["0..end"], "dur": 17.6},
+    {"id": "s1", "lead": 0.4, "lt": ("Home, in plain English", "Summary worded by Muse Spark · figures by code"), "shots": [
+        {"layout": "split", "src": "w-home", "segs": ["0..end"], "phone": "p-home", "psegs": ["0..end"], "dur": 19.2},
     ]},
-    {"id": "s2", "lead": 0.3, "lt": ("Goals and spending", "Progress note by Muse Spark"), "shots": [
-        {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 6.6},
-        {"layout": "full", "src": "w-spending", "segs": ["0..end"], "dur": 4.4},
+    {"id": "s2", "lead": 0.4, "lt": ("Goals and spending", "Progress note by Muse Spark"), "shots": [
+        {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 7.6},
+        {"layout": "full", "src": "w-spending", "segs": ["0..end"], "dur": 5.2},
     ]},
-    {"id": "s3", "lead": 0.3, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
+    {"id": "s3", "lead": 0.4, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
         {"layout": "full", "src": "w-home-action", "segs": ["0..end"], "dur": 6.0},
-        {"layout": "full", "src": "w-talk", "segs": ["0..wait+1.6", "ready-0.4..end"], "dur": 11.5},
+        {"layout": "full", "src": "w-talk", "segs": ["0..speak+0.5", "speak+0.5..ready-0.2", "ready-0.2..end"], "dur": 13.0, "crop": [560, 0, 1360, 765]},
     ]},
-    {"id": "s4", "lead": 0.3, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
-        {"layout": "phone", "src": "p-receipt", "segs": ["0..wait+1.0", "ready-0.3..wait2+1.5", "ready2-0.5..end"], "dur": 10.5,
+    {"id": "s4", "lead": 0.4, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
+        {"layout": "phone", "src": "p-receipt", "segs": ["1.0..gallery+0.5", "queued-0.6..wait+0.8", "ready-0.2..wait2+0.8", "ready2-0.6..ready2+2.2"], "dur": 11.4,
          "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve.")},
-        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 9.4},
+        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 9.8},
     ]},
-    {"id": "s5", "lead": 0.3, "lt": ("Reports and VAT", "Worked out by code from the ledger"), "shots": [
-        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 5.4},
-        {"layout": "split", "src": "w-vat", "segs": ["0..end"], "phone": "p-vat", "psegs": ["0..end"], "dur": 7.6},
+    {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Worked out by code from the ledger"), "shots": [
+        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 5.8},
+        {"layout": "split", "src": "w-vat", "segs": ["0..end"], "phone": "p-vat", "psegs": ["0..end"], "dur": 8.4},
     ]},
-    {"id": "s6", "lead": 0.3, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
+    {"id": "s6", "lead": 0.4, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
         {"layout": "full", "src": "w-selfemp", "segs": ["0..end"], "dur": 5.6},
-        {"layout": "split", "src": "w-personal", "segs": ["0..end"], "phone": "p-personal", "psegs": ["0..end"], "dur": 6.2},
-        {"layout": "full", "src": "w-personal-cal", "segs": ["0..wait+1.2", "ready-0.3..wait2+0.6", "ready2..end"], "dur": 5.0},
+        {"layout": "split", "src": "w-personal", "segs": ["0..end"], "phone": "p-personal", "psegs": ["0..end"], "dur": 7.0},
+        {"layout": "full", "src": "w-personal-cal", "segs": ["0..wait+1.2", "ready-0.3..wait2+0.6", "ready2..end"], "dur": 5.6},
     ]},
-    {"id": "s7", "lead": 0.3, "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"), "shots": [
+    {"id": "s7", "lead": 0.4, "lt": ("Your choice of Meta model", "Muse Spark (Meta API) · Muse Glimmer 30B (open weights)"), "shots": [
         {"layout": "full", "src": "w-ai", "segs": ["0..end"], "dur": 9.0},
-        {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 5.0},
+        {"layout": "full", "src": "w-calls", "segs": ["0..end"], "dur": 5.6},
         {"layout": "full", "src": "w-files", "segs": ["0..end"], "dur": 4.6},
-        {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 3.0},
+        {"layout": "full", "src": "w-backups", "segs": ["0..end"], "dur": 3.6},
     ]},
-    {"id": "s8", "lead": 0.4, "card": "end", "dur": 20.6},
-    {"id": "judges", "card": "judges", "dur": 6.6},
+    {"id": "s8", "lead": 0.5, "card": "end", "dur": 21.0},
+    {"id": "judges", "card": "judges", "dur": 7.0},
 ]
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -344,7 +344,11 @@ def render_shot(root: Path, work: Path, fonts: Fonts, scene: dict, i: int, shot:
     layout = shot["layout"]
     inputs += ["-i", str(source(raw, shot["src"]))]
     if layout == "full":
-        f, v = chain("0:v", segments(raw, shot["src"], shot["segs"]), dur, "a", pre=f"scale={W}:{H}:flags=lanczos,")
+        pre = f"scale={W}:{H}:flags=lanczos,"
+        if shot.get("crop"):  # [x, y, w, h] of the 1920 x 1080 frame, enlarged to fill it (16:9 crops only)
+            x, y, cw, ch = shot["crop"]
+            pre += f"crop={cw}:{ch}:{x}:{y},scale={W}:{H}:flags=lanczos,"
+        f, v = chain("0:v", segments(raw, shot["src"], shot["segs"]), dur, "a", pre=pre)
         fl.append(f)
         base = v
         n = 1
