@@ -161,7 +161,7 @@ export function groupCitations(citations: string[], sheet: string): CitationGrou
   const ledger = new Map<string, CitationGroup>();
   for (const c of citations) {
     const path = c.replace(/\/+$/, "");
-    const ev = /^_System\/Ledger\/events\/(\d{4}-\d{2})\//.exec(path);
+    const ev = /^_System\/Ledger\/events\/(\d{4}-\d{2})(?:\/|$)/.exec(path); // a month folder, or one event file in it
     if (ev) {
       const g = ledger.get(ev[1]);
       if (g) g.paths.push(path);
@@ -179,7 +179,8 @@ export function groupCitations(citations: string[], sheet: string): CitationGrou
     groups.push({ label: path.startsWith("_System/") ? systemFileLabel(path) : path, paths: [path] });
   }
   for (const g of ledger.values()) {
-    if (g.paths.length > 1) g.label = `${g.label} (${g.paths.length} entries)`;
+    const files = g.paths.filter((x) => x.endsWith(".json")).length;
+    if (files > 1) g.label = `${g.label} (${files} entries)`;
   }
   return groups;
 }

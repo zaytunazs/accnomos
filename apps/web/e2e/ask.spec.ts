@@ -28,7 +28,7 @@ test("ask about the picked VAT period → an answer with key numbers and the fil
   await expect(keyNumbers.getByRole("row").filter({ hasText: "VAT reclaimed (Box 4)" })).toContainText("£8.65");
   const files = answer.getByRole("list", { name: "Files used" });
   await expect(files).toContainText("Ledger · Aug 2026"); // one chip per month, not one per event file
-  await expect(files.getByRole("link").first()).toHaveAttribute("title", /_System\/Ledger\/events\/2026-08\//);
+  await expect(files.getByRole("link").first()).toHaveAttribute("title", /_System\/Ledger\/events\/2026-08/);
   await expect(answer).toContainText("Numbers by code · explanation by accnomos-test-stub");
   await expect(answer).not.toContainText("These figures come straight from your ledger"); // not the fallback
 });
