@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
-import { liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, VAT_CODES } from "@/lib/invoices";
+import { liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, vatCodes } from "@/lib/invoices";
 import {
   runtime,
   ukDate,
@@ -489,7 +489,7 @@ export function StandaloneCreditNoteDialog({ account, onClose, onDone }: {
               <div>
                 <label className={fieldLabel} htmlFor={`scn-vat-${l.key}`}>VAT</label>
                 <select id={`scn-vat-${l.key}`} className={fieldInput} value={l.vat_code} onChange={(e) => setLine(l.key, { vat_code: e.target.value as RtSalesVatCode })}>
-                  {VAT_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                  {vatCodes().map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                 </select>
               </div>
               <div className="flex items-end">

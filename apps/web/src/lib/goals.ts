@@ -3,6 +3,7 @@
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { runtimeHeaders } from "./runtime";
+import { moneySign } from "./region";
 
 /**
  * Goals (services/runtime/app/goals.py, routes_goals.py): targets the owner sets for the business or the household,
@@ -161,10 +162,10 @@ export function byUrgency(goals: RtGoalProgress[]): RtGoalProgress[] {
 export function money(pence: number | null | undefined): string {
   if (pence === null || pence === undefined) return "—";
   const p = Math.abs(pence);
-  return `${pence < 0 ? "-" : ""}£${Math.floor(p / 100).toLocaleString("en-GB")}.${String(p % 100).padStart(2, "0")}`;
+  return `${pence < 0 ? "-" : ""}${moneySign()}${Math.floor(p / 100).toLocaleString("en-GB")}.${String(p % 100).padStart(2, "0")}`;
 }
 
 /** "£37,500" for a large figure, with pence only when there are any. */
 export function headline(pence: number): string {
-  return pence % 100 === 0 ? `${pence < 0 ? "-" : ""}£${Math.abs(pence / 100).toLocaleString("en-GB")}` : money(pence);
+  return pence % 100 === 0 ? `${pence < 0 ? "-" : ""}${moneySign()}${Math.abs(pence / 100).toLocaleString("en-GB")}` : money(pence);
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { fieldInput, fieldLabel } from "@/components/invoices/Modal";
-import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, VAT_CODES } from "@/lib/invoices";
+import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, vatCodes } from "@/lib/invoices";
 import { runtime, type RtInvoiceLine, type RtInvoiceLineIn, type RtItem, type RtSalesVatCode } from "@/lib/runtime";
 
 /** A line as typed: pounds and quantity stay strings until saved; the runtime does the pricing. */
@@ -153,7 +153,7 @@ export default function LinesEditor({
                 <div>
                   <label className={fieldLabel} htmlFor={`${id}-vat`}>VAT</label>
                   <select id={`${id}-vat`} className={fieldInput} value={l.vat_code} onChange={(e) => set(l.key, { vat_code: e.target.value as RtSalesVatCode })}>
-                    {VAT_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                    {vatCodes().map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
                   </select>
                 </div>
               </div>

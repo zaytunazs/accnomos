@@ -2,12 +2,14 @@ import Link from "next/link";
 import type { ReactNode, Ref } from "react";
 import ByWhom from "@/components/ByWhom";
 import type { Proposal } from "@/lib/sample-review";
+import { taxLabel } from "@/lib/region";
 
-const facts = [
+/** The card's facts; "VAT" is the books' own tax name outside the UK (lib/region.ts). */
+const facts = (tax: string) => [
   { label: "Date", value: (p: Proposal) => p.date },
-  { label: "VAT number", value: (p: Proposal) => p.vatNumber },
+  { label: `${tax} number`, value: (p: Proposal) => p.vatNumber },
   {
-    label: "Net · VAT · Total",
+    label: `Net · ${tax} · Total`,
     value: (p: Proposal) => `${p.net} · ${p.vat} · ${p.total}`,
   },
   { label: "Paid by", value: (p: Proposal) => p.paidBy },
@@ -68,7 +70,7 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
             </span>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {facts.map((fact) => (
+            {facts(taxLabel()).map((fact) => (
               <div key={fact.label} className="min-w-0">
                 <dt className="text-[13px] font-semibold text-muted">
                   {fact.label}
