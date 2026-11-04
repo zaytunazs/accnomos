@@ -572,6 +572,62 @@ const SHOTS: Record<string, Shot> = {
       await c.h.hold(800);
     },
   },
+  // v3 s5a: the automatic bank feed (TrueLayer sandbox): Connect a bank → TrueLayer's mock bank → back → Fetch → lines matched
+  "w-bankfeed": {
+    setup: async ({ page }) => {
+      await go(page, "/bank");
+      const feed = page.getByRole("region", { name: "Bank feed" });
+      await feed.waitFor({ timeout: 30_000 }).catch(() => undefined);
+      await feed.evaluate((e: Element) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 120)).catch(() => undefined);
+      await page.waitForTimeout(600);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(900, 250);
+      const feed = page.getByRole("region", { name: "Bank feed" });
+      await hoverText(c, /^Bank feed/, 800);
+      const connect = vis(feed.getByRole("button", { name: /^Connect a bank/ }));
+      if (await connect.isVisible({ timeout: 3000 }).catch(() => false)) {
+        c.mark("connect");
+        await h.click(connect, 300);
+        await page.waitForURL((u: URL) => !u.href.startsWith(SITE), { timeout: 30_000 }).catch(() => undefined);
+        c.mark("tl");
+        // TrueLayer's sandbox: pick the mock bank, sign in with its public test login, allow
+        for (let i = 0; i < 16 && !page.url().startsWith(SITE); i++) {
+          await settle(page, 700);
+          if (page.url().startsWith(SITE)) break;
+          const user = page.getByLabel(/user ?name|user id/i).first();
+          if (await user.isVisible().catch(() => false)) {
+            await h.type(user, process.env.TL_USER ?? "john", 80);
+            await h.type(page.getByLabel(/password/i).first(), process.env.TL_PASS ?? "doe", 80);
+          }
+          let clicked = false;
+          for (const name of [/mock/i, /^Allow|^Approve|^Agree/i, /^Continue|^Submit|^Sign in|^Log in|^Confirm|^Next/i]) {
+            const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).or(page.getByRole("option", { name })).first();
+            if (await b.isVisible().catch(() => false)) { await h.click(b, 300); clicked = true; break; }
+          }
+          if (!clicked) await page.waitForTimeout(1500);
+        }
+        await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 90_000 });
+        c.mark("back");
+        await settle(page, 1500);
+      }
+      const f2 = page.getByRole("region", { name: "Bank feed" });
+      await h.scrollIntoView(f2, 700);
+      const fetch = vis(f2.getByRole("button", { name: /^Fetch now|^Sync now/ }));
+      await fetch.waitFor({ timeout: 60_000 });
+      await h.hover(fetch, 600);
+      c.mark("fetch");
+      await h.click(fetch, 300);
+      await vis(f2.getByRole("button", { name: /^Fetch now|^Sync now/ })).waitFor({ timeout: 90_000 }).catch(() => undefined);
+      await page.waitForTimeout(800);
+      c.mark("fetched");
+      await hoverText(c, /new (bank )?lines?|fetched|Last fetched/i, 1400);
+      await h.scrollBy(320, 900);
+      await hoverText(c, /matched|Match/i, 1500);
+      await h.hold(1200);
+    },
+  },
 };
 
 const ROUTE_Q = process.env.ROUTE_Q ?? "Who owes me the most?";
