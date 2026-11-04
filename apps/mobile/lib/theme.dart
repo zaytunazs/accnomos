@@ -1,9 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Shared Accnomos palette: the same tokens as the website
 /// (apps/web/src/app/globals.css): the Zaytuna brand chosen by the owner on 4 Nov 2026 — Zaytuna brown
 /// (#5A2D00) for actions, a deep-brown sidebar/hero, a warm off-white page, gold as an accent only. The
 /// names keep "teal" so no screen changes; the values are brown.
+/// Status-bar icons: light over the deep-brown tops (Welcome hero, demo banner, splash), dark over the white
+/// app bars. Transparent so each screen's own top colour shows through.
+class AccnomosStatusBar {
+  const AccnomosStatusBar._();
+
+  static const SystemUiOverlayStyle onDark = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.light, // Android
+    statusBarBrightness: Brightness.dark, // iOS
+  );
+  static const SystemUiOverlayStyle onLight = SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.light,
+  );
+}
+
 class AccnomosColors {
   const AccnomosColors._();
 
@@ -88,6 +106,7 @@ ThemeData accnomosTheme() {
       labelLarge: TextStyle(fontWeight: FontWeight.w600),
     ),
     appBarTheme: const AppBarTheme(
+      systemOverlayStyle: AccnomosStatusBar.onLight,
       backgroundColor: Colors.white,
       foregroundColor: AccnomosColors.ink,
       surfaceTintColor: Colors.white,

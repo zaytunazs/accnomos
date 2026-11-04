@@ -1,0 +1,51 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "Unit 4, Brook Farm Workshops, Market Harborough, LE16 9HZ"
+ },
+ "customer": {
+  "name": "Mrs E. Fairbrother"
+ },
+ "invoice_number": "BJ-1093",
+ "date": "2026-10-17",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke oak bookcase, made and fitted",
+   "qty": 1,
+   "unit_price": 1650.0,
+   "net": 1650.0,
+   "vat_rate": 20,
+   "vat": 330.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Removal of old shelving",
+   "qty": 1,
+   "unit_price": 90.0,
+   "net": 90.0,
+   "vat_rate": 20,
+   "vat": 18.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1740.0,
+ "vat_total": 348.0,
+ "gross_total": 2088.0,
+ "net_pence": 174000,
+ "vat_pence": 34800,
+ "gross_pence": 208800,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Sales",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\nUnit 4\nBrook Farm Workshops\nMarket Harborough\nLE16 9HZ\nVAT Reg No: GB 123 4567 89\n\n                   INVOICE\nNo:   BJ-1093\nDate: 17/10/2026\n\nTo: Mrs E. Fairbrother\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nBespoke oak bookcase, made   1   1,650.00   20\nRemoval of old shelving      1      90.00   20\n----------------------------------------------\nNET                                   1,740.00\nVAT 20%                                 348.00\nTOTAL                                £2,088.00\nPaid by: bank transfer\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

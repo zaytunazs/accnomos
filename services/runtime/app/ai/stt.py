@@ -90,6 +90,8 @@ def _seconds(env: Mapping[str, str], name: str) -> float:
 
 def _muse(cfg: AiConfig | None, env: Mapping[str, str]) -> SttProvider | None:
     timeout = _seconds(env, "muse")
+    if cfg is not None and cfg.route == "local_only":  # the user chose to send nothing to the Meta Model API
+        return None
     if cfg is not None and not cfg.in_chain and cfg.mode == "key" and cfg.api_key:  # the user's own key
         return SttProvider("muse", cfg.base_url, voice.VOICE_MODEL, timeout, cfg.api_key, "user")
     meta = cfg.with_capability("voice") if cfg is not None and cfg.in_chain else None

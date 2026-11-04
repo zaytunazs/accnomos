@@ -17,7 +17,7 @@ const SCREENS = [
     label: "Reports",
     src: "/shots/feat-reports.webp",
     width: 808,
-    height: 750,
+    height: 604,
     alt: "Reports: profit and loss for Jul–Sep 2026 compared with earlier periods, with sales, cost of sales, gross profit and overheads.",
   },
   {
@@ -25,7 +25,7 @@ const SCREENS = [
     label: "Contacts",
     src: "/shots/feat-contacts.webp",
     width: 888,
-    height: 750,
+    height: 664,
     alt: "Contacts: customers and suppliers from the books, with Acme Kitchens Ltd open showing payment terms and £540 owed.",
   },
   {

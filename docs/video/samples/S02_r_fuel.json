@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Ashcombe Road Service Station",
+  "vat_number": "GB 089 6322 32",
+  "address": "Ashcombe Road, Taunton, TA1 3RW"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": "0042-5518",
+ "date": "2026-10-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Diesel 52.14 L @ 142.9p",
+   "qty": 1,
+   "unit_price": 74.51,
+   "net": 74.51,
+   "vat_rate": 20,
+   "vat": 14.9,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 74.51,
+ "vat_total": 14.9,
+ "gross_total": 89.41,
+ "net_pence": 7451,
+ "vat_pence": 1490,
+ "gross_pence": 8941,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": null,
+ "category_hint": "Motor fuel",
+ "printed_text": "ASHCOMBE ROAD SERVICE STATION\nAshcombe Road\nTaunton\nTA1 3RW\nVAT Reg No: GB 089 6322 32\n\n                   RECEIPT\nNo:   0042-5518\nDate: 06/10/2026\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nDiesel 52.14 L @ 142.9p      1      74.51   20\n----------------------------------------------\nNET                                      74.51\nVAT 20%                                  14.90\nTOTAL                                   £89.41\nPaid by: card\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

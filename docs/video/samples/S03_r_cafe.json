@@ -1,0 +1,51 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "The Copper Kettle Tearoom",
+  "vat_number": "GB 078 5377 25",
+  "address": "11 Church Street, Ludlow, SY8 1AP"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": "1187",
+ "date": "2026-10-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bacon roll",
+   "qty": 2,
+   "unit_price": 4.5,
+   "net": 9.0,
+   "vat_rate": 20,
+   "vat": 1.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Pot of tea",
+   "qty": 2,
+   "unit_price": 2.8,
+   "net": 5.6,
+   "vat_rate": 20,
+   "vat": 1.12,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 14.6,
+ "vat_total": 2.92,
+ "gross_total": 17.52,
+ "net_pence": 1460,
+ "vat_pence": 292,
+ "gross_pence": 1752,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": null,
+ "category_hint": "Subsistence",
+ "printed_text": "THE COPPER KETTLE TEAROOM\n11 Church Street\nLudlow\nSY8 1AP\nVAT Reg No: GB 078 5377 25\n\n                   RECEIPT\nNo:   1187\nDate: 08/10/2026\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nBacon roll                   2       9.00   20\nPot of tea                   2       5.60   20\n----------------------------------------------\nNET                                      14.60\nVAT 20%                                   2.92\nTOTAL                                   £17.52\nPaid by: card\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

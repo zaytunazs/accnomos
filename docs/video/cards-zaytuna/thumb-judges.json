@@ -1,0 +1,11 @@
+{
+  "id": "thumb-judges",
+  "model": "muse-image-1.0",
+  "endpoint": "https://api.meta.ai/v1/images/generations",
+  "prompt": "Flat, clean vector illustration with soft geometric shapes and gentle depth, calm, warm and trustworthy, for a UK small-business bookkeeping app. Palette only: rich brown #5A2D00, deep brown #2A1A0D, warm off-white #F8F6F3, muted gold #C9A45C and olive green #8A9A3B. No text, no letters, no numbers, no words, no logos or brand marks of any real company, no real people and no faces, no screenshots of real software, no flags, no currency symbols. Leave a wide calm area of plain colour where a title will be added later. Bold, simple composition: one large off-white paper receipt tilted slightly, a rich brown check-mark shape stamped on it, a small olive sprig and gold corner accent, deep brown background, the right half empty for a title.",
+  "size_requested": "1280x720",
+  "size_saved": "1280x720",
+  "use": "thumbnail of the judges' video",
+  "date": "2026-11-04T02:06:39+00:00",
+  "docs": "https://dev.meta.ai/docs/image-generation (read 29 Oct 2026)"
+}

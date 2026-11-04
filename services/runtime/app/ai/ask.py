@@ -776,7 +776,7 @@ async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema:
     async def attempt(c: AiConfig) -> str:
         return await _call_json_one(messages, c, schema, name)
 
-    text, _ = await chain.run(cfg, name, attempt)
+    text, _ = await chain.run(cfg, name, attempt, accept=chain.parses_as_json)
     return text
 
 

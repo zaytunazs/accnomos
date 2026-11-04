@@ -57,6 +57,7 @@ app.add_middleware(
         "X-AI-Mode",
         "X-AI-Base-Url",
         "X-AI-Model",
+        "X-AI-Route",  # which answers first: Meta API, local model, or local only (app/ai/config.py apply_route)
         "X-Meta-Api-Key",
         "X-Business-Name",
         "X-Autopilot",

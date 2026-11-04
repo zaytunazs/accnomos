@@ -645,7 +645,7 @@ function Android() {
                 src="/shots/android-review.webp"
                 width={360}
                 height={800}
-                alt="Android app, Review: a Screwfix receipt, £38.47, matching an Autopilot rule, with the VAT to reclaim and the reason."
+                alt="Android app, Review 1 of 6: Fictional Plastics Ltd, £126.00, 97 % sure, read by Muse Spark, with the net, the VAT to reclaim, the supplier VAT number and Approve, Edit and Reject."
               />
             </PhoneFrame>
             <PhoneFrame className="w-[46%] max-w-[210px]">
@@ -653,12 +653,12 @@ function Android() {
                 src="/shots/android-ask.webp"
                 width={360}
                 height={800}
-                alt="Android app, Ask: a sample answer to “Why is my VAT higher than last quarter?” with the figures and the files used."
+                alt="Android app, Ask: suggested questions such as “Why is Box 5 higher this quarter?”, with the mic, hands-free and a box to type."
               />
             </PhoneFrame>
           </div>
           <figcaption className="mt-10 text-center text-[13px] text-muted">
-            The Android app on an emulator, signed out, showing its labelled sample data.
+            The Android app on an emulator, in the company demo with its labelled sample data.
           </figcaption>
         </figure>
       </div>

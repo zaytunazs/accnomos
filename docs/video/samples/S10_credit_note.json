@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Hartley & Sons Timber Merchants",
+  "vat_number": "GB 093 8166 39",
+  "address": "3 Mill Lane, Kendal, LA9 4QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN-0912",
+ "date": "2026-10-22",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Returned: oak board 2.4m 150x22",
+   "qty": -2,
+   "unit_price": 18.95,
+   "net": -37.9,
+   "vat_rate": 20,
+   "vat": -7.58,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -37.9,
+ "vat_total": -7.58,
+ "gross_total": -45.48,
+ "net_pence": -3790,
+ "vat_pence": -758,
+ "gross_pence": -4548,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Materials",
+ "printed_text": "HARTLEY & SONS TIMBER MERCHANTS\n3 Mill Lane\nKendal\nLA9 4QT\nVAT Reg No: GB 093 8166 39\n\n                 CREDIT NOTE\nNo:   CN-0912\nDate: 22/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nReturned: oak board 2.4m 1  -2     -37.90   20\n----------------------------------------------\nNET                                     -37.90\nVAT 20%                                  -7.58\nTOTAL CREDIT                           £-45.48\nPaid by: bank transfer\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

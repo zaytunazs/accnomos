@@ -65,9 +65,12 @@ class DemoFrame extends StatelessWidget {
         if (demo == null) return child;
         return Column(
           children: [
-            Material(
-              color: AccnomosColors.sidebar,
-              child: SafeArea(bottom: false, child: DemoBanner(demo: demo)),
+            AnnotatedRegion<SystemUiOverlayStyle>(
+              value: AccnomosStatusBar.onDark,
+              child: Material(
+                color: AccnomosColors.sidebar,
+                child: SafeArea(bottom: false, child: DemoBanner(demo: demo)),
+              ),
             ),
             Expanded(
               child: MediaQuery.removePadding(
@@ -157,15 +160,19 @@ class _LaunchGateState extends State<LaunchGate> {
   }
 }
 
-/// The first frame while the app checks the sign-in: the same dark-teal and
+/// The first frame while the app checks the sign-in: the same deep brown and
 /// mark as the Android launch screen.
 class BrandSplash extends StatelessWidget {
   const BrandSplash({super.key});
 
   @override
-  Widget build(BuildContext context) => const Scaffold(
-        backgroundColor: AccnomosColors.ledger,
-        body: Center(child: BrandLockup(onDark: true, size: 44)),
+  Widget build(BuildContext context) =>
+      const AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AccnomosStatusBar.onDark,
+        child: Scaffold(
+          backgroundColor: AccnomosColors.ledger,
+          body: Center(child: BrandLockup(onDark: true, size: 44)),
+        ),
       );
 }
 

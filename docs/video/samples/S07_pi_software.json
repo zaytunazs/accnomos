@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Larkfield Cloud Services Ltd",
+  "vat_number": "GB 009 2423 05",
+  "address": "4 Station Approach, Woking, GU22 7UE"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "LCS-2026-1009",
+ "date": "2026-10-15",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Job scheduling app, 3 users, monthly",
+   "qty": 1,
+   "unit_price": 45.0,
+   "net": 45.0,
+   "vat_rate": 20,
+   "vat": 9.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 45.0,
+ "vat_total": 9.0,
+ "gross_total": 54.0,
+ "net_pence": 4500,
+ "vat_pence": 900,
+ "gross_pence": 5400,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": null,
+ "category_hint": "Software",
+ "printed_text": "LARKFIELD CLOUD SERVICES LTD\n4 Station Approach\nWoking\nGU22 7UE\nVAT Reg No: GB 009 2423 05\n\n                   INVOICE\nNo:   LCS-2026-1009\nDate: 15/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nJob scheduling app, 3 user   1      45.00   20\n----------------------------------------------\nNET                                      45.00\nVAT 20%                                   9.00\nTOTAL                                   £54.00\nPaid by: card\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

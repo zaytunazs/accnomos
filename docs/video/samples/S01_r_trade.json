@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hartley & Sons Timber Merchants",
+  "vat_number": "GB 003 1862 20",
+  "address": "3 Mill Lane, Kendal, LA9 4QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": "T-20817",
+ "date": "2026-10-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oak board 2.4m 150x22",
+   "qty": 6,
+   "unit_price": 18.95,
+   "net": 113.7,
+   "vat_rate": 20,
+   "vat": 22.74,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Wood glue 1L",
+   "qty": 2,
+   "unit_price": 8.49,
+   "net": 16.98,
+   "vat_rate": 20,
+   "vat": 3.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Screws 4x40 box 200",
+   "qty": 3,
+   "unit_price": 5.75,
+   "net": 17.25,
+   "vat_rate": 20,
+   "vat": 3.45,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 147.93,
+ "vat_total": 29.59,
+ "gross_total": 177.52,
+ "net_pence": 14793,
+ "vat_pence": 2959,
+ "gross_pence": 17752,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": null,
+ "category_hint": "Materials",
+ "printed_text": "HARTLEY & SONS TIMBER MERCHANTS\n3 Mill Lane\nKendal\nLA9 4QT\nVAT Reg No: GB 003 1862 20\n\n                   RECEIPT\nNo:   T-20817\nDate: 03/10/2026\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nOak board 2.4m 150x22        6     113.70   20\nWood glue 1L                 2      16.98   20\nScrews 4x40 box 200          3      17.25   20\n----------------------------------------------\nNET                                     147.93\nVAT 20%                                  29.59\nTOTAL                                  £177.52\nPaid by: card\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}
