@@ -533,6 +533,10 @@ SUMMARIES: dict[str, Summary] = {
         str(r.get("change") or ""), "Changed a goal"
     ),
     "personal_goal_deleted": lambda r, w: "Deleted a savings goal",
+    "calendar_event_added": lambda r, w: "Added an event to your calendar",
+    "calendar_event_removed": lambda r, w: "Removed an event from your calendar",
+    "calendar_deadlines_synced": lambda r, w: "Put your deadlines in your calendar",
+    "calendar_deadlines_preference": lambda r, w: "Changed whether deadlines go in your calendar automatically",
     # Landlords (app/property.py, app/routes_property.py)
     "property_added": lambda r, w: f"Added a let property: {r.get('name') or 'a property'}",
     "property_updated": lambda r, w: f"Changed the details of {r.get('name') or 'a let property'}",

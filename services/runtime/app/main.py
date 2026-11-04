@@ -315,6 +315,9 @@ app.include_router(payrun_router)
 from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
 
 app.include_router(plan_router)
+from app.routes_calendar import router as calendar_router  # noqa: E402  /calendar/* (events, deadlines sync)
+
+app.include_router(calendar_router)
 from app.routes_reports import router as reports_router  # noqa: E402  /reports/pl, aged, vat, trend, export, budgets…
 
 app.include_router(reports_router)

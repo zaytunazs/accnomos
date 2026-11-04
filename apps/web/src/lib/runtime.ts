@@ -181,6 +181,45 @@ export interface RtSummary {
  * Headers for every runtime call: the user's Graph token + AI config. Nothing is stored server-side.
  * `extraScopes` widens the one Graph token (e.g. Mail.Read for /mail/scan, which also writes to OneDrive).
  */
+/** One event on the user's calendar (GET /calendar/events); times are Europe/London ISO. */
+export interface RtCalendarEvent {
+  id: string;
+  subject: string;
+  start: string;
+  end: string;
+  all_day: boolean;
+  location: string | null;
+  /** Written by Accnomos (a deadline, or an event added here). */
+  accnomos: boolean;
+  web_link: string | null;
+}
+
+export interface RtCalendarEventIn {
+  subject: string;
+  /** "YYYY-MM-DD" for all day, else "YYYY-MM-DDTHH:MM" (Europe/London). */
+  start: string;
+  end?: string;
+  all_day?: boolean;
+  location?: string;
+  body?: string;
+  reminder_minutes?: number;
+}
+
+export interface RtDeadlineSync {
+  added: number;
+  updated: number;
+  unchanged: number;
+  removed: number;
+  events: RtCalendarEvent[];
+}
+
+export interface RtDeadlineStatus {
+  synced: boolean;
+  keep: boolean;
+  last_sync: string | null;
+  count: number;
+}
+
 export async function runtimeHeaders(
   account: AccountInfo,
   extraScopes: string[] = [],
@@ -515,6 +554,21 @@ export const runtime = {
   /** POST /plan/day/apply: the plan's new items become calendar events. Asks for Calendars.ReadWrite only now. */
   applyPlan: (a: AccountInfo, date: string, plan: RtPlanItem[]) =>
     call<RtPlanApplied>(a, "/plan/day/apply", { method: "POST", body: JSON.stringify({ date, plan }) }, CALENDAR_SCOPES),
+
+  /** The user's calendar (services/runtime/app/routes_calendar.py). Reading asks for Calendars.Read, writing for
+   *  Calendars.ReadWrite, each only the first time it is needed; in a demo nothing reaches Microsoft. */
+  calendarEvents: (a: AccountInfo, start: string, end: string) =>
+    call<RtCalendarEvent[]>(a, `/calendar/events?start=${start}&end=${end}`, {}, CALENDAR_READ_SCOPES),
+  addCalendarEvent: (a: AccountInfo, body: RtCalendarEventIn) =>
+    call<RtCalendarEvent>(a, "/calendar/events", { method: "POST", body: JSON.stringify(body) }, CALENDAR_SCOPES),
+  removeCalendarEvent: (a: AccountInfo, id: string) =>
+    call<void>(a, `/calendar/events/${encodeURIComponent(id)}`, { method: "DELETE", body: JSON.stringify({ confirm: true }) }, CALENDAR_SCOPES),
+  /** POST /calendar/deadlines/sync: every upcoming deadline as an all-day event; safe to repeat (never duplicates). */
+  syncDeadlines: (a: AccountInfo) =>
+    call<RtDeadlineSync>(a, withQuery("/calendar/deadlines/sync", vatQuery()), { method: "POST", body: JSON.stringify({ confirm: true }) }, CALENDAR_SCOPES),
+  deadlinesStatus: (a: AccountInfo) => call<RtDeadlineStatus>(a, "/calendar/deadlines/status"),
+  setDeadlinesKeep: (a: AccountInfo, keep: boolean) =>
+    call<RtDeadlineStatus>(a, "/calendar/deadlines/preference", { method: "PUT", body: JSON.stringify({ keep }) }),
 
   /** Jobs, staff and timesheets (services/runtime/app/routes_jobs.py). */
   jobs: (a: AccountInfo) => call<RtJobSummary[]>(a, "/jobs"),

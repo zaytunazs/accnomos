@@ -4,6 +4,8 @@ import Link from "next/link";
 import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
+import { CalendarSyncPanel, useDeadlineSync } from "@/components/calendar/CalendarSync";
+import { useAccount } from "@/components/jobs/useAccount";
 import { isTileError, tileData, type RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
 import { SampleTag, Skeleton, UNKNOWN, useHome, useVatApplies } from "./HomeData";
@@ -69,6 +71,8 @@ function TileSkeleton() {
  */
 export default function Deadlines() {
   const home = useHome();
+  const account = useAccount();
+  const calendarSync = useDeadlineSync(home.mode === "live" ? account : null, true);
   const vatApplies = useVatApplies();
   const sample = home.mode === "sample";
   const vat = home.mode === "live" && !home.annualVat ? tileData(home.data.vat) : null;
@@ -129,6 +133,17 @@ export default function Deadlines() {
                 <p className="mt-0.5 min-h-5 text-[13px] font-medium leading-snug text-muted">
                   {d.sub}
                 </p>
+                {live && account && d.month && (
+                  <button
+                    type="button"
+                    onClick={() => void calendarSync.sync()}
+                    disabled={calendarSync.busy}
+                    aria-label={`Add to calendar: ${d.title}`}
+                    className="mt-1 min-h-8 text-[13px] font-bold text-teal-dark underline underline-offset-2 hover:text-teal disabled:opacity-60"
+                  >
+                    Add to calendar
+                  </button>
+                )}
               </div>
             </div>
           ))}
@@ -142,6 +157,7 @@ export default function Deadlines() {
           </Link>
         </p>
       )}
+      {live && account && <CalendarSyncPanel state={calendarSync} />}
       {live && (
         <>
           <p className="text-[13px] font-medium text-muted">

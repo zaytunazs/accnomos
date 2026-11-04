@@ -178,6 +178,22 @@ class CalendarEvent(BaseModel):
     body_preview: str = ""
     is_all_day: bool = False
     show_as: str = "busy"  # free | tentative | busy | oof | workingElsewhere | unknown
+    web_link: str = ""  # Outlook on the web link to the event, when the calendar gives one
+    key: str | None = None  # Accnomos's own tag (an extended property) on events it created; None for anyone else's
+
+
+class NewCalendarEvent(BaseModel):
+    """An event to write. All-day events take `start`/`end` as midnights (end exclusive, Graph's rule); timed events
+    must be timezone-aware. `key` tags the event as Accnomos's, so a later sync finds and updates it."""
+
+    subject: str
+    start: datetime
+    end: datetime
+    is_all_day: bool = False
+    location: str = ""
+    body: str = ""
+    reminder_minutes: int | None = None  # None: no reminder
+    key: str | None = None
 
 
 class CalendarProvider(ABC):
@@ -190,6 +206,22 @@ class CalendarProvider(ABC):
     @abstractmethod
     async def create_event(self, subject: str, start: datetime, end: datetime, location: str, body: str) -> str:
         """Create one event; returns its id. `start`/`end` must be timezone-aware."""
+
+    async def list_range(self, start: date, end: date, tz: str = "Europe/London") -> list[CalendarEvent]:
+        """Every non-cancelled event overlapping the days `start`..`end` (inclusive, in `tz`), earliest first."""
+        raise NotImplementedError
+
+    async def add_event(self, event: NewCalendarEvent) -> CalendarEvent:
+        """Create one event (tagged with `event.key` when given) and return it as the calendar now holds it."""
+        raise NotImplementedError
+
+    async def update_event(self, event_id: str, event: NewCalendarEvent) -> CalendarEvent:
+        """Replace an event's subject, times, location, body and reminder."""
+        raise NotImplementedError
+
+    async def delete_event(self, event_id: str) -> None:
+        """Delete one event. FileNotFoundError when it is not there."""
+        raise NotImplementedError
 
     async def ensure_calendar(self, name: str) -> str:
         raise NotImplementedError
