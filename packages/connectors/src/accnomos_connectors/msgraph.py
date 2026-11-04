@@ -43,6 +43,7 @@ from accnomos_connectors.base import (
     MailMessage,
     MailProvider,
     MailSender,
+    NewCalendarEvent,
     OutgoingMail,
     SharedFolder,
     SharedRoot,
@@ -796,12 +797,105 @@ def _graph_utc(value: dict[str, Any] | None) -> datetime:
     return datetime.fromisoformat(raw.removesuffix("Z")).replace(tzinfo=UTC)
 
 
+#: The extended property that tags Accnomos's own events (a string named property in our own GUID namespace, as
+#: Microsoft Learn "Create single-value extended property" describes, checked 4 Nov 2026), so a deadline sync can find
+#: and update what it wrote and never duplicate it.
+ACCNOMOS_KEY_PROP = "String {6d4b1f5e-2a3c-4e8f-9b71-0c5a2d8e4f13} Name AccnomosKey"
+#: Windows zone name for UK all-day events (Graph's dateTimeTimeZone takes Windows names everywhere).
+LONDON_WINDOWS = "GMT Standard Time"
+
+
 class GraphCalendarProvider(_GraphHttp, CalendarProvider):
-    """Outlook calendar via Microsoft Graph. Reading needs `Calendars.Read`; `create_event` needs
-    `Calendars.ReadWrite`, which the app asks for only when the user approves a plan."""
+    """Outlook calendar via Microsoft Graph. Reading needs `Calendars.Read`; `create_event`, `add_event`,
+    `update_event` and `delete_event` need `Calendars.ReadWrite`, which the app asks for only on first use."""
 
     PAGE = 100
     SELECT = "subject,start,end,location,bodyPreview,isAllDay,showAs,isCancelled"
+
+    async def list_range(self, start: date, end: date, tz: str = "Europe/London") -> list[CalendarEvent]:
+        zone = ZoneInfo(tz)
+        lo = datetime.combine(start, time(0), zone).astimezone(UTC)
+        hi = datetime.combine(end + timedelta(days=1), time(0), zone).astimezone(UTC)
+        params: dict[str, str] | None = {
+            "startDateTime": lo.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "endDateTime": hi.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "$select": self.SELECT + ",webLink",
+            "$orderby": "start/dateTime",
+            "$top": str(self.PAGE),
+            "$expand": f"singleValueExtendedProperties($filter=id eq '{ACCNOMOS_KEY_PROP}')",
+        }
+        headers = {"Prefer": 'outlook.timezone="UTC"'}
+        url: str | None = f"{GRAPH}/me/calendarView"
+        out: list[CalendarEvent] = []
+        while url:
+            page = (await self._request("GET", url, params=params, headers=headers)).json()
+            params = None
+            out.extend(self._event(e) for e in page.get("value", []) if not e.get("isCancelled"))
+            url = page.get("@odata.nextLink")
+        return sorted(out, key=lambda e: e.start)
+
+    @staticmethod
+    def _event(e: dict[str, Any], key: str | None = None) -> CalendarEvent:
+        for prop in e.get("singleValueExtendedProperties") or []:
+            if str(prop.get("id", "")).lower() == ACCNOMOS_KEY_PROP.lower():
+                key = prop.get("value")
+        return CalendarEvent(
+            id=e["id"],
+            subject=e.get("subject") or "",
+            start=_graph_utc(e.get("start")),
+            end=_graph_utc(e.get("end")),
+            location=((e.get("location") or {}).get("displayName") or ""),
+            body_preview=e.get("bodyPreview") or "",
+            is_all_day=bool(e.get("isAllDay")),
+            show_as=e.get("showAs") or "busy",
+            web_link=e.get("webLink") or "",
+            key=key,
+        )
+
+    @staticmethod
+    def _payload(event: NewCalendarEvent) -> dict[str, Any]:
+        if event.start.tzinfo is None or event.end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware")
+        if event.is_all_day:
+            london = ZoneInfo("Europe/London")
+
+            def day(dt: datetime) -> dict[str, str]:
+                return {"dateTime": dt.astimezone(london).strftime("%Y-%m-%dT00:00:00"), "timeZone": LONDON_WINDOWS}
+
+            start, end = day(event.start), day(event.end)
+        else:
+
+            def stamp(dt: datetime) -> dict[str, str]:
+                return {"dateTime": dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "UTC"}
+
+            start, end = stamp(event.start), stamp(event.end)
+        payload: dict[str, Any] = {
+            "subject": event.subject,
+            "start": start,
+            "end": end,
+            "isAllDay": event.is_all_day,
+            "showAs": "free" if event.is_all_day else "busy",
+            "body": {"contentType": "text", "content": event.body},
+            "location": {"displayName": event.location},
+            "isReminderOn": event.reminder_minutes is not None,
+        }
+        if event.reminder_minutes is not None:
+            payload["reminderMinutesBeforeStart"] = event.reminder_minutes
+        if event.key is not None:
+            payload["singleValueExtendedProperties"] = [{"id": ACCNOMOS_KEY_PROP, "value": event.key}]
+        return payload
+
+    async def add_event(self, event: NewCalendarEvent) -> CalendarEvent:
+        made = (await self._request("POST", f"{GRAPH}/me/events", json=self._payload(event))).json()
+        return self._event(made, event.key)
+
+    async def update_event(self, event_id: str, event: NewCalendarEvent) -> CalendarEvent:
+        url = f"{GRAPH}/me/events/{quote(event_id, safe='')}"
+        changed = (await self._request("PATCH", url, json=self._payload(event))).json()
+        return self._event(changed, event.key)
+
+    async def delete_event(self, event_id: str) -> None:
+        await self._request("DELETE", f"{GRAPH}/me/events/{quote(event_id, safe='')}")
 
     async def list_events(self, day: date, tz: str = "Europe/London") -> list[CalendarEvent]:
         zone = ZoneInfo(tz)

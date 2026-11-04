@@ -174,3 +174,123 @@ async def test_fake_ensure_calendar_is_idempotent_and_upsert_replaces_by_key():
 async def test_fake_upsert_into_unknown_calendar_fails():
     with pytest.raises(FileNotFoundError):
         await FakeCalendarProvider().upsert_all_day_event("nope", "k", "2026-11-07", "t", "b")
+
+
+# Range, add, update and delete (Calendars.ReadWrite), with Accnomos's extended-property tag ---------------------- #
+
+from accnomos_connectors import NewCalendarEvent  # noqa: E402
+from accnomos_connectors.msgraph import ACCNOMOS_KEY_PROP  # noqa: E402
+
+
+async def test_list_range_expands_the_tag_and_maps_web_link():
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "id": "e1",
+                        "subject": "VAT return due",
+                        "start": {"dateTime": "2026-11-07T00:00:00.0000000", "timeZone": "UTC"},
+                        "end": {"dateTime": "2026-11-08T00:00:00.0000000", "timeZone": "UTC"},
+                        "isAllDay": True,
+                        "webLink": "https://outlook.live.com/owa/?itemid=e1",
+                        "singleValueExtendedProperties": [{"id": ACCNOMOS_KEY_PROP, "value": "deadline:vat"}],
+                    },
+                    {
+                        "id": "e2",
+                        "subject": "Dentist",
+                        "start": {"dateTime": "2026-11-05T09:00:00", "timeZone": "UTC"},
+                        "end": {"dateTime": "2026-11-05T10:00:00", "timeZone": "UTC"},
+                    },
+                ]
+            },
+        )
+
+    events = await _provider(handler).list_range(date(2026, 11, 4), date(2026, 11, 10))
+    q = seen[0].url.params
+    assert q["startDateTime"] == "2026-11-04T00:00:00Z" and q["endDateTime"] == "2026-11-11T00:00:00Z"
+    assert ACCNOMOS_KEY_PROP in q["$expand"] and "webLink" in q["$select"]
+    assert [e.id for e in events] == ["e2", "e1"]
+    assert events[1].key == "deadline:vat" and events[1].is_all_day and events[1].web_link.endswith("e1")
+    assert events[0].key is None
+
+
+async def test_add_all_day_event_with_reminder_and_tag_then_update_and_delete():
+    seen: list[tuple[str, str, dict]] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        body = json.loads(req.content) if req.content else {}
+        seen.append((req.method, req.url.path, body))
+        if req.method == "DELETE":
+            return httpx.Response(204)
+        return httpx.Response(
+            201 if req.method == "POST" else 200,
+            json={
+                "id": "new1",
+                "subject": body["subject"],
+                "start": body["start"],
+                "end": body["end"],
+                "isAllDay": True,
+            },
+        )
+
+    p = _provider(handler)
+    ev = NewCalendarEvent(
+        subject="VAT return due",
+        start=datetime(2026, 11, 7, tzinfo=LONDON),
+        end=datetime(2026, 11, 8, tzinfo=LONDON),
+        is_all_day=True,
+        reminder_minutes=900,
+        key="deadline:vat",
+    )
+    made = await p.add_event(ev)
+    method, path, body = seen[0]
+    assert method == "POST" and path.endswith("/me/events")
+    assert body["isAllDay"] is True and body["start"] == {
+        "dateTime": "2026-11-07T00:00:00",
+        "timeZone": "GMT Standard Time",
+    }
+    assert body["end"]["dateTime"] == "2026-11-08T00:00:00" and body["reminderMinutesBeforeStart"] == 900
+    assert body["singleValueExtendedProperties"] == [{"id": ACCNOMOS_KEY_PROP, "value": "deadline:vat"}]
+    assert made.id == "new1" and made.key == "deadline:vat"
+    await p.update_event("new1", ev.model_copy(update={"subject": "VAT return due (moved)"}))
+    assert seen[1][0] == "PATCH" and seen[1][1].endswith("/me/events/new1")
+    await p.delete_event("new1")
+    assert seen[2][0] == "DELETE"
+
+
+async def test_timed_event_needs_aware_times():
+    p = _provider(lambda req: httpx.Response(500))
+    with pytest.raises(ValueError):
+        await p.add_event(NewCalendarEvent(subject="x", start=datetime(2026, 11, 5, 9), end=datetime(2026, 11, 5, 10)))
+
+
+async def test_fake_range_add_update_delete():
+    cal = FakeCalendarProvider()
+    ev = await cal.add_event(
+        NewCalendarEvent(
+            subject="Call Emily",
+            start=datetime(2026, 11, 5, 10, tzinfo=LONDON),
+            end=datetime(2026, 11, 5, 10, 30, tzinfo=LONDON),
+            key="event:1",
+        )
+    )
+    assert [e.id for e in await cal.list_range(date(2026, 11, 5), date(2026, 11, 5))] == [ev.id]
+    assert await cal.list_range(date(2026, 11, 6), date(2026, 11, 9)) == []
+    moved = await cal.update_event(
+        ev.id,
+        NewCalendarEvent(
+            subject="Call Emily",
+            start=datetime(2026, 11, 6, 10, tzinfo=LONDON),
+            end=datetime(2026, 11, 6, 11, tzinfo=LONDON),
+        ),
+    )
+    assert moved.start.day == 6 and moved.key == "event:1"
+    await cal.delete_event(ev.id)
+    with pytest.raises(FileNotFoundError):
+        await cal.delete_event(ev.id)
+    assert await cal.list_range(date(2026, 11, 1), date(2026, 11, 30)) == []
