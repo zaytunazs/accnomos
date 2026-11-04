@@ -662,6 +662,8 @@ def test_every_report_previews_and_renders(client: TestClient) -> None:
     from app import security
 
     for spec in reg.catalogue().values():
+        if not spec.shown_for(True):  # books outside the UK only (tests/test_international.py)
+            continue
         if security.LIMITER:  # some 150 calls in one test: more than one client's burst
             security.LIMITER.reset()
         r = client.get(f"/exports/{spec.id}?from=2026-01-01&to=2026-12-31&today=2026-10-27", headers=H)
