@@ -15,7 +15,7 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 
 - **What pre-existed:** only the owner's own AI server with a local model runtime. The first commit is 6 h 29 min after kickoff (26 Oct 2026, 16:00 UTC); timestamps, commits per day and how each part was built: [docs/PROVENANCE.md](docs/PROVENANCE.md).
 - **Criteria → evidence** (Impact, Use of Meta AI tooling, Technical depth and execution, Demo quality), each claim with a file path: [docs/submission/JUDGING.md](docs/submission/JUDGING.md).
-- **Meta models**, where each runs and what is measured versus unit-tested: [docs/submission/META_MODELS.md](docs/submission/META_MODELS.md). Every figure is on synthetic documents (200 clean and 200 messy; all fields right 91 / 93 % for Muse Spark Open, 85 / 80 % for Muse Glimmer 30B).
+- **Meta models**, where each runs and what is measured versus unit-tested: [docs/submission/META_MODELS.md](docs/submission/META_MODELS.md). Every figure is on synthetic documents (200 clean and 200 messy; all fields right 95 / 96 % for muse-spark-1.3 Contributor, 91 / 93 % for Muse Spark Open, 85 / 80 % for Muse Glimmer 30B). Where each open-weight model runs, with live call records: [docs/submission/OPEN_WEIGHTS.md](docs/submission/OPEN_WEIGHTS.md).
 - **Try it:** sign in at `https://accnomos.com` with a throwaway Microsoft account and press **Load sample books** for six months of a fictional company (never yet run against a real OneDrive), or run it with no accounts in test mode ([JUDGING.md, last section](docs/submission/JUDGING.md#how-to-run-it-in-10-minutes-test-mode-no-accounts)).
 - **What is not real yet:** HMRC is sandbox only and not run end to end; the Android app has not run on a real phone; most features are tested on fakes. Every gap: [docs/HONESTY.md](docs/HONESTY.md).
 - Video script and submission texts: [docs/submission/](docs/submission/).
@@ -36,15 +36,20 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 
 ## Meta models used (runtime path)
 
-| Model | Role |
-|---|---|
-| Muse Glimmer 30B (open weights, on a local model server) | Receipt/invoice reading, categorising, local-mode Ask, Verifier and the other text tasks |
-| muse-spark-1.3 (Meta Model API, user's key) | Key-mode extraction, Ask and the other text tasks |
-| Muse Spark Open (hosted open weights, optional, off for now) | Independent verifier, only with `BASETEN_ENABLED=1` and the server owner's hosted-verifier key; off on the live server since 2 Nov 2026, so the Verifier runs on the Meta chain |
-| muse-voice-transcribe-1.0 | Spoken questions on Ask (key mode; not yet run live) |
-| sam-3.1 | Crop receipts in messy photos, **off by default** (code crop is the default; never run live) |
+At run time the product calls only Meta models. Where each one runs on the live server (`api.accnomos.com`) and what it does:
 
-Muse Image made the brand artwork at build time (`tools/brand_muse.py`; not in the runtime). Costs, fallbacks and eval numbers: `docs/META_MODELS.md`.
+| Model | Where it runs | What it does in the workflow |
+|---|---|---|
+| muse-spark-1.3 (Contributor) | Meta Model API (hosted), the server's key or the user's own | First choice by default: reading receipts and invoices, categorising, Ask, the Home summary, goals notes, the assistant |
+| Muse Glimmer 30B (Meta open weights) | Our own GPU server in the owner's office, behind a local model server; or the user's own computer in local mode | Fallback when the Meta Model API is down; first choice when a user picks **Local model first** (Settings › AI), and the only model with **Local model only**. Same tasks as above |
+| muse-voice-transcribe-1.0 | Meta Model API | Speech to text for the hands-free assistant and voice notes (off with Local model only) |
+| Muse Spark Open (Meta open weights, hosted) | A partner inference host; off on the live server since 2 Nov 2026 | Independent verifier in the extraction evals |
+| sam-3.1 | Meta Model API | Crops receipts in messy photos; **off by default** (the code crop is the default; never run live) |
+
+Users choose the order in Settings › AI (`X-AI-Route`): Meta Model API first, local model first with the Meta Model API when the local answer is unclear, or local model only (with its limitations listed next to it). Provenance for the open-weight path, with live call records: [docs/submission/OPEN_WEIGHTS.md](docs/submission/OPEN_WEIGHTS.md).
+
+
+Muse Image made the brand artwork and the labelled video cards at build time (`tools/brand_muse.py`, `docs/video/cards-zaytuna`; not in the runtime). Costs, fallbacks and eval numbers: `docs/META_MODELS.md`.
 
 One page for every model, job, screen, fallback order, code check and measured result: [accnomos.com/meta-models](https://accnomos.com/meta-models) (source `apps/web/src/lib/meta-models-page.ts`; the same facts in [`docs/submission/META_MODELS.md`](docs/submission/META_MODELS.md)).
 
