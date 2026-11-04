@@ -229,6 +229,14 @@ _OVERTIME_SPLIT = re.compile(
 _TOTAL_HOURS = re.compile(r"\b(?:add|log|record|book|put)\s+(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b", re.I)
 
 
+def _hours_word(n: object) -> str:
+    """'1 hour', '1.5 hours', '2 hours'."""
+    try:
+        return "hour" if Decimal(str(n)) == 1 else "hours"
+    except Exception:
+        return "hours"
+
+
 def overtime_split(question: str, said: set[Decimal]) -> tuple[Decimal, Decimal | None] | None:
     """(overtime hours, its multiplier or None when no rate was said) for a timesheet that includes overtime."""
     m = _OVERTIME_SPLIT.search(question)
@@ -1053,7 +1061,8 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
         "note": intent.note,
         "warnings": warnings,
     }
-    summary = f"**Log {hours} hours** for **{_md(staff.option.name)}** on **{_md(job.option.name)}**, {uk_date(day)}."
+    who = f"**{_md(staff.option.name)}** on **{_md(job.option.name)}**, {uk_date(day)}"
+    summary = f"**Log {hours} {_hours_word(hours)}** for {who}."
     if intent.overtime_hours is not None and intent.overtime_multiplier is not None:
         ot = jobs_.round_hours(intent.overtime_hours)
         mult = intent.overtime_multiplier
@@ -1071,12 +1080,11 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
             f"The overtime hours are paid at {mult}× in the next pay run that covers {uk_date(day)}; nothing is "
             "paid now. Customers are charged the normal rate."
         ]
-        parts = [f"{ln['hours']} hours {ln['label'].lower()} at {money(ln['rate_pence'])} × {ln['multiplier']} = "
+        parts = [f"{ln['hours']} {_hours_word(ln['hours'])} {ln['label'].lower()} "
+                 f"at {money(ln['rate_pence'])} × {ln['multiplier']} = "
                  f"{money(ln['cost_pence'])}" for ln in lines]  # fmt: skip
         summary = (
-            f"**Log {hours} hours** for **{_md(staff.option.name)}** on **{_md(job.option.name)}**, {uk_date(day)}: "
-            + "; ".join(parts)
-            + f". **{money(cost)}** in pay."
+            f"**Log {hours} {_hours_word(hours)}** for {who}: " + "; ".join(parts) + f". **{money(cost)}** in pay."
         )
     return Draft("log_timesheet", summary, preview, "Add the hours to the timesheet")
 
@@ -1569,7 +1577,7 @@ async def run_timesheet(action: ProposedAction, ctx: Context) -> tuple[str, dict
         f"user:{ctx.user}", "timesheet_added", {"entry": added[0].id, "entries": [e.id for e in added],
                                                 "action": action.id},
     )  # fmt: skip
-    text = f"Logged {p['hours']} hours for {_md(p['staff_name'])} on {_md(p['job_name'])}"
+    text = f"Logged {p['hours']} {_hours_word(p['hours'])} for {_md(p['staff_name'])} on {_md(p['job_name'])}"
     if p.get("lines"):
         text += f", {p['overtime_hours']} of them overtime at {p['overtime_multiplier']}× ({money(p['cost_pence'])})"
     return (
