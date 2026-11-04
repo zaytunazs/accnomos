@@ -95,7 +95,7 @@ Check the form's own field list on the day; this is what the repo has for each l
 | Track | Indie (solo: Zohaib Sharif) |
 | Team / owner | Zohaib Sharif, Zaytuna Business Services Ltd |
 | Repository | `https://github.com/zaytunazs/accnomos` (public) |
-| Video link | from section 5 |
+| Video link | https://youtu.be/gTZCC_gadEE (uploaded 4 Nov, unlisted, reachable logged out) |
 | Live demo | `https://accnomos.com` (press *Try the demo*; guide at `https://accnomos.com/judges`, no sign-in) |
 | Judge access | "No account needed: press Try the demo. HMRC and the bank feed are sandboxes." |
 | Android app | the APK link from the README (`android-0.3.19-24`); Play: "submitted, in Google's review" unless the console says otherwise |
