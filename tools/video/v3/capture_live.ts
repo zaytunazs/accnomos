@@ -586,7 +586,7 @@ const SHOTS: Record<string, Shot> = {
       await h.park(900, 250);
       const feed = page.getByRole("region", { name: "Bank feed" });
       await hoverText(c, /^Bank feed/, 800);
-      const connect = vis(feed.getByRole("button", { name: /^Connect a bank/ }));
+      const connect = vis(feed.getByRole("button", { name: /^Connect (a|the test) bank/ }).or(page.getByRole("button", { name: /^Connect the test bank/ })));
       if (await connect.isVisible({ timeout: 3000 }).catch(() => false)) {
         c.mark("connect");
         await h.click(connect, 300);
@@ -667,7 +667,7 @@ async function demoSession(page: any, kind: "company" | "personal") {
   await page.goto(`${SITE}/judges`);
   await page.getByRole("button", { name: kind === "personal" ? "Start the personal demo" : "Start the demo" }).click();
   await page.waitForURL(/\/(review|$)/, { timeout: 120_000 }).catch(() => undefined);
-  await page.waitForTimeout(4000);
+  await page.waitForTimeout(Number(process.env.DEMO_WAIT_MS ?? 12_000)); // the demo books take ~10 s to build
 }
 
 const browserArgs = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"];
