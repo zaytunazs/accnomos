@@ -647,7 +647,7 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
               style: const TextStyle(fontWeight: FontWeight.w800, color: _greenInk, fontSize: 16)),
           const SizedBox(height: 8),
           if (r != null) ...[
-            _receiptRow('Processing date', r.processingDate),
+            _receiptRow('Processing date', ukDateTime(r.processingDate)),
             Row(children: [
               Expanded(child: _receiptRow('Form bundle number', r.formBundleNumber)),
               IconButton(
@@ -704,6 +704,15 @@ const _amberBg = AccnomosColors.warnTint;
 const _amberInk = AccnomosColors.warnText;
 const _greenBg = AccnomosColors.posTint;
 const _greenInk = AccnomosColors.posText;
+
+/// `4 Nov 2026, 03:36` (local time) from an ISO timestamp (as given when it does not parse).
+String ukDateTime(String iso) {
+  final d = DateTime.tryParse(iso.trim());
+  if (d == null) return iso;
+  final t = d.toLocal();
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${ukDay(t.toIso8601String())}, ${two(t.hour)}:${two(t.minute)}';
+}
 
 /// `3 Nov 2026` from an ISO date (as given when it does not parse).
 String ukDay(String iso) {

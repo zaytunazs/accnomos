@@ -205,7 +205,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
       ),
       body: !_checked
           ? ListView(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
               children: const [
                 SkeletonCard(lines: 2, tinted: true),
                 SizedBox(height: 12),
@@ -219,7 +219,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                 if (_signedIn && !_loading) _reload();
               },
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
                 children: [
                   Text(
                     _household

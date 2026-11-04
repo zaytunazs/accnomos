@@ -169,7 +169,7 @@ class _MoreScreenState extends State<MoreScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 96), // clear of the Talk button
         children: [
           ValueListenableBuilder<DemoInfo?>(
             valueListenable: Demo.state,

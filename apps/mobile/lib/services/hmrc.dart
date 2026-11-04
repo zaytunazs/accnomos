@@ -63,8 +63,14 @@ class Obligation {
         if (received != null) 'received': received,
       };
 
-  Obligation fulfilled() => Obligation(
-      periodKey: periodKey, start: start, end: end, due: due, status: 'F', received: received);
+  /// This obligation once a return for it has just gone in: received today unless HMRC said otherwise.
+  Obligation fulfilled({DateTime? now}) => Obligation(
+      periodKey: periodKey,
+      start: start,
+      end: end,
+      due: due,
+      status: 'F',
+      received: received ?? isoDay(now ?? DateTime.now()));
 
   static List<Obligation> listFrom(Object? hmrcBody) {
     final raw = hmrcBody is Map ? hmrcBody['obligations'] : null;

@@ -17,6 +17,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// obligations, the declaration gate, the demo's simulated submission and the
 /// receipt, and money shown as the web shows it.
 void main() {
+  test('a return that has just gone in is received today, not on its due date', () {
+    final o = Obligation(periodKey: '26A3', start: '2026-07-01', end: '2026-09-30', due: '2026-11-07', status: 'O');
+    final f = o.fulfilled(now: DateTime(2026, 11, 4));
+    expect(f.status, 'F');
+    expect(f.received, '2026-11-04');
+    final told = Obligation(
+        periodKey: '26A2', start: '2026-04-01', end: '2026-06-30', due: '2026-08-07', status: 'O', received: '2026-08-01');
+    expect(told.fulfilled(now: DateTime(2026, 11, 4)).received, '2026-08-01');
+  });
+
+  test('processing date reads as a day and a time', () {
+    expect(ukDateTime('2026-11-04T03:36:36.039258Z'), startsWith('4 Nov 2026, '));
+    expect(ukDateTime('not a date'), 'not a date');
+  });
+
   const device = MethodChannel('accnomos/device');
   const hmrcChannel = MethodChannel('accnomos/hmrc');
   const demo = DemoInfo(
