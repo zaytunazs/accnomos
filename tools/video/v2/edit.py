@@ -45,13 +45,14 @@ EDL: list[dict] = [
         {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 7.4},
     ]},
     {"id": "s3", "lead": 0.4, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
-        {"layout": "full", "src": "w-home-action", "segs": ["0.6..end"], "dur": 8.0},
-        {"layout": "full", "src": "w-talk", "segs": ["1.0..speak+2.2", "ready-0.3..end"], "dur": 11.0, "crop": [560, 0, 1360, 765]},
+        {"layout": "full", "src": "w-home", "segs": ["1.0..7.5"], "dur": 4.8},
+        {"layout": "full", "src": "w-home-action", "segs": ["0.4..click+2.6"], "dur": 3.4},
+        {"layout": "full", "src": "w-talk", "segs": ["1.0..speak+2.2", "ready-0.3..end"], "dur": 10.8, "crop": [560, 0, 1360, 765]},
     ]},
     {"id": "s4", "lead": 0.4, "lt": ("Receipts and invoices", "Read by Muse Spark · checked by code"), "shots": [
-        {"layout": "phone", "src": "p-receipt", "segs": ["1.0..gallery+0.5", "queued-0.6..wait+0.8", "ready-0.2..wait2+0.8", "ready2+1.4..ready2+5.6"], "dur": 8.4,
+        {"layout": "phone", "src": "p-receipt", "segs": ["1.0..gallery+0.5", "queued-0.6..wait+0.8", "ready-0.2..wait2+0.8", "ready2+1.4..ready2+5.6"], "dur": 7.8,
          "side": ("Snap a receipt", "Muse Spark reads it. Code checks every number. You approve.")},
-        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 14.2},
+        {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 14.8},
     ]},
     {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Worked out by code from the ledger"), "shots": [
         {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 5.0},
