@@ -138,15 +138,17 @@ class CalendarSyncPanel extends StatelessWidget {
       listenable: sync,
       builder: (context, _) {
         final status = sync.status;
-        return Container(
+        // A Material, not a coloured box: the switch's ink shows on it.
+        return Material(
           key: const Key('calendar-sync-panel'),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: Colors.white,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AccnomosColors.border),
+            side: const BorderSide(color: AccnomosColors.border),
           ),
-          child: Column(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SwitchListTile(
@@ -173,6 +175,7 @@ class CalendarSyncPanel extends StatelessWidget {
               const Text(calendarSmallPrint,
                   style: TextStyle(color: AccnomosColors.muted, fontSize: 11, height: 1.4)),
             ],
+            ),
           ),
         );
       },

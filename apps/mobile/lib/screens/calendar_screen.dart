@@ -34,7 +34,6 @@ class CalendarScreen extends StatefulWidget {
 
 class _CalendarScreenState extends State<CalendarScreen> {
   final AuthService _auth = AuthService();
-  ClientFor? _read;
   ClientFor? _write;
   DeadlineSync? _sync;
   bool _signedOut = false;
@@ -88,7 +87,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (!mounted) return;
     final sync = DeadlineSync(read: read, write: write)..addListener(_onSynced);
     setState(() {
-      _read = read;
       _write = write;
       _sync = sync;
     });
