@@ -12,9 +12,11 @@ import '../services/runtime_client.dart' show RuntimeClient;
 import '../services/settings.dart';
 import '../services/summary_routes.dart';
 import '../theme.dart';
+import '../widgets/calendar_sync.dart';
 import '../widgets/loading.dart';
 import '../widgets/tile_grid.dart';
 import 'bank_screen.dart';
+import 'calendar_screen.dart';
 import 'home_cards.dart';
 import 'invoices_screen.dart';
 import 'month_end_screen.dart' show MonthEndCard;
@@ -61,6 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _seenChange = BooksEvents.changed.value;
 
+  /// Home › Deadlines and the automatic calendar refresh (signed in only).
+  DeadlineSync? _deadlines;
+
   @override
   void initState() {
     super.initState();
@@ -71,6 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     BooksEvents.changed.removeListener(_onBooksChanged);
+    _deadlines?.dispose();
     super.dispose();
   }
 
@@ -112,6 +118,12 @@ class _HomeScreenState extends State<HomeScreen> {
       account = null;
     }
     if (!mounted) return;
+    _deadlines?.dispose();
+    _deadlines = account == null
+        ? null
+        : DeadlineSync(
+            read: () => booksClient(settings, _auth, account),
+            write: () => calendarClient(settings, _auth, account));
     setState(() {
       _settings = settings;
       _account = account;
@@ -307,6 +319,16 @@ class _HomeScreenState extends State<HomeScreen> {
             refresh: _refresh,
           ),
           const SizedBox(height: 12),
+          if (signedIn && _deadlines != null) ...[
+            HomeDeadlinesCard(
+              key: ValueKey(_deadlines),
+              sync: _deadlines!,
+              onOpenCalendar: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CalendarScreen()),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_settings != null)
             InboxCard(
               settings: _settings!,

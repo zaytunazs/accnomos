@@ -150,6 +150,7 @@ void main() {
     expect(name('/contacts'), 'screen:contacts');
     expect(name('/reports/cashflow'), 'screen:reports');
     expect(name('/payroll'), 'screen:payroll');
+    expect(name('/calendar'), 'screen:calendar');
     expect(name('/self-employment'), isNull);
     expect(name('/nowhere'), isNull);
     expect(shellTabIndex('vat', household: false), 3);

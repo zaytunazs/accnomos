@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../screens/bank_screen.dart';
+import '../screens/calendar_screen.dart';
 import '../screens/contacts_screen.dart';
 import '../screens/goals_screen.dart';
 import '../screens/invoices_screen.dart';
@@ -56,6 +57,8 @@ SummaryTarget? summaryTarget(String route, {required bool household}) {
     case '/bank':
     case '/bank/reconcile':
       return ScreenTarget('bank', (_) => const BankScreen());
+    case '/calendar':
+      return ScreenTarget('calendar', (_) => const CalendarScreen());
     case '/month-end':
       return ScreenTarget('month-end', (_) => const MonthEndScreen());
     case '/contacts':

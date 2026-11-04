@@ -10,6 +10,7 @@ import '../widgets/brand.dart';
 import 'accountant_screen.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
+import 'calendar_screen.dart';
 import 'contacts_screen.dart';
 import 'ask_screen.dart';
 import 'files_screen.dart';
@@ -76,6 +77,8 @@ List<MoreEntry> moreEntries(List<String>? features,
         const ReportsScreen()),
     const MoreEntry(Icons.flag_outlined, 'Goals',
         'Targets tracked against your books', GoalsScreen()),
+    const MoreEntry(Icons.calendar_month_outlined, 'Calendar',
+        'Your plan: the next two weeks and your deadlines', CalendarScreen()),
     const MoreEntry(Icons.sticky_note_2_outlined, 'Notes',
         'Typed, or said to the assistant', NotesScreen()),
     const MoreEntry(Icons.handshake_outlined, 'Your accountant',

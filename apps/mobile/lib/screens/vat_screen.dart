@@ -10,6 +10,7 @@ import '../services/graph.dart';
 import '../services/hmrc.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
+import '../widgets/calendar_sync.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
 import '../widgets/hmrc_filing.dart';
@@ -48,6 +49,9 @@ class _VatScreenState extends State<VatScreen> {
   Hmrc? _hmrc;
   final GraphService _graph = GraphService();
 
+  /// The VAT due line's "Add to calendar" (made with the books client).
+  DeadlineSync? _deadlines;
+
   @override
   void initState() {
     super.initState();
@@ -58,6 +62,7 @@ class _VatScreenState extends State<VatScreen> {
   @override
   void dispose() {
     BooksEvents.changed.removeListener(_onBooksChanged);
+    _deadlines?.dispose();
     super.dispose();
   }
 
@@ -123,6 +128,10 @@ class _VatScreenState extends State<VatScreen> {
         if (fetchPeriods) client.vatPeriods(),
       ]);
       _hmrc ??= Hmrc(relayUrl: settings.runtimeUrl);
+      final account = _account;
+      _deadlines ??= DeadlineSync(
+          read: () async => _client ?? client,
+          write: () => calendarClient(settings, _auth, account));
       final vat = VatReturn.fromJson(results[0]);
       if (results.length > 1) _periods = VatPeriod.listFromJson(results[1]);
       if (!mounted) return;
@@ -279,6 +288,7 @@ class _VatScreenState extends State<VatScreen> {
                 style: const TextStyle(
                     color: AccnomosColors.muted, height: 1.4),
               ),
+              if (_deadlines != null) VatDueCalendarLine(sync: _deadlines!),
               const Divider(height: 24),
               for (final box in vat.boxes) _boxRow(vat, box),
             ],

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import '../models/ask_answer.dart';
+import '../models/calendar.dart';
 import '../models/sample_books.dart';
 import '../models/scan_job.dart';
 import '../models/storage.dart';
@@ -1060,6 +1061,67 @@ class RuntimeClient {
     }
     return _map(method, path, body: body, query: query, what: what);
   }
+
+  // Calendar (/calendar/*), the same routes and bodies as the web's runtime.ts.
+  // Reading and writing events needs a calendar-scoped token (Calendars.ReadWrite,
+  // asked for when the user first opens Calendar or taps "Add to calendar"):
+  // build the client with it. In a demo it is the session's own calendar.
+
+  /// `GET /calendar/events`: events overlapping [start]..[end] (`YYYY-MM-DD`,
+  /// at most 62 days), Europe/London times.
+  Future<List<CalendarEvent>> calendarEvents({String? start, String? end}) async =>
+      CalendarEvent.listFromJson(await _json('GET', '/calendar/events',
+          query: {'start': ?start, 'end': ?end}, what: 'load your calendar'));
+
+  /// `POST /calendar/events` with `check_only`: the events it would clash
+  /// with; writes nothing.
+  Future<List<CalendarClash>> checkCalendarEvent(Map<String, Object?> event) async {
+    final json = await _map('POST', '/calendar/events',
+        body: {...event, 'check_only': true}, what: 'check your calendar');
+    return CalendarClash.listFromJson(json['conflicts']);
+  }
+
+  /// `POST /calendar/events`: add one. Without [allowConflict] a clash is
+  /// refused (409); pass it after the user said "Add anyway".
+  Future<CalendarEvent> addCalendarEvent(Map<String, Object?> event,
+          {bool allowConflict = false}) async =>
+      CalendarEvent.fromJson(await _map('POST', '/calendar/events',
+          body: {...event, if (allowConflict) 'allow_conflict': true},
+          what: 'add that to your calendar'));
+
+  /// `DELETE /calendar/events/{id}` with `{"confirm": true}`.
+  Future<void> removeCalendarEvent(String id) async {
+    await _json('DELETE', '/calendar/events/${_seg(id)}',
+        body: {'confirm': true}, what: 'remove that from your calendar');
+  }
+
+  /// `GET /calendar/conflicts`: pairs of events already in the calendar that clash.
+  Future<List<CalendarClashPair>> calendarConflicts({String? start, String? end}) async =>
+      CalendarClashPair.listFromJson(await _json('GET', '/calendar/conflicts',
+          query: {'start': ?start, 'end': ?end}, what: 'check your calendar'));
+
+  /// `POST /calendar/deadlines/sync` (with the saved VAT period). With
+  /// [keys], only those deadlines (the per-deadline "Add to calendar").
+  Future<DeadlineSyncResult> syncDeadlines({List<String>? keys}) async =>
+      DeadlineSyncResult.fromJson(await _map('POST', '/calendar/deadlines/sync',
+          query: vatQuery(),
+          body: {'confirm': true, 'keys': ?keys},
+          what: 'add your deadlines to your calendar'));
+
+  /// `GET /calendar/deadlines`: what a sync would add and which are in the
+  /// calendar already. Reads no calendar, so the sign-in token is enough.
+  Future<CalendarDeadlines> calendarDeadlines() async =>
+      CalendarDeadlines.fromJson(await _map('GET', '/calendar/deadlines',
+          query: vatQuery(), what: 'load your deadlines'));
+
+  /// `GET /calendar/deadlines/status`.
+  Future<DeadlineSyncStatus> deadlinesStatus() async => DeadlineSyncStatus.fromJson(
+      await _map('GET', '/calendar/deadlines/status', what: 'load your calendar settings'));
+
+  /// `PUT /calendar/deadlines/preference`: "Add all deadlines to my calendar automatically".
+  Future<DeadlineSyncStatus> setDeadlinesKeep(bool keep) async => DeadlineSyncStatus.fromJson(
+      await _map('PUT', '/calendar/deadlines/preference',
+          body: {'keep': keep}, what: 'save that setting'));
 
   // Bank statements (/books/bank/*).
 

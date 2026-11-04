@@ -225,6 +225,22 @@ export interface RtDeadlineSync {
   conflicts: { a: RtCalendarClash; b: RtCalendarClash }[];
 }
 
+/** GET /calendar/deadlines: what "Add to calendar" would add, and which the last syncs already put there. */
+export interface RtCalendarDeadline {
+  key: string;
+  kind: "vat" | "itsa" | "self_assessment" | "cis" | "payroll" | "invoice" | string;
+  title: string;
+  day: string;
+  in_calendar: boolean;
+}
+
+export interface RtCalendarDeadlines {
+  items: RtCalendarDeadline[];
+  keep: boolean;
+  last_sync: string | null;
+  count: number;
+}
+
 export interface RtDeadlineStatus {
   synced: boolean;
   keep: boolean;
@@ -580,8 +596,16 @@ export const runtime = {
   removeCalendarEvent: (a: AccountInfo, id: string) =>
     call<void>(a, `/calendar/events/${encodeURIComponent(id)}`, { method: "DELETE", body: JSON.stringify({ confirm: true }) }, CALENDAR_SCOPES),
   /** POST /calendar/deadlines/sync: every upcoming deadline as an all-day event; safe to repeat (never duplicates). */
-  syncDeadlines: (a: AccountInfo) =>
-    call<RtDeadlineSync>(a, withQuery("/calendar/deadlines/sync", vatQuery()), { method: "POST", body: JSON.stringify({ confirm: true }) }, CALENDAR_SCOPES),
+  /** With `keys`, only those deadlines (the per-deadline "Add to calendar"); nothing else is added or removed. */
+  syncDeadlines: (a: AccountInfo, keys?: string[]) =>
+    call<RtDeadlineSync>(
+      a,
+      withQuery("/calendar/deadlines/sync", vatQuery()),
+      { method: "POST", body: JSON.stringify(keys ? { confirm: true, keys } : { confirm: true }) },
+      CALENDAR_SCOPES,
+    ),
+  /** No calendar read (and so no consent prompt): the books' deadlines and what the last syncs wrote. */
+  calendarDeadlines: (a: AccountInfo) => call<RtCalendarDeadlines>(a, withQuery("/calendar/deadlines", vatQuery())),
   deadlinesStatus: (a: AccountInfo) => call<RtDeadlineStatus>(a, "/calendar/deadlines/status"),
   setDeadlinesKeep: (a: AccountInfo, keep: boolean) =>
     call<RtDeadlineStatus>(a, "/calendar/deadlines/preference", { method: "PUT", body: JSON.stringify({ keep }) }),

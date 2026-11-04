@@ -133,17 +133,24 @@ export default function Deadlines() {
                 <p className="mt-0.5 min-h-5 text-[13px] font-medium leading-snug text-muted">
                   {d.sub}
                 </p>
-                {live && account && d.month && (
-                  <button
-                    type="button"
-                    onClick={() => void calendarSync.sync()}
-                    disabled={calendarSync.busy}
-                    aria-label={`Add to calendar: ${d.title}`}
-                    className="mt-1 min-h-8 text-[13px] font-bold text-teal-dark underline underline-offset-2 hover:text-teal disabled:opacity-60"
-                  >
-                    Add to calendar
-                  </button>
-                )}
+                {live && account && d.month && !/ ends$/.test(d.title) && (() => {
+                  // The return and its payment share one calendar entry (same date): the VAT deadline.
+                  const item = calendarSync.deadlineOf("vat");
+                  if (!item) return null;
+                  return item.in_calendar ? (
+                    <p className="mt-1 min-h-8 text-[13px] font-bold text-teal-dark">In your calendar ✓</p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void calendarSync.sync([item.key])}
+                      disabled={calendarSync.busy}
+                      aria-label={`Add to calendar: ${d.title}`}
+                      className="mt-1 min-h-8 text-[13px] font-bold text-teal-dark underline underline-offset-2 hover:text-teal disabled:opacity-60"
+                    >
+                      Add to calendar
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           ))}
