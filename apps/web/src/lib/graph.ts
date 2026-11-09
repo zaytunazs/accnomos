@@ -3,7 +3,7 @@
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { FOLDERS, README_TEXT, RENAMED } from "./folders";
-import { getToken, isPersonalAccount, storageScopesFor } from "./msal";
+import { getToken, isGoogleAccount, isPersonalAccount, storageScopesFor } from "./msal";
 import { graphAuthHeaders, isDemo } from "./demo";
 import { getClientContext, PORTAL_SCOPES } from "./accountant";
 
@@ -66,8 +66,12 @@ function ownBooksOnly(): void {
   if (getClientContext()) throw new Error("Not available while you are in a client's books: go back to your clients first.");
 }
 
+/** A Google sign-in keeps its books in Google Drive (lib/gdrive.ts, loaded only for one). */
+const gdrive = () => import("./gdrive");
+
 /** The books root itself (for its webUrl and total size). Read-only: never creates the folder. */
 export async function getRoot(account: AccountInfo): Promise<DriveItem> {
+  if (isGoogleAccount(account)) return (await gdrive()).getRoot();
   const token = await getToken(readScopes(account));
   return graph<DriveItem>(token, `${itemPath(account)}?$select=id,name,webUrl,size,lastModifiedDateTime,folder`);
 }
@@ -75,6 +79,7 @@ export async function getRoot(account: AccountInfo): Promise<DriveItem> {
 /** OneDrive web URL of one file or folder in the books tree, for opening a cited file. Null when it cannot be read. */
 export async function getFileWebUrl(account: AccountInfo, relPath: string): Promise<string | null> {
   try {
+    if (isGoogleAccount(account)) return (await (await gdrive()).getItem(relPath)).webUrl ?? null;
     const token = await getToken(readScopes(account));
     const item = await graph<DriveItem>(token, `${itemPath(account, relPath)}?$select=webUrl`);
     return item.webUrl ?? null;
@@ -85,6 +90,7 @@ export async function getFileWebUrl(account: AccountInfo, relPath: string): Prom
 
 /** Direct children of a folder in the books tree ("" = the root), following Graph's paging. Read-only. */
 export async function listChildren(account: AccountInfo, relPath = ""): Promise<DriveItem[]> {
+  if (isGoogleAccount(account)) return (await gdrive()).listChildren(relPath);
   const token = await getToken(readScopes(account));
   const select = "$select=id,name,webUrl,size,lastModifiedDateTime,folder,file&$top=200";
   let path: string | null = `${itemPath(account, relPath)}${relPath ? ":" : ""}/children?${select}`;
@@ -100,6 +106,7 @@ export async function listChildren(account: AccountInfo, relPath = ""): Promise<
 
 export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
   ownBooksOnly();
+  if (isGoogleAccount(account)) return (await gdrive()).ensureRoot();
   const token = await getToken(storageScopesFor(account));
   if (isPersonalAccount(account)) {
     return graph<DriveItem>(token, "/me/drive/special/approot"); // created on first call, named after the app
@@ -120,6 +127,7 @@ export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
  */
 export async function ensureFolder(account: AccountInfo, relPath: string): Promise<DriveItem> {
   ownBooksOnly();
+  if (isGoogleAccount(account)) return (await gdrive()).ensureFolder(relPath);
   const token = await getToken(storageScopesFor(account));
   try {
     return await graph<DriveItem>(token, itemPath(account, relPath));
@@ -136,6 +144,7 @@ export async function ensureFolder(account: AccountInfo, relPath: string): Promi
 
 export async function putSmallFile(account: AccountInfo, relPath: string, content: string | Blob, contentType = "text/plain"): Promise<DriveItem> {
   ownBooksOnly();
+  if (isGoogleAccount(account)) return (await gdrive()).putFile(relPath, content, contentType);
   const token = await getToken(storageScopesFor(account));
   const res = await fetch(`${graphBase()}${itemPath(account, relPath)}:/content`, {
     method: "PUT",
@@ -148,6 +157,7 @@ export async function putSmallFile(account: AccountInfo, relPath: string, conten
 
 /** A file in the books folder as a Blob (the Review preview). Read-only; straight from the user's OneDrive. */
 export async function getFileBlob(account: AccountInfo, relPath: string): Promise<Blob> {
+  if (isGoogleAccount(account)) return (await gdrive()).getFileBlob(relPath);
   const token = await getToken(readScopes(account));
   const res = await fetch(`${graphBase()}${itemPath(account, relPath)}:/content`, { headers: graphAuthHeaders(token) });
   if (!res.ok) throw new Error(`read ${relPath} -> ${res.status}`);

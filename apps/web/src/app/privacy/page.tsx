@@ -1,6 +1,6 @@
 export const metadata = { title: "Privacy policy — Accnomos" };
 
-const UPDATED = "29 October 2026";
+const UPDATED = "9 November 2026";
 
 export default function PrivacyPage() {
   return (
@@ -11,7 +11,8 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">The short version</h2>
         <p>
-          Accnomos keeps your books in <strong>your own Microsoft OneDrive</strong>. We do not run a user database and we
+          Accnomos keeps your books in <strong>your own Microsoft OneDrive</strong>, or in{" "}
+          <strong>your own Google Drive</strong> if you sign in with Google. We do not run a user database and we
           do not store your receipts, invoices, ledger or VAT figures on our servers. Unless you choose otherwise, the AI that
           reads your documents is the one on our server: <strong>Meta&apos;s Model API</strong>, then a fallback model
           on our own server. You can instead run it on a machine you control or use your own API key
@@ -29,7 +30,9 @@ export default function PrivacyPage() {
           <li><strong>Microsoft account (sign-in):</strong> your name and e-mail, used only to show who is signed in.</li>
           <li><strong>OneDrive app folder:</strong> the app reads and writes files inside its own <em>Accnomos</em> folder (inbox, ledger events, Books.xlsx, VAT returns). It does not read the rest of your drive.</li>
           <li><strong>Sending invoices (Outlook, optional):</strong> the first time you send an invoice or a payment reminder, the app asks Microsoft for permission to send mail as you (<code>Mail.Send</code>). It sends only the email you saw and confirmed, to the address you confirmed, with the invoice PDF attached; a copy is in your Sent Items and the PDF in your <em>Accnomos</em> folder. Reminder wording is drafted by your own AI connection from the invoice number, amount and dates; your bank details are not sent to the AI.</li>
-          <li><strong>Camera / photos (Android):</strong> only when you choose to capture or pick a receipt; the image is uploaded to your OneDrive inbox.</li>
+          <li><strong>Google account (sign-in, if you choose Google):</strong> your name and e-mail, used only to show who is signed in. Your books go in an <em>Accnomos</em> folder in your Google Drive (My Drive), and the app can see only the files it created there, never the rest of your Drive.</li>
+          <li><strong>Gmail, Google Calendar and Google Contacts (Google sign-in):</strong> Google asks for these at sign-in, all at once (see the table below). Gmail is read to find bills and receipts and the people who email you; Accnomos writes a draft or sends an email only when you have seen it and confirmed it. Calendar events are read to plan your day, and Accnomos writes only the events you approve. Contacts are read so you can tick which to add to your books; nothing is written back.</li>
+          <li><strong>Camera / photos (Android):</strong> only when you choose to capture or pick a receipt; the image is uploaded to your books inbox (OneDrive or Google Drive).</li>
           <li><strong>Your AI connection (optional):</strong> by default none: our server&apos;s own AI chain is used (see below). If you choose it, either the address of a model running on your own hardware (e.g. Muse Glimmer), or a Meta Model API key you paste in. The key is stored on your device and sent only to our stateless runtime over HTTPS to make the request on your behalf; it is never logged or stored server-side.</li>
           <li><strong>HMRC (sandbox during the hackathon):</strong> if you connect HMRC, the OAuth tokens stay in your browser session. Our relay holds only the HMRC application secret and forwards requests; it stores nothing about you. HMRC requires fraud-prevention headers (device, screen size, time zone, IP address) which the relay forwards with each request.</li>
         </ul>
@@ -54,7 +57,8 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Permissions: what is asked and when</h2>
         <p>
-          The app asks for each permission only when you first use the feature that needs it, never all at once.
+          With a Microsoft account, the app asks for each permission only when you first use the feature that needs it,
+          never all at once.
         </p>
         <div role="region" aria-label="Permission table" tabIndex={0} className="overflow-x-auto">
           <table className="w-full min-w-[480px] text-left text-[14px]">
@@ -86,6 +90,49 @@ export default function PrivacyPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Google permissions (if you sign in with Google)</h2>
+        <p>
+          Unlike Microsoft, the Google sign-in asks for every permission below at once, on Google&apos;s own consent
+          screen; you can untick the optional ones there. The books need only the Google Drive one. You can remove
+          Accnomos&apos;s access at any time at{" "}
+          <a className="font-semibold text-teal underline" href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.
+        </p>
+        <div role="region" aria-label="Google permission table" tabIndex={0} className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-left text-[14px]">
+            <thead>
+              <tr className="border-b border-border text-[13px] font-bold text-muted">
+                <th scope="col" className="py-2 pr-3">Permission</th>
+                <th scope="col" className="py-2">Used for</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { scope: "openid, email, profile", use: "Show who is signed in" },
+                { scope: "drive.file", use: "Create and use the Accnomos folder in My Drive: only files Accnomos made (or you opened with it), never the rest of your Drive" },
+                { scope: "gmail.readonly", use: "Read your mail to copy likely bills and receipts to 00 Inbox, sort your inbox and list who emails you; nothing is moved, deleted or marked read" },
+                { scope: "gmail.compose", use: "Save a reply as a draft, or send an invoice or reminder you saw and confirmed; never sent on a schedule" },
+                { scope: "calendar.events", use: "Read your events to plan a day, and add or change only the events you approve (your deadlines, the plan's items)" },
+                { scope: "contacts.readonly", use: "List your Google contacts so you can tick which to add to your books" },
+              ].map((row) => (
+                <tr key={row.scope} className="border-t border-border align-top first:border-t-0">
+                  <td className="py-2 pr-3 font-semibold"><code>{row.scope}</code></td>
+                  <td className="py-2">{row.use}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Accnomos&apos;s use and transfer of information received from Google APIs adheres to the{" "}
+          <a className="font-semibold text-teal underline" href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+          including the Limited Use requirements. Data from Gmail, Drive, Calendar and Contacts is used only to provide the
+          features above to you; it is not sold, not used for advertising, not read by people (unless you ask us for
+          help with a specific item, or the law requires it) and not used to train AI models. The AI reading described
+          above sees a document from Gmail or Drive only when you ask it to read one.
+        </p>
       </section>
 
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
@@ -137,6 +184,7 @@ export default function PrivacyPage() {
                 { data: "The books: _System/Ledger/events, proposals, docs, audit trail, Autopilot rules", where: "Your OneDrive Accnomos folder, _System/", who: "You — append-only; corrections are new reversing entries" },
                 { data: "Working data: Contacts, Jobs, Staff, Timesheets, Vehicles, Mileage, bank, Intake, Todos, Planner, Payroll runs, Invoicing profile", where: "Your OneDrive Accnomos folder, _System/", who: "You — names and details only; money is recomputed from the events" },
                 { data: "Microsoft sign-in (name, e-mail)", where: "This browser's sign-in cache", who: "You, shown as who is signed in" },
+                { data: "Google sign-in (name, e-mail, a one-hour access token)", where: "This browser's localStorage", who: "You, shown as who is signed in" },
                 { data: "Documents and questions sent to the AI (default: no AI choice made)", where: "Sent per request over HTTPS to Meta's Model API with the server owner's key, then, if needed, to a fallback model on our own server; not stored by us", who: "Meta (Contributor mode on our live server: it may use the content to improve its models); nobody else" },
                 { data: "Your Meta API key and AI address", where: "This device only", who: "Sent per request over HTTPS so the runtime can call the model for you; never logged or stored" },
                 { data: "HMRC tokens", where: "This browser tab only", who: "Gone when the tab closes or you disconnect" },
@@ -167,6 +215,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">Third parties</h2>
         <ul className="list-disc space-y-2 pl-5">
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
+          <li>Google (sign-in, Google Drive, and Gmail, Calendar and Contacts) — only if you sign in with Google, under your Google account terms.</li>
           <li>Meta Model API — the default for AI reading on our live server (server owner&apos;s key, Contributor mode for the demo and testing: Meta may use the content sent to it to improve its models), and with your own key if you provide one, under Meta&apos;s terms for that key. It receives the document or question being read. Not used in local mode.</li>
           <li>Our own server — runs the fallback model if Meta&apos;s Model API cannot answer, and receives the same content; it is not kept.</li>
           <li>Our web host (IONOS, the server that terminates HTTPS for accnomos.com and api.accnomos.com) — carries your requests, including document content, over an encrypted tunnel to our own server; it is a processor for that transport only.</li>
@@ -200,7 +249,9 @@ export default function PrivacyPage() {
         <p>
           <strong>Leaving.</strong> Disconnect clears this browser&apos;s sign-in and settings; your files stay in
           your OneDrive. To delete the books, delete the Accnomos folder in your OneDrive and remove Accnomos at{" "}
-          <a className="font-semibold text-teal underline" href="https://account.live.com/myapps">account.live.com/myapps</a>.
+          <a className="font-semibold text-teal underline" href="https://account.live.com/myapps">account.live.com/myapps</a>{" "}
+          (signed in with Google: delete the Accnomos folder in your Google Drive and remove Accnomos at{" "}
+          <a className="font-semibold text-teal underline" href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>).
           No server-side delete is needed, because nothing from your books is stored server-side
           {" "}(the <a className="font-semibold text-teal underline" href="#sign-up">waiting list</a> is separate)
           .
@@ -210,7 +261,7 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Deleting your data</h2>
         <p>
-          Delete the <em>Accnomos</em> folder in your OneDrive and sign out of the app. Because we hold no copy, that removes everything.
+          Delete the <em>Accnomos</em> folder in your OneDrive (or Google Drive) and sign out of the app. Because we hold no copy, that removes everything.
           There is no server-side copy of your books to delete.
         </p>
       </section>
