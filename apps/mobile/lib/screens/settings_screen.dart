@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,6 +8,7 @@ import '../services/ai_route.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/demo.dart';
+import '../services/google_auth.dart';
 import '../services/navigation.dart';
 import '../services/proposal_editing.dart';
 import '../services/region.dart';
@@ -347,7 +350,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       settings,
       books: BooksAuth(
         graphToken: token,
-        accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
+        accountKind: _auth.accountKindHeader,
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: settings.businessName,
       ),
@@ -392,21 +395,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       settings,
       books: BooksAuth(
         graphToken: token,
-        accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
+        accountKind: _auth.accountKindHeader,
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: settings.businessName,
       ),
     );
   }
 
-  Future<void> _signIn() async {
+  /// The Google button: Android builds given GOOGLE_SERVER_CLIENT_ID only.
+  bool get _googleVisible => GoogleAuth.configured && Platform.isAndroid;
+
+  Future<void> _signIn({bool google = false}) async {
     if (_authBusy) return;
     setState(() {
       _authBusy = true;
       _authError = null;
     });
     try {
-      final account = await _auth.signIn();
+      final account =
+          google ? await _auth.signInWithGoogle() : await _auth.signIn();
       if (!mounted) return;
       setState(() => _account = account);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1520,6 +1527,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: const Text('Sign out'),
                 ),
         ),
+        if (account == null && _googleVisible) ...[
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              key: const Key('settings-sign-in-google'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _authBusy ? null : () => _signIn(google: true),
+              child: const Text('Continue with Google'),
+            ),
+          ),
+        ],
         if (account != null) ...[
           const SizedBox(height: 8),
           SizedBox(

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -5,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/demo.dart';
+import '../services/google_auth.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
 import '../theme.dart';
@@ -16,7 +19,14 @@ import '../widgets/brand.dart';
 /// owner signs in with Microsoft, or tries the company or the personal demo
 /// (a live sandbox on the runtime, services/runtime/app/demo.py).
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({super.key, this.notice, this.signIn, this.startDemo});
+  const WelcomeScreen({
+    super.key,
+    this.notice,
+    this.signIn,
+    this.startDemo,
+    this.signInWithGoogle,
+    this.showGoogle,
+  });
 
   /// A short sentence to show first (a demo that timed out, for example).
   final String? notice;
@@ -24,6 +34,12 @@ class WelcomeScreen extends StatefulWidget {
   /// Tests: stand-ins for Microsoft sign-in and for starting a demo.
   final Future<void> Function()? signIn;
   final Future<void> Function(String kind)? startDemo;
+
+  /// Tests: stand-in for Google sign-in, and force the Google button on or
+  /// off (normally it shows only on Android builds with
+  /// `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`).
+  final Future<void> Function()? signInWithGoogle;
+  final bool? showGoogle;
 
   /// The four steps, word for word as the website's "How it works".
   static const steps = [
@@ -79,7 +95,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       await AppMode.refresh();
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = what == 'signin'
+      setState(() => _error = (what == 'signin' || what == 'google')
           ? friendlySignInMessage(e)
           : e is DemoException
               ? e.message
@@ -94,6 +110,15 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         if (custom != null) return custom();
         await AuthService().signIn();
       });
+
+  Future<void> _signInGoogle() => _run('google', () async {
+        final custom = widget.signInWithGoogle;
+        if (custom != null) return custom();
+        await AuthService().signInWithGoogle();
+      });
+
+  bool get _googleVisible =>
+      widget.showGoogle ?? (GoogleAuth.configured && Platform.isAndroid);
 
   Future<void> _demo(String kind) => _run(kind, () async {
         final custom = widget.startDemo;
@@ -175,6 +200,19 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(50)),
                 ),
+                if (_googleVisible) ...[
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    key: const Key('welcome-sign-in-google'),
+                    onPressed: busy ? null : _signInGoogle,
+                    icon: _busy == 'google'
+                        ? const _Spinner()
+                        : const Icon(Icons.account_circle_outlined),
+                    label: const Text('Continue with Google'),
+                    style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(50)),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   key: const Key('welcome-demo-company'),

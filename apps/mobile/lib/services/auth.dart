@@ -1,11 +1,21 @@
 import 'package:msal_auth/msal_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'demo.dart';
+import 'google_auth.dart';
 
 /// Which kind of Microsoft account is signed in. Personal accounts keep the
 /// books in the OneDrive app folder; work accounts use `/Accnomos` instead,
 /// and need the broader `Files.ReadWrite` scope (AppFolder is MSA-only).
-enum AccountKind { personal, work }
+///
+/// `google` is a Google account (Android "Continue with Google"): its books
+/// live in the user's Google Drive and the runtime reads it from the
+/// `X-Account-Kind: google` header.
+enum AccountKind { personal, work, google }
+
+/// Which sign-in the phone is using. Saved so it survives a restart; nothing
+/// saved means Microsoft, so existing installs behave exactly as before.
+enum AuthProvider { microsoft, google }
 
 /// Microsoft sign-in via MSAL (public client, PKCE, no secret).
 ///
@@ -65,9 +75,62 @@ class AuthService {
   AccountKind _kind = AccountKind.personal;
   AuthenticationResult? _lastResult;
 
+  static const _providerKey = 'auth.provider';
+
+  /// The signed-in provider, shared by every [AuthService] (screens each hold
+  /// their own). Filled from storage by [_loadProvider] on first use.
+  static AuthProvider _provider = AuthProvider.microsoft;
+  static bool _providerLoaded = false;
+
+  /// The saved provider (Microsoft until a Google sign-in).
+  static AuthProvider get provider => _provider;
+
+  static Future<void> _loadProvider() async {
+    if (_providerLoaded) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _provider = prefs.getString(_providerKey) == 'google'
+          ? AuthProvider.google
+          : AuthProvider.microsoft;
+      _providerLoaded = true;
+    } catch (_) {
+      // No storage on this platform (some tests): stay on Microsoft, retry next time.
+    }
+  }
+
+  static Future<void> _saveProvider(AuthProvider value) async {
+    _provider = value;
+    _providerLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (value == AuthProvider.google) {
+        await prefs.setString(_providerKey, 'google');
+      } else {
+        await prefs.remove(_providerKey);
+      }
+    } catch (_) {}
+  }
+
+  /// Tests only: forget the loaded provider.
+  static void resetProviderForTest([AuthProvider value = AuthProvider.microsoft]) {
+    _provider = value;
+    _providerLoaded = true;
+  }
+
   /// Account kind of the last authentication result (personal by default).
   /// A demo's books sit where a personal account's would (the app folder).
-  AccountKind get kind => Demo.active ? AccountKind.personal : _kind;
+  AccountKind get kind => Demo.active
+      ? AccountKind.personal
+      : _provider == AuthProvider.google
+          ? AccountKind.google
+          : _kind;
+
+  /// The runtime's `X-Account-Kind` value: `personal`, `work` or `google`.
+  String get accountKindHeader => switch (kind) {
+        AccountKind.work => 'work',
+        AccountKind.google => 'google',
+        AccountKind.personal => 'personal',
+      };
 
   /// The demo's stand-in account: every screen treats a running demo as
   /// signed in, and the session id goes where the Graph token would.
@@ -101,11 +164,44 @@ class AuthService {
   /// Interactive sign-in. Returns the signed-in account.
   Future<Account> signIn() async {
     if (Demo.active) await Demo.end(); // a real sign-in ends the demo
+    await _loadProvider();
+    if (_provider == AuthProvider.google) await GoogleAuth.instance.signOut();
     final pca = await _pcaAsync();
     final result = await pca.acquireToken(scopes: personalScopes);
     _record(result);
+    await _saveProvider(AuthProvider.microsoft);
     return result.account;
   }
+
+  /// Interactive Google sign-in ("Continue with Google", Android). Returns the
+  /// signed-in account, and remembers that Google is the provider.
+  Future<Account> signInWithGoogle() async {
+    if (Demo.active) await Demo.end();
+    await _loadProvider();
+    if (_provider == AuthProvider.microsoft && await _hasMicrosoftAccount()) {
+      // One provider at a time on the phone.
+      await (await _pcaAsync()).signOut();
+      _lastResult = null;
+      _kind = AccountKind.personal;
+    }
+    final account = await GoogleAuth.instance.signIn();
+    await _saveProvider(AuthProvider.google);
+    return account;
+  }
+
+  Future<bool> _hasMicrosoftAccount() async {
+    try {
+      await (await _pcaAsync()).currentAccount; // throws when nobody is signed in
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// A new Google access token after the runtime refused one with 401, or
+  /// null when Google needs the user to sign in again. Silent.
+  Future<String?> refreshGoogleToken(String? rejected) =>
+      GoogleAuth.instance.refresh(rejected);
 
   /// Extra scopes for sending an invoice from the user's Outlook. Asked for
   /// only when the user first taps Send in the confirmation dialog, mirroring
@@ -136,6 +232,8 @@ class AuthService {
   Future<String> token() async {
     final demo = Demo.current;
     if (demo != null) return demo.session;
+    await _loadProvider();
+    if (_provider == AuthProvider.google) return GoogleAuth.instance.token();
     final pca = await _pcaAsync();
     try {
       final result =
@@ -158,6 +256,10 @@ class AuthService {
   Future<String> tokenFor(List<String> scopes) async {
     final demo = Demo.current;
     if (demo != null) return demo.session;
+    await _loadProvider();
+    // Google asks for every scope at sign-in, so the Microsoft scope names
+    // here do not apply: the one Google token covers them.
+    if (_provider == AuthProvider.google) return GoogleAuth.instance.token();
     final pca = await _pcaAsync();
     try {
       final result = await pca.acquireTokenSilent(scopes: scopes);
@@ -178,6 +280,8 @@ class AuthService {
   Future<Account?> account() async {
     final demo = Demo.current;
     if (demo != null) return demoAccount(demo);
+    await _loadProvider();
+    if (_provider == AuthProvider.google) return GoogleAuth.instance.account();
     try {
       final pca = await _pcaAsync();
       return await pca.currentAccount;
@@ -211,6 +315,12 @@ class AuthService {
   Future<void> signOut() async {
     if (Demo.active) {
       await Demo.end();
+      return;
+    }
+    await _loadProvider();
+    if (_provider == AuthProvider.google) {
+      await GoogleAuth.instance.signOut();
+      await _saveProvider(AuthProvider.microsoft);
       return;
     }
     final pca = await _pcaAsync();

@@ -20,7 +20,7 @@ Future<RuntimeClient> booksClient(
     settings,
     books: BooksAuth(
       graphToken: token,
-      accountKind: auth.kind == AccountKind.work ? 'work' : 'personal',
+      accountKind: auth.accountKindHeader,
       user: (user != null && user.isNotEmpty) ? user : null,
       businessName: settings.businessName,
     ),

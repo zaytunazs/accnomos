@@ -336,7 +336,7 @@ class _AskScreenState extends State<AskScreen> {
       settings,
       books: BooksAuth(
         graphToken: token,
-        accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
+        accountKind: _auth.accountKindHeader,
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: settings.businessName,
       ),
@@ -2042,6 +2042,8 @@ class _CitationChipState extends State<_CitationChip> {
     try {
       final account = await _auth.account();
       if (account == null || !mounted) return;
+      // Graph links are for Microsoft books only.
+      if (_auth.kind == AccountKind.google) return;
       final token = await _auth.token();
       final url = await _graph.fileWebUrl(
         token,
@@ -2135,7 +2137,7 @@ class _PlanSheetState extends State<_PlanSheet> {
       widget.settings,
       books: BooksAuth(
         graphToken: graphToken ?? await widget.auth.token(),
-        accountKind: widget.auth.kind == AccountKind.work ? 'work' : 'personal',
+        accountKind: widget.auth.accountKindHeader,
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: widget.settings.businessName,
       ),

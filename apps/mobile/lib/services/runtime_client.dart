@@ -11,6 +11,7 @@ import '../models/sample_books.dart';
 import '../models/scan_job.dart';
 import '../models/storage.dart';
 import 'ai_route.dart';
+import 'auth.dart' show AuthService;
 import 'books_events.dart';
 import 'demo.dart';
 import 'settings.dart';
@@ -37,13 +38,48 @@ class BooksAuth {
   /// Raw Graph access token, sent as-is like the web client does.
   final String graphToken;
 
-  /// `personal` or `work`.
+  /// `personal`, `work` or `google`.
   final String accountKind;
 
   /// Signed-in user's email (the `X-User` header approvals need).
   final String? user;
 
   final String? businessName;
+}
+
+/// Wraps a client for Google accounts: a 401 triggers one silent token
+/// refresh and one retry. Multipart (photo) uploads are streamed and cannot be
+/// replayed, so they pass through and the caller sees the 401.
+class GoogleRetryClient extends http.BaseClient {
+  GoogleRetryClient(this._inner, {required this.refresh});
+  final http.Client _inner;
+
+  /// Returns a new access token (given the refused one), or null.
+  final Future<String?> Function(String? rejected) refresh;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final first = await _inner.send(request);
+    if (first.statusCode != 401 || request is! http.Request) return first;
+    final sent = (request.headers['Authorization'] ?? '')
+        .replaceFirst('Bearer ', '')
+        .trim();
+    final fresh = await refresh(sent.isEmpty ? null : sent);
+    if (fresh == null || fresh.isEmpty || fresh == sent) return first;
+    await first.stream.drain<void>();
+    final retry = http.Request(request.method, request.url)
+      ..headers.addAll(request.headers)
+      ..headers['Authorization'] = 'Bearer $fresh'
+      ..headers['X-Graph-Token'] = fresh
+      ..followRedirects = request.followRedirects
+      ..maxRedirects = request.maxRedirects
+      ..persistentConnection = request.persistentConnection
+      ..bodyBytes = request.bodyBytes;
+    return _inner.send(retry);
+  }
+
+  @override
+  void close() => _inner.close();
 }
 
 /// Talks to the Accnomos reader runtime. Covers every route in
@@ -62,7 +98,14 @@ class RuntimeClient {
   /// Transport for every call: the injected fake in tests, otherwise a new
   /// client each time (created at call time, so `http.runWithClient`
   /// zone mocks keep working as they did for the top-level functions).
-  http.Client get _http => _httpOverride ?? http.Client();
+  http.Client get _http {
+    final inner = _httpOverride ?? http.Client();
+    final auth = books;
+    if (auth == null || auth.accountKind != 'google') return inner;
+    // Google access tokens last about an hour: on 401 get a new one silently
+    // and send the call once more.
+    return GoogleRetryClient(inner, refresh: AuthService().refreshGoogleToken);
+  }
 
   /// The saved VAT stagger as the runtime's query, like the web's
   /// `vatQuery()` in `apps/web/src/lib/vat-period.ts`: `start_month=` when
@@ -125,6 +168,11 @@ class RuntimeClient {
     if (auth != null) {
       headers['X-Graph-Token'] = auth.graphToken;
       headers['X-Account-Kind'] = auth.accountKind;
+      // Google accounts: the token also goes as a standard bearer token
+      // (X-Graph-Token stays for the routes that read it).
+      if (auth.accountKind == 'google') {
+        headers['Authorization'] = 'Bearer ${auth.graphToken}';
+      }
       final user = auth.user;
       if (user != null && user.isNotEmpty) headers['X-User'] = user;
       final business = auth.businessName;

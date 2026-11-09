@@ -382,7 +382,6 @@ class _CaptureScreenState extends State<CaptureScreen>
     try {
       final account = await _auth.account();
       final user = account?.username ?? settings.userEmail;
-      final kind = _auth.kind;
       // A background job over just these uploads (the runtime answers at
       // once; Review shows the progress and asks for each file's type).
       final names = [
@@ -394,7 +393,7 @@ class _CaptureScreenState extends State<CaptureScreen>
         settings,
         books: BooksAuth(
           graphToken: await _auth.token(),
-          accountKind: kind == AccountKind.work ? 'work' : 'personal',
+          accountKind: _auth.accountKindHeader,
           user: (user != null && user.isNotEmpty) ? user : null,
           businessName: settings.businessName,
         ),

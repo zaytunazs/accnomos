@@ -7,14 +7,19 @@
 # A certificate fingerprint is public (it is in every installed APK), so it can live in the repo.
 param(
   [Parameter(Mandatory = $true)][string]$Tag,
-  [string]$MsalSigHash = "VMm77tAADe8/UZxWIvqfRmMiQrA="
+  [string]$MsalSigHash = "VMm77tAADe8/UZxWIvqfRmMiQrA=",
+  # Web-application OAuth client id for "Continue with Google" (docs/GOOGLE_ANDROID_SETUP.md).
+  # Public configuration, not a secret. Empty = the Google button is hidden in this build.
+  [string]$GoogleServerClientId = $env:GOOGLE_SERVER_CLIENT_ID
 )
 Set-Location C:\Users\zohai\dev\accnomos\apps\mobile
 flutter analyze 2>&1 | Select-Object -Last 2
 $out = "build\app\outputs\bundle\release\app-release.aab"
 Remove-Item $out -ErrorAction SilentlyContinue  # never copy a bundle left over from an earlier build
-flutter build appbundle --release "-PmsalSignatureHash=$MsalSigHash" "--dart-define=MSAL_SIG_HASH=$MsalSigHash" 2>&1 | Select-Object -Last 2
+$dartDefines = @("--dart-define=MSAL_SIG_HASH=$MsalSigHash")
+if ($GoogleServerClientId) { $dartDefines += "--dart-define=GOOGLE_SERVER_CLIENT_ID=$GoogleServerClientId" }
+flutter build appbundle --release "-PmsalSignatureHash=$MsalSigHash" @dartDefines 2>&1 | Select-Object -Last 2
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $out)) { Write-Output "BUILD FAILED: nothing copied"; exit 1 }
 $dst = "C:\Users\zohai\Downloads\coworksetup\CoWork\Projects\Meta Hackathon - AI Accounting\builds\accnomos-$Tag.aab"
 Copy-Item $out $dst -Force
-Write-Output "AAB: $dst $((Get-Item $dst).Length) bytes (MSAL hash $MsalSigHash)"
+Write-Output "AAB: $dst $((Get-Item $dst).Length) bytes (MSAL hash $MsalSigHash, Google button: $([bool]$GoogleServerClientId))"
