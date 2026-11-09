@@ -18,9 +18,14 @@ Optimistic concurrency is emulated, because Drive v3 offers no reliable If-Match
 * `etag` is derived from the file's `version` (Drive bumps it on every change, content or metadata), as `"v<n>"`.
 * `write(if_match=...)` reads the current version and raises ConflictError when it differs, then updates. **Race
   window**: another writer that lands between that read and our update is overwritten. It is one round trip wide.
-* `write(create_only=True)` lists the name in the parent and raises FileExistsError when it is there, then creates.
-  **Gap**: two writers racing through the same window both create, leaving two files with one name; the oldest-wins
-  rule above means readers still agree on one of them, and the other is a harmless orphan.
+* Creating anything (a file, a folder, the root) is check-then-create, so two writers can both create the same name.
+  Every create is therefore **settled** straight after: the name is listed again, and if ours is not the oldest
+  (createdTime, then id) ours goes to the bin and the oldest is used. A losing folder first has whatever was put in it
+  moved into the winner. A losing `write(create_only=True)` raises FileExistsError, so exactly one claim wins (the
+  ledger's `Books.post_event` depends on it); a losing plain write replaces the winner's content instead.
+  Remaining window: Drive's listing is not guaranteed to show a just-created item at once; if it lags, both writers
+  can each see only their own and both "win". Rare, but not impossible.
+* `write(if_match=...)` on a file that is no longer there raises ConflictError (it never re-creates it).
 
 Change tracking uses the Drive changes API. `changes(None)` lists every file under the root and returns the
 `startPageToken` taken *before* that listing (so nothing written meanwhile is missed); later calls page through
@@ -248,12 +253,35 @@ class GoogleDriveStorageProvider(_GoogleHttp, StorageProvider):
         body = {"name": name, "mimeType": FOLDER_MIME, "parents": [parent_id]}
         return (await self._request("POST", f"{DRIVE}/files", params={"fields": FILE_FIELDS}, json=body)).json()
 
+    async def _oldest(self, parent_id: str, name: str, want: str) -> dict[str, Any] | None:
+        """The item every reader resolves `name` to: oldest createdTime, ties broken by id."""
+        q = f"name = {_q(name)} and {_q(parent_id)} in parents and trashed = false"
+        q += f" and mimeType {'=' if want == 'folder' else '!='} {_q(FOLDER_MIME)}"
+        hits = await self._query(q)
+        return min(hits, key=lambda i: (i.get("createdTime") or "", i["id"])) if hits else None
+
+    async def _trash(self, file_id: str) -> None:
+        """Move an item this app made to the bin (drive.file allows it for our own items; nothing is deleted)."""
+        await self._request("PATCH", f"{DRIVE}/files/{file_id}", params={"fields": "id"}, json={"trashed": True})
+
+    async def _settle_folder(self, parent_id: str, mine: dict[str, Any]) -> dict[str, Any]:
+        """After creating a folder: if another writer created one with the same name first, ours loses. Anything
+        already put into ours is moved into the winner, ours goes to the bin, and the winner is used."""
+        winner = await self._oldest(parent_id, mine["name"], "folder")
+        if winner is None or winner["id"] == mine["id"]:
+            return mine
+        for item in await self._query(f"{_q(mine['id'])} in parents and trashed = false"):
+            params = {"addParents": winner["id"], "removeParents": mine["id"], "fields": "id"}
+            await self._request("PATCH", f"{DRIVE}/files/{item['id']}", params=params, json={})
+        await self._trash(mine["id"])
+        return winner
+
     async def ensure_root(self) -> FileRef:
         if "" in self._folders:
             return _to_ref(self._folders[""], "")
         item = await self._child("root", ROOT_NAME, "folder")
         if item is None:
-            item = await self._create_folder("root", ROOT_NAME)
+            item = await self._settle_folder("root", await self._create_folder("root", ROOT_NAME))
         return _to_ref(self._remember("", item), "")
 
     async def _root_id(self) -> str:
@@ -280,7 +308,8 @@ class GoogleDriveStorageProvider(_GoogleHttp, StorageProvider):
         if (found := await self._find_folder(path)) is not None:
             return found
         parent = await self._folder(_parent(path))
-        return self._remember(path, await self._create_folder(parent["id"], path.rsplit("/", 1)[-1]))
+        mine = await self._create_folder(parent["id"], path.rsplit("/", 1)[-1])
+        return self._remember(path, await self._settle_folder(parent["id"], mine))
 
     async def _find(self, path: str) -> dict[str, Any] | None:
         """The file or folder at `path` (a file wins over a folder of the same name), or None."""
@@ -338,13 +367,20 @@ class GoogleDriveStorageProvider(_GoogleHttp, StorageProvider):
         existing = await self._child(parent["id"], name, "file")
         if existing is not None and create_only:
             raise FileExistsError(path)
-        if existing is not None and if_match is not None and _etag(existing) != if_match:
-            raise ConflictError(path)  # emulated If-Match: see the race window in the module docstring
-        if existing is None:
-            meta = {"name": name, "parents": [parent["id"]]}
-            item = await self._upload("POST", f"{UPLOAD}/files", meta, data)
-        else:
+        if if_match is not None and (existing is None or _etag(existing) != if_match):
+            raise ConflictError(path)  # emulated If-Match (gone, or changed): see the module docstring
+        if existing is not None:
             item = await self._upload("PATCH", f"{UPLOAD}/files/{existing['id']}", {}, data)
+            return _to_ref(item, path)
+        item = await self._upload("POST", f"{UPLOAD}/files", {"name": name, "parents": [parent["id"]]}, data)
+        winner = await self._oldest(parent["id"], name, "file")
+        if winner is None or winner["id"] == item["id"]:
+            return _to_ref(item, path)
+        # Another writer created this name first: every reader resolves to theirs, so ours goes to the bin.
+        await self._trash(item["id"])
+        if create_only:
+            raise FileExistsError(path)  # the claim was theirs (Books.post_event relies on this)
+        item = await self._upload("PATCH", f"{UPLOAD}/files/{winner['id']}", {}, data)  # a plain write: ours last
         return _to_ref(item, path)
 
     async def _upload(self, method: str, url: str, meta: dict[str, Any], data: bytes) -> dict[str, Any]:

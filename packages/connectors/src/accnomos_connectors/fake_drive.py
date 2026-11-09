@@ -11,6 +11,7 @@ userinfo. Everything else is a 400 so a test notices a call the fake does not kn
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -38,9 +39,11 @@ def _unescape(s: str) -> str:
 
 
 class FakeDrive:
-    """One user's My Drive. `token` is the only access token it accepts (401 otherwise)."""
+    """One user's My Drive. `token` is the only access token it accepts (401 otherwise); None accepts any."""
 
-    def __init__(self, token: str = "google-token", email: str = "owner@example.com", name: str = "Owner") -> None:
+    def __init__(
+        self, token: str | None = "google-token", email: str = "owner@example.com", name: str = "Owner"
+    ) -> None:
         self.token, self.email, self.name = token, email, name
         self.items: dict[str, dict[str, Any]] = {}
         self.content: dict[str, bytes] = {}
@@ -54,7 +57,14 @@ class FakeDrive:
     # ------------------------------------------------------------------ helpers
 
     def transport(self) -> httpx.MockTransport:
-        return httpx.MockTransport(self.handle)
+        """For httpx.AsyncClient. Each request yields to the event loop first, as a network call would, so writers
+        run with asyncio.gather really interleave (check-then-create races show up)."""
+
+        async def handle(request: httpx.Request) -> httpx.Response:
+            await asyncio.sleep(0)
+            return self.handle(request)
+
+        return httpx.MockTransport(handle)
 
     def _id(self) -> str:
         self._n += 1
@@ -144,7 +154,10 @@ class FakeDrive:
         url = urlparse(str(request.url))
         params = {k: v[-1] for k, v in parse_qs(url.query, keep_blank_values=True).items()}
         self.calls.append(f"{request.method} {url.path}")
-        if request.headers.get("Authorization") != f"Bearer {self.token}":
+        auth = request.headers.get("Authorization", "")
+        if (self.token is None and not auth.removeprefix("Bearer ").strip()) or (
+            self.token is not None and auth != f"Bearer {self.token}"
+        ):
             return self._err(401, "Invalid Credentials")
         if self.fail_next:
             status = self.fail_next.pop(0)
@@ -220,6 +233,8 @@ class FakeDrive:
             meta = json.loads(request.content or b"{}")
             if "name" in meta:
                 item["name"] = meta["name"]
+            if "trashed" in meta:
+                item["trashed"] = bool(meta["trashed"])
             for p in filter(None, params.get("removeParents", "").split(",")):
                 item["parents"] = [x for x in item["parents"] if x != p]
             for p in filter(None, params.get("addParents", "").split(",")):

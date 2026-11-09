@@ -92,3 +92,15 @@ def test_gmail_contacts_are_501_until_google_workspace_lands(drive: FakeDrive, c
     with pytest.raises(Exception) as exc:
         accounts.google_class("GoogleMailProvider")
     assert getattr(exc.value, "status_code", None) == 501
+
+
+async def test_test_mode_never_calls_google(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import testmode
+
+    monkeypatch.setattr(google_drive, "TRANSPORT", None)
+    testmode.install_google_fakes()
+    assert google_drive.TRANSPORT is not None
+    identity.reset()
+    me = await identity.verified_identity("any-test-token", None, "google")
+    assert me.email == "sam@example.co.uk"
+    identity.reset()
