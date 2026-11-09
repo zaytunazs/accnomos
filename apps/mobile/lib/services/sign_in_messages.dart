@@ -1,9 +1,22 @@
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 /// Friendly sign-in failures. MSAL errors are technical (redirect URIs,
 /// broker codes, correlation ids); the UI must never show a raw exception
 /// or stack trace, so every path below returns a plain-English line.
 String friendlySignInMessage(Object error) {
+  if (error is GoogleSignInException) {
+    return switch (error.code) {
+      GoogleSignInExceptionCode.canceled ||
+      GoogleSignInExceptionCode.interrupted =>
+        'Sign-in was cancelled. Nothing changed — try again when ready.',
+      GoogleSignInExceptionCode.clientConfigurationError ||
+      GoogleSignInExceptionCode.providerConfigurationError =>
+        "This build's signature is not registered with Google yet. "
+            'Sign-in cannot complete until the Google app registration knows this build.',
+      _ => 'Could not sign you in with Google. Please try again.',
+    };
+  }
   if (error is MsalUserCancelException) {
     return 'Sign-in was cancelled. Nothing changed — try again when ready.';
   }

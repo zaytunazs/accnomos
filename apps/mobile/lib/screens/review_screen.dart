@@ -260,7 +260,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       books: BooksAuth(
         graphToken: token,
         accountKind:
-            _auth.kind == AccountKind.work ? 'work' : 'personal',
+            _auth.accountKindHeader,
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: settings.businessName,
       ),

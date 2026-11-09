@@ -38,7 +38,7 @@ Future<RuntimeClient> _client(AuthService auth, AppSettings settings,
     settings,
     books: BooksAuth(
       graphToken: token,
-      accountKind: auth.kind == AccountKind.work ? 'work' : 'personal',
+      accountKind: auth.accountKindHeader,
       user: (user != null && user.isNotEmpty) ? user : null,
       businessName: settings.businessName,
     ),

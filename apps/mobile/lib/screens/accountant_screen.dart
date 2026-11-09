@@ -87,7 +87,7 @@ class _AccountantScreenState extends State<AccountantScreen> {
       settings,
       books: BooksAuth(
         graphToken: token,
-        accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
+        accountKind: _auth.accountKindHeader,
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: settings.businessName,
       ),
