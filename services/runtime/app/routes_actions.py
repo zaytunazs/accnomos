@@ -49,11 +49,9 @@ def _mail_sender(token: str, request: Request | None = None) -> Any:
             from app import testmode
 
             return testmode.current().sender
-        try:
-            from accnomos_connectors.msgraph import GraphMailSender  # type: ignore[attr-defined]
-        except ImportError:
-            return None
-        return GraphMailSender(token)
+        from app import accounts
+
+        return accounts.mail_sender(token, request)  # Gmail for X-Account-Kind: google, else Outlook
 
     return make
 
@@ -78,9 +76,9 @@ def calendar_factory(request: Request) -> Callable[[], Any]:
             from app import testmode
 
             return testmode.current().calendar
-        from accnomos_connectors.msgraph import GraphCalendarProvider
+        from app import accounts
 
-        return GraphCalendarProvider(graph_token(request))
+        return accounts.calendar_provider(graph_token(request), request)  # Google Calendar or Outlook
 
     return make
 

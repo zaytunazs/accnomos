@@ -16,8 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from accnomos_connectors import CalendarProvider
-from accnomos_connectors.msgraph import GraphCalendarProvider
-from app import jobs
+from app import accounts, jobs
 from app.ai import plan as plan_ai
 from app.ai.config import AiConfig, is_test_mode
 from app.books import Books, today
@@ -43,7 +42,7 @@ async def get_calendar(request: Request) -> AsyncIterator[CalendarProvider]:
 
         yield (await testmode.state()).calendar
         return
-    provider = GraphCalendarProvider(token)
+    provider = accounts.calendar_provider(token, request)  # Google Calendar or Outlook
     try:
         yield provider
     finally:

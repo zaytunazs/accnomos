@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from accnomos_connectors import FakeStorageProvider
-from app import demo, routes_books, routes_contacts, routes_invoices, routes_mail, routes_plan, security, testmode
+from app import demo, routes_books, routes_mail, security, testmode
 from app.ai.config import is_test_mode
 from app.books import INBOX
 from app.routes_actions import _mail_sender, graph_token
@@ -321,12 +321,20 @@ class _Req:
 async def test_no_graph_mail_or_calendar_client_is_built_in_a_demo(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from accnomos_connectors import msgraph
+    from app import accounts
+
     for mod, name in (
         (routes_books, "GraphStorageProvider"),
         (routes_mail, "GraphMailProvider"),
-        (routes_contacts, "GraphContactsProvider"),
-        (routes_plan, "GraphCalendarProvider"),
-        (routes_invoices, "GraphMailSender"),
+        # app/accounts.py builds the rest (Graph or Google) from the connector modules
+        (msgraph, "GraphStorageProvider"),
+        (msgraph, "GraphMailProvider"),
+        (msgraph, "GraphContactsProvider"),
+        (msgraph, "GraphCalendarProvider"),
+        (msgraph, "GraphMailSender"),
+        (accounts, "storage_for"),
+        (accounts, "google_class"),
     ):
         monkeypatch.setattr(mod, name, _boom)
     h = _start(client)

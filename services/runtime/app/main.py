@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import demo, layout
+from app.accounts import GoogleTokenAlias
 from app.ai.config import TEST_AI_MODEL, base_url_allowed, is_test_mode, stub_ai_base
 from app.security import SecurityMiddleware, install_log_scrubbing, scrub
 
@@ -37,6 +38,7 @@ def cors_origins(raw: str) -> list[str]:
 
 # Browsers (PWA) call the runtime directly; it keeps nothing, so CORS is the only gate. The security middleware
 # sits inside CORS so its 4xx/5xx answers still reach the page.
+app.add_middleware(GoogleTokenAlias)  # innermost: a Google client's `Authorization: Bearer` -> X-Graph-Token
 app.add_middleware(SecurityMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +54,8 @@ app.add_middleware(
         "Content-Type",
         "X-Graph-Token",
         "X-Mailbox-Token",  # a linked mailbox's own token, POST /mail/scan only (app/routes_mail.py)
-        "X-Account-Kind",
+        "X-Account-Kind",  # personal | work | google (app/accounts.py)
+        "Authorization",  # a Google client may send its token here instead of X-Graph-Token (app/accounts.py)
         "X-User",
         "X-AI-Mode",
         "X-AI-Base-Url",

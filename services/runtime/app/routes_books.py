@@ -1,7 +1,8 @@
 """/books/*: proposals stored in the user's own OneDrive.
 
-Every request carries `X-Graph-Token` (and optionally `X-Account-Kind: personal|work`); an accountant opening a
-client's shared books adds `X-Books-Drive-Id`, `X-Books-Item-Id` and `X-Books-Access` (app/sharing.py);
+Every request carries `X-Graph-Token` (and optionally `X-Account-Kind: personal|work|google`, app/accounts.py); an
+accountant opening a client's shared books adds `X-Books-Drive-Id`, `X-Books-Item-Id` and `X-Books-Access`
+(app/sharing.py);
 approvals, rejections and undos also need `X-User`, the signed-in user's email.
 `X-Autopilot: off` on a scan skips auto-approval (docs/AUTOPILOT.md).
 """
@@ -19,7 +20,7 @@ from pydantic import BaseModel, Field
 from accnomos_connectors.base import SharedRoot, StorageProvider
 from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
-from app import autopilot, data_export, layout, sharing
+from app import accounts, autopilot, data_export, layout, sharing
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, submitted_spans, undo
 from app.books import Books, now
@@ -45,10 +46,9 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
     token = auth.removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
-    kind = (request.headers.get("X-Account-Kind") or "personal").strip().lower()
-    if kind not in ("personal", "work"):
-        raise HTTPException(status_code=400, detail="X-Account-Kind must be 'personal' or 'work'")
+    kind = accounts.kind_of(request)
     if (root := sharing.shared_root(request)) is not None:  # an accountant opening a client (app/sharing.py)
+        accounts.refuse_sharing(request)  # shared roots are OneDrive items: no Google equivalent yet
         async for books in _client_books(request, token, kind, root):
             yield books
         return
@@ -62,13 +62,13 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
         return
     from app.cache import user_cache_key
 
-    storage = GraphStorageProvider(token, kind)  # type: ignore[arg-type]
+    storage = accounts.storage_for(token, kind)  # OneDrive, or Google Drive for X-Account-Kind: google
     try:
         books = Books(storage, cache_key=user_cache_key(token))
         await layout.on_first_contact(books, token)  # old folder names -> current ones, once (app/layout.py)
         yield books
     finally:
-        await storage.aclose()
+        await storage.aclose()  # type: ignore[attr-defined]
 
 
 NOT_SHARED = "These books are not shared with you (or no longer): ask your client to invite you again."
@@ -157,7 +157,7 @@ async def require_user(request: Request, x_user: str | None = Header(default=Non
         return hint
     if not hint:
         raise HTTPException(status_code=400, detail="X-User header required")
-    return (await identity.verified_identity(identity.bearer(request), hint)).email
+    return (await identity.verified_identity(identity.bearer(request), hint, identity.kind(request))).email
 
 
 async def optional_user(request: Request, x_user: str | None = Header(default=None)) -> str | None:
@@ -176,7 +176,7 @@ async def optional_user(request: Request, x_user: str | None = Header(default=No
     if not token:
         return None
     try:
-        return (await identity.verified_identity(token, hint)).email
+        return (await identity.verified_identity(token, hint, identity.kind(request))).email
     except (HTTPException, GraphError):
         return None
 

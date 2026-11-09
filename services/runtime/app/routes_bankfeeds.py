@@ -156,7 +156,10 @@ async def _display_name(request: Request) -> str | None:
     if demo.is_demo_request(request):
         return None
     try:
-        return (await identity.verified_identity(identity.bearer(request), request.headers.get("X-User"))).name or None
+        me = await identity.verified_identity(
+            identity.bearer(request), request.headers.get("X-User"), identity.kind(request)
+        )
+        return me.name or None
     except HTTPException:
         return None
 

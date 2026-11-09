@@ -19,7 +19,7 @@ from collections.abc import AsyncIterator
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -69,11 +69,15 @@ async def close_detail(
     return detail
 
 
-def _mail(token: str) -> MailProvider:
+def _mail(token: str, request: Request | None = None) -> MailProvider:
     if is_test_mode():
         from app import testmode
 
         return testmode.current().mail
+    if request is not None:
+        from app import accounts
+
+        return accounts.mail_provider(token, request)  # Gmail for X-Account-Kind: google, else Outlook
     from accnomos_connectors.msgraph import GraphMailProvider
 
     return GraphMailProvider(token)
@@ -102,6 +106,7 @@ async def _events(ctx: me.Ctx) -> AsyncIterator[str]:
 
 @router.post("/{month}/run", response_model=me.CloseRun)
 async def close_run(
+    request: Request,
     body: RunBody | None = None,
     month: str = MONTH,
     stream: bool = Query(False, description="1: server-sent events (start, step…, summary, run)"),
@@ -124,7 +129,7 @@ async def close_run(
         user=user,
         token=token,
         cfg=cfg,
-        mail=_mail(token) if body.outlook else None,
+        mail=_mail(token, request) if body.outlook else None,
         outlook=body.outlook,
     )
     if stream:
