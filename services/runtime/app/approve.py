@@ -21,7 +21,15 @@ from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
 from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
-from app.journal import VAT_CONTROL, draft_journal, private_account, split_business_use, with_expense_account
+from app.journal import (
+    VAT_CONTROL,
+    draft_journal,
+    private_account,
+    split_business_use,
+    swap_sides,
+    with_expense_account,
+    with_settlement,
+)
 from app.mileage import load_vehicles
 from app.paths import NEEDS_A_LOOK, PROPOSALS, VAT_RETURNS, upgrade
 from app.region import rules_for
@@ -71,6 +79,8 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
         raise ApprovalError("A mileage claim is calculated by code: change the mileage log on Vehicles instead")
     if p.payroll_run and edits:
         raise ApprovalError("A pay run is calculated by code: change it on the Payroll page instead")
+    if (p.settlement_account or p.sale_refund) and "doc_type" in edits:
+        raise ApprovalError("This entry was imported from a marketplace: its kind can't be changed; reject it instead")
     if NOT_VAT_REGISTERED in edits and not isinstance(edits[NOT_VAT_REGISTERED], bool):
         raise ApprovalError(f"{NOT_VAT_REGISTERED} is true or false")
     if "business_use_percent" in edits:
@@ -101,6 +111,10 @@ async def final_journal(books: Books, p: Proposal) -> list[JournalLine]:
     journal = draft_journal(p.extracted, await rules_for(books))
     if p.account_override:
         journal = with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
+    if p.sale_refund:  # a refund of a sale: the sale's journal turned round (Dr Sales, Dr VAT, Cr settlement)
+        journal = swap_sides(journal)
+    if p.settlement_account:
+        journal = with_settlement(journal, p.settlement_account)
     percent = p.business_use_percent if p.business_use_percent is not None else 100
     if percent == 100:
         return journal
@@ -135,7 +149,8 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str, currency: st
     if len(lines) < 2:
         raise ApprovalError("Nothing to post: enter the amounts first")
     payroll = p.payroll_run is not None
-    sale = doc.doc_type == "sales_invoice"
+    refund = p.sale_refund and doc.doc_type == "sales_invoice"  # a sale turned round: a reversal on the sales side
+    sale = doc.doc_type == "sales_invoice" and not refund
     credit_note = doc.doc_type == "credit_note"  # a supplier's: the purchase journal turned round (app/journal.py)
     vat = sum((j.credit_pence if sale or credit_note else j.debit_pence) for j in journal if j.account == VAT_CONTROL)
     gross = sum(j.debit_pence for j in journal)
@@ -145,7 +160,7 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str, currency: st
     try:
         return LedgerEvent(
             id=event_id,
-            kind="adjustment" if payroll else "sale" if sale else "reversal" if credit_note else "purchase",
+            kind="adjustment" if payroll else "sale" if sale else "reversal" if credit_note or refund else "purchase",
             date=when,
             lines=lines,
             evidence=[p.doc_sha256],
@@ -154,7 +169,7 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str, currency: st
             proposal_id=p.id,
             net=None if payroll else gross - vat,
             vat=None if payroll else vat,
-            counterparty=(doc.customer_name if sale else None) or doc.supplier_name,
+            counterparty=(doc.customer_name if sale or refund else None) or doc.supplier_name,
         )
     except ValueError as exc:  # e.g. unbalanced; draft_journal should make this impossible
         raise ApprovalError(str(exc)) from exc

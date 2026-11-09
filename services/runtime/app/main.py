@@ -252,6 +252,11 @@ app.include_router(bank_router)
 from app.routes_bankfeeds import router as bankfeeds_router  # noqa: E402  /books/bankfeeds/* (TrueLayer)
 
 app.include_router(bankfeeds_router)
+from app.routes_ebay import public as ebay_public_router  # noqa: E402  eBay account deletion notices
+from app.routes_ebay import router as ebay_router  # noqa: E402  /books/ebay/* (Connect eBay)
+
+app.include_router(ebay_router)
+app.include_router(ebay_public_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice
 
 app.include_router(ask_router)
