@@ -11,7 +11,7 @@ private and what to do first.
    - Plesk › Git › the accnomos repository › copy its SSH public key (or generate one).
    - GitHub › Settings › Deploy keys › Add (read-only). Change the Plesk remote to `git@github.com:zaytunazs/accnomos.git`.
    - Push a trivial web change and check accnomos.com updates.
-2. **API deploy (DGX Spark).** `~/spark/accnomos/deploy-repo` fetches `origin main`. Check its remote with
+2. **API deploy (the Spark server).** `~/spark/accnomos/deploy-repo` fetches `origin main`. Check its remote with
    `git -C ~/spark/accnomos/deploy-repo remote -v`. If it is `https://github.com/...` without credentials, add a
    second read-only deploy key from the Spark (`ssh-keygen -t ed25519 -f ~/.ssh/accnomos_deploy`) and switch the remote
    to SSH. Run `jobs/api_up.sh` once and check `https://api.accnomos.com/health`.
