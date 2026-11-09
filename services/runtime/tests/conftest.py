@@ -43,7 +43,7 @@ def graph_me_stand_in(request: pytest.FixtureRequest, monkeypatch: pytest.Monkey
     from accnomos_connectors.base import Identity
     from app import identity
 
-    async def stand_in(token: str, hint: str | None = None) -> Identity:
+    async def stand_in(token: str, hint: str | None = None, kind: str | None = None) -> Identity:
         if not token.strip().removeprefix("Bearer ").strip():
             raise HTTPException(status_code=401, detail="X-Graph-Token header required")
         return Identity(email=(hint or "").strip() or "sam@example.co.uk")

@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from accnomos_connectors.base import ConflictError, ContactsProvider, MailProvider
-from accnomos_connectors.msgraph import GraphContactsProvider
+from app import accounts
 from app import company_lookup as lookup
 from app import contacts as cb
 from app import contacts_import as ci
@@ -46,7 +46,7 @@ async def get_address_book(request: Request) -> AsyncIterator[ContactsProvider]:
 
         yield (await testmode.state()).contacts
         return
-    provider = GraphContactsProvider(token)
+    provider = accounts.contacts_provider(token, request)  # Google Contacts or Outlook
     try:
         yield provider
     finally:

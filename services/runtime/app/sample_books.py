@@ -40,7 +40,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from accnomos_connectors.base import StorageProvider
-from accnomos_connectors.msgraph import GraphError, GraphStorageProvider
+from accnomos_connectors.msgraph import GraphError
+from app import accounts
 from app import contacts as contacts_mod
 from app.books import EVENTS, PROPOSALS, SYSTEM, Books
 from app.books import today as current_date
@@ -165,7 +166,7 @@ async def folder_key(books: Books, kind: str) -> str:
     there the storage object tells them apart)."""
     storage = _bare(books.storage)
     root = await storage.ensure_root()
-    extra = "" if isinstance(storage, GraphStorageProvider) else f":{id(storage)}"
+    extra = "" if accounts.is_cloud_storage(storage) else f":{id(storage)}"
     return hashlib.sha256(f"{kind}:{root.id}{extra}".encode()).hexdigest()[:32]
 
 
@@ -288,8 +289,8 @@ async def _run(run: _Run, steps: list[Any]) -> None:
 def _own_storage(books: Books, token: str, kind: str) -> tuple[StorageProvider, bool]:
     """The background run's storage: its own Graph client (the request's closes when the request ends)."""
     storage = _bare(books.storage)
-    if isinstance(storage, GraphStorageProvider):
-        return GraphStorageProvider(token, kind), True  # type: ignore[arg-type]
+    if accounts.is_cloud_storage(storage):
+        return accounts.storage_for(token, kind), True
     return storage, False  # test mode's fakes: the same object the requests see (never the request's memo)
 
 

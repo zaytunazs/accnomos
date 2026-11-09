@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
-import { getMsal, isPersonalAccount, msalConfigured, SIGN_IN_SCOPES } from "@/lib/msal";
+import { getMsal, isGoogleAccount, isPersonalAccount, msalConfigured, SIGN_IN_SCOPES } from "@/lib/msal";
+import { googleConfigured, loadGoogle, signInWithGoogle } from "@/lib/google";
 import { setupBooksFolder, type DriveItem, type SetupProgress } from "@/lib/graph";
 import { addingFrom, signOutToHome } from "@/lib/profiles";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
@@ -21,8 +22,12 @@ function friendlySignInError(e: unknown): string {
 }
 
 /** Never a raw error on screen: one sentence the user can act on. */
-function friendlyFolderError(e: unknown): string {
+function friendlyFolderError(e: unknown, google = false): string {
   const msg = e instanceof Error ? e.message : "";
+  if (google) {
+    if (/expired/i.test(msg)) return msg;
+    return "Google Drive would not let us create the folder — check you're online and try again.";
+  }
   if (/PendingProvisioning|pending provisioning/i.test(msg)) {
     return "Your OneDrive is still being set up by Microsoft — open onedrive.live.com once, then try again in a few minutes.";
   }
@@ -41,12 +46,13 @@ export default function ConnectMicrosoft() {
   useEffect(() => {
     (async () => {
       if (isDemo()) return setPhase("demo"); // the demo's stand-in account is not a sign-in to set up
-      if (!msalConfigured()) {
+      if (!msalConfigured() && !googleConfigured()) {
         setError("Microsoft sign-in is not configured on this site yet — try again later.");
         setErrorKind("setup");
         setPhase("error");
         return;
       }
+      if (!msalConfigured()) return setPhase("signed-out"); // Google only on this build
       const msal = await getMsal();
       const result = await msal.handleRedirectPromise().catch((e: unknown) => {
         setError(friendlySignInError(e));
@@ -75,6 +81,25 @@ export default function ConnectMicrosoft() {
     }
   }
 
+  // Load Google's script before the click, so its window opens from the click itself (not blocked as a pop-up).
+  useEffect(() => {
+    if ((phase === "signed-out" || phase === "adding") && googleConfigured()) void loadGoogle().catch(() => {});
+  }, [phase]);
+
+  async function signInGoogle() {
+    setError(null);
+    setErrorKind(null);
+    try {
+      await signInWithGoogle();
+      window.location.assign(window.location.pathname + window.location.search);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      setError(/Google Drive|could not be loaded/.test(msg) ? msg : friendlySignInError(e));
+      setErrorKind(null); // the Continue with Google button above stays: no Microsoft retry button
+      setPhase("signed-out");
+    }
+  }
+
   async function signOut() {
     await signOutToHome(account);
   }
@@ -89,7 +114,7 @@ export default function ConnectMicrosoft() {
       setRoot(item);
       setPhase("ready");
     } catch (e) {
-      setError(friendlyFolderError(e));
+      setError(friendlyFolderError(e, isGoogleAccount(account)));
       setErrorKind("folder");
       setPhase("error");
     }
@@ -126,10 +151,27 @@ export default function ConnectMicrosoft() {
         </div>
       )}
 
-      {phase === "signed-out" && (
+      {phase === "signed-out" && msalConfigured() && (
         <button onClick={signIn} className={primary}>
           Sign in with Microsoft
         </button>
+      )}
+
+      {phase === "signed-out" && googleConfigured() && (
+        <>
+          <button onClick={signInGoogle} className={`${btn} w-full border border-[#5A2D00] bg-white text-[#3F2000]`}>
+            Continue with Google
+          </button>
+          <p className="text-xs leading-relaxed text-[#4B5159]">
+            With Google, your books go in an <em>Accnomos</em> folder in your Google Drive. Google asks once for: your
+            name and email; only the files Accnomos makes in your Drive; reading Gmail (for bills) and writing drafts and
+            emails you confirm; your calendar events; and reading your contacts.{" "}
+            <Link href="/privacy" className="font-bold text-[#3F2000] underline underline-offset-2">
+              Why each is needed
+            </Link>
+            .
+          </p>
+        </>
       )}
 
       {phase === "adding" && account && (
@@ -154,9 +196,11 @@ export default function ConnectMicrosoft() {
           <div className="text-sm text-[#4B5159]">Signed in as</div>
           <div className="font-bold text-[#1B1F24]">{account.username}</div>
           <div className="mt-1 text-xs text-[#4B5159]">
-            {isPersonalAccount(account)
-              ? "Personal account · folder will be OneDrive › Apps › Accnomos"
-              : "Work or school account · folder will be OneDrive › Accnomos"}
+            {isGoogleAccount(account)
+              ? "Google account · folder will be Google Drive › My Drive › Accnomos"
+              : isPersonalAccount(account)
+                ? "Personal account · folder will be OneDrive › Apps › Accnomos"
+                : "Work or school account · folder will be OneDrive › Accnomos"}
           </div>
           <button onClick={signOut} className="mt-2 text-xs font-bold text-[#3F2000]">
             Use a different account
@@ -209,7 +253,7 @@ export default function ConnectMicrosoft() {
                 rel="noreferrer"
                 className={`${btn} inline-flex items-center justify-center border border-[#5A2D00] bg-white text-[#3F2000]`}
               >
-                Open in OneDrive
+                {isGoogleAccount(account) ? "Open in Google Drive" : "Open in OneDrive"}
               </a>
             )}
           </div>

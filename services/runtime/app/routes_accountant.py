@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from accnomos_connectors.base import SharedRoot, SharingProvider
 from accnomos_connectors.msgraph import GraphError, GraphStorageProvider
-from app import accountant, portal, queries, sharing
+from app import accountant, accounts, portal, queries, sharing
 from app.ai.config import is_test_mode
 from app.books import Books
 from app.books import today as london_today
@@ -45,6 +45,7 @@ async def get_sharing(request: Request) -> AsyncIterator[SharingProvider]:
 
     if demo.from_request(request) is not None:  # sharing is real OneDrive permissions: never from a demo sandbox
         raise HTTPException(status_code=403, detail="Sharing with an accountant is switched off in the demo sandbox.")
+    accounts.refuse_sharing(request)  # OneDrive permissions only: 400 for a Google account (app/accounts.py)
     provider = await sharing.sharing_for(_token(request), request.headers.get("X-User"))
     try:
         yield provider

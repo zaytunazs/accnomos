@@ -1,4 +1,5 @@
-"""Who a request really is: the Microsoft Graph `/me` of its `X-Graph-Token`, never a header the client wrote.
+"""Who a request really is: the Microsoft Graph `/me` of its `X-Graph-Token` (for `X-Account-Kind: google`, Google's
+OpenID Connect userinfo, https://openidconnect.googleapis.com/v1/userinfo), never a header the client wrote.
 
 `X-Graph-Token` is only a credential once Graph has accepted it, so anything that must know the caller (the audit
 actor, `/lookup/*`, `/extract`) goes through `verified_identity`. The answer is remembered by token hash for
@@ -33,26 +34,39 @@ def reset() -> None:
     _CACHE.clear()
 
 
-async def verified_identity(token: str, hint: str | None = None) -> Identity:
-    """Graph `/me` for `token`. 401 when Graph refuses it (or there is none); other Graph failures are the usual 502.
-    `hint` (the request's `X-User`) is read in test mode only, to choose which fake user the fakes answer as."""
+def kind(request: Request) -> str | None:
+    """`"google"` for a Google token (app/accounts.py), else None: Microsoft Graph, personal or work."""
+    return "google" if (request.headers.get("X-Account-Kind") or "").strip().lower() == "google" else None
+
+
+async def verified_identity(token: str, hint: str | None = None, kind: str | None = None) -> Identity:
+    """Graph `/me` for `token` (Google's OpenID Connect userinfo when `kind` is "google"). 401 when the provider
+    refuses it (or there is none); other failures are the usual 502. `hint` (the request's `X-User`) is read in test
+    mode only, to choose which fake user the fakes answer as."""
     token = token.strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
-    if is_test_mode():  # per-tenant fakes and a different X-User per call: nothing to remember
+    google = kind == "google"
+    if is_test_mode() and not google:  # per-tenant fakes and a different X-User per call: nothing to remember
         provider = await sharing.sharing_for(token, hint)
         return await provider.whoami()
-    key = user_cache_key(token, "identity")
+    key = user_cache_key(token, "identity:google" if google else "identity")
     hit = _CACHE.get(key)
     if hit is not None and hit[0] > time.monotonic():
         _CACHE.move_to_end(key)
         return hit[1]
-    provider = await sharing.sharing_for(token)
+    if google:
+        from accnomos_connectors.google_drive import GoogleIdentity
+
+        provider = GoogleIdentity(token)
+    else:
+        provider = await sharing.sharing_for(token)
     try:
         me = await provider.whoami()
     except GraphError as exc:
         if exc.status in (401, 403):
-            raise HTTPException(status_code=401, detail="Microsoft did not accept this sign-in") from exc
+            who = "Google" if google else "Microsoft"
+            raise HTTPException(status_code=401, detail=f"{who} did not accept this sign-in") from exc
         raise
     finally:
         await provider.aclose()  # type: ignore[attr-defined]
@@ -65,4 +79,4 @@ async def verified_identity(token: str, hint: str | None = None) -> Identity:
 
 async def signed_in_identity(request: Request) -> Identity:
     """Dependency: the verified identity of this request's `X-Graph-Token` (401 without one)."""
-    return await verified_identity(bearer(request), request.headers.get("X-User"))
+    return await verified_identity(bearer(request), request.headers.get("X-User"), kind(request))

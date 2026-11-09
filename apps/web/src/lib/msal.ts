@@ -29,16 +29,29 @@ function isDemo(): boolean {
   }
 }
 
+/** lib/google.ts's session key, read here directly so this module does not import google.ts eagerly. */
+function isGoogle(): boolean {
+  try {
+    return typeof window !== "undefined" && !!window.localStorage.getItem("msal.accnomos-google.session");
+  } catch {
+    return false;
+  }
+}
+
 // `process.env.NEXT_PUBLIC_TEST_MODE === "1"` is written out at each use (not shared as a constant) so the
 // bundler folds it: only a `NEXT_PUBLIC_TEST_MODE=1` build (e2e/build.mjs) contains the fake sign-in, msal-test.ts.
 export function msalConfigured(): boolean {
-  return process.env.NEXT_PUBLIC_TEST_MODE === "1" || clientId.length > 0 || isDemo();
+  return process.env.NEXT_PUBLIC_TEST_MODE === "1" || clientId.length > 0 || isDemo() || isGoogle();
 }
 
 export function getMsal(): Promise<IPublicClientApplication> {
   // A demo sandbox (lib/demo.ts) on this device: its fake stands in for MSAL, in every build.
   if (!instancePromise && isDemo()) {
     instancePromise = import("./demo").then((m) => m.createDemoMsal());
+  }
+  // Signed in with Google (lib/google.ts): its stand-in answers with the Google account and token.
+  if (!instancePromise && isGoogle()) {
+    instancePromise = import("./google").then((m) => m.createGoogleMsal());
   }
   if (process.env.NEXT_PUBLIC_TEST_MODE === "1" && !instancePromise) {
     instancePromise = import("./msal-test").then((m) => m.createTestMsal());
@@ -66,13 +79,22 @@ export function isPersonalAccount(account: AccountInfo): boolean {
   return account.tenantId === MSA_TENANT;
 }
 
+/** The stand-in account of a Google sign-in (lib/google.ts GOOGLE_ENVIRONMENT; not imported, to keep it lazy). */
+export function isGoogleAccount(account: AccountInfo | null | undefined): boolean {
+  return account?.environment === "accounts.google.com";
+}
+
+/** Microsoft scopes for the books. A Google token already carries drive.file (asked for at sign-in): none here. */
 export function storageScopesFor(account: AccountInfo): string[] {
+  if (isGoogleAccount(account)) return [];
   return isPersonalAccount(account) ? STORAGE_SCOPES : STORAGE_SCOPES_WORK;
 }
 
-export type AccountKind = "personal" | "work";
+export type AccountKind = "personal" | "work" | "google";
 
+/** Also the runtime's `X-Account-Kind` (services/runtime/app/accounts.py). */
 export function accountKind(account: AccountInfo): AccountKind {
+  if (isGoogleAccount(account)) return "google";
   return isPersonalAccount(account) ? "personal" : "work";
 }
 

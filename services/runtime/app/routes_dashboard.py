@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from datetime import date
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from accnomos_connectors.base import CalendarProvider
 from app import dashboard, home_overview
@@ -38,9 +38,13 @@ async def optional_calendar(request: Request) -> AsyncIterator[CalendarProvider 
 
         yield (await testmode.state()).calendar
         return
-    from accnomos_connectors.msgraph import GraphCalendarProvider
+    from app import accounts
 
-    provider = GraphCalendarProvider(token)
+    try:
+        provider = accounts.calendar_provider(token, request)  # Google Calendar or Outlook
+    except HTTPException:  # no Google Calendar on this server yet: Home simply shows no clash
+        yield None
+        return
     try:
         yield provider
     finally:

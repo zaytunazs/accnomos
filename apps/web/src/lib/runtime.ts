@@ -280,7 +280,7 @@ export async function runtimeHeaders(
   }
   return {
     "X-Graph-Token": token,
-    "X-Account-Kind": isPersonalAccount(account) ? "personal" : "work",
+    "X-Account-Kind": accountKind(account), // personal | work | google: X-Graph-Token carries that account's token
     "X-User": account.username,
     ...(business && !client ? { "X-Business-Name": business } : {}),
     ...(ai ? aiHeaders(ai) : {}),

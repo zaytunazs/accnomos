@@ -1,17 +1,24 @@
 """Contract tests every StorageProvider must pass. Run against the fake now; Microsoft Graph via a
 recorded fixture later. Add a provider by appending a fixture that yields it."""
 
+import httpx
 import pytest
 
-from accnomos_connectors import FakeStorageProvider
+from accnomos_connectors import FakeStorageProvider, GoogleDriveStorageProvider
 from accnomos_connectors.base import ConflictError
+from accnomos_connectors.fake_drive import FakeDrive
 
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.fixture(params=["fake"])
-def storage(request):
-    return FakeStorageProvider()
+@pytest.fixture(params=["fake", "google_drive"])
+async def storage(request):
+    if request.param == "fake":
+        yield FakeStorageProvider()
+        return
+    drive = FakeDrive()
+    async with httpx.AsyncClient(transport=drive.transport()) as client:
+        yield GoogleDriveStorageProvider(drive.token, client=client)
 
 
 async def test_folder_tree_and_listing(storage):

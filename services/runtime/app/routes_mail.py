@@ -26,6 +26,7 @@ from pydantic import BaseModel, Field
 
 from accnomos_connectors.base import MailProvider
 from accnomos_connectors.msgraph import GraphError, GraphMailProvider
+from app import accounts
 from app import mailboxes as mb
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books
@@ -54,7 +55,7 @@ async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
 
         yield (await testmode.state()).mail
         return
-    mail = GraphMailProvider(token)
+    mail = accounts.mail_provider(token, request)  # Gmail for X-Account-Kind: google, else Outlook
     try:
         yield mail
     finally:
@@ -82,6 +83,13 @@ async def get_mail_factory(request: Request) -> AsyncIterator[MailFactory]:
         yield lambda _token, box: state.linked_mail(box.address)
         return
     opened: list[GraphMailProvider] = []
+    if accounts.is_google(request):  # linked and shared mailboxes are Microsoft mailboxes, opened with Graph
+
+        def no_linked(_token: str, _box: mb.Mailbox) -> MailProvider:
+            raise HTTPException(status_code=400, detail="Linked mailboxes need a Microsoft account for now.")
+
+        yield no_linked
+        return
 
     def make(token: str, box: mb.Mailbox) -> MailProvider:
         # A shared mailbox is /users/{address} with the signed-in account's token; another account's is its /me.

@@ -34,6 +34,7 @@ from accnomos_connectors.fake import (
     FakeSharingProvider,
     FakeStorageProvider,
 )
+from accnomos_connectors.google_drive import GoogleDriveError, GoogleDriveStorageProvider, GoogleIdentity
 from accnomos_connectors.msgraph import (
     GraphCalendarProvider,
     GraphContactsProvider,
@@ -78,4 +79,7 @@ __all__ = [
     "GraphMailSender",
     "GraphSharingProvider",
     "GraphStorageProvider",
+    "GoogleDriveError",
+    "GoogleDriveStorageProvider",
+    "GoogleIdentity",
 ]

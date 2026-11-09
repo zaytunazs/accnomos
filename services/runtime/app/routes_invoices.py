@@ -18,8 +18,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field, StrictBool
 
 from accnomos_connectors.base import MailSender
-from accnomos_connectors.msgraph import GraphMailSender
 from accnomos_ledger.bank import BankLine
+from app import accounts
 from app import chasing as chase_
 from app import contacts as cb
 from app import invoicing as inv_
@@ -63,7 +63,7 @@ async def get_sender(request: Request) -> AsyncIterator[MailSender]:
 
         yield (await testmode.state()).sender
         return
-    sender = GraphMailSender(token)
+    sender = accounts.mail_sender(token, request)  # Gmail for X-Account-Kind: google, else Outlook
     try:
         yield sender
     finally:
