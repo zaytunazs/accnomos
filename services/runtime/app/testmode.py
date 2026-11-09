@@ -19,6 +19,8 @@ With it on, the runtime talks to nothing outside this process:
   (a consent screen that agrees at once, and a "Pay £…" page per link, so a test can play the customer).
 * TrueLayer (bank feeds, app/bank_feeds.py) is the fake in app/bankfeed_fakes.py: `/__test/truelayer/` is the
   bank picker, which agrees at once, and its mock bank's six transactions overlap the gold Barclays CSV by three.
+* eBay (Connect eBay, app/ebay_sync.py) is the fake in app/ebay_fakes.py: `/__test/ebay/oauth2/authorize` agrees at
+  once; the fake seller has sales, a refund, fees, a postage label and a payout.
 * "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27): the gold receipts (Jul-Sep 2026) fall in the
   previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
   timestamps stay real. The `demo` seed moves its tenant to docs/DEMO.md's stage date (4 Nov 2026).
@@ -707,6 +709,9 @@ def enable() -> None:
     from app import bankfeed_fakes
 
     bankfeed_fakes.install()  # TrueLayer calls (bank feeds) go to the fakes, never out
+    from app import ebay_fakes
+
+    ebay_fakes.install()  # eBay calls (Connect eBay) go to the fakes, never out
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 
 
@@ -730,6 +735,9 @@ def _payment_pages() -> None:
     from app.bankfeed_fakes import router as bankfeed_router  # TrueLayer's bank picker, already agreed
 
     router.include_router(bankfeed_router)
+    from app.ebay_fakes import router as ebay_router  # eBay's sign-in and consent page, already agreed
+
+    router.include_router(ebay_router)
 
 
 _payment_pages()

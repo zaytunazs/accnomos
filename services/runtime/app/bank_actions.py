@@ -46,7 +46,7 @@ class UnmatchedLine(BaseModel):
     # After "rejected" the user may create a fresh one.
     proposal_status: ProposalStatus | None = None
     # Money in whose words name Stripe or PayPal: likely a payout, matched with POST /lines/{id}/payout.
-    payout: Literal["stripe", "paypal"] | None = None
+    payout: Literal["stripe", "paypal", "ebay"] | None = None
 
 
 def _payment_method(text: str) -> PaymentMethod:

@@ -219,7 +219,7 @@ async def unmatch(line_id: str, books: Books = Depends(get_books), user: str = D
 
 
 class PayoutBody(StrictBody):
-    provider: Literal["stripe", "paypal"]
+    provider: Literal["stripe", "paypal", "ebay"]
 
 
 @router.post("/lines/{line_id}/payout", response_model=BankLine)

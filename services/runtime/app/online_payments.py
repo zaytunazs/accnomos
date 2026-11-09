@@ -309,7 +309,7 @@ def _finish(state: str, provider: str, binding: str, user: str) -> AuthState:
 
 
 def provider_label(provider: str) -> str:
-    return {"stripe": "Stripe", "paypal": "PayPal", "paypalme": "PayPal.me"}.get(provider, provider)
+    return {"stripe": "Stripe", "paypal": "PayPal", "paypalme": "PayPal.me", "ebay": "eBay"}.get(provider, provider)
 
 
 # --------------------------------------------------------------------------- #
@@ -1009,14 +1009,17 @@ PAYOUTS = f"{SYSTEM}/Payments/payouts.json"
 PAYOUT_WORDS = {
     "stripe": re.compile(r"\bstripe\b", re.IGNORECASE),
     "paypal": re.compile(r"\bpaypal\b|\bpp\s?\*", re.IGNORECASE),
+    # How an eBay payout is worded on a UK statement is not verified (docs/EBAY_SETUP.md); "ebay" is the guess.
+    "ebay": re.compile(r"\bebay\b", re.IGNORECASE),
 }
+PayoutProvider = Literal["stripe", "paypal", "ebay"]
 
 
 class Payout(BaseModel):
     """One statement line matched as a payout (`_System/Payments/payouts.json`)."""
 
     line_id: str
-    provider: Literal["stripe", "paypal"]
+    provider: PayoutProvider
     date: date
     amount_pence: int
     event_id: str
@@ -1025,7 +1028,7 @@ class Payout(BaseModel):
     reversal_event_id: str | None = None  # posted when the line is unmatched
 
 
-def payout_provider(description: str) -> Literal["stripe", "paypal"] | None:
+def payout_provider(description: str) -> PayoutProvider | None:
     """Which provider a statement line's words name, for the hint on an unmatched line; None when neither."""
     for name, words in PAYOUT_WORDS.items():
         if words.search(description):
@@ -1043,7 +1046,7 @@ async def clearing_balance(books: Books, provider: str) -> int:
     return sum(ln.debit - ln.credit for e in await books.list_events() for ln in e.lines if ln.account == account)
 
 
-async def match_payout(books: Books, line_id: str, provider: Literal["stripe", "paypal"], user: str) -> Any:
+async def match_payout(books: Books, line_id: str, provider: PayoutProvider, user: str) -> Any:
     """The user's yes: this money-in line is a payout from `provider`. Posts Dr 1200 Bank / Cr the clearing account for
     the line's amount and matches the line to it. Refused (BankMatchError) when the clearing account holds less: the
     payments it pays out are not approved yet, and posting it would leave the provider owing the user a negative
@@ -1059,7 +1062,11 @@ async def match_payout(books: Books, line_id: str, provider: Literal["stripe", "
     if line.amount_pence > held:
         raise BankMatchError(
             f"{CLEARING[provider]} holds {money(max(held, 0))}, less than this {money(line.amount_pence)} payout. "
-            f"Approve the {provider_label(provider)} payments it pays out on the Invoices page first"
+            + (
+                "Fetch your eBay sales and approve them on Review first"
+                if provider == "ebay"
+                else f"Approve the {provider_label(provider)} payments it pays out on the Invoices page first"
+            )
         )
     memo = f"{provider_label(provider)} payout"
     event = LedgerEvent(

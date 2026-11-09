@@ -732,6 +732,24 @@ export const runtime = {
         body: JSON.stringify({ confirm: true }),
       }),
   },
+  /** /books/ebay/* (services/runtime/app/routes_ebay.py): Connect eBay; sales, fees and payouts become proposals. */
+  ebay: {
+    status: (a: AccountInfo) => call<RtEbayStatus>(a, "/books/ebay"),
+    connect: (a: AccountInfo, body: { redirect_to: string; binding_hash: string }) =>
+      call<{ url: string }>(a, "/books/ebay/connect", { method: "POST", body: JSON.stringify(body) }),
+    complete: (a: AccountInfo, body: { code: string; state: string; binding: string }) =>
+      call<RtEbayStatus>(a, "/books/ebay/complete", { method: "POST", body: JSON.stringify(body) }),
+    /** Fetch the last `days` days (90 by default) and propose what is new; nothing is posted. */
+    sync: (a: AccountInfo, days?: number) =>
+      call<RtEbaySync>(a, "/books/ebay/sync", { method: "POST", body: JSON.stringify(days ? { days } : {}) }),
+    settings: (a: AccountInfo, fee_vat_number: string | null) =>
+      call<RtEbayStatus>(a, "/books/ebay/settings", { method: "PUT", body: JSON.stringify({ fee_vat_number }) }),
+    disconnect: (a: AccountInfo) =>
+      call<{ status: RtEbayStatus; message: string }>(a, "/books/ebay/disconnect", {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      }),
+  },
   /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
   bank: {
     /** POST /books/bank/import: multipart upload; the same file twice is a no-op (sha256). */
@@ -751,8 +769,8 @@ export const runtime = {
     /** Reopen a matched, transfer or ignored line. */
     reopen: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/unmatch`, { method: "POST" }),
     transfer: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/transfer`, { method: "POST" }),
-    /** A payout from Stripe or PayPal: Dr 1200 Bank / Cr its clearing account (services/runtime/app/online_payments.py). */
-    payout: (a: AccountInfo, lineId: string, provider: "stripe" | "paypal") =>
+    /** A payout from Stripe, PayPal or eBay: Dr 1200 Bank / Cr its clearing account (services/runtime/app/online_payments.py). */
+    payout: (a: AccountInfo, lineId: string, provider: "stripe" | "paypal" | "ebay") =>
       call<RtBankLine>(a, `/books/bank/lines/${lineId}/payout`, { method: "POST", body: JSON.stringify({ provider }) }),
     ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
     expenseProposal: (a: AccountInfo, lineId: string) =>
@@ -2742,6 +2760,37 @@ export interface RtFeedStatus {
   /** TrueLayer's public sandbox login for its mock bank, for the visitor to type on TrueLayer's page (demo only). */
   test_login?: { username: string; password: string; source_url: string } | null;
 }
+/** services/runtime/app/ebay_sync.py SyncSummary: what one eBay sync proposed. */
+export interface RtEbaySummary {
+  sales: number;
+  refunds: number;
+  fees: number;
+  postage: number;
+  payouts: number;
+  already_imported: number;
+  skipped: number;
+}
+export interface RtEbaySync extends RtEbaySummary {
+  start: string;
+  end: string;
+  proposals: string[];
+  skipped_items: { type: string; id: string; date: string | null; amount_pence: number | null; reason: string }[];
+  warning: string | null;
+}
+/** services/runtime/app/ebay_sync.py EbayStatus. */
+export interface RtEbayStatus {
+  configured: boolean;
+  reason: string | null;
+  sandbox: boolean;
+  connected: boolean;
+  state: "ok" | "key_changed" | null;
+  message: string | null;
+  connected_at: string | null;
+  last_synced_at: string | null;
+  last_summary: RtEbaySummary | null;
+  fee_vat_number: string | null;
+  payouts: { payout_id: string; date: string; amount_pence: number; last4: string | null; matched: boolean }[];
+}
 export interface RtFeedSync {
   new_lines: number;
   already_imported: number;
@@ -2800,7 +2849,7 @@ export interface RtUnmatchedLine {
   /** Status of the expense proposal made from this line, if any; after "rejected" a new one may be made. */
   proposal_status: "proposed" | "needs_a_look" | "posted" | "rejected" | null;
   /** Money in whose words name Stripe or PayPal: likely that provider's payout. */
-  payout?: "stripe" | "paypal" | null;
+  payout?: "stripe" | "paypal" | "ebay" | null;
 }
 export interface RtBankSummary {
   total: number;

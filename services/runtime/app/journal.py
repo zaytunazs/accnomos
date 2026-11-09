@@ -44,7 +44,11 @@ CASH = "1210 Cash"
 #: several payments at once). 1210 is Cash, so the two clearing accounts are 1230 and 1240.
 STRIPE_CLEARING = "1230 Stripe clearing"
 PAYPAL_CLEARING = "1240 PayPal clearing"
-CLEARING: dict[str, str] = {"stripe": STRIPE_CLEARING, "paypal": PAYPAL_CLEARING}
+#: eBay sales, refunds and fees (app/ebay_sync.py) sit here until eBay pays out to the bank, net, in batches.
+EBAY_CLEARING = "1250 eBay clearing"
+CLEARING: dict[str, str] = {"stripe": STRIPE_CLEARING, "paypal": PAYPAL_CLEARING, "ebay": EBAY_CLEARING}
+#: eBay's selling fees (final value, per-order, listing, advertising), as imported from eBay (app/ebay_sync.py).
+MARKETPLACE_FEES = "5400 Marketplace fees"
 CREDITORS = "2100 Creditors"
 DEBTORS = "1100 Debtors"
 SALES = "4000 Sales"
@@ -238,6 +242,21 @@ def split_business_use(journal: list[JournalLine], percent: int, account: str) -
         out.append(JournalLine(account=account, debit_pence=private_pence, vat_code=None))
     out.extend(j for j in journal if j.credit_pence)
     return out
+
+
+#: The legs draft_journal settles a document through; with_settlement moves them to another account.
+SETTLEMENT_ACCOUNTS = frozenset({DEBTORS, BANK, CASH, CREDITORS})
+
+
+def with_settlement(journal: list[JournalLine], account: str) -> list[JournalLine]:
+    """The journal with its settlement leg (1100 Debtors on a sale, 1200 Bank / 1210 Cash / 2100 Creditors on a
+    purchase) moved to `account`, e.g. 1250 eBay clearing: money that reached a marketplace, not the bank."""
+    return [j.model_copy(update={"account": account}) if j.account in SETTLEMENT_ACCOUNTS else j for j in journal]
+
+
+def swap_sides(journal: list[JournalLine]) -> list[JournalLine]:
+    """Every debit as a credit and every credit as a debit (a refund of a sale is the sale turned round)."""
+    return [j.model_copy(update={"debit_pence": j.credit_pence, "credit_pence": j.debit_pence}) for j in journal]
 
 
 def with_expense_account(journal: list[JournalLine], account: str, credit_note: bool = False) -> list[JournalLine]:

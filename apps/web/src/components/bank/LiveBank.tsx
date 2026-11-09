@@ -6,6 +6,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import BankReconcile, { type RulePrefillFrom } from "@/components/bank/BankReconcile";
 import BankRules from "@/components/bank/BankRules";
 import BankFeeds from "@/components/bank/BankFeeds";
+import EbayConnect from "@/components/bank/EbayConnect";
 import BankUpload from "@/components/bank/BankUpload";
 import SignInCta from "@/components/SignInCta";
 import StatusBadge, { badgeClass, type BadgeTone } from "@/components/StatusBadge";
@@ -47,18 +48,27 @@ export function money(pence: number): string {
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 /** The runtime's three actions, plus a payout from Stripe or PayPal for money in (POST /books/bank/lines/{id}/payout). */
-type LineAction = RtUnmatchedAction | "payout_stripe" | "payout_paypal";
+type LineAction = RtUnmatchedAction | "payout_stripe" | "payout_paypal" | "payout_ebay";
+type PayoutAction = "payout_stripe" | "payout_paypal" | "payout_ebay";
+const PAYOUT: Record<PayoutAction, { provider: "stripe" | "paypal" | "ebay"; name: string }> = {
+  payout_stripe: { provider: "stripe", name: "Stripe" },
+  payout_paypal: { provider: "paypal", name: "PayPal" },
+  payout_ebay: { provider: "ebay", name: "eBay" },
+};
+const isPayout = (a: LineAction): a is PayoutAction => a in PAYOUT;
+const PAYOUT_FOR = { stripe: "payout_stripe", paypal: "payout_paypal", ebay: "payout_ebay" } as const;
 
 const ACTIONS: { action: LineAction; label: string }[] = [
   { action: "create_expense_proposal", label: "Create expense proposal" },
   { action: "payout_stripe", label: "Payout from Stripe" },
   { action: "payout_paypal", label: "Payout from PayPal" },
+  { action: "payout_ebay", label: "Payout from eBay" },
   { action: "mark_private", label: "Private" },
   { action: "mark_transfer", label: "Mark as transfer" },
   { action: "ignore", label: "Ignore" },
 ];
 
-const CLEARING = { payout_stripe: "1230 Stripe clearing", payout_paypal: "1240 PayPal clearing" } as const;
+const CLEARING = { payout_stripe: "1230 Stripe clearing", payout_paypal: "1240 PayPal clearing", payout_ebay: "1250 eBay clearing" } as const;
 const DONE_LABEL: Record<string, string> = { matched: "Matched", transfer: "Transfer", ignored: "Ignored" };
 const STATUS_LABEL: Record<RtBankLine["status"], string> = {
   matched: "Matched",
@@ -468,7 +478,7 @@ function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string |
 
 /** What the confirm sheet tells the user before an unmatched action runs. Nothing here posts to the ledger. */
 function effectText(line: RtBankLine, action: LineAction): string {
-  if (action === "payout_stripe" || action === "payout_paypal")
+  if (isPayout(action))
     return `${money(line.amount_pence)} moves from ${CLEARING[action]} to 1200 Bank. The payments it pays out are already in your books, so it is not counted as income again.`;
   if (action === "create_expense_proposal")
     return `A ${money(Math.abs(line.amount_pence))} expense proposal with no VAT reclaimed will wait in Review.`;
@@ -495,10 +505,9 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
     setSheet(null);
     setOpenMenu(null);
     act(`${line.id}:${action}`, async (a) => {
-      if (action === "payout_stripe" || action === "payout_paypal") {
-        const provider = action === "payout_stripe" ? "stripe" : "paypal";
-        await runtime.bank.payout(a, line.id, provider);
-        return `${line.description} matched as a ${provider === "stripe" ? "Stripe" : "PayPal"} payout.`;
+      if (isPayout(action)) {
+        await runtime.bank.payout(a, line.id, PAYOUT[action].provider);
+        return `${line.description} matched as a ${PAYOUT[action].name} payout.`;
       }
       if (action === "create_expense_proposal") {
         await runtime.bank.expenseProposal(a, line.id);
@@ -527,11 +536,11 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
           const menuOpen = openMenu === line.id;
           const items = ACTIONS.filter((x) =>
             x.action === "create_expense_proposal" || x.action === "mark_private" ? line.amount_pence < 0
-            : x.action === "payout_stripe" || x.action === "payout_paypal" ? line.amount_pence > 0
+            : isPayout(x.action) ? line.amount_pence > 0
             : true,
           );
           // Money in naming Stripe or PayPal is most likely that provider paying out.
-          const hinted: LineAction = payout ? (payout === "stripe" ? "payout_stripe" : "payout_paypal") : suggested.action;
+          const hinted: LineAction = payout ? PAYOUT_FOR[payout] : suggested.action;
           return (
           <li key={line.id} className="flex flex-col gap-2 border-t border-border py-3 first:border-t-0">
             <div className="flex flex-wrap items-baseline gap-x-3">
@@ -551,7 +560,7 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
               ) : posted ? (
                 <>The expense from this line is posted but its amount or date no longer matches the line. Check it on Review.</>
               ) : (
-                <>Suggested: {payout ? `Looks like a payout from ${payout === "stripe" ? "Stripe" : "PayPal"}` : suggested.reason}</>
+                <>Suggested: {payout ? `Looks like a payout from ${PAYOUT[PAYOUT_FOR[payout]].name}` : suggested.reason}</>
               )}
             </p>
             <div className="relative self-start">
@@ -902,6 +911,8 @@ export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
       {/* One uploader in a fixed place: inside the empty state it remounted after the first import and lost its result. */}
       {/* Open Banking (TrueLayer) reaches UK banks only: books kept elsewhere upload statements instead. */}
       {uk && <BankFeeds account={account} onSynced={reload} />}
+      {/* Connect eBay: shown only when this server has an eBay keyset (UK books only). */}
+      {uk && <EbayConnect account={account} onSynced={reload} />}
       <BankUpload account={account} onDone={reload} />
       {data.summary.total === 0 ? (
         <EmptyState

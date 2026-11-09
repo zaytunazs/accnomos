@@ -215,6 +215,13 @@ class Proposal(BaseModel):
     tracking: dict[str, str] | None = None  # tracking tags put on its cost or income lines when approved
     mileage_claim: MileageClaim | None = None  # set on mileage allowance proposals, which code builds
     payroll_run: str | None = None  # set on pay run proposals (app/payrun.py), which code builds: the run's id
+    #: Where the money went instead of Debtors / Bank / Creditors (app/journal.with_settlement): set on imports from a
+    #: marketplace, e.g. "1250 eBay clearing" (app/ebay_sync.py), so the later payout to the bank matches it.
+    settlement_account: str | None = None
+    #: A refund to a customer of an earlier sale (a sales_invoice document): posted as the sale turned round.
+    sale_refund: bool = False
+    #: Where code found it, for the card, e.g. "eBay SALE 12-34567-89012" (no model read anything).
+    source_ref: str | None = Field(default=None, max_length=200)
     created_at: datetime | None = None
     decided_by: str | None = None
     decided_at: datetime | None = None

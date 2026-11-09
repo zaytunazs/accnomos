@@ -231,6 +231,8 @@ TALKS_HTTP = {
     "routes_ai.py": "/ai/health and /ai/warm: the chain providers' c.base_url (server env, ai/providers.py)",
     "truelayer.py": "TrueLayer (bank feeds): the bases in TrueLayerConfig, from server env only",
     "bankfeed_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
+    "ebay.py": "eBay (Connect eBay): the hosts in EbayConfig (SANDBOX/PRODUCTION constants), chosen by server env",
+    "ebay_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
 }
 
 
@@ -511,6 +513,7 @@ NO_USER_NEEDED = {
     "POST /shopping/lookup": "reads the price history (and a live search, when on); writes nothing",
     "POST /shopping/propose": "proposes a signed card that only /actions/approve (X-User) runs",
     "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
+    "POST /ebay/account-deletion": "eBay's account deletion notice: acknowledged; reads and writes no books",
 }
 
 
@@ -619,6 +622,11 @@ PUBLIC_ROUTES = {
     "GET /books/bankfeeds/callback": (
         "TrueLayer's browser redirect; only checks the signed one-time state and hands back to Bank, touches no books"
     ),
+    "GET /books/ebay/callback": (
+        "eBay's browser redirect; only checks the signed one-time state and hands back to Bank, touches no books"
+    ),
+    "GET /ebay/account-deletion": "eBay's endpoint challenge: a hash of its code and server env; no user data",
+    "POST /ebay/account-deletion": "eBay's account deletion notice: acknowledged with 204; reads and writes no books",
 }
 
 
