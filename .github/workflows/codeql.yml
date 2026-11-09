@@ -15,6 +15,8 @@ permissions:
 jobs:
   analyze:
     name: Analyze
+    # Code scanning on a private repository needs GitHub Advanced Security (paid); skip rather than fail red.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
