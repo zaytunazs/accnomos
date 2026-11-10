@@ -1040,9 +1040,18 @@ async def _payouts(books: Books) -> list[Payout]:
     return [Payout.model_validate(r) for r in await books.read_json(PAYOUTS, [])]
 
 
+async def clearing_account(books: Books, provider: str) -> str:
+    """The provider's clearing account in these books: eBay's may sit at a fallback code (app/chart.resolve_label)."""
+    if provider == "ebay":
+        from app.chart import ebay_accounts  # local: chart imports much of the app
+
+        return (await ebay_accounts(books))[0]
+    return CLEARING[provider]
+
+
 async def clearing_balance(books: Books, provider: str) -> int:
     """What the provider still holds for the user, by the books: receipts less fees less payouts (pence)."""
-    account = CLEARING[provider]
+    account = await clearing_account(books, provider)
     return sum(ln.debit - ln.credit for e in await books.list_events() for ln in e.lines if ln.account == account)
 
 
@@ -1059,9 +1068,10 @@ async def match_payout(books: Books, line_id: str, provider: PayoutProvider, use
     if line.amount_pence <= 0:
         raise BankMatchError("A payout is money in; this line is money out")
     held = await clearing_balance(books, provider)
+    clearing = await clearing_account(books, provider)
     if line.amount_pence > held:
         raise BankMatchError(
-            f"{CLEARING[provider]} holds {money(max(held, 0))}, less than this {money(line.amount_pence)} payout. "
+            f"{clearing} holds {money(max(held, 0))}, less than this {money(line.amount_pence)} payout. "
             + (
                 "Fetch your eBay sales and approve them on Review first"
                 if provider == "ebay"
@@ -1074,7 +1084,7 @@ async def match_payout(books: Books, line_id: str, provider: PayoutProvider, use
         date=line.date,
         lines=[
             Line(account=BANK, debit=line.amount_pence, memo=memo),
-            Line(account=CLEARING[provider], credit=line.amount_pence, memo=memo),
+            Line(account=clearing, credit=line.amount_pence, memo=memo),
         ],
         approved_by=user,
         approved_at=now(),

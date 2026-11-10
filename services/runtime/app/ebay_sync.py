@@ -8,10 +8,13 @@ posted on its own. Same shape as bank feeds (app/bank_feeds.py), no database (do
   `EBAY_TOKEN_KEY` or else the bank feeds' `BANKFEEDS_TOKEN_KEY` (32 random bytes, base64). docs/EBAY_SETUP.md.
 * **What the user's books keep**, `_System/eBay/connection.json`: when it was connected and last synced, eBay's
   payouts seen (for matching the bank line), the optional VAT number from eBay's fee invoices, and the **refresh
-  token sealed with the server's key** (AES-256-GCM, associated data "accnomos-ebay:<books' connection id>"). eBay's
+  token sealed with the server's key** (AES-256-GCM; associated data binds it to these books' root folder id and
+  a hash of who connected, so a copy of the file in other books cannot be used: "Reconnect eBay"). eBay's
   refresh token lasts about 18 months; access tokens (2 hours) are never stored. `_System/eBay/imported.json`
-  lists every eBay transaction and payout already turned into proposals ("SALE:<transactionId>", "PAYOUT:<id>"),
-  so a sync never proposes the same one twice, even after a proposal was rejected.
+  lists every eBay transaction and payout already turned into proposals ("SALE:<transactionId>", "PAYOUT:<id>").
+  The real guard against proposing one twice (two tabs, two devices, a retry, a sync cut short) is the proposal id:
+  derived from the books, the type and the transaction id, and written create-only, so a second write of the same
+  part fails instead of making a twin, even after the first was rejected. One sync runs at a time per books here.
 * **Connecting** is OAuth-shaped like bank feeds: a signed, short-lived `state` binds the code to the browser that
   started it (`binding`) and to the user; eBay sends the browser to the runtime's callback, which forwards code and
   state in the URL fragment to the Bank page, which posts them back with the user's own token.
@@ -21,13 +24,16 @@ posted on its own. Same shape as bank feeds (app/bank_feeds.py), no database (do
     shipping"), into 1250 eBay clearing (Dr clearing / Cr 4000 Sales / Cr 2200 VAT). VAT from the business's VAT
     settings: VAT-registered (Settings › Business) → 20% standard rate included in the gross, with the business's
     own VAT number; not registered → no VAT. An order on which eBay collected tax (`eBayCollectedTaxAmount`, a
-    sale abroad) is proposed zero-rated and flagged. The fees deducted from it (`totalFeeAmount`) are a separate
-    fee proposal: Dr 5400 Marketplace fees / Cr 1250 eBay clearing.
+    sale abroad) is proposed zero-rated and flagged. The fees deducted from it (`totalFeeAmount`) are split by
+    `orderLineItems[].marketplaceFees[].feeType` into selling fees (Dr 5400 Marketplace fees) and advertising fees
+    (AD_FEE, PREMIUM_AD_FEES: Dr 6210 Marketplace advertising), one proposal each, one line per fee type, Cr 1250
+    eBay clearing. 1250, 5400 and 6210 move to a free fallback code if a saved chart uses the code (app/chart.py).
   - REFUND: the sale turned round for `amount` + `totalFeeAmount` (the fee credit eBay gives back), and the fee
     credit as a credit note from eBay. (UNVERIFIED in the sandbox: that a REFUND's `amount` is net of the fee
     credit, by symmetry with SALE.)
-  - NON_SALE_CHARGE (and FEE, which eBay's enum does not list): a fee, Dr 5400 Marketplace fees / Cr clearing; a
-    CREDIT booking entry is a credit note from eBay.
+  - NON_SALE_CHARGE (and FEE, which eBay's enum does not list): a selling fee (5400), or an advertising fee
+    (6210) when its `feeType` is AD_FEE / PREMIUM_AD_FEES or its memo names promoted or offsite ads; a CREDIT
+    booking entry is a credit note from eBay. The same fee VAT rule applies to both.
   - SHIPPING_LABEL: postage, Dr 7520 Postage / Cr clearing, with the VAT eBay reports in `taxes` (VAT), if any.
   - Payouts (SUCCEEDED): recorded here, not posted. When the payout reaches the bank, the Bank page offers "Payout
     from eBay" on that line, which posts Dr 1200 Bank / Cr 1250 eBay clearing (app/online_payments.match_payout),
@@ -44,6 +50,7 @@ posted on its own. Same shape as bank feeds (app/bank_feeds.py), no database (do
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import binascii
 import contextlib
@@ -51,9 +58,11 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
-import uuid
+import weakref
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from datetime import time as dtime
 from typing import Any, Literal
@@ -63,11 +72,13 @@ from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from pydantic import BaseModel, Field
 
+from accnomos_connectors.base import ConflictError
 from app.ai.config import is_test_mode
 from app.books import SYSTEM, Books, now, today
 from app.checks import normalise_vat_number
 from app.ebay import PRODUCTION, SANDBOX, EbayApi, EbayConfig, EbayError, Hosts, auth_url, client, currency, pence
-from app.journal import EBAY_CLEARING, MARKETPLACE_FEES
+from app.journal import EBAY_CLEARING, MARKETPLACE_ADS, MARKETPLACE_FEES
+from app.paths import PROPOSALS
 from app.schemas import Check, ExtractedDoc, ExtractedLine, Proposal
 
 FOLDER = f"{SYSTEM}/eBay"
@@ -160,21 +171,40 @@ def _unb64(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
 
-def seal(token: str, key: bytes, connection_id: str = CONNECTION_ID) -> str:
+async def books_id(books: Books) -> str:
+    """A stable id for these books: a hash of their root folder's id at the storage provider (a OneDrive item id or
+    a Google Drive file id). Copying _System/eBay/connection.json into other books changes it."""
+    root = await books.storage.ensure_root()
+    return hashlib.sha256(f"accnomos-ebay-books:{root.id}".encode()).hexdigest()[:32]
+
+
+def _aad(books_ref: str, connected_by: str) -> bytes:
+    """What the sealed token is bound to: these books and the person who connected eBay (by a hash)."""
+    return f"accnomos-ebay:v2:{books_ref}:{user_hash(connected_by)}".encode()
+
+
+def seal(token: str, key: bytes, books_ref: str, connected_by: str) -> str:
     nonce = secrets.token_bytes(12)
-    ct = AESGCM(key).encrypt(nonce, token.encode(), f"accnomos-ebay:{connection_id}".encode())
-    return f"v1.{_b64(nonce)}.{_b64(ct)}"
+    ct = AESGCM(key).encrypt(nonce, token.encode(), _aad(books_ref, connected_by))
+    return f"v2.{_b64(nonce)}.{_b64(ct)}"
 
 
-def unseal(sealed: str, key: bytes, connection_id: str = CONNECTION_ID) -> str | None:
+def unseal(sealed: str, key: bytes, books_ref: str, connected_by: str) -> str | None:
+    """The token, or None for another key, other books, another `connected_by`, or a damaged value."""
     try:
         version, nonce, ct = sealed.split(".")
-        if version != "v1":
+        if version != "v2":
             return None
-        plain = AESGCM(key).decrypt(_unb64(nonce), _unb64(ct), f"accnomos-ebay:{connection_id}".encode())
+        plain = AESGCM(key).decrypt(_unb64(nonce), _unb64(ct), _aad(books_ref, connected_by))
     except (ValueError, InvalidTag, binascii.Error):
         return None
     return plain.decode()
+
+
+KEY_CHANGED = "This connection can't be read any more (the server's key changed). Connect eBay again."
+MOVED = (
+    "This eBay connection was made in other books, or was changed by hand, so it can't be used here. Reconnect eBay."
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -264,11 +294,13 @@ class EbayPayout(BaseModel):
 class SyncSummary(BaseModel):
     sales: int = 0
     refunds: int = 0
-    fees: int = 0
+    fees: int = 0  # selling fees (final value, per order, international, regulatory, store, insertion ...)
+    ad_fees: int = 0  # advertising fees (Promoted Listings)
     postage: int = 0
     payouts: int = 0
     already_imported: int = 0
     skipped: int = 0
+    skipped_types: dict[str, int] = {}  # eBay transaction type -> how many were left to book by hand
 
 
 class EbayConnection(BaseModel):
@@ -348,7 +380,7 @@ class EbayStatus(BaseModel):
     reason: str | None = None
     sandbox: bool = True
     connected: bool = False
-    state: Literal["ok", "key_changed"] | None = None
+    state: Literal["ok", "key_changed", "reconnect"] | None = None
     message: str | None = None
     connected_at: datetime | None = None
     last_synced_at: datetime | None = None
@@ -377,7 +409,14 @@ async def status(books: Books, demo: bool = False) -> EbayStatus:
     c = f.connection
     if c is None:
         return EbayStatus(configured=True, sandbox=cfg.sandbox, fee_vat_number=f.fee_vat_number)
-    ok = c.key_id == key_id(key)
+    ref = await books_id(books)
+    state: Literal["ok", "key_changed", "reconnect"] = (
+        "key_changed"
+        if c.key_id != key_id(key)
+        else "ok"
+        if unseal(c.token, key, ref, c.connected_by) is not None
+        else "reconnect"
+    )
     matched = await _matched_payouts(books)
     views = []
     for p in sorted(c.payouts, key=lambda p: p.date, reverse=True)[:20]:
@@ -389,8 +428,8 @@ async def status(books: Books, demo: bool = False) -> EbayStatus:
         configured=True,
         sandbox=c.sandbox,
         connected=True,
-        state="ok" if ok else "key_changed",
-        message=None if ok else "This connection can't be read any more (the server's key changed). Connect again.",
+        state=state,
+        message={"ok": None, "key_changed": KEY_CHANGED, "reconnect": MOVED}[state],
         connected_at=c.connected_at,
         last_synced_at=c.last_synced_at,
         last_summary=c.last_summary,
@@ -428,7 +467,7 @@ async def connect(books: Books, code: str, state: str, binding: str, user: str) 
         sandbox=cfg.sandbox,
         connected_at=stamp,
         connected_by=user,
-        token=seal(refresh, key),
+        token=seal(refresh, key, await books_id(books), user),
         key_id=key_id(key),
         refresh_expires_at=stamp + timedelta(seconds=lasts) if isinstance(lasts, int) and lasts > 0 else None,
     )
@@ -518,21 +557,41 @@ def _doc(
     ref: str | None,
     category: str,
     description: str,
+    parts: list[tuple[str, int]] | None = None,
 ) -> ExtractedDoc:
-    lines = (
-        [
+    """With `parts` ((description, gross pence), e.g. a fee per eBay feeType): one line each, VAT worked out per
+    line at `rate` and the totals summed from the lines, so lines and totals always agree."""
+    if parts and len(parts) > 1:
+        rows = [(d, g, _vat_of(g, rate) if rate else 0) for d, g in parts]
+        gross, vat = sum(g for _, g, _ in rows), sum(v for _, _, v in rows)
+        lines = [
             ExtractedLine(
-                description=description[:200],
+                description=d[:200],
                 qty=1,
-                unit_price=_pounds(gross - vat),
-                net=_pounds(gross - vat),
-                vat_rate=rate,
-                vat=_pounds(vat),
+                unit_price=_pounds(g - v),
+                net=_pounds(g - v),
+                vat_rate=rate if rate is not None else 0,
+                vat=_pounds(v),
             )
+            for d, g, v in rows
         ]
-        if rate is not None
-        else []
-    )
+        if rate is None:  # no VAT shown: the journal codes it from the document (code N), not from 0% lines
+            lines = []
+    else:
+        lines = (
+            [
+                ExtractedLine(
+                    description=description[:200],
+                    qty=1,
+                    unit_price=_pounds(gross - vat),
+                    net=_pounds(gross - vat),
+                    vat_rate=rate,
+                    vat=_pounds(vat),
+                )
+            ]
+            if rate is not None
+            else []
+        )
     return ExtractedDoc(
         doc_type=kind,
         supplier_name=supplier,
@@ -552,12 +611,35 @@ def _doc(
     )
 
 
+def proposal_id(books_ref: str, key: str, part: str) -> str:
+    """The same eBay transaction part in the same books always gets the same proposal id, so a second sync (another
+    tab, another device, a retry) collides on the file instead of proposing it twice."""
+    return hashlib.sha256(f"accnomos-ebay-proposal:{books_ref}:{key}:{part}".encode()).hexdigest()[:32]
+
+
+@dataclass(frozen=True)
+class Accounts:
+    """Where eBay's money and fees post in these books (app/chart.resolve_label)."""
+
+    clearing: str = EBAY_CLEARING
+    fees: str = MARKETPLACE_FEES
+    ads: str = MARKETPLACE_ADS
+
+
 def _proposal(
-    key: str, part: str, doc: ExtractedDoc, notes: list[str], *, account: str | None = None, refund: bool = False
+    key: str,
+    part: str,
+    doc: ExtractedDoc,
+    notes: list[str],
+    ctx: tuple[str, Accounts],
+    *,
+    expense: Literal["fees", "ads"] | None = None,
+    refund: bool = False,
 ) -> Proposal:
+    books_ref, accounts = ctx
     checks = [Check(code="ebay_import", ok=False, severity="fail", message=m) for m in notes]
     p = Proposal(
-        id=uuid.uuid4().hex,
+        id=proposal_id(books_ref, key, part),
         doc_sha256=hashlib.sha256(f"ebay:{key}:{part}".encode()).hexdigest(),
         extracted=doc,
         checks=checks,
@@ -569,8 +651,8 @@ def _proposal(
         elapsed_s=0.0,
         source_name=f"eBay {key.replace(':', ' ')}",
         created_at=now(),
-        account_override=account,
-        settlement_account=EBAY_CLEARING,
+        account_override={"fees": accounts.fees, "ads": accounts.ads, None: None}[expense],
+        settlement_account=accounts.clearing,
         sale_refund=refund,
         source_ref=f"eBay {key.replace(':', ' ')}"[:200],
     )
@@ -596,7 +678,10 @@ def _sale_vat(gross: int, vs: VatSettings, collected_abroad: bool) -> tuple[int,
         "if this item is zero-rated or reduced-rate."
     ]
     if vs.own_vrn is None:
-        notes.append("Add your VAT number in Settings › Business: without it no VAT is put on this sale.")
+        notes.append(
+            "VAT is due on this sale because your business is VAT-registered, so it is included here. Add your VAT "
+            "number in Settings › Business so eBay sales are coded as standard-rated."
+        )
     return _vat_of(gross, UK_STANDARD), UK_STANDARD, vs.own_vrn, notes
 
 
@@ -640,10 +725,47 @@ class Skipped(BaseModel):
     reason: str
 
 
+#: eBay's FeeTypeEnum values for advertising (Promoted Listings); offsite ads arrive as a NON_SALE_CHARGE whose memo
+#: names them ("Promoted Offsite Fee", eBay's transactionMemo description). Everything else is a selling fee.
+AD_FEE_TYPES = {"AD_FEE", "PREMIUM_AD_FEES"}
+AD_WORDS = re.compile(r"\b(promoted|offsite|advert)", re.IGNORECASE)
+
+
+def is_ad_fee(fee_type: str | None, memo: str | None = None) -> bool:
+    return str(fee_type or "").upper() in AD_FEE_TYPES or bool(AD_WORDS.search(memo or ""))
+
+
+def fee_label(fee_type: str) -> str:
+    """FINAL_VALUE_FEE_FIXED_PER_ORDER -> "Final value fee fixed per order"."""
+    return fee_type.replace("_", " ").strip().capitalize() or "Fee"
+
+
+def fee_breakdown(tx: dict[str, Any], total: int) -> dict[str, int]:
+    """eBay's fees on one order by feeType (pence, positive), from orderLineItems[].marketplaceFees; whatever the
+    breakdown does not cover of `total` (totalFeeAmount) is "OTHER_FEES". No breakdown: all of it is OTHER_FEES."""
+    out: dict[str, int] = {}
+    for li in tx.get("orderLineItems") or []:
+        for f in (li.get("marketplaceFees") or []) if isinstance(li, dict) else []:
+            if isinstance(f, dict) and (p := pence(f.get("amount"))) is not None and p:
+                t = str(f.get("feeType") or "OTHER_FEES").upper()
+                out[t] = out.get(t, 0) + abs(p)
+    covered = sum(out.values())
+    if covered > total:  # a breakdown that disagrees with the total: trust the total, say so in the notes
+        return {"OTHER_FEES": total}
+    if total - covered:
+        out["OTHER_FEES"] = out.get("OTHER_FEES", 0) + total - covered
+    return out
+
+
 def map_transaction(
-    tx: dict[str, Any], vs: VatSettings, orders: dict[str, dict[str, Any]]
+    tx: dict[str, Any],
+    vs: VatSettings,
+    orders: dict[str, dict[str, Any]],
+    books_ref: str = "",
+    accounts: Accounts = Accounts(),  # noqa: B008 - frozen dataclass
 ) -> tuple[str, list[Proposal], dict[str, int], Skipped | None]:
     """(dedupe key, proposals, counts by kind, skipped) for one eBay transaction. Pure: no I/O."""
+    ctx = (books_ref, accounts)
     kind = str(tx.get("transactionType") or "").upper()
     tx_id = str(tx.get("transactionId") or "").strip()[:128]
     key = f"{kind}:{tx_id}"
@@ -692,28 +814,39 @@ def map_transaction(
             category="Sales",
             description=desc,
         )
-        out = [_proposal(key, "refund" if refund else "sale", doc, notes, refund=refund)]
+        out = [_proposal(key, "refund" if refund else "sale", doc, notes, ctx, refund=refund)]
         counts = {"refunds" if refund else "sales": 1}
-        if fee:
-            fvat, frate, fvrn, fnotes = _fee_vat(fee, vs)
-            fdesc = f"eBay fees {'credited back on refund' if refund else 'on order'} {order_id or tx_id}"
+        breakdown = fee_breakdown(tx, fee) if fee else {}
+        buckets = {
+            "ads": {t: v for t, v in breakdown.items() if is_ad_fee(t)},
+            "fees": {t: v for t, v in breakdown.items() if not is_ad_fee(t)},
+        }
+        for bucket, by_type in buckets.items():
+            total = sum(by_type.values())
+            if not total:
+                continue
+            fvat, frate, fvrn, fnotes = _fee_vat(total, vs)
+            what_fee = "advertising fees" if bucket == "ads" else "selling fees"
+            fdesc = f"eBay {what_fee} {'credited back on refund' if refund else 'on order'} {order_id or tx_id}"
+            split = "; ".join(f"{fee_label(t)} £{v / 100:.2f}" for t, v in sorted(by_type.items()))
             fdoc = _doc(
                 "credit_note" if refund else "receipt",
                 when=when,
-                gross=fee,
+                gross=total,
                 vat=fvat,
                 rate=frate,
                 supplier=EBAY_SUPPLIER,
                 supplier_vrn=fvrn,
                 customer=None,
                 ref=order_id or tx_id,
-                category="Sundry",
+                category="Advertising" if bucket == "ads" else "Sundry",
                 description=fdesc,
+                parts=[(f"{fee_label(t)} ({order_id or tx_id})", v) for t, v in sorted(by_type.items())],
             )
-            out.append(
-                _proposal(key, "fees", fdoc, [f"Imported from eBay: {fdesc}.", *fnotes], account=MARKETPLACE_FEES)
-            )
-            counts["fees"] = 1
+            notes_f = [f"Imported from eBay: {fdesc}.", f"By eBay fee type: {split}.", *fnotes]
+            part = "fees" if bucket == "fees" else "adfees"
+            out.append(_proposal(key, part, fdoc, notes_f, ctx, expense="ads" if bucket == "ads" else "fees"))
+            counts["ad_fees" if bucket == "ads" else "fees"] = 1
         return key, out, counts, None
 
     if kind in FEE_TYPES or kind == "SHIPPING_LABEL":
@@ -731,7 +864,11 @@ def map_transaction(
             )
         else:
             vat, rate, vrn, notes = _fee_vat(amount, vs)
-        desc = ("eBay postage label" if postage else "eBay fee") + (f": {memo}" if memo else "") + f" ({tx_id})"
+        ad = not postage and is_ad_fee(str(tx.get("feeType") or ""), str(tx.get("transactionMemo") or ""))
+        if not postage and tx.get("feeType"):
+            notes.insert(0, f"eBay fee type: {fee_label(str(tx.get('feeType')).upper())}.")
+        noun = "eBay postage label" if postage else "eBay advertising fee" if ad else "eBay selling fee"
+        desc = noun + (f": {memo}" if memo else "") + f" ({tx_id})"
         doc = _doc(
             "credit_note" if credit else "receipt",
             when=when,
@@ -742,19 +879,19 @@ def map_transaction(
             supplier_vrn=vrn,
             customer=None,
             ref=order_id or tx_id,
-            category="Postage" if postage else "Sundry",
+            category="Postage" if postage else "Advertising" if ad else "Sundry",
             description=desc,
         )
-        part = "postage" if postage else "fee"
-        account = None if postage else MARKETPLACE_FEES
+        part = "postage" if postage else "adfee" if ad else "fee"
         p = _proposal(
             key,
             part,
             doc,
             [f"Imported from eBay: {desc}" + (" (a credit)." if credit else "."), *notes],
-            account=account,
+            ctx,
+            expense=None if postage else "ads" if ad else "fees",
         )
-        return key, [p], {"postage" if postage else "fees": 1}, None
+        return key, [p], {"postage" if postage else "ad_fees" if ad else "fees": 1}, None
 
     if kind in SKIPPED_TYPES:
         return skip(f"eBay {kind.lower().replace('_', ' ')}: not imported, book it by hand if it matters")
@@ -796,16 +933,58 @@ async def vat_settings(books: Books, fee_vrn: str | None) -> VatSettings:
     return VatSettings(registered=prof.is_vat_registered, own_vrn=prof.vrn, fee_vrn=fee_vrn)
 
 
+#: One sync at a time per books in this process (a double click, two tabs). Across processes and devices the
+#: create-only proposal files (deterministic ids, proposal_id) are the guard; imported.json is only an index.
+_SYNC_LOCKS: weakref.WeakValueDictionary[tuple[int, str], asyncio.Lock] = weakref.WeakValueDictionary()
+
+
+def _sync_lock(books: Books) -> asyncio.Lock:
+    storage = getattr(books.storage, "inner", books.storage)  # past the per-request memo (app/cache.py)
+    k = (id(asyncio.get_running_loop()), books.cache_key or f"storage:{id(storage)}")
+    lock = _SYNC_LOCKS.get(k)
+    if lock is None:
+        lock = _SYNC_LOCKS[k] = asyncio.Lock()
+    return lock
+
+
+def _kind(p: Proposal, accounts: Accounts) -> str:
+    if p.sale_refund:
+        return "refunds"
+    if p.extracted.doc_type == "sales_invoice":
+        return "sales"
+    if p.account_override == accounts.ads:
+        return "ad_fees"
+    return "postage" if p.extracted.category_guess == "Postage" else "fees"
+
+
+async def _create_proposal(books: Books, p: Proposal) -> bool:
+    """Write the proposal only if no file has its id yet; False when one has (already imported, even if rejected)."""
+    data = json.dumps(p.model_dump(mode="json"), indent=2, ensure_ascii=False).encode()
+    try:
+        await books.storage.write(f"{PROPOSALS}/{p.id}.json", data, create_only=True)
+    except (FileExistsError, ConflictError):
+        return False
+    return True
+
+
 async def sync(books: Books, user: str, days: int = DEFAULT_DAYS) -> SyncResult:
     """Fetch the last `days` days of eBay transactions and payouts; propose what is new. Posts nothing."""
+    async with _sync_lock(books):
+        return await _sync(books, user, days)
+
+
+async def _sync(books: Books, user: str, days: int) -> SyncResult:
     cfg, key = _need()
     f = await load(books)
     conn = f.connection
     if conn is None:
         raise EbaySyncError("Connect eBay first")
-    token = unseal(conn.token, key) if conn.key_id == key_id(key) else None
+    if conn.key_id != key_id(key):
+        raise EbaySyncError(KEY_CHANGED)
+    ref = await books_id(books)
+    token = unseal(conn.token, key, ref, conn.connected_by)
     if token is None:
-        raise EbaySyncError("This eBay connection can't be read any more (the server's key changed). Connect again.")
+        raise EbaySyncError(MOVED)
     days = max(1, min(days, MAX_DAYS))
     end_day = today()
     start_day = end_day - timedelta(days=days)
@@ -838,13 +1017,16 @@ async def sync(books: Books, user: str, days: int = DEFAULT_DAYS) -> SyncResult:
             except EbayError as exc:
                 warning = f"Item titles could not be read from eBay ({exc.message}); the amounts are complete."
     from app.approve import final_journal  # local: approve imports much of the app
+    from app.chart import ebay_accounts
 
     vs = await vat_settings(books, f.fee_vat_number)
+    clearing, fees, ads = await ebay_accounts(books)
+    accounts = Accounts(clearing=clearing, fees=fees, ads=ads)
     result = SyncResult(start=start_day, end=end_day, warning=warning)
     new_ids: dict[str, list[str]] = {}
     batch_seen: set[str] = set()
     for tx in txs:
-        k, props, counts, skipped = map_transaction(tx, vs, orders)
+        k, props, _, skipped = map_transaction(tx, vs, orders, ref, accounts)
         if k in seen or k in batch_seen:
             result.already_imported += 1
             continue
@@ -852,14 +1034,20 @@ async def sync(books: Books, user: str, days: int = DEFAULT_DAYS) -> SyncResult:
         if skipped is not None:
             result.skipped += 1
             result.skipped_items.append(skipped)
+            result.skipped_types[skipped.type] = result.skipped_types.get(skipped.type, 0) + 1
             continue
+        made = []
         for p in props:
             p.journal_draft = await final_journal(books, p)
-            await books.save_proposal(p)
-            result.proposals.append(p.id)
+            if await _create_proposal(books, p):
+                made.append(p)
         new_ids[k] = [p.id for p in props]
-        for name, n in counts.items():
-            setattr(result, name, getattr(result, name) + n)
+        if not made:  # every part already on file: another sync proposed it, or this one was cut short before
+            result.already_imported += 1
+            continue
+        for p in made:
+            result.proposals.append(p.id)
+            setattr(result, _kind(p, accounts), getattr(result, _kind(p, accounts)) + 1)
     payouts: list[EbayPayout] = []
     for raw in raw_payouts:
         po = map_payout(raw)
@@ -882,9 +1070,10 @@ async def sync(books: Books, user: str, days: int = DEFAULT_DAYS) -> SyncResult:
         if cur.connection is not None:
             cur.connection.last_synced_at = stamp
             cur.connection.last_summary = SyncSummary(**result.model_dump(include=set(SyncSummary.model_fields)))
-            cur.connection.payouts = (cur.connection.payouts + payouts)[-200:]
+            known = {p.payout_id for p in cur.connection.payouts}
+            cur.connection.payouts = (cur.connection.payouts + [p for p in payouts if p.payout_id not in known])[-200:]
             if rotated:
-                cur.connection.token = seal(rotated, key)
+                cur.connection.token = seal(rotated, key, ref, cur.connection.connected_by)
         return cur
 
     await _save(books, put)

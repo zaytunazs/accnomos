@@ -167,14 +167,27 @@ async def create_private_proposal(books: Books, line_id: str, user: str) -> Prop
     return p
 
 
+async def _uses_ebay(books: Books) -> bool:
+    """Whether "Looks like a payout from eBay" can be right: eBay is connected, or its clearing account holds money."""
+    from app.ebay_sync import load as load_ebay  # local: ebay_sync imports approve
+    from app.online_payments import clearing_balance
+
+    return (await load_ebay(books)).connection is not None or await clearing_balance(books, "ebay") != 0
+
+
 async def unmatched_lines(books: Books) -> list[UnmatchedLine]:
     """Open lines with no suggested match, each with the likeliest action and its proposal's status."""
     out = []
+    uses_ebay: bool | None = None  # worked out once, only if a line names eBay
     for ln in await books.list_bank_lines("unmatched"):
         status = None
         if ln.proposal_id:
             with contextlib.suppress(FileNotFoundError):
                 status = (await books.get_proposal(ln.proposal_id)).status
         payout = payout_provider(f"{ln.description} {ln.reference or ''}") if ln.amount_pence > 0 else None
+        if payout == "ebay":
+            if uses_ebay is None:
+                uses_ebay = await _uses_ebay(books)
+            payout = payout if uses_ebay else None
         out.append(UnmatchedLine(line=ln, suggested=suggest_action(ln), proposal_status=status, payout=payout))
     return out

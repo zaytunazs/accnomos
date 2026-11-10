@@ -9,6 +9,26 @@ is `services/runtime/app/ebay.py` (eBay's API), `services/runtime/app/ebay_sync.
 Sources were read on 9 Nov 2026. eBay moved its developer pages to `developer.ebay.com/develop/...` during 2026; many
 old `api-docs/static/...` links now redirect.
 
+## What it fetches, and what it doesn't
+
+**Fetches** (eBay Finances API, sellers on managed payments), up to 730 days back (90 by default): sales, refunds,
+selling fees (final value, per order, international, regulatory, store, insertion and the rest), advertising fees
+(Promoted Listings: AD_FEE, PREMIUM_AD_FEES, offsite ads), postage labels bought on eBay and payouts to the bank, plus
+item titles for the orders (Fulfillment API). Each becomes a proposal on Review; payouts are matched on the bank line.
+
+**Does not fetch** eBay's monthly invoice for its fees, which is the document that supports reclaiming the VAT on
+them. Download it yourself: Seller Hub › Payments › Reports › Invoices, "Summary Download" or "Detail Download" for
+the month (eBay help, "Reconciling your eBay sales transactions",
+https://www.ebay.co.uk/help/fees-billing/sell-fees-payments/reconciling-ebay-sales-transactions?id=4847, read 10 Nov
+2026), and keep it with your records (or drop it in the Inbox).
+
+**Does not create** invoices for buyers. eBay can generate a VAT invoice per order for business sellers, from the
+order's "View order details" page in Seller Hub (eBay Seller Centre, "VAT invoices", April 2025,
+https://www.ebay.co.uk/sellercentre/news/2025-april/vat-invoices).
+
+Also not imported, listed after each sync to book by hand: CREDIT, ADJUSTMENT, DISPUTE, TRANSFER, WITHDRAWAL,
+LOAN_REPAYMENT and PURCHASE transactions, and anything not in GBP.
+
 ## 1. Keyset
 
 1. Join the eBay Developers Program and create an application keyset (one for **Sandbox**, one for **Production**).
@@ -105,15 +125,21 @@ eBay data" for the exemption is for the owner to answer to eBay honestly; subscr
 
 | eBay | Proposal (all settle through 1250 eBay clearing) |
 |---|---|
-| SALE | Sale for `amount + totalFeeAmount` (VAT 20% included when VAT-registered; zero-rated, flagged, if eBay collected tax), plus a fee proposal for `totalFeeAmount` to 5400 Marketplace fees |
-| REFUND | The sale turned round for `amount + totalFeeAmount`, plus a fee credit from eBay |
-| NON_SALE_CHARGE (and FEE) | Fee to 5400 Marketplace fees (a credit if `bookingEntry` is CREDIT) |
+| SALE | Sale for `amount + totalFeeAmount` (VAT 20% included when VAT-registered; zero-rated, flagged, if eBay collected tax), plus the fees split by `marketplaceFees[].feeType`: selling fees to 5400 Marketplace fees, advertising fees (AD_FEE, PREMIUM_AD_FEES) to 6210 Marketplace advertising, one line per fee type |
+| REFUND | The sale turned round for `amount + totalFeeAmount`, plus fee credits from eBay, split the same way |
+| NON_SALE_CHARGE (and FEE) | Selling fee to 5400, or advertising fee to 6210 when `feeType` is AD_FEE / PREMIUM_AD_FEES or the memo names promoted or offsite ads (a credit if `bookingEntry` is CREDIT) |
 | SHIPPING_LABEL | Postage (7520), with the VAT eBay reports in `taxes` |
 | Payout (SUCCEEDED) | Recorded; on the Bank page "Payout from eBay" on the bank line posts Dr 1200 Bank / Cr 1250 eBay clearing |
 | CREDIT, ADJUSTMENT, DISPUTE, TRANSFER, WITHDRAWAL, LOAN_REPAYMENT, PURCHASE | Skipped and listed, to book by hand |
 
-Every eBay transaction and payout is remembered by id in `_System/eBay/imported.json` in the user's books, so a
-second sync never proposes it again, even if the proposal was rejected. Sync reads the last 90 days by default (up to
+The same VAT rule applies to selling and advertising fees: eBay (UK) Limited adds 20% UK VAT to all fees billed to
+UK business sellers (section 7), reclaimable once eBay's VAT number is saved on the card. 1250, 5400 and 6210 are
+added to a saved chart of accounts that lacks them; if a code is already used by an account with another name, the
+eBay account takes the first free code after it (1251…, 5401…, 6211…) and imports post there.
+
+Every eBay transaction and payout is remembered by id in `_System/eBay/imported.json` in the user's books, and each proposal's id
+is derived from the books, the transaction type and id, written create-only: two syncs at once (two tabs, two
+devices, a retry) or a sync cut short never propose anything twice, even after a proposal was rejected. Sync reads the last 90 days by default (up to
 730 on request). How a payout is worded on a UK bank statement is unverified; a money-in line naming "eBay" gets the
 "Looks like a payout from eBay" hint, and any money-in line can be matched as one.
 
