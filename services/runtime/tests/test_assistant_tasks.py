@@ -209,7 +209,8 @@ def client(books: Books, monkeypatch: pytest.MonkeyPatch):
     from app.main import app
     from app.routes_books import get_books
 
-    cal = FakeCalendarProvider([ev("e1", "Meeting with Sterling", TODAY + timedelta(days=1), 15)])
+    # The routes read the real clock, so "tomorrow" here must be the real tomorrow, not TODAY + 1.
+    cal = FakeCalendarProvider([ev("e1", "Meeting with Sterling", date.today() + timedelta(days=1), 15)])
 
     async def override():
         yield books
