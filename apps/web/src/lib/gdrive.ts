@@ -11,7 +11,7 @@ import { googleToken } from "./google";
 const DRIVE = "https://www.googleapis.com/drive/v3";
 const UPLOAD = "https://www.googleapis.com/upload/drive/v3";
 const FOLDER = "application/vnd.google-apps.folder";
-const FIELDS = "id,name,mimeType,size,modifiedTime,createdTime,webViewLink";
+const FIELDS = "id,name,mimeType,size,modifiedTime,createdTime,webViewLink,parents";
 
 /** The shape lib/graph.ts returns (Graph's driveItem fields the app reads). */
 export interface GDriveItem {
@@ -28,6 +28,7 @@ interface GFile {
   id: string;
   name: string;
   mimeType: string;
+  createdTime?: string;
   size?: string;
   modifiedTime?: string;
   webViewLink?: string;
@@ -82,13 +83,34 @@ async function createFolder(parentId: string, name: string): Promise<GFile> {
   });
 }
 
+/**
+ * After creating a folder: if another tab or device created the same name first (check-then-create race), ours
+ * loses. Whatever was already put in it moves to the winner, ours goes to the bin, and the winner is used: the same
+ * rule as the runtime connector, so every reader agrees on one folder.
+ */
+async function settleFolder(parentId: string, mine: GFile): Promise<GFile> {
+  const same = await query(`name = ${q(mine.name)} and ${q(parentId)} in parents and trashed = false and mimeType = ${q(FOLDER)}`);
+  const winner = same.sort((a, b) => (a.createdTime ?? "").localeCompare(b.createdTime ?? "") || a.id.localeCompare(b.id))[0];
+  if (!winner || winner.id === mine.id) return mine;
+  for (const f of await query(`${q(mine.id)} in parents and trashed = false`)) {
+    const params = new URLSearchParams({ addParents: winner.id, removeParents: mine.id, fields: "id" });
+    await drive(`${DRIVE}/files/${encodeURIComponent(f.id)}?${params}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: "{}" });
+  }
+  await drive(`${DRIVE}/files/${encodeURIComponent(mine.id)}?fields=id`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ trashed: true }),
+  });
+  return winner;
+}
+
 const folders = new Map<string, GFile>(); // books-relative path -> folder, for this page's life
 
 async function root(create: boolean): Promise<GFile | null> {
   const hit = folders.get("");
   if (hit) return hit;
   let f = await child("root", "Accnomos", "folder");
-  if (!f && create) f = await createFolder("root", "Accnomos");
+  if (!f && create) f = await settleFolder("root", await createFolder("root", "Accnomos"));
   if (f) folders.set("", f);
   return f;
 }
@@ -102,7 +124,7 @@ async function folderAt(path: string, create: boolean): Promise<GFile | null> {
   if (!parent) return null;
   const name = path.slice(cut + 1);
   let f = await child(parent.id, name, "folder");
-  if (!f && create) f = await createFolder(parent.id, name);
+  if (!f && create) f = await settleFolder(parent.id, await createFolder(parent.id, name));
   if (f) folders.set(path, f);
   return f;
 }

@@ -1,5 +1,6 @@
 """GoogleDriveStorageProvider against the in-memory Drive (accnomos_connectors.fake_drive)."""
 
+import asyncio
 import hashlib
 
 import httpx
@@ -155,3 +156,49 @@ async def test_module_transport_hook(drive, monkeypatch):
         assert await storage.read("hello.txt") == b"hi"
     finally:
         await storage.aclose()
+
+
+def _live(drive: FakeDrive, name: str) -> list[dict]:
+    return [i for i in drive.items.values() if i["name"] == name and not i["trashed"]]
+
+
+async def test_two_first_requests_end_with_one_root_and_keep_both_files(drive):
+    async with httpx.AsyncClient(transport=drive.transport()) as client:
+        a = GoogleDriveStorageProvider(drive.token, client=client)
+        b = GoogleDriveStorageProvider(drive.token, client=client)
+        await asyncio.gather(a.write("00 Inbox/a.jpg", b"a"), b.write("00 Inbox/b.jpg", b"b"))
+        assert len(_live(drive, "Accnomos")) == 1 and len(_live(drive, "00 Inbox")) == 1
+        fresh = GoogleDriveStorageProvider(drive.token, client=client)
+        assert {f.name for f in await fresh.list("00 Inbox")} == {"a.jpg", "b.jpg"}
+
+
+async def test_racing_create_only_claims_have_exactly_one_winner(drive, storage):
+    await storage.ensure_folder("_System/claims")
+    async with httpx.AsyncClient(transport=drive.transport()) as client:
+        tabs = [GoogleDriveStorageProvider(drive.token, client=client) for _ in range(3)]
+        results = await asyncio.gather(
+            *(t.write("_System/claims/e1.json", f"tab{i}".encode(), create_only=True) for i, t in enumerate(tabs)),
+            return_exceptions=True,
+        )
+    wins = [r for r in results if not isinstance(r, BaseException)]
+    assert len(wins) == 1 and sum(isinstance(r, FileExistsError) for r in results) == 2
+    assert len(_live(drive, "e1.json")) == 1
+    assert await storage.read("_System/claims/e1.json") == drive.content[wins[0].id]
+
+
+async def test_racing_plain_writes_leave_one_file(drive, storage):
+    await storage.ensure_folder("_System")
+    async with httpx.AsyncClient(transport=drive.transport()) as client:
+        a = GoogleDriveStorageProvider(drive.token, client=client)
+        b = GoogleDriveStorageProvider(drive.token, client=client)
+        await asyncio.gather(a.write("_System/x.json", b"1"), b.write("_System/x.json", b"2"))
+    assert len(_live(drive, "x.json")) == 1
+    assert await storage.read("_System/x.json") in (b"1", b"2")
+
+
+async def test_if_match_on_a_file_that_is_gone_is_a_conflict(storage, drive):
+    ref = await storage.write("_System/y.json", b"{}")
+    drive.items[ref.id]["trashed"] = True  # removed on another device
+    with pytest.raises(ConflictError):
+        await storage.write("_System/y.json", b"{1}", if_match=ref.etag)
+    assert not _live(drive, "y.json")

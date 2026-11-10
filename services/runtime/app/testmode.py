@@ -712,7 +712,23 @@ def enable() -> None:
     from app import ebay_fakes
 
     ebay_fakes.install()  # eBay calls (Connect eBay) go to the fakes, never out
+    install_google_fakes()
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
+
+
+def install_google_fakes() -> None:
+    """Google calls (Drive, userinfo; Gmail/Calendar/People once google_workspace is merged) go to an in-memory
+    Drive that accepts any token, never to googleapis.com."""
+    from accnomos_connectors import google_drive
+    from accnomos_connectors.fake_drive import FakeDrive
+
+    google_drive.TRANSPORT = FakeDrive(token=None, email="sam@example.co.uk", name="Sam").transport()
+    try:
+        from accnomos_connectors import google_workspace  # type: ignore[attr-defined]
+    except ImportError:
+        return
+    if hasattr(google_workspace, "TRANSPORT"):
+        google_workspace.TRANSPORT = google_drive.TRANSPORT  # unknown calls answer 400, never reach Google
 
 
 def warm() -> None:
