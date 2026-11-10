@@ -36,6 +36,7 @@ from app.journal import (
     CREDITORS,
     DEBTORS,
     EBAY_CLEARING,
+    MARKETPLACE_ADS,
     MARKETPLACE_FEES,
     OWNER_LOAN,
     PAYPAL_CLEARING,
@@ -89,6 +90,7 @@ SYSTEM_ACCOUNTS = frozenset(
         PAYPAL_CLEARING,
         EBAY_CLEARING,
         MARKETPLACE_FEES,
+        MARKETPLACE_ADS,
         DEBTORS,
         CREDITORS,
         VAT_CONTROL,
@@ -173,6 +175,7 @@ def default_chart() -> list[Account]:
         *expenses,
         _a("5200 Subcontractors", "direct_costs", "S"),
         _a(MARKETPLACE_FEES, "direct_costs", "S", "eBay selling fees, imported from eBay"),
+        _a(MARKETPLACE_ADS, "overhead", "S", "eBay advertising fees (Promoted Listings), imported from eBay"),
         _a(WAGES, "overhead"),
         _a(EMPLOYER_NI, "overhead"),
         _a(SUNDRY, "overhead", "S"),
@@ -196,8 +199,51 @@ def posting_counts(events: Iterable[LedgerEvent]) -> Counter[str]:
     return Counter(ln.account for e in events for ln in e.lines)
 
 
+#: System accounts added after a user may already have saved a chart: if their code is taken by another account,
+#: they move to the first free code in these ranges (keeping their name), and code posts to wherever they landed.
+FALLBACK_CODES: dict[str, range] = {
+    EBAY_CLEARING: range(1251, 1300),
+    MARKETPLACE_FEES: range(5401, 5500),
+    MARKETPLACE_ADS: range(6211, 6300),
+}
+
+
+def resolve_label(accounts: Iterable[Account], label: str) -> str:
+    """Where code should post for the standard account `label` in this chart: the label itself when present, an
+    account of the same name under another code, a free fallback code (FALLBACK_CODES) when its code is taken by a
+    differently named account, else the label as is."""
+    rows = list(accounts)
+    code, name = label.split(" ", 1)
+    if any(a.label == label for a in rows):
+        return label
+    same = next((a for a in rows if a.name.casefold() == name.casefold()), None)
+    if same is not None:
+        return same.label
+    taken = {a.code for a in rows}
+    if code not in taken:
+        return label
+    free = next((c for c in FALLBACK_CODES.get(label, ()) if f"{c:04d}" not in taken), None)
+    return f"{free:04d} {name}" if free is not None else label
+
+
+def with_system_accounts(rows: list[Account]) -> list[Account]:
+    """A saved chart plus any standard system account it lacks (added since it was saved), at its own code when free,
+    or at a fallback code for those that have one; never over an account the user already has."""
+    out = list(rows)
+    for std in default_chart():
+        if not std.system or any(a.label == std.label for a in out):
+            continue
+        target = resolve_label(out, std.label)
+        code, name = target.split(" ", 1)
+        if any(a.code == code for a in out):  # present under that label already, or no free code: leave it
+            continue
+        out.append(std.model_copy(update={"code": code, "name": name}))
+    return out
+
+
 async def load_chart(books: Books) -> tuple[list[Account], bool]:
-    """(accounts by code, whether the user has saved a chart). A hand-broken file raises ChartError."""
+    """(accounts by code, whether the user has saved a chart). A hand-broken file raises ChartError. A saved chart
+    gains the standard system accounts it lacks (with_system_accounts), so code never posts to an unknown account."""
     raw = await books.read_json(ACCOUNTS, None)
     if raw is None:
         return default_chart(), False
@@ -207,7 +253,20 @@ async def load_chart(books: Books) -> tuple[list[Account], bool]:
         raise ChartError(
             "The chart of accounts file could not be read; fix or remove _System/Accounting/accounts.json"
         ) from exc
-    return sorted(rows, key=lambda a: a.code), True
+    return sorted(with_system_accounts(rows), key=lambda a: a.code), True
+
+
+async def ebay_accounts(books: Books) -> tuple[str, str, str]:
+    """(eBay clearing, marketplace fees, marketplace advertising) as this books' chart names them (resolve_label)."""
+    try:
+        accounts, _ = await load_chart(books)
+    except ChartError:
+        accounts = default_chart()
+    return (
+        resolve_label(accounts, EBAY_CLEARING),
+        resolve_label(accounts, MARKETPLACE_FEES),
+        resolve_label(accounts, MARKETPLACE_ADS),
+    )
 
 
 async def save_chart(books: Books, accounts: list[Account], user: str, action: str, refs: dict) -> None:

@@ -107,7 +107,11 @@ def transactions() -> list[dict[str, Any]]:
                 {
                     "lineItemId": "li-2",
                     "feeBasisAmount": _gbp("60.00"),
-                    "marketplaceFees": [{"feeType": "FINAL_VALUE_FEE", "amount": _gbp("7.15")}],
+                    "marketplaceFees": [
+                        {"feeType": "FINAL_VALUE_FEE", "amount": _gbp("5.65")},
+                        {"feeType": "FINAL_VALUE_FEE_FIXED_PER_ORDER", "amount": _gbp("0.30")},
+                        {"feeType": "AD_FEE", "amount": _gbp("1.20")},
+                    ],
                 }
             ],
         },

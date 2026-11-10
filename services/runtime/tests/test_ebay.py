@@ -23,6 +23,7 @@ from app.ebay_fakes import FAKES
 from app.ebay_sync import CONNECTION, IMPORTED, VatSettings, binding_hash, key_id, map_transaction, seal, unseal
 from app.invoicing import PROFILE as INVOICE_PROFILE
 from app.journal import EBAY_CLEARING, MARKETPLACE_FEES, SALES, VAT_CONTROL
+from app.paths import PROPOSALS
 
 USER = "sam@sambuilds.co.uk"
 H = {"X-Graph-Token": "tok", "X-User": USER}
@@ -157,11 +158,13 @@ def test_demo_session_is_refused(client: TestClient, monkeypatch: pytest.MonkeyP
 # --------------------------------------------------------------------------- #
 
 
-def test_seal_round_trip() -> None:
+def test_seal_is_bound_to_the_books_and_the_connector() -> None:
     key = bytes(range(32))
-    sealed = seal("v^1.1#refresh", key)
-    assert "refresh" not in sealed and unseal(sealed, key) == "v^1.1#refresh"
-    assert unseal(sealed, bytes(32)) is None and unseal(sealed, key, "other") is None
+    sealed = seal("v^1.1#refresh", key, "books-a", USER)
+    assert "refresh" not in sealed and unseal(sealed, key, "books-a", USER) == "v^1.1#refresh"
+    assert unseal(sealed, bytes(32), "books-a", USER) is None  # another server key
+    assert unseal(sealed, key, "books-b", USER) is None  # copied into other books
+    assert unseal(sealed, key, "books-a", "someone@else.example") is None  # connected_by edited by hand
 
 
 async def test_connect_exchanges_the_code_and_keeps_only_a_sealed_refresh_token(
@@ -189,7 +192,7 @@ async def test_connect_exchanges_the_code_and_keeps_only_a_sealed_refresh_token(
     for t in FAKES.refresh | FAKES.access:
         assert t not in raw
     stored = json.loads(raw)["connection"]
-    assert stored["token"].startswith("v1.") and stored["key_id"] == key_id(bytes(range(32)))
+    assert stored["token"].startswith("v2.") and stored["key_id"] == key_id(bytes(range(32)))
 
 
 def test_state_is_single_use_and_bound_to_the_browser(client: TestClient) -> None:
@@ -220,7 +223,7 @@ async def test_changed_server_key_reads_as_connect_again(client: TestClient, mon
     _connect(client)
     monkeypatch.setenv("EBAY_TOKEN_KEY", base64.b64encode(bytes(32)).decode())
     got = _ok(client.get("/books/ebay", headers=H))
-    assert got["state"] == "key_changed" and "Connect again" in got["message"]
+    assert got["state"] == "key_changed" and "Connect eBay again" in got["message"]
     r = client.post("/books/ebay/sync", headers=H)
     assert r.status_code == 400 and "key changed" in r.json()["detail"]
 
@@ -234,11 +237,12 @@ async def test_sync_proposes_sales_fees_refund_postage_and_records_the_payout(cl
     await _vat_registered(books)
     _connect(client)
     got = _ok(client.post("/books/ebay/sync", headers=H))
-    assert (got["sales"], got["refunds"], got["fees"], got["postage"], got["payouts"]) == (2, 1, 4, 1, 1)
-    assert got["already_imported"] == 0 and got["skipped"] == 1
+    counts = (got["sales"], got["refunds"], got["fees"], got["ad_fees"], got["postage"], got["payouts"])
+    assert counts == (2, 1, 3, 2, 1, 1)
+    assert got["already_imported"] == 0 and got["skipped"] == 1 and got["skipped_types"] == {"ADJUSTMENT": 1}
     assert got["skipped_items"][0]["type"] == "ADJUSTMENT"
     assert got["start"] == "2026-07-29" and got["end"] == "2026-10-27"  # 90 days by default
-    assert len(got["proposals"]) == 8
+    assert len(got["proposals"]) == 9
 
     tx = [r for r in FAKES.requests if r.url.path == "/sell/finances/v1/transaction"][0]
     assert tx.url.host == "apiz.sandbox.ebay.com"
@@ -410,3 +414,135 @@ def test_account_deletion_challenge(client: TestClient, monkeypatch: pytest.Monk
     got = _ok(client.get("/ebay/account-deletion", params={"challenge_code": "abc"}))
     assert got == {"challengeResponse": hashlib.sha256(("abc" + token + endpoint).encode()).hexdigest()}
     assert client.post("/ebay/account-deletion", json={"metadata": {}}).status_code == 204
+
+
+# --------------------------------------------------------------------------- #
+# Review fixes: concurrency, binding, hint, VAT note, chart
+# --------------------------------------------------------------------------- #
+
+
+async def _proposal_files(fake: FakeStorageProvider) -> set[str]:
+    return {f.name for f in await fake.list(PROPOSALS) if f.name.endswith(".json")}
+
+
+async def test_two_concurrent_syncs_propose_everything_once(
+    client: TestClient, books: Books, fake: FakeStorageProvider
+) -> None:
+    import asyncio
+
+    _connect(client)
+    a, b = await asyncio.gather(ebay_sync.sync(books, USER), ebay_sync.sync(books, USER))
+    assert len(a.proposals) + len(b.proposals) == 9
+    assert len(await _proposal_files(fake)) == 9
+
+
+async def test_without_the_lock_the_create_only_ids_still_stop_twins(
+    client: TestClient, books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Two processes (no shared lock), or two devices: the deterministic, create-only proposal files are the guard."""
+    import asyncio
+
+    _connect(client)
+    monkeypatch.setattr(ebay_sync, "_sync_lock", lambda books: asyncio.Lock())
+    a, b = await asyncio.gather(ebay_sync.sync(books, USER), ebay_sync.sync(books, USER))
+    assert len(set(a.proposals) | set(b.proposals)) == 9 and len(a.proposals) + len(b.proposals) == 9
+    assert len(await _proposal_files(fake)) == 9
+
+
+async def test_a_sync_cut_short_is_not_proposed_again(
+    client: TestClient, books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _connect(client)
+
+    async def broken(books: Books, new: dict) -> None:
+        raise OSError("storage went away")
+
+    real = ebay_sync._add_imported
+    monkeypatch.setattr(ebay_sync, "_add_imported", broken)
+    with pytest.raises(OSError):
+        await ebay_sync.sync(books, USER)
+    assert len(await _proposal_files(fake)) == 9  # saved, but not in imported.json
+    monkeypatch.setattr(ebay_sync, "_add_imported", real)
+    again = await ebay_sync.sync(books, USER)
+    assert again.proposals == [] and again.already_imported == 5
+    assert len(await _proposal_files(fake)) == 9
+
+
+async def test_a_connection_copied_into_other_books_is_refused(
+    client: TestClient, books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _connect(client)
+    other = FakeStorageProvider()
+    root = await other.ensure_root()
+
+    async def other_root():
+        return root.model_copy(update={"id": "fake:someone-elses-books"})
+
+    monkeypatch.setattr(other, "ensure_root", other_root)
+    await other.write(CONNECTION, await fake.read(CONNECTION))
+    theirs = Books(other)
+    got = await ebay_sync.status(theirs)
+    assert got.state == "reconnect" and "Reconnect eBay" in (got.message or "")
+    with pytest.raises(ebay_sync.EbaySyncError, match="Reconnect eBay"):
+        await ebay_sync.sync(theirs, "accountant@example.co.uk")
+    assert (await ebay_sync.status(books)).state == "ok"  # the client's own books still work
+
+
+async def test_payout_hint_needs_ebay_in_these_books(client: TestClient, books: Books) -> None:
+    from app.bank_actions import _uses_ebay
+
+    assert await _uses_ebay(books) is False  # a bank line naming eBay gets no payout hint
+    _connect(client)
+    assert await _uses_ebay(books) is True
+
+
+def test_registered_without_a_vat_number_still_owes_and_says_so() -> None:
+    _, props, _, _ = map_transaction(SALE, VatSettings(registered=True, own_vrn=None, fee_vrn=None), {})
+    sale = props[0]
+    assert sale.extracted.vat_total == 20.0
+    assert any("VAT is due on this sale" in r for r in sale.reasons)
+    assert not any("no VAT is put" in r for r in sale.reasons)
+
+
+async def test_saved_chart_gains_ebay_accounts_and_avoids_a_taken_code(client: TestClient, books: Books) -> None:
+    from app.chart import ACCOUNTS, default_chart, ebay_accounts, load_chart
+
+    rows = [a for a in default_chart() if a.code not in ("1250", "5400")]
+    taken = rows[0].model_copy(update={"code": "1250", "name": "Petty cash float", "system": False})
+    await books.write_json(ACCOUNTS, {"accounts": [a.model_dump(mode="json") for a in [*rows, taken]]})
+    accounts, saved = await load_chart(books)
+    labels = {a.label for a in accounts}
+    assert saved and "1250 Petty cash float" in labels and "1251 eBay clearing" in labels
+    assert "5400 Marketplace fees" in labels and "6210 Marketplace advertising" in labels
+    assert await ebay_accounts(books) == ("1251 eBay clearing", "5400 Marketplace fees", "6210 Marketplace advertising")
+
+    _connect(client)
+    got = await ebay_sync.sync(books, USER)
+    sale = await books.get_proposal(got.proposals[0])
+    assert sale.settlement_account == "1251 eBay clearing"
+    assert any(j.account == "1251 eBay clearing" for j in sale.journal_draft)
+
+
+async def test_fees_split_by_fee_type_into_selling_and_advertising(client: TestClient, books: Books) -> None:
+    from app.journal import MARKETPLACE_ADS
+
+    await _vat_registered(books)
+    await books.write_json(ebay_sync.CONNECTION, {"fee_vat_number": "GB999999973"})
+    _connect(client)
+    got = await ebay_sync.sync(books, USER)
+    props = [await books.get_proposal(pid) for pid in got.proposals]
+    on_2 = [p for p in props if p.extracted.invoice_number == ebay_fakes.ORDER_2 and p.account_override]
+    selling = next(p for p in on_2 if p.account_override == MARKETPLACE_FEES and p.extracted.doc_type != "credit_note")
+    ads = next(p for p in on_2 if p.account_override == MARKETPLACE_ADS)
+    assert [ln.description.split(" (")[0] for ln in selling.extracted.lines] == [
+        "Final value fee",
+        "Final value fee fixed per order",
+    ]
+    assert selling.extracted.gross_total == 5.95 and ads.extracted.gross_total == 1.20
+    assert any("By eBay fee type: Ad fee £1.20" in r for r in ads.reasons)
+    # 20% reclaimable on both once eBay's VAT number is saved: lines and totals agree
+    assert ads.extracted.vat_total == 0.20 and selling.extracted.vat_total == round(0.94 + 0.05, 2)
+    j = {(x.account, x.debit_pence, x.credit_pence) for x in ads.journal_draft}
+    assert j == {(MARKETPLACE_ADS, 100, 0), (VAT_CONTROL, 20, 0), (EBAY_CLEARING, 0, 120)}
+    promoted = next(p for p in props if p.source_ref == "eBay NON_SALE_CHARGE fake-tx-004")
+    assert promoted.account_override == MARKETPLACE_ADS and promoted.extracted.category_guess == "Advertising"

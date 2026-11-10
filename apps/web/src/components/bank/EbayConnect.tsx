@@ -24,18 +24,29 @@ async function sha256(text: string): Promise<string> {
   return hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
 }
 
-/** "Proposed from eBay: 3 sales, 1 refund, 4 fees, 1 postage label, 1 payout; 2 already imported." */
-export function ebaySentence(r: Pick<RtEbaySync, "sales" | "refunds" | "fees" | "postage" | "payouts" | "already_imported" | "skipped">): string {
+const typeName = (t: string) => t.toLowerCase().replace(/_/g, " ");
+
+/** "Proposed from eBay: 2 sales, 1 refund, 3 selling fees, 2 ad fees, 1 postage label, 1 payout; 5 already imported;
+ *  not imported (book by hand): 1 adjustment." */
+export function ebaySentence(
+  r: Pick<RtEbaySync, "sales" | "refunds" | "fees" | "ad_fees" | "postage" | "payouts" | "already_imported" | "skipped" | "skipped_types">,
+): string {
   const parts = [
     plural(r.sales, "sale"),
-    ...(r.refunds ? [plural(r.refunds, "refund")] : []),
-    plural(r.fees, "fee"),
-    ...(r.postage ? [plural(r.postage, "postage label")] : []),
+    plural(r.refunds, "refund"),
+    plural(r.fees, "selling fee"),
+    plural(r.ad_fees ?? 0, "ad fee"),
+    plural(r.postage, "postage label"),
     plural(r.payouts, "payout"),
   ];
+  const types = Object.entries(r.skipped_types ?? {});
   const extra = [
     ...(r.already_imported ? [`${r.already_imported} already imported`] : []),
-    ...(r.skipped ? [`${r.skipped} not imported (book by hand)`] : []),
+    ...(types.length
+      ? [`not imported (book by hand): ${types.map(([t, n]) => `${n} ${typeName(t)}`).join(", ")}`]
+      : r.skipped
+        ? [`${r.skipped} not imported (book by hand)`]
+        : []),
   ];
   return `Proposed from eBay: ${parts.join(", ")}${extra.length ? `; ${extra.join(", ")}` : ""}.`;
 }
@@ -195,7 +206,7 @@ export default function EbayConnect({ account, onSynced }: { account: AccountInf
                 </button>
               ) : (
                 <button type="button" className={primary} disabled={busy !== null} onClick={connect}>
-                  Connect again
+                  Reconnect eBay
                 </button>
               )}
               {!confirming && (

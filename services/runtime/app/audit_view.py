@@ -224,7 +224,8 @@ SUMMARIES: dict[str, Summary] = {
             [
                 _plural(_n(r, "sales"), "sale"),
                 _plural(_n(r, "refunds"), "refund"),
-                _plural(_n(r, "fees"), "fee"),
+                _plural(_n(r, "fees"), "selling fee"),
+                _plural(_n(r, "ad_fees"), "ad fee"),
                 _plural(_n(r, "postage"), "postage label"),
                 _plural(_n(r, "payouts"), "payout"),
             ]

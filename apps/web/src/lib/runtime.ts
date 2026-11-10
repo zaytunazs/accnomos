@@ -2764,11 +2764,16 @@ export interface RtFeedStatus {
 export interface RtEbaySummary {
   sales: number;
   refunds: number;
+  /** Selling fees (5400 Marketplace fees). */
   fees: number;
+  /** Advertising fees, Promoted Listings (6210 Marketplace advertising). */
+  ad_fees?: number;
   postage: number;
   payouts: number;
   already_imported: number;
   skipped: number;
+  /** eBay transaction type -> how many were left to book by hand. */
+  skipped_types?: Record<string, number>;
 }
 export interface RtEbaySync extends RtEbaySummary {
   start: string;
@@ -2783,7 +2788,7 @@ export interface RtEbayStatus {
   reason: string | null;
   sandbox: boolean;
   connected: boolean;
-  state: "ok" | "key_changed" | null;
+  state: "ok" | "key_changed" | "reconnect" | null;
   message: string | null;
   connected_at: string | null;
   last_synced_at: string | null;

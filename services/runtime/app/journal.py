@@ -49,6 +49,9 @@ EBAY_CLEARING = "1250 eBay clearing"
 CLEARING: dict[str, str] = {"stripe": STRIPE_CLEARING, "paypal": PAYPAL_CLEARING, "ebay": EBAY_CLEARING}
 #: eBay's selling fees (final value, per-order, listing, advertising), as imported from eBay (app/ebay_sync.py).
 MARKETPLACE_FEES = "5400 Marketplace fees"
+#: eBay's advertising fees (Promoted Listings: AD_FEE, PREMIUM_AD_FEES, offsite ads), kept apart from selling fees.
+#: Its own account rather than 6200 Advertising, so marketplace ads can be read on their own.
+MARKETPLACE_ADS = "6210 Marketplace advertising"
 CREDITORS = "2100 Creditors"
 DEBTORS = "1100 Debtors"
 SALES = "4000 Sales"
