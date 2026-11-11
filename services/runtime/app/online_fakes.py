@@ -391,7 +391,7 @@ def reporting_row(
 
 def sample_transactions(end: date, invoice: tuple[str, int, str] | None = None) -> list[dict[str, Any]]:
     """A small, believable month of a joinery firm's PayPal account, dated back from `end`: two sales, a payment
-    naming one of the user's invoices (when given: number, amount and customer), two purchases (Screwfix, Adobe), a
+    naming one of the user's invoices (when given: number, amount and customer), two purchases (fictional suppliers), a
     withdrawal to the bank and a payment still pending. Ids are fixed per day, so syncing twice finds the same rows.
     Fees are the made-up 2.9% + 30p above."""
 
@@ -419,17 +419,17 @@ def sample_transactions(end: date, invoice: tuple[str, int, str] | None = None) 
             at(15),
             code="T0002",
             gross=-1997,
-            name="Adobe Systems Software Ireland Ltd",
-            email="billing@adobe.example",
-            items=[("Creative Cloud Photography plan (monthly)", 1997)],
+            name="Northlight Software Ltd",
+            email="billing@northlight.example",
+            items=[("Photo editing plan (monthly)", 1997)],
         ),
         reporting_row(
             tid(3),
             at(9),
             code="T0006",
             gross=-3699,
-            name="Screwfix Direct Ltd",
-            email="orders@screwfix.example",
+            name="Brickfield Timber & Hardware Ltd",
+            email="orders@brickfield.example",
             items=[("Wood screws 4.0 x 40mm (200)", 1299), ("Wood glue 1L", 2400)],
         ),
         reporting_row(

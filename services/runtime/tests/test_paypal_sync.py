@@ -532,10 +532,10 @@ def test_sample_history_in_a_demo_session_without_paypal(client: TestClient, fak
     out = _ok(client.post("/payments/paypal/sync", json={"ai": False}, headers=demo))
     assert out["sample"] is True and out["pending"] == 1
     kinds = {i["name"]: i["kind"] for i in out["items"]}
-    assert kinds["Screwfix Direct Ltd"] == "expense" and kinds["Harbour Cafe Ltd"] == "invoice"
-    assert kinds["Adobe Systems Software Ireland Ltd"] == "expense" and "withdrawal" in kinds.values()
-    adobe = next(i for i in out["items"] if i["name"].startswith("Adobe"))
-    assert adobe["account"] == "7510 Software & subscriptions"
+    assert kinds["Brickfield Timber & Hardware Ltd"] == "expense" and kinds["Harbour Cafe Ltd"] == "invoice"
+    assert kinds["Northlight Software Ltd"] == "expense" and "withdrawal" in kinds.values()
+    soft = next(i for i in out["items"] if i["name"].startswith("Northlight"))
+    assert soft["account"] == "7510 Software & subscriptions"
     assert next(i for i in out["items"] if i["kind"] == "invoice")["invoice"] == number
     assert _reporting_calls() == []  # nothing asked of PayPal
 
