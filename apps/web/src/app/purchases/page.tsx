@@ -1,4 +1,5 @@
 import ExplainMore from "@/components/ExplainMore";
+import BillPay from "@/components/trade/BillPay";
 import PurchasesOverview from "@/components/trade/PurchasesOverview";
 
 export const metadata = { title: "Purchases · Accnomos", robots: { index: false, follow: false } };
@@ -16,6 +17,7 @@ export default function Page() {
         </ExplainMore>
       </div>
       <PurchasesOverview />
+      <BillPay />
     </div>
   );
 }
