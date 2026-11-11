@@ -413,7 +413,12 @@ class PayPalApi:
                 "configuration": {"allow_tip": False, "partial_payment": {"allow_partial_payment": False}},
             },
         )
+        # PayPal answers 201 with only a link to the new invoice unless asked for the representation (seen against the
+        # sandbox, 11 Nov 2026: {"rel": "self", "href": ".../v2/invoicing/invoices/INV2-…", "method": "GET"}).
         invoice_id = str(created.get("id") or "")
+        href = str(created.get("href") or "")
+        if not invoice_id and created.get("rel") == "self" and "/v2/invoicing/invoices/" in href:
+            invoice_id = href.rsplit("/", 1)[-1]
         if not invoice_id:
             raise ProviderError("PayPal", 0, "the invoice id was missing from PayPal's answer")
         await self._call(

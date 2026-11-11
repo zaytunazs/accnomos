@@ -278,3 +278,34 @@ def test_demo_may_connect_in_direct_mode_only(client: TestClient, monkeypatch: p
     monkeypatch.setenv("PAYPAL_RETURN_URL", f"{API}/payments/online/paypal/callback")
     r = client.post("/payments/online/paypal/start", json=body, headers=demo_h)
     assert r.status_code == 403 and "demo" in r.text
+
+
+async def test_paypal_create_answer_with_only_a_link_still_gives_the_invoice_id() -> None:
+    """The real sandbox answers 201 with {"rel": "self", "href": …} (no `id`) by default (seen 11 Nov 2026)."""
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(f"{request.method} {request.url.path}")
+        if request.url.path == "/v1/oauth2/token":
+            return httpx.Response(200, json={"access_token": "t", "expires_in": 100})
+        if request.url.path == "/v2/invoicing/invoices" and request.method == "POST":
+            href = "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-LINK-ONLY"
+            return httpx.Response(201, json={"rel": "self", "href": href, "method": "GET"})
+        if request.url.path.endswith("/send"):
+            return httpx.Response(202, json={})
+        return httpx.Response(200, json={"id": "INV2-LINK-ONLY", "detail": {}})
+
+    cfg, _ = paypal_config()
+    assert cfg is not None
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        got = await payment_providers.PayPalApi(cfg, http).create_invoice(
+            DIRECT_PAYPAL_MERCHANT,
+            number="INV-1",
+            amount_pence=120,
+            ref="abcdef12",
+            customer_name="C",
+            customer_email=None,
+            request_id="r1",
+        )
+    assert got["id"] == "INV2-LINK-ONLY"
+    assert "POST /v2/invoicing/invoices/INV2-LINK-ONLY/send" in seen
