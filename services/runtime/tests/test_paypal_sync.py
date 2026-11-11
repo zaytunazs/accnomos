@@ -153,7 +153,7 @@ def test_windows_are_at_most_31_days_and_join_up() -> None:
 
 def test_parse_time_reads_paypal_dates() -> None:
     got = payment_providers.paypal_parse_time("2014-07-11T04:03:52+0000")
-    assert got == datetime(2014, 7, 11, 4, 3, 52, tzinfo=UTC)
+    assert got == datetime(2014, 7, 11, 4, 3, 52, tzinfo=UTC) and got is not None
     assert payment_providers.paypal_time(got) == "2014-07-11T04:03:52+0000"
     assert payment_providers.paypal_parse_time("nonsense") is None
 
