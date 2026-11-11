@@ -164,7 +164,7 @@ class GoalsNote {
   final String? fallbackReason;
 
   String get byLine => model != 'code' && fallbackReason == null
-      ? 'Written by your AI ($model) from the figures below; every number checked by code.'
+      ? 'Written by your AI from the figures below; every number checked by code.'
       : (fallbackReason ?? 'Written by code from the figures below.');
 
   factory GoalsNote.fromJson(Object? raw) {

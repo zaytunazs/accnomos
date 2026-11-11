@@ -170,7 +170,7 @@ void main() {
         expect(text.contains(banned), isFalse, reason: banned);
       }
       expect(text, contains('step 1'));
-      expect(text, contains('a meta model reads the document'));
+      expect(text, contains('an ai model reads the document'));
     });
   });
 

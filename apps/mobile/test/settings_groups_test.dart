@@ -263,7 +263,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(
         find.text(
-            'Connected \u00b7 muse-glimmer:30b \u00b7 answered in 1.2 s'),
+            'Connected \u00b7 the local open-weights model \u00b7 answered in 1.2 s'),
         findsOneWidget);
   });
 

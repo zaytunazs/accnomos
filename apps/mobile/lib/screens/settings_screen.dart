@@ -13,6 +13,7 @@ import '../services/region.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
+import '../models/model_names.dart';
 import '../widgets/ai_route_picker.dart';
 import '../widgets/calendar_sync.dart';
 import '../theme.dart';
@@ -590,7 +591,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final result = await _probeClient().aiTest();
       if (!mounted) return;
       final ok = result['ok'] == true;
-      final model = (result['model'] ?? '').toString().trim();
+      final raw = (result['model'] ?? '').toString().trim();
+      final model = raw.isEmpty ? '' : friendlyModelName(raw);
       final detail =
           (result['detail'] ?? result['result'] ?? result.toString())
               .toString()

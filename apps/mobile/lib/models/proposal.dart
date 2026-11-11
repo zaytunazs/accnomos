@@ -560,7 +560,7 @@ _VerifierView _verifierView(
   if (verification['error'] != null &&
       verification['error'].toString().isNotEmpty) {
     return _VerifierView(
-      verifierNote: 'Second reading unavailable ($model) · $passedLine',
+      verifierNote: 'Second reading unavailable (${friendlyModelName(model)}) · $passedLine',
       verifierTone: VerifierTone.none,
     );
   }
