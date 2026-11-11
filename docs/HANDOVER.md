@@ -90,7 +90,7 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
 
 ## Owner to do
 - PayPal developer account and sandbox app (client ID and secret go to the Spark via the clipboard script, never into chat).
-- Make the repo private **after the 16 Nov community vote**. A reminder is set for 17 Nov 10:00, and the checklist is `docs/PRIVATE_REPO_CHECKLIST.md`.
+- Make the repo private **no earlier than 16 Dec** (PayPal judging runs to 15 Dec). The reminder moves to 16 Dec, and the checklist is `docs/PRIVATE_REPO_CHECKLIST.md`.
 - Apple Developer account (for TestFlight).
 - HMRC production application (`docs/hmrc/PRODUCTION_APPLICATION.md`), which is needed for live VAT filing with users' own HMRC accounts.
 - Stripe photo ID task.

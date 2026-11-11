@@ -3,8 +3,8 @@
 [![CI](https://github.com/zaytunazs/accnomos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zaytunazs/accnomos/actions/workflows/ci.yml?query=branch%3Amain)
 [![Deploy web](https://github.com/zaytunazs/accnomos/actions/workflows/deploy-web.yml/badge.svg?branch=main)](https://github.com/zaytunazs/accnomos/actions/workflows/deploy-web.yml)
 
-**Accounting, intelligently done.** Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI Developer Hackathon (Indie track).
-Your books are files in your own OneDrive (no Accnomos database); Meta models read and check the paperwork; you approve; code calculates the VAT.
+**Accounting, intelligently done.** Bookkeeping and MTD VAT for UK small businesses, with PayPal as the way the business gets paid and pays its bills. Entered in the PayPal AI Hackathon (2026); first built for the Meta Global AI Developer Hackathon (Indie track).
+Your books are files in your own OneDrive or Google Drive (no Accnomos database); Meta models read and check the paperwork; you approve; code calculates the VAT.
 
 - **Works today (tested, mostly on fakes; the Meta paths also run live):** upload a receipt → Muse Spark 1.3 (the live server's first model; Muse Glimmer 30B as fallback or in local mode) reads it → code checks + an independent second reading → you approve → immutable ledger event → VAT nine boxes by code → HMRC **sandbox** submission (web) → `Books.xlsx`; plus Ask, bank statements, invoicing, jobs, mileage, pay-run estimates, a day planner and an Android app. One row each in the table below. **Run live on 4 Nov 2026:** the live server's Muse Spark 1.3 + Muse Glimmer chain answering Ask (typed and spoken), the Home summary, the goals note and a scan, Muse Voice Transcribe, and the SAM 3.1 crop on the Meta Model API (`evals/runs/live_checks_2026-11-04/report.md`, `evals/runs/sam_crop_live/report.md`); the Android app on the owner's own phone.
 - **Outside the UK:** choose the country, the tax (VAT, GST or sales tax) and its rate, and the currency; bookkeeping, invoices, reports (with a Tax summary) and CSV exports work the same, and HMRC filing stays UK-only.
@@ -12,7 +12,19 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 - **Run it:** `uv sync --all-packages --all-extras && uv run pytest -q`; `cd apps/web && pnpm install && pnpm run build`; services and web dev servers in `docs/DEV.md`.
 - **Docs:** [Architecture](docs/ARCHITECTURE.md) · [Meta models and evals](docs/META_MODELS.md) · [Demo walkthrough](docs/DEMO.md) · [Honesty](docs/HONESTY.md) · [What remains](docs/REMAINING.md)
 
-## For judges
+## PayPal AI Hackathon
+
+Accnomos keeps a UK small business's books in its own OneDrive or Google Drive and files VAT to HMRC; PayPal is where it gets paid and pays its bills. The AI proposes, code calculates in pence, and the owner approves every posting.
+
+- **Invoices with PayPal pay links:** PayPal Invoicing v2 (create, send, remind, cancel); a spoken or typed "send X an invoice" adds the link.
+- **Sync PayPal:** Transaction Search turns each PayPal payment into gross, PayPal fee and net, matched to the invoice; an unmatched sale waits for the owner to choose its VAT. A tie-out compares PayPal's balance (Balances API, with PayPal's refresh time) with the books' PayPal account.
+- **Bill pay:** supplier bills paid with PayPal Payouts on or after their due date, after the owner approves (idempotent `sender_batch_id`, so a retry never pays twice). PayPal cannot hold a payout for a future date, so Accnomos pays the next time it is open on or after the due date.
+- **Disputes:** PayPal Disputes v1 with an evidence pack built from the books; the owner approves before anything is sent.
+- **Sandbox only.** Which calls have run against the real PayPal sandbox, and which only against fakes: [docs/HONESTY.md](docs/HONESTY.md). Judges' guide and Devpost texts: [docs/submission/paypal/](docs/submission/paypal/).
+- **Built in the submission period:** the first commit is 26 Oct 2026, inside the PayPal submission period (1 Oct – 12 Nov 2026); see `git log` and [docs/PROVENANCE.md](docs/PROVENANCE.md).
+- **Run the PayPal parts yourself:** create a PayPal Sandbox REST app (Invoicing and Transaction search ticked), then set `PAYPAL_DIRECT=1`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` in `.env` (see `.env.example`); `uv run python tools/payments_sandbox_smoke.py paypal` checks the connection. Test credentials for the live site are in the Devpost testing instructions, not in this repository.
+
+## For judges (Meta hackathon)
 
 - **What pre-existed:** only the owner's own AI server with a local model runtime. The first commit is 6 h 29 min after kickoff (26 Oct 2026, 16:00 UTC); timestamps, commits per day and how each part was built: [docs/PROVENANCE.md](docs/PROVENANCE.md).
 - **Criteria → evidence** (Impact, Use of Meta AI tooling, Technical depth and execution, Demo quality), each claim with a file path: [docs/submission/JUDGING.md](docs/submission/JUDGING.md).
