@@ -8,11 +8,16 @@ import { track } from "@/lib/analytics";
 import { billingApi, fetchPlans } from "@/lib/billing-api";
 import {
   DEFAULT_PLANS, PLAN_NAMES, STATUS_LABEL, TOPUP_DOCS, TOPUP_PENCE, longDate, money, perMonth, trialReminder, usageMeters, withVat,
-  type BillingInterval, type PlanCode, type RtAccount, type RtPlan,
+  type BillingInterval, type PlanCode, type RtAccount, type RtAccountOff, type RtPlan,
 } from "@/lib/billing";
 import { demoSession } from "@/lib/demo";
+import { PAYMENTS_OFF_NOTE, PROVIDER_NAME, takesPayments } from "@/lib/payments";
 
-/** Settings › Plan & billing: where the plan stands, this month's use, and every way to change it. Payment is Stripe's. */
+/**
+ * Settings › Plan & billing: where the plan stands, this month's use, and every way to change it. Buying (upgrade,
+ * top-up, card and invoices) shows only when the runtime takes payments (`payments_provider`, lib/payments.ts); with
+ * `none` the plans, the trial and promo codes still show and work.
+ */
 export default function PlanBilling({ card, heading }: { card: string; heading: string }) {
   const account = useAccount();
   const [acct, setAcct] = useState<RtAccount | null>(null);
@@ -25,9 +30,17 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
   const [promo, setPromo] = useState("");
   const [code, setCode] = useState("");
   const [demo, setDemo] = useState(false);
+  const [off, setOff] = useState<RtAccountOff | null>(null);
 
   useEffect(() => {
-    queueMicrotask(() => setDemo(!!demoSession()));
+    queueMicrotask(() => {
+      setDemo(!!demoSession());
+      // Back from Stripe: Checkout and the Customer Portal return to /settings/billing?checkout=… (see app/settings/billing).
+      const q = new URLSearchParams(window.location.search);
+      const back = q.get("checkout") ?? q.get("topup");
+      if (back === "success") setMessage(q.get("topup") ? "Thank you: your extra documents are being added." : "Thank you: your plan is being set up. It shows here within a minute.");
+      else if (back === "cancelled") setMessage("Nothing was charged.");
+    });
     fetchPlans().then((p) => p && setPlans(p));
   }, []);
 
@@ -35,6 +48,10 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
     if (!account) return;
     try {
       const a = await billingApi.account(account);
+      if (!a.configured) {
+        setOff(a);
+        return;
+      }
       setAcct(a);
       setPick(a.plan_code);
       if (a.billing_interval) setInterval(a.billing_interval);
@@ -71,8 +88,7 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
       if (r.ok) {
         setMessage(r.message);
         setCode("");
-        if (r.account) setAcct(r.account);
-        else await load();
+        setAcct(r.account);
       } else setError(r.message);
     } catch (e) {
       setError((e as Error).message);
@@ -90,6 +106,15 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
       </section>
     );
   }
+  if (off) {
+    // The runtime has no billing set up: no plans, limits or payments to show.
+    return (
+      <section aria-labelledby="plan-billing" className={card} data-billing-off="">
+        <h2 id="plan-billing" className={heading}>Plan &amp; billing</h2>
+        <p className="mt-1 text-sm text-muted">{off.detail}</p>
+      </section>
+    );
+  }
   if (account === null) {
     return (
       <section aria-labelledby="plan-billing" className={card}>
@@ -104,13 +129,18 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
   const current = plans.find((p) => p.code === acct?.plan_code);
   const picked = plans.find((p) => p.code === pick) ?? plans[0];
   const paying = acct?.status === "active" || acct?.status === "past_due";
+  // Nothing offers to take money until the runtime says it can (and not while the account is loading).
+  const pays = acct ? takesPayments(acct.payments_provider) : false;
+  const providerName = acct ? PROVIDER_NAME[acct.payments_provider] : null;
 
   return (
     <div className="space-y-4" data-plan-billing="">
       {reminder && (
         <div role="status" className="rounded-2xl border-2 border-brass bg-brass/10 p-4 text-[15px] text-ink">
           <strong>Your free trial ends {reminder.days === 0 ? "today" : reminder.days === 1 ? "tomorrow" : `in ${reminder.days} days`}</strong> ({longDate(acct?.trial_ends_at)}).
-          Choose a plan below and add a card before then to keep going. If you do not, your books become read-only; nothing is deleted.
+          {pays
+            ? "Choose a plan below and add a card before then to keep going. If you do not, your books become read-only; nothing is deleted."
+            : "After that your books become read-only until a plan or a promo code is applied; nothing is deleted."}
         </div>
       )}
 
@@ -126,13 +156,21 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
             {acct.status === "trialing" && <Row label="Free trial ends" value={longDate(acct.trial_ends_at)} />}
             {acct.status === "comped" && <Row label="Free until" value={acct.comp_until ? longDate(acct.comp_until) : "No end date"} />}
             {paying && acct.billing_interval && <Row label="Billed" value={acct.billing_interval === "year" ? "Yearly" : "Monthly"} />}
+            {paying && acct.current_period_end && (
+              <Row label={acct.cancel_at_period_end ? "Ends on" : "Renews on"} value={longDate(acct.current_period_end)} />
+            )}
             {current && (
               <Row label="Price" value={`${money(acct.billing_interval === "year" ? current.price_year_pence : current.price_month_pence)} ${acct.billing_interval === "year" ? "a year" : "a month"} plus VAT`} />
             )}
           </dl>
         )}
-        {acct?.status === "trial_ended" && (
-          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">Your trial has ended, so your books are read-only. Choose a plan to carry on; nothing has been deleted.</p>
+        {acct?.read_only && (
+          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink" data-read-only="">
+            {acct.status === "cancelled" ? "Your plan has been cancelled" : "Your trial has ended"}, so your books are read-only. {pays ? "Choose a plan to carry on" : "Redeem a promo code below to carry on"}; nothing has been deleted.
+          </p>
+        )}
+        {paying && acct?.cancel_at_period_end && (
+          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">Your plan is set to end on {longDate(acct.current_period_end)}. Resume it under Manage card &amp; invoices.</p>
         )}
         {acct?.status === "past_due" && (
           <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">The last payment did not go through. Update your card under Manage card &amp; invoices.</p>
@@ -211,6 +249,11 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
             ({money(withVat(interval === "month" ? picked.price_month_pence : picked.price_year_pence))} with UK VAT).
           </p>
         )}
+        {!pays && acct && (
+          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink" data-payments-off="">{PAYMENTS_OFF_NOTE}</p>
+        )}
+        {pays && (
+        <>
         <label className="mt-3 block">
           <span className={fieldLabel}>Promo code (optional)</span>
           <input className={fieldInput} value={promo} onChange={(e) => setPromo(e.target.value)} autoComplete="off" />
@@ -227,22 +270,27 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
           >
             {paying ? "Change plan" : "Upgrade"}
           </button>
-          <button type="button" className={secondaryButton} disabled={!account || busy !== null} onClick={() => void go("portal", () => billingApi.portal(account!))}>
+          <button type="button" className={secondaryButton} disabled={!account || busy !== null || acct?.has_payment_account === false} onClick={() => void go("portal", () => billingApi.portal(account!))}>
             Manage card &amp; invoices
           </button>
         </div>
-        <p className="mt-2 text-xs text-muted">Payment is taken by Stripe; we never see or store your card. Cancel any time from Manage card &amp; invoices.</p>
+        <p className="mt-2 text-xs text-muted">
+          Payment is taken by {providerName ?? "our payment provider"}; we never see or store your card. Cancel any time from Manage card &amp; invoices.
+        </p>
+        </>
+        )}
       </section>
 
       <section aria-labelledby="plan-extras" className={card}>
-        <h2 id="plan-extras" className={heading}>Top up, codes and your own AI</h2>
+        <h2 id="plan-extras" className={heading}>{pays ? "Top up, codes and your own AI" : "Codes and your own AI"}</h2>
+        {pays && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <button
             type="button"
             className={secondaryButton}
             disabled={!account || busy !== null}
             onClick={() => {
-              track("topup_click", { from: "settings" });
+              track("topup_click", { source: "settings" });
               void go("topup", () => billingApi.topup(account!));
             }}
           >
@@ -250,6 +298,7 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
           </button>
           <span className="text-sm text-muted">{money(TOPUP_PENCE)}, valid for 12 months, on any plan.</span>
         </div>
+        )}
         <form
           className="mt-4 flex flex-wrap items-end gap-2"
           onSubmit={(e) => {

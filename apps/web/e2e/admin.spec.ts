@@ -83,12 +83,16 @@ test.describe("administrator", () => {
     await page.goto("/admin/analytics");
     await expect(page.getByRole("img", { name: "Daily active accounts" })).toBeVisible();
     await expect(page.getByText("Documents scanned")).toBeVisible();
+    await expect(page.getByText("24.4% of trials")).toBeVisible();
     await expect(page.getByText("POST /books/scan")).toBeVisible();
     await page.goto("/admin/bugs");
     await expect(page.locator("[data-bugs-table] tbody tr")).toHaveCount(2);
     await page.getByRole("tab", { name: "Triaged" }).click();
     await expect(page.locator("[data-bugs-table] tbody tr")).toHaveCount(1);
     await page.getByRole("button", { name: /Receipt would not upload/ }).click();
+    await page.getByRole("button", { name: "Show screenshot" }).click();
+    await expect(page.getByRole("img", { name: "Screenshot sent with the report" })).toBeVisible();
+    await expect.poll(async () => page.evaluate(() => (JSON.parse(window.localStorage.getItem("accnomos.test.billing.calls") ?? "[]") as { path: string }[]).some((c) => c.path === "/admin/bug-reports/b-2/screenshot"))).toBe(true);
     await page.getByRole("region", { name: /Report from/ }).getByLabel("Status").selectOption("fixed");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();

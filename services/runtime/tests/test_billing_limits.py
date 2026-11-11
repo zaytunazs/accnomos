@@ -203,7 +203,7 @@ async def test_documents_are_charged_and_refused_at_the_limit(reg: R.MemoryRegis
     assert body["code"] == "plan_limit" and body["counter"] == "docs"
     assert body["limit"] == 50 and body["used"] == 50
     assert body["upgrade_url"] == "https://app.accnomos.example/settings/billing"
-    assert "top-up" in body["detail"]
+    assert "top-up" not in body["detail"] and "own AI" in body["detail"]  # payments off by default: nothing to buy
     # a top-up is used after the allowance
     await reg.add_topup(acc["id"], P.month_start(), 100)
     await m.charge_document()
@@ -458,6 +458,16 @@ def test_accountant_in_a_clients_books_and_demo_are_not_metered(reg: R.MemoryReg
 def test_plan_limit_body_for_a_monthly_counter():
     body = S.PlanLimit("invoices", 20, 20).body()
     assert body["code"] == "plan_limit" and "1st" in body["detail"]
+
+
+@pytest.mark.parametrize(("provider", "buying"), [("none", False), ("stripe", True)])
+def test_refusals_mention_buying_only_when_payments_are_on(provider: str, buying: bool, monkeypatch):
+    monkeypatch.setenv("PAYMENTS_PROVIDER", provider)
+    docs = S.PlanLimit("docs", 50, 50).body()["detail"]
+    feeds = S.PlanLimit("bank_feeds", 1, 1).body()["detail"]
+    ended = S.ReadOnly("trial_ended").body()["detail"]
+    assert ("top-up" in docs) is buying and ("Upgrade" in feeds) is buying
+    assert ("Choose a plan" in ended) is buying and ("promo code" in ended) is not buying
 
 
 def test_limits_validation():

@@ -8,9 +8,13 @@ export function openReportProblem(): void {
   window.dispatchEvent(new Event(REPORT_PROBLEM_EVENT));
 }
 
-/** True once if the dialog was asked for before it was mounted. */
-export function takeReportRequest(): boolean {
-  const w = waiting;
+/**
+ * Whether the dialog has been asked for and not closed since. Kept until the dialog closes (reportClosed), so a dialog
+ * that mounts late, or mounts again, still opens.
+ */
+export const reportRequested = (): boolean => waiting;
+
+/** The dialog was closed. */
+export function reportClosed(): void {
   waiting = false;
-  return w;
 }

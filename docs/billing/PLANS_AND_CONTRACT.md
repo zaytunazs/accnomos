@@ -61,6 +61,10 @@ Comprehensive £55; QuickBooks Simple Start £16, Essentials £38, Plus £56; Sa
 
 ## API (runtime; JSON; auth = the existing `X-Graph-Token` + `X-Account-Kind` headers)
 
+Every response's keys are pinned in `docs/billing/api_shapes.json` and checked on both sides in CI (runtime:
+`services/runtime/tests/test_billing_contract.py`; web: `apps/web/tests/unit/api-shapes.test.ts`). Where this list and
+that file differ, the file wins; `ADMIN_UI_NOTES.md` explains the details (402 bodies, paging, the event batch).
+
 Public
 - `GET /plans` → `[{code, name, price_month_pence, price_year_pence, limits}]`
 
@@ -109,9 +113,11 @@ Data model additions
 - Retention: events 13 months, bug reports until closed + 12 months.
 
 API additions
-- `POST /events` `{name, props, app, version}` (customer auth; dropped silently if opted out; rate-limited)
+- `POST /events` `{name, props, app, version}`, or a batch `{events: [...]}` of up to 20 → `202 {accepted, dropped}`
+  (customer auth; dropped silently if opted out; rate-limited per event)
 - `POST /bug-reports` `{message, page, app, version, ua, screenshot_b64?}` → `{id}`
 - `GET /admin/analytics?from=&to=` → daily active accounts, sign-up → first document → first approval funnel,
   feature use counts (documents scanned, approvals, bank syncs, Ask questions, VAT/ITSA exports, eBay syncs), plan
   conversion from trial, top error counts by route (from runtime error logging), churn
-- `GET /admin/bug-reports?status=&page=`, `PATCH /admin/bug-reports/{id}` `{status?, admin_notes?}`
+- `GET /admin/bug-reports?status=&page=`, `PATCH /admin/bug-reports/{id}` `{status?, admin_notes?}`,
+  `GET /admin/bug-reports/{id}/screenshot` → `{url, expires_in}` (a signed storage link)

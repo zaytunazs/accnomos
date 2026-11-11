@@ -38,9 +38,15 @@ in the runtime host's environment.
 
    ```
    SUPABASE_URL=https://usqwmybqjvldqjtaxsqi.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=<Project Settings › API keys › service_role (secret)>
+   SUPABASE_SERVICE_ROLE_KEY=<Project Settings › API keys › a secret key, sb_secret_…>
    ADMIN_EMAILS=you@example.co.uk
    ```
+
+   `SUPABASE_SERVICE_ROLE_KEY` takes either kind of server key: a **secret key** (`sb_secret_…`, Project Settings ›
+   API keys), the one to use, or a **legacy `service_role` JWT**, which works until Supabase retires the legacy keys
+   in early 2027 (https://supabase.com/docs/guides/api/api-keys). The runtime sends the key as `apikey` and
+   `Authorization: Bearer`; both kinds are accepted that way (checked against the project, 11 Nov 2026). The
+   publishable key will not do: it is refused on the `accnomos` schema. The variable keeps its name either way.
 
    Restart the runtime. `GET /account` with a signed-in token now answers `"configured": true`.
 

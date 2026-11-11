@@ -6,7 +6,7 @@ import AdminFrame, { ConfirmDialog, ErrorLine, card, h2, input, useLoad } from "
 import { fieldLabel, primaryButton } from "@/components/invoices/Modal";
 import { adminApi } from "@/lib/billing-api";
 import type { AdminPlan } from "@/lib/admin";
-import { LIMIT_ROWS, money, type LimitValue } from "@/lib/billing";
+import { LIMIT_ROWS, money, type LimitKey, type LimitValue, type PlanLimits } from "@/lib/billing";
 
 export default function Plans() {
   return (
@@ -33,7 +33,7 @@ function Body({ account }: { account: AccountInfo }) {
     <>
       <ErrorLine error={error} />
       <p className={`${card} text-sm text-muted`}>
-        Prices are shown ex VAT. A price change creates a new Stripe price; it does not move existing subscribers by itself. Type <em>unlimited</em>, a number, <em>yes</em>, <em>no</em> or text for each limit.
+        Prices are shown ex VAT. A price change creates a new Stripe price; it does not move existing subscribers by itself. Type <em>unlimited</em> or a number for each count, <em>yes</em> or <em>no</em> for multi_currency and projects, and <em>email</em> or <em>priority_email</em> for support.
       </p>
       {data?.map((p) => <PlanCard key={p.code} plan={p} account={account} onSaved={reload} />)}
     </>
@@ -41,7 +41,7 @@ function Body({ account }: { account: AccountInfo }) {
 }
 
 function PlanCard({ plan, account, onSaved }: { plan: AdminPlan; account: AccountInfo; onSaved: () => void }) {
-  const keys = [...new Set([...LIMIT_ROWS.map((r) => r.key).filter((k): k is string => !!k), ...Object.keys(plan.limits)])];
+  const keys: LimitKey[] = [...new Set<LimitKey>([...LIMIT_ROWS.map((r) => r.key).filter((k): k is LimitKey => !!k), "projects", ...(Object.keys(plan.limits) as LimitKey[])])];
   const [limits, setLimits] = useState<Record<string, string>>(() => Object.fromEntries(keys.map((k) => [k, show(plan.limits[k])])));
   const [active, setActive] = useState(plan.active);
   const [month, setMonth] = useState(String(plan.price_month_pence));
@@ -50,12 +50,12 @@ function PlanCard({ plan, account, onSaved }: { plan: AdminPlan; account: Accoun
   const priceChanged = Number(month) !== plan.price_month_pence || Number(year) !== plan.price_year_pence;
 
   async function save() {
-    const out: Record<string, unknown> = {};
+    const out: Partial<Record<LimitKey, LimitValue>> = {};
     for (const k of keys) {
       const v = parseLimit(limits[k] ?? "");
       if (v !== undefined) out[k] = v;
     }
-    await adminApi.patchPlan(account, plan.code, { limits: out, active, ...(priceChanged ? { price_month_pence: Number(month), price_year_pence: Number(year) } : {}) });
+    await adminApi.patchPlan(account, plan.code, { limits: out as Partial<PlanLimits>, active, ...(priceChanged ? { price_month_pence: Number(month), price_year_pence: Number(year) } : {}) });
     setConfirm(false);
     onSaved();
   }

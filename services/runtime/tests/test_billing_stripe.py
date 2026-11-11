@@ -29,6 +29,7 @@ def reg(monkeypatch: pytest.MonkeyPatch):
     fakes.reset()
     fakes.install()
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_billing_123")
+    monkeypatch.setenv("PAYMENTS_PROVIDER", "stripe")
     monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", SECRET)
     monkeypatch.setenv("ACCNOMOS_WEB_URL", "https://app.accnomos.example")
     for k in ("BILLING_RETURN_URL", "STRIPE_PRICE_TOPUP", "STRIPE_PRICE_STARTER_MONTH"):
@@ -130,6 +131,30 @@ def test_checkout_without_stripe_is_503(reg: R.MemoryRegistry, client: TestClien
         client.post("/billing/checkout", json={"plan_code": "starter", "interval": "month"}, headers=H).status_code
         == 503
     )
+
+
+@pytest.mark.parametrize("value", [None, "", "none", "paypal-typo", "NONE"])
+def test_payments_are_off_unless_a_provider_is_chosen(
+    value: str | None, reg: R.MemoryRegistry, client: TestClient, monkeypatch
+):
+    """PAYMENTS_PROVIDER unset (the default) or unknown: plans, the trial and codes work, nothing can be bought, and
+    the Stripe key alone opens nothing."""
+    if value is None:
+        monkeypatch.delenv("PAYMENTS_PROVIDER", raising=False)
+    else:
+        monkeypatch.setenv("PAYMENTS_PROVIDER", value)
+    fakes.reset()
+    assert stripe_api.client() is None
+    acc = client.get("/account", headers=H).json()
+    assert acc["payments_provider"] == "none" and acc["status"] == "trialing"
+    for path, body in (
+        ("/billing/checkout", {"plan_code": "starter", "interval": "month"}),
+        ("/billing/portal", None),
+        ("/billing/topup", None),
+    ):
+        r = client.post(path, json=body, headers=H)
+        assert r.status_code == 503 and "free trial and promo codes work" in r.json()["detail"], path
+    assert fakes.CALLS == []  # nothing reached Stripe
 
 
 def test_portal_and_top_up(reg: R.MemoryRegistry, client: TestClient):

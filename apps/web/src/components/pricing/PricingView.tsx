@@ -1,5 +1,6 @@
 "use client";
 
+import { BUILD_PAYMENTS_PROVIDER, PROVIDER_NAME } from "@/lib/payments";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import LimitsTable from "@/components/pricing/LimitsTable";
@@ -86,7 +87,7 @@ export default function PricingView() {
           <strong>Nothing is ever locked away.</strong> At a limit, new reading pauses with a friendly note; approving, editing and exporting what is already in your books always works. If a trial ends without a card, your books become read-only and are never deleted.
         </p>
         <p>
-          <strong>Your books stay yours.</strong> They live in your own OneDrive; we keep only your account, plan and usage counts. Payment is taken by Stripe.
+          <strong>Your books stay yours.</strong> They live in your own OneDrive; we keep only your account, plan and usage counts.{PROVIDER_NAME[BUILD_PAYMENTS_PROVIDER] ? ` Payment is taken by ${PROVIDER_NAME[BUILD_PAYMENTS_PROVIDER]}.` : ""}
         </p>
         <p className="rounded-xl bg-teal-tint p-4" data-market-line="">
           For comparison, comparable plans from well-known UK accounting software cost about £14 to £56 a month ex VAT, and tools that only read documents charge roughly

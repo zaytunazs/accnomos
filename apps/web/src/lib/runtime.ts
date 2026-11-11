@@ -2210,7 +2210,7 @@ export interface RtContactMerge {
  */
 async function errorDetail(res: Response, what: string): Promise<string> {
   const text = await res.text();
-  // HTTP 402 {code:"plan_limit"}: every failed call passes here, so one dialog (components/billing/PlanLimitDialog) serves the app.
+  // HTTP 402 {code:"plan_limit"|"read_only"}: every failed call passes here, so one dialog (components/billing/PlanLimitDialog) serves the app.
   handlePlanLimit(res.status, text);
   let detail: unknown;
   let correlation: unknown;
@@ -2223,6 +2223,9 @@ async function errorDetail(res: Response, what: string): Promise<string> {
   }
   const ref = typeof correlation === "string" && correlation ? ` · ref ${correlation}` : "";
   if (typeof detail === "string") return `${detail} (status ${res.status}${ref})`;
+  // {detail: {code, detail: "sentence"}} (e.g. 422 screenshots_unavailable): the sentence, not the JSON
+  const inner = detail && typeof detail === "object" ? (detail as { detail?: unknown }).detail : undefined;
+  if (typeof inner === "string") return `${inner} (status ${res.status}${ref})`;
   return `Could not ${what} (${res.status}): ${text.slice(0, 200)}${ref}`;
 }
 

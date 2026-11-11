@@ -51,6 +51,10 @@ test.describe("signed in", () => {
   });
 
   test("Plan & billing: plan, status, trial date, meters, checkout, portal, top-up and a code", async ({ page }) => {
+    // a runtime that takes payments (PAYMENTS_PROVIDER=stripe)
+    await page.addInitScript(() => {
+      if (!window.localStorage.getItem("accnomos.test.billing")) window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ account: { payments_provider: "stripe" } }));
+    });
     await page.goto("/settings");
     const panel = await settingsTab(page, "Plan & billing");
     await expect(panel.getByText("Comprehensive").first()).toBeVisible();
@@ -66,7 +70,11 @@ test.describe("signed in", () => {
     await panel.getByRole("button", { name: "Upgrade" }).click();
     await expect.poll(async () => (await calls(page)).find((c) => c.path === "/billing/checkout")?.body).toEqual({ plan_code: "ultimate", interval: "year" });
 
+    // no Stripe customer yet: nothing to manage
     await page.goto("/settings#plan-billing");
+    await expect(panel.getByRole("button", { name: "Manage card & invoices" })).toBeDisabled();
+    await page.evaluate(() => window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ account: { payments_provider: "stripe", has_payment_account: true } })));
+    await page.reload();
     await panel.getByRole("button", { name: "Manage card & invoices" }).click();
     await expect.poll(async () => (await calls(page)).some((c) => c.path === "/billing/portal")).toBe(true);
 
@@ -90,19 +98,91 @@ test.describe("signed in", () => {
     await expect(page.getByRole("status").filter({ hasText: "Your free trial ends in 3 days" })).toBeVisible();
   });
 
-  test("an HTTP 402 plan_limit from the runtime opens one friendly dialog with top-up and upgrade", async ({ page }) => {
+  test("payments off (the default): plans, trial and codes show, nothing offers to take money or names a provider", async ({ page }) => {
+    await page.goto("/settings");
+    const panel = await settingsTab(page, "Plan & billing");
+    await expect(panel.getByText("Free trial", { exact: true })).toBeVisible();
+    await expect(panel.locator("[data-payments-off]")).toContainText("Your free trial and promo codes work as usual");
+    await expect(panel.getByRole("radio", { name: /Ultimate/ })).toBeVisible(); // the plans are still shown
+    for (const name of ["Upgrade", "Change plan", "Manage card & invoices", /Buy 100 documents/]) await expect(panel.getByRole("button", { name })).toHaveCount(0);
+    await expect(panel.getByText(/Stripe/)).toHaveCount(0);
+    await panel.getByLabel("Redeem a code").fill("yearfree");
+    await panel.getByRole("button", { name: "Redeem" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "12 months free applied." })).toBeVisible();
+    await page.goto("/pricing");
+    await expect(page.getByText(/Stripe/)).toHaveCount(0);
+    await page.goto("/privacy");
+    await expect(page.getByText(/Payments are taken by/)).toHaveCount(0);
+  });
+
+  test("payments off: a 402 plan_limit offers no top-up", async ({ page }) => {
     await page.route(`${RUNTIME_URL}/books/proposals*`, (route) =>
-      route.fulfill({ status: 402, contentType: "application/json", body: JSON.stringify({ code: "plan_limit", limit: "docs", message: "50 of 50 used" }) }),
+      route.fulfill({ status: 402, contentType: "application/json", body: JSON.stringify({ code: "plan_limit", counter: "docs", limit: 50, used: 50, upgrade_url: "https://accnomos.com/settings/billing", detail: "x" }) }),
     );
     await page.goto("/review");
     const dialog = page.getByRole("dialog", { name: "You have reached your plan's limit" });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText("AI-read documents");
+    await expect(dialog.getByRole("link", { name: "See your plan" })).toBeVisible();
+    await expect(dialog.getByRole("button", { name: /Buy 100 documents/ })).toHaveCount(0);
+  });
+
+  test("an HTTP 402 plan_limit from the runtime opens one friendly dialog with top-up and upgrade", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ account: { payments_provider: "stripe" } })));
+    await page.route(`${RUNTIME_URL}/books/proposals*`, (route) =>
+      route.fulfill({
+        status: 402,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "plan_limit", counter: "docs", limit: 50, used: 50, upgrade_url: "https://accnomos.com/settings/billing", detail: "You've used 50 of 50 AI-read documents this month." }),
+      }),
+    );
+    await page.goto("/review");
+    const dialog = page.getByRole("dialog", { name: "You have reached your plan's limit" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("all 50 of this month's AI-read documents");
     await expect(dialog).toContainText("approve, edit and export");
     await expect(dialog.getByRole("button", { name: "Buy 100 documents for £3" })).toBeVisible();
     await expect(dialog.getByRole("link", { name: "Upgrade or change plan" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
+  });
+
+  test("an HTTP 402 read_only (trial ended) opens the dialog with a link to choose a plan, and no top-up", async ({ page }) => {
+    await page.route(`${RUNTIME_URL}/books/proposals*`, (route) =>
+      route.fulfill({
+        status: 402,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "read_only", status: "trial_ended", upgrade_url: "https://accnomos.com/settings/billing", detail: "Your free trial has ended." }),
+      }),
+    );
+    await page.goto("/review");
+    const dialog = page.getByRole("dialog", { name: "Your free trial has ended" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("read-only");
+    await expect(dialog).toContainText("view and export");
+    await expect(dialog.getByRole("button", { name: /Buy 100 documents/ })).toHaveCount(0);
+    await expect(dialog.getByRole("link", { name: "Choose a plan" })).toHaveAttribute("href", "/settings#plan-billing");
+  });
+
+  test("a read-only account sees why on Plan & billing", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ account: { status: "cancelled", read_only: true } })));
+    await page.goto("/settings#plan-billing");
+    await expect(page.locator("[data-read-only]")).toContainText("Your plan has been cancelled, so your books are read-only");
+  });
+
+  test("billing switched off on the runtime: Plan & billing says so and shows no plans, meters or buttons", async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ configured: false })));
+    await page.goto("/settings#plan-billing");
+    const off = page.locator("[data-billing-off]");
+    await expect(off).toContainText("every feature is available without limits");
+    await expect(page.locator("[data-plan-billing]")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Upgrade" })).toHaveCount(0);
+    await expect(page.getByRole("meter")).toHaveCount(0);
+  });
+
+  test("back from Stripe: /settings/billing opens Plan & billing and says how it went", async ({ page }) => {
+    await page.goto("/settings/billing?checkout=success");
+    await expect(page).toHaveURL(/\/settings\?checkout=success#plan-billing$/);
+    await expect(page.getByRole("status").filter({ hasText: "your plan is being set up" })).toBeVisible();
   });
 
   test("Settings › Privacy: the analytics opt-out is kept and sent to the account; no events after it", async ({ page }) => {

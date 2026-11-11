@@ -288,5 +288,9 @@ class StripeBilling:
 
 
 def client() -> StripeBilling | None:
+    """The Stripe client, when Stripe is the payment provider (app/billing/payments.py) and has a key; else None, and
+    every Stripe path (checkout, portal, top-up, coupons, prices, the admin's Stripe summary) stays off."""
+    from app.billing import payments
+
     cfg = settings()
-    return StripeBilling(cfg) if cfg.configured else None
+    return StripeBilling(cfg) if cfg.configured and payments.provider() == "stripe" else None

@@ -12,6 +12,8 @@ export default function PrivacySettings({ card, heading }: { card: string; headi
   const [optOut, setOptOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** False when the runtime has no billing (so no account to keep the choice on): it is kept on this device only. */
+  const [onAccount, setOnAccount] = useState(true);
 
   useEffect(() => {
     queueMicrotask(() => setOptOut(analyticsOptedOut()));
@@ -22,10 +24,12 @@ export default function PrivacySettings({ card, heading }: { card: string; headi
     billingApi
       .account(account)
       .then((a) => {
-        if (typeof a.analytics_opt_out === "boolean") {
-          setOptOut(a.analytics_opt_out);
-          setAnalyticsOptedOut(a.analytics_opt_out);
+        if (!a.configured) {
+          setOnAccount(false);
+          return;
         }
+        setOptOut(a.analytics_opt_out);
+        setAnalyticsOptedOut(a.analytics_opt_out);
       })
       .catch(() => undefined);
   }, [account]);
@@ -35,7 +39,7 @@ export default function PrivacySettings({ card, heading }: { card: string; headi
     setOptOut(next);
     setAnalyticsOptedOut(next);
     setError(null);
-    if (!account) return;
+    if (!account || !onAccount) return;
     setBusy(true);
     try {
       await billingApi.setAnalyticsOptOut(account, next);

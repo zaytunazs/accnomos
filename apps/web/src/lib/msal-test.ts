@@ -94,7 +94,9 @@ function linked(): string[] {
 }
 
 function setLinked(names: string[]): void {
-  window.localStorage.setItem(LINKED, JSON.stringify(names));
+  // An empty list is no key at all: any msal.accnomos-* key reads as a sign-in (lib/signed-in.ts hasMsalSignIn).
+  if (names.length) window.localStorage.setItem(LINKED, JSON.stringify(names));
+  else window.localStorage.removeItem(LINKED);
 }
 
 /** A mailbox-only (fake) Microsoft account from Email intake: a work account in its own tenant. */

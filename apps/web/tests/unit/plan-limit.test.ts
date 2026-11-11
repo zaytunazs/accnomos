@@ -1,35 +1,55 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { handlePlanLimit, parsePlanLimit, planLimitMessage, topUpHelps, type PlanLimitInfo } from "../../src/lib/plan-limit.ts";
+import { handlePlanLimit, parseBillingRefusal, parsePlanLimit, planLimitMessage, refusalTitle, topUpHelps, type BillingRefusal } from "../../src/lib/plan-limit.ts";
 
-test("a 402 with code plan_limit is recognised, top-level or under detail", () => {
-  const a = parsePlanLimit(402, JSON.stringify({ code: "plan_limit", limit: "docs", plan_code: "starter", message: "50 of 50" }));
-  assert.deepEqual(a, { code: "plan_limit", message: "50 of 50", limit_key: "docs", plan_code: "starter" });
-  const b = parsePlanLimit(402, JSON.stringify({ detail: { code: "plan_limit", limit_key: "ask" } }));
-  assert.equal(b?.limit_key, "ask");
-  assert.equal(b?.plan_code, null);
+// The runtime's bodies (services/runtime/app/billing/service.py PlanLimit.body / ReadOnly.body)
+const LIMIT = { code: "plan_limit", counter: "docs", limit: 50, used: 50, upgrade_url: "https://accnomos.com/settings/billing", detail: "You've used 50 of 50 AI-read documents this month." };
+const READ_ONLY = { code: "read_only", status: "trial_ended", upgrade_url: "https://accnomos.com/settings/billing", detail: "Your free trial has ended." };
+
+test("a 402 plan_limit is read with its counter, limit and use, top level or under detail", () => {
+  assert.deepEqual(parsePlanLimit(402, JSON.stringify(LIMIT)), LIMIT);
+  const b = parseBillingRefusal(402, JSON.stringify({ detail: { ...LIMIT, counter: "ask" } }));
+  assert.equal(b?.code === "plan_limit" && b.counter, "ask");
 });
 
-test("anything else is not a plan limit", () => {
-  assert.equal(parsePlanLimit(500, JSON.stringify({ code: "plan_limit" })), null);
-  assert.equal(parsePlanLimit(402, JSON.stringify({ code: "payment_required" })), null);
-  assert.equal(parsePlanLimit(402, "not json"), null);
-  assert.equal(parsePlanLimit(402, "null"), null);
+test("a 402 read_only is read too, and is not a plan limit", () => {
+  assert.deepEqual(parseBillingRefusal(402, JSON.stringify(READ_ONLY)), READ_ONLY);
+  assert.equal(parsePlanLimit(402, JSON.stringify(READ_ONLY)), null);
 });
 
-test("handlePlanLimit tells the dialog once for a limit and never for other errors", () => {
-  const seen: PlanLimitInfo[] = [];
-  assert.ok(handlePlanLimit(402, JSON.stringify({ code: "plan_limit", limit: "docs" }), (i) => seen.push(i)));
-  assert.equal(handlePlanLimit(404, "{}", (i) => seen.push(i)), null);
-  assert.equal(handlePlanLimit(402, "{}", (i) => seen.push(i)), null);
-  assert.equal(seen.length, 1);
+test("anything else is not a billing refusal", () => {
+  assert.equal(parseBillingRefusal(500, JSON.stringify(LIMIT)), null);
+  assert.equal(parseBillingRefusal(402, JSON.stringify({ code: "payment_required" })), null);
+  assert.equal(parseBillingRefusal(402, "not json"), null);
+  assert.equal(parseBillingRefusal(402, "null"), null);
+  assert.equal(parseBillingRefusal(402, "[]"), null);
 });
 
-test("the message is friendly and says nothing is locked; only documents can be topped up", () => {
-  const docs: PlanLimitInfo = { code: "plan_limit", message: null, limit_key: "docs", plan_code: null };
-  assert.match(planLimitMessage(docs), /AI-read documents/);
+test("handlePlanLimit tells the dialog once for a refusal and never for other errors", () => {
+  const seen: BillingRefusal[] = [];
+  handlePlanLimit(402, JSON.stringify(LIMIT), (i) => seen.push(i));
+  handlePlanLimit(402, JSON.stringify(READ_ONLY), (i) => seen.push(i));
+  handlePlanLimit(500, JSON.stringify(LIMIT), (i) => seen.push(i));
+  handlePlanLimit(402, JSON.stringify({ detail: "Payment required" }), (i) => seen.push(i));
+  assert.deepEqual(seen.map((s) => s.code), ["plan_limit", "read_only"]);
+});
+
+test("the sentences are friendly, name the limit and say nothing is locked", () => {
+  const docs = parsePlanLimit(402, JSON.stringify(LIMIT))!;
+  assert.match(planLimitMessage(docs), /all 50 of this month's AI-read documents/);
   assert.match(planLimitMessage(docs), /approve, edit and export/);
+  assert.match(planLimitMessage({ ...docs, counter: "marketplaces", limit: 0, used: 0 }), /does not include marketplace connections/);
+  assert.match(planLimitMessage({ ...docs, counter: "bank_feeds", limit: 3, used: 3 }), /allows 3 live bank feeds/);
+  assert.match(planLimitMessage({ ...docs, counter: null }), /a limit on your plan/);
+  const ro = parseBillingRefusal(402, JSON.stringify(READ_ONLY))!;
+  assert.equal(refusalTitle(ro), "Your free trial has ended");
+  assert.match(planLimitMessage(ro), /read-only.*view and export/);
+  assert.equal(refusalTitle({ ...ro, code: "read_only", status: "cancelled" }), "Your plan has been cancelled");
+});
+
+test("a top-up helps documents only", () => {
+  const docs = parsePlanLimit(402, JSON.stringify(LIMIT))!;
   assert.equal(topUpHelps(docs), true);
-  assert.equal(topUpHelps({ ...docs, limit_key: "bank_feeds" }), false);
-  assert.match(planLimitMessage({ ...docs, limit_key: null }), /a limit on your plan/);
+  assert.equal(topUpHelps({ ...docs, counter: "ask" }), false);
+  assert.equal(topUpHelps(parseBillingRefusal(402, JSON.stringify(READ_ONLY))!), false);
 });

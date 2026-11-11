@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
+from app.billing import payments
 from app.billing import plans as P
 from app.billing.registry import Registry, Row
 
@@ -79,7 +80,15 @@ class PlanLimit(Exception):
 
     def body(self) -> dict[str, Any]:
         what = LABELS.get(self.counter, self.counter)
-        if self.counter == "docs":
+        if not payments.taking_payments():  # nothing can be bought: no buying in the advice
+            hint = (
+                "The count starts again on the 1st; you can also use your own AI (Settings › AI)."
+                if self.counter in ("docs", "ask")
+                else "The count starts again on the 1st."
+                if self.counter in P.MONTHLY
+                else "Remove one you no longer need to add another."
+            )
+        elif self.counter == "docs":
             hint = "Buy a top-up of 100 documents for £3, upgrade your plan, or use your own AI (Settings › AI)."
         elif self.counter in P.MONTHLY:
             hint = "Upgrade your plan, or wait until the 1st when the count starts again."
@@ -106,12 +115,13 @@ class ReadOnly(Exception):
         self.status = status
 
     def body(self) -> dict[str, Any]:
+        next_step = "Choose a plan" if payments.taking_payments() else "Redeem a promo code (Settings › Plan & billing)"
         detail = (
             "Your free trial has ended, so your books are read-only. Everything is still there: you can view and "
-            "export it. Choose a plan to carry on adding and changing things."
+            f"export it. {next_step} to carry on adding and changing things."
             if self.status == "trial_ended"
             else "Your subscription has ended, so your books are read-only. Everything is still there: you can view "
-            "and export it. Choose a plan to carry on."
+            f"and export it. {next_step} to carry on."
         )
         return {"code": "read_only", "status": self.status, "upgrade_url": upgrade_url(), "detail": detail}
 
@@ -430,6 +440,7 @@ async def account_view(reg: Registry, acc: Row, own: bool, gauges: Mapping[str, 
         "limits": limits_for(acc, plans),
         "own_ai": own,
         "upgrade_url": upgrade_url(),
+        "payments_provider": payments.provider(),
     }
 
 

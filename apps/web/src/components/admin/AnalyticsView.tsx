@@ -5,6 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import AdminFrame, { ErrorLine, MiniChart, Stat, card, h2, input, td, th, useLoad } from "./parts";
 import { fieldLabel } from "@/components/invoices/Modal";
 import { adminApi } from "@/lib/billing-api";
+import type { FeatureCounts } from "@/lib/admin";
 
 export default function AnalyticsView() {
   return (
@@ -14,11 +15,11 @@ export default function AnalyticsView() {
   );
 }
 
-const FEATURE_LABEL: Record<string, string> = {
-  documents_scanned: "Documents scanned", approvals: "Approvals", bank_syncs: "Bank syncs", ask_questions: "Ask questions", vat_itsa_exports: "VAT / Income Tax exports", ebay_syncs: "eBay syncs",
+const FEATURE_LABEL: Record<keyof FeatureCounts, string> = {
+  document_scanned: "Documents scanned", proposal_approved: "Approvals", bank_synced: "Bank syncs", ask: "Ask questions", vat_export: "VAT exports", itsa_export: "Income Tax exports", ebay_sync: "eBay syncs",
 };
 const iso = (d: Date) => d.toISOString().slice(0, 10);
-const pct = (r: number) => `${(r * 100).toFixed(1)}%`;
+const pct = (r: number | null) => (r === null ? "no data yet" : `${(r * 100).toFixed(1)}%`);
 
 function Body({ account }: { account: AccountInfo }) {
   const [to, setTo] = useState(() => iso(new Date()));
@@ -42,16 +43,16 @@ function Body({ account }: { account: AccountInfo }) {
                 <div className="mt-1 h-3 rounded-full bg-ground"><div className="h-3 rounded-full bg-teal" style={{ width: `${(n / top) * 100}%` }} /></div></li>
             ))}</ul></section>
           <div className="grid grid-cols-2 gap-3 min-[900px]:grid-cols-4">
-            <Stat label="Trials started" value={data.conversion.trials} />
-            <Stat label="Converted to paid" value={data.conversion.converted} hint={`${pct(data.conversion.rate)} of trials`} />
-            <Stat label="Cancelled" value={data.churn.cancelled} hint={`churn ${pct(data.churn.rate)}`} />
+            <Stat label="Trials ended" value={data.trial_conversion.trials_ended} />
+            <Stat label="Converted to paid" value={data.trial_conversion.converted} hint={data.trial_conversion.rate === null ? "no trials ended in this range" : `${pct(data.trial_conversion.rate)} of trials`} />
+            <Stat label="Cancelled" value={data.churn.cancelled} hint={data.churn.rate === null ? `of ${data.churn.active_at_start} paying` : `churn ${pct(data.churn.rate)}`} />
           </div>
           <section className={card} aria-labelledby="an-feat"><h2 id="an-feat" className={h2}>Feature use</h2>
-            <dl className="mt-2 divide-y divide-border">{Object.entries(data.features).map(([k, v]) => <div key={k} className="flex justify-between py-2 text-sm"><dt className="font-bold">{FEATURE_LABEL[k] ?? k}</dt><dd>{v.toLocaleString("en-GB")}</dd></div>)}</dl></section>
+            <dl className="mt-2 divide-y divide-border">{(Object.keys(FEATURE_LABEL) as (keyof FeatureCounts)[]).map((k) => [k, data.features[k]] as const).map(([k, v]) => <div key={k} className="flex justify-between py-2 text-sm"><dt className="font-bold">{FEATURE_LABEL[k]}</dt><dd>{v.toLocaleString("en-GB")}</dd></div>)}</dl></section>
           <section className={card} aria-labelledby="an-err"><h2 id="an-err" className={h2}>Top errors by route</h2>
             <table className="mt-2 w-full"><thead><tr className="border-b border-border"><th className={th}>Route</th><th className={th}>Count</th></tr></thead>
-              <tbody>{data.errors.map((e) => <tr key={e.route} className="border-b border-border last:border-0"><td className={td}>{e.route}</td><td className={td}>{e.count}</td></tr>)}
-                {data.errors.length === 0 && <tr><td className={td} colSpan={2}>None recorded.</td></tr>}</tbody></table>
+              <tbody>{data.errors_by_route.map((e) => <tr key={e.route} className="border-b border-border last:border-0"><td className={td}>{e.route}</td><td className={td}>{e.count}</td></tr>)}
+                {data.errors_by_route.length === 0 && <tr><td className={td} colSpan={2}>None recorded.</td></tr>}</tbody></table>
             <p className="mt-2 text-xs text-muted">Detail for each error is in Sentry, where it is enabled.</p></section>
         </>
       )}

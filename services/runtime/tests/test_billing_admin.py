@@ -34,6 +34,7 @@ def reg(monkeypatch: pytest.MonkeyPatch):
     fakes.install()
     monkeypatch.setenv("ADMIN_EMAILS", f" {BOSS.upper()} , other@accnomos.example")
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_billing_123")
+    monkeypatch.setenv("PAYMENTS_PROVIDER", "stripe")
 
     async def no_books(_request) -> dict:
         return {"bank_feeds": 0, "marketplaces": 0, "autopilot_rules": 0, "users": 1}
@@ -269,6 +270,27 @@ def test_events_are_rate_limited(reg: R.MemoryRegistry, client: TestClient, monk
     monkeypatch.setattr(analytics, "EVENTS_LIMITER", TokenBucket(2))
     codes = [client.post("/events", json={"name": "page_view"}, headers=H).status_code for _ in range(4)]
     assert codes[:2] == [202, 202] and codes[-1] == 429
+
+
+def test_events_in_a_batch(reg: R.MemoryRegistry, client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    ev = lambda name, **props: {"name": name, "props": props, "app": "web", "version": "1.2"}  # noqa: E731
+    batch = [ev("page_view", page="/review"), ev("signup"), ev("upgrade_click", plan="starter", interval="year")]
+    r = client.post("/events", json={"events": batch}, headers=H)
+    assert r.status_code == 202 and r.json() == {"accepted": 2, "dropped": 1}  # a server-only name is dropped alone
+    assert [e["name"] for e in reg.events[-2:]] == ["page_view", "upgrade_click"]
+    assert client.post("/events", json={"events": []}, headers=H).status_code == 422
+    assert client.post("/events", json={"events": [ev("page_view")] * 21}, headers=H).status_code == 422
+    assert client.post("/events", json={"events": batch, "name": "x"}, headers=H).status_code == 422
+    # the rate limit counts events, not requests
+    monkeypatch.setattr(analytics, "EVENTS_LIMITER", TokenBucket(3))
+    assert client.post("/events", json={"events": [ev("page_view")] * 3}, headers=H).status_code == 202
+    assert client.post("/events", json={"events": [ev("page_view")]}, headers=H).status_code == 429
+    # opted out: taken and dropped
+    monkeypatch.setattr(analytics, "EVENTS_LIMITER", TokenBucket(100))
+    client.patch("/account", json={"analytics_opt_out": True}, headers=H)
+    before = len(reg.events)
+    r = client.post("/events", json={"events": [ev("page_view")]}, headers=H)
+    assert r.json() == {"accepted": 0, "dropped": 1} and len(reg.events) == before
 
 
 def test_events_need_a_sign_in(reg: R.MemoryRegistry, client: TestClient):

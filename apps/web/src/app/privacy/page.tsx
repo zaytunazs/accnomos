@@ -1,4 +1,9 @@
+import { BUILD_PAYMENTS_PROVIDER, PROVIDER_NAME } from "@/lib/payments";
+
 export const metadata = { title: "Privacy policy — Accnomos" };
+
+/** Who takes payment for plans in this build (lib/payments.ts): named only when one does. */
+const PAYMENTS = PROVIDER_NAME[BUILD_PAYMENTS_PROVIDER];
 
 const UPDATED = "11 November 2026";
 
@@ -144,10 +149,13 @@ export default function PrivacyPage() {
           trial dates, any promo codes you redeemed, monthly usage counts (documents read, questions asked, invoices created) and notes our
           support team adds when helping you. It never holds your books, documents, receipts, bank lines, financial records, or tokens for other services.
         </p>
-        <p>
-          <strong>Payments are taken by Stripe</strong> (Checkout, Billing and the customer portal). Stripe holds your card and payment history; we
-          never see or store a card number. Stripe tells us your plan and payment status, and we keep a copy of that status in the registry.
-        </p>
+        {PAYMENTS && (
+          <p>
+            <strong>Payments are taken by {PAYMENTS}</strong> (checkout, billing and the customer portal). {PAYMENTS} holds your card and payment
+            history; we never see or store a card number. {PAYMENTS} tells us your plan and payment status, and we keep a copy of that status in the
+            registry.
+          </p>
+        )}
         <p>
           <strong>Problem reports.</strong> If you use Report a problem, we keep your message, the page you were on, the app version, your browser or
           phone type and a screenshot only if you choose to attach one, until the report is closed and for 12 months after.
@@ -228,7 +236,7 @@ export default function PrivacyPage() {
                 { data: "Mail read during intake and triage", where: "Memory only; copies land in 00 Inbox and to-dos in _System/Todos", who: "You — full bodies and attachments are never fetched by triage" },
                 { data: "Calendar days read for planning", where: "Memory only; applied plans in _System/Planner/applied.json", who: "You — nothing written before you tap Apply" },
                 { data: "Account registry: email, sign-in kind, plan, billing status, trial dates, promo redemptions, monthly usage counts, support notes", where: "Supabase database (UK or EU region)", who: "The service operator; never your books or financial records" },
-                { data: "Card and payment details, invoices for your plan", where: "Stripe", who: "You and Stripe; we receive only your plan and payment status" },
+                ...(PAYMENTS ? [{ data: "Card and payment details, invoices for your plan", where: PAYMENTS, who: `You and ${PAYMENTS}; we receive only your plan and payment status` }] : []),
                 { data: "Usage analytics events (page, feature, counts; off if you opt out)", where: "Our registry, kept 13 months", who: "The service operator" },
                 { data: "Problem reports (message, page, app version, browser, optional screenshot)", where: "Our registry", who: "The service operator, until closed plus 12 months" },
                 { data: "Error reports (amounts, emails, VAT numbers and tokens removed; only when enabled)", where: "Sentry, EU region", who: "The service operator" },
@@ -254,7 +262,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">Third parties</h2>
         <ul className="list-disc space-y-2 pl-5">
           <li>Supabase — hosts our account registry (plan, billing status, usage counts, analytics events, problem reports) in a UK or EU region; never your books or financial records.</li>
-          <li>Stripe — takes payment for your Accnomos plan and holds your card; we receive your plan and payment status.</li>
+          {PAYMENTS && <li>{PAYMENTS} — takes payment for your Accnomos plan and holds your card; we receive your plan and payment status.</li>}
           <li>Sentry (EU region) — receives scrubbed error reports, only where error reporting is enabled.</li>
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
           <li>Google (sign-in, Google Drive, and Gmail, Calendar and Contacts) — only if you sign in with Google, under your Google account terms.</li>

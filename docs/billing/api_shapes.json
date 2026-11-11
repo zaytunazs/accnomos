@@ -1,0 +1,640 @@
+{
+  "402 plan_limit": {
+    "code": "string",
+    "counter": "string",
+    "detail": "string",
+    "limit": "number",
+    "upgrade_url": "string",
+    "used": "number"
+  },
+  "402 read_only": {
+    "code": "string",
+    "detail": "string",
+    "status": "string",
+    "upgrade_url": "string"
+  },
+  "GET /account": {
+    "analytics_opt_out": "boolean",
+    "billing_interval": "null",
+    "cancel_at_period_end": "boolean",
+    "comp_until": "null",
+    "configured": "boolean",
+    "current_period_end": "null",
+    "display_name": "null",
+    "email": "string",
+    "has_payment_account": "boolean",
+    "id": "string",
+    "limits": {
+      "ask": "number",
+      "autopilot_rules": "null",
+      "bank_feeds": "number",
+      "docs": "number",
+      "invoices": "null",
+      "marketplaces": "number",
+      "multi_currency": "boolean",
+      "payroll_employees": "number",
+      "projects": "boolean",
+      "support": "string",
+      "users": "number"
+    },
+    "own_ai": "boolean",
+    "payments_provider": "string",
+    "plan_code": "string",
+    "read_only": "boolean",
+    "status": "string",
+    "trial_ends_at": "string",
+    "upgrade_url": "string",
+    "usage": {
+      "ask": "number",
+      "autopilot_rules": "number",
+      "bank_feeds": "number",
+      "docs": "number",
+      "invoices": "number",
+      "marketplaces": "number",
+      "topup_docs_remaining": "number",
+      "topup_expires_at": "null",
+      "users": "number"
+    }
+  },
+  "GET /account (billing off)": {
+    "configured": "boolean",
+    "detail": "string"
+  },
+  "GET /admin/analytics": {
+    "churn": {
+      "active_at_start": "number",
+      "cancelled": "number",
+      "rate": "null"
+    },
+    "daily_active": [
+      {
+        "count": "number",
+        "day": "string"
+      }
+    ],
+    "errors_by_route": [
+      {
+        "count": "number",
+        "route": "string"
+      }
+    ],
+    "features": {
+      "ask": "number",
+      "bank_synced": "number",
+      "document_scanned": "number",
+      "ebay_sync": "number",
+      "itsa_export": "number",
+      "proposal_approved": "number",
+      "vat_export": "number"
+    },
+    "from": "string",
+    "funnel": {
+      "first_approval": "number",
+      "first_document": "number",
+      "signed_up": "number"
+    },
+    "to": "string",
+    "trial_conversion": {
+      "converted": "number",
+      "rate": "null",
+      "trials_ended": "number"
+    }
+  },
+  "GET /admin/audit": {
+    "items": [
+      {
+        "account_id": "string",
+        "action": "string",
+        "admin_email": "string",
+        "at": "string",
+        "detail": {
+          "after": {
+            "notes": "string"
+          },
+          "before": {
+            "notes": "null"
+          },
+          "code": "string",
+          "days": "number",
+          "kind": "string",
+          "trial_ends_at": "string"
+        },
+        "id": "number"
+      }
+    ],
+    "page": "number",
+    "per_page": "number",
+    "total": "number"
+  },
+  "GET /admin/bug-reports": {
+    "items": [
+      {
+        "account_id": "string",
+        "admin_notes": "null",
+        "app": "string",
+        "at": "string",
+        "closed_at": "null",
+        "email": "string",
+        "id": "string",
+        "message": "string",
+        "page": "string",
+        "screenshot_path": "string",
+        "status": "string",
+        "ua": "string",
+        "version": "string"
+      }
+    ],
+    "page": "number",
+    "per_page": "number",
+    "total": "number"
+  },
+  "GET /admin/bug-reports/{id}/screenshot": {
+    "expires_in": "number",
+    "url": "string"
+  },
+  "GET /admin/codes": [
+    {
+      "active": "boolean",
+      "code": "string",
+      "created_at": "string",
+      "created_by": "string",
+      "duration_months": "null|number",
+      "expires_at": "null|string",
+      "kind": "string",
+      "max_redemptions": "null|number",
+      "plan_codes": [
+        "string"
+      ],
+      "redeemed_count": "number",
+      "stripe_coupon_id": "null|string",
+      "value": "number"
+    }
+  ],
+  "GET /admin/metrics": {
+    "active": "number",
+    "active_by_plan": {
+      "comprehensive": "number",
+      "starter": "number",
+      "ultimate": "number"
+    },
+    "cancelled": "number",
+    "comped": "number",
+    "mrr_pence": "number",
+    "past_due": "number",
+    "signups_by_day": [
+      {
+        "count": "number",
+        "day": "string"
+      }
+    ],
+    "total_accounts": "number",
+    "trial_ended": "number",
+    "trialing": "number",
+    "trials_ending": [
+      {
+        "email": "string",
+        "id": "string",
+        "trial_ends_at": "string"
+      }
+    ],
+    "trials_ending_7d": "number"
+  },
+  "GET /admin/plans": [
+    {
+      "active": "boolean",
+      "code": "string",
+      "limits": {
+        "ask": "number",
+        "autopilot_rules": "null|number",
+        "bank_feeds": "null|number",
+        "docs": "number",
+        "invoices": "null|number",
+        "marketplaces": "null|number",
+        "multi_currency": "boolean",
+        "payroll_employees": "number",
+        "projects": "boolean",
+        "support": "string",
+        "users": "number"
+      },
+      "name": "string",
+      "price_month_pence": "number",
+      "price_year_pence": "number",
+      "sort": "number",
+      "stripe_price_month": "null",
+      "stripe_price_year": "null"
+    }
+  ],
+  "GET /admin/users": {
+    "items": [
+      {
+        "analytics_opt_out": "boolean",
+        "auth_kind": "string",
+        "auth_subject": "string",
+        "billing_interval": "string",
+        "cancel_at_period_end": "boolean",
+        "comp_until": "null",
+        "country": "null",
+        "created_at": "string",
+        "current_period_end": "null",
+        "display_name": "null",
+        "email": "string",
+        "id": "string",
+        "last_seen_at": "string",
+        "notes": "null",
+        "plan_code": "string",
+        "status": "string",
+        "stripe_customer_id": "string",
+        "stripe_subscription_id": "string",
+        "trial_ends_at": "string",
+        "usage": {
+          "ask": "number",
+          "docs": "number",
+          "invoices": "number",
+          "topup_docs_remaining": "number"
+        }
+      }
+    ],
+    "page": "number",
+    "per_page": "number",
+    "total": "number"
+  },
+  "GET /admin/users/{id}": {
+    "account": {
+      "analytics_opt_out": "boolean",
+      "auth_kind": "string",
+      "auth_subject": "string",
+      "billing_interval": "string",
+      "cancel_at_period_end": "boolean",
+      "comp_until": "string",
+      "country": "null",
+      "created_at": "string",
+      "current_period_end": "null",
+      "display_name": "null",
+      "email": "string",
+      "id": "string",
+      "last_seen_at": "string",
+      "notes": "string",
+      "plan_code": "string",
+      "status": "string",
+      "stripe_customer_id": "string",
+      "stripe_subscription_id": "string",
+      "trial_ends_at": "string"
+    },
+    "audit": [
+      {
+        "account_id": "string",
+        "action": "string",
+        "admin_email": "string",
+        "at": "string",
+        "detail": {
+          "after": {
+            "notes": "string"
+          },
+          "before": {
+            "notes": "null"
+          },
+          "code": "string",
+          "days": "number",
+          "kind": "string",
+          "trial_ends_at": "string"
+        },
+        "id": "number"
+      }
+    ],
+    "notes": "string",
+    "redemptions": [
+      {
+        "account_id": "string",
+        "code": "string",
+        "id": "number",
+        "redeemed_at": "string"
+      }
+    ],
+    "stripe": {
+      "customer": "string",
+      "invoices": [
+        {
+          "created": "number",
+          "currency": "string",
+          "hosted_invoice_url": "string",
+          "id": "string",
+          "number": "string",
+          "status": "string",
+          "total": "number"
+        }
+      ],
+      "subscription": {
+        "cancel_at_period_end": "boolean",
+        "current_period_end": "number",
+        "id": "string",
+        "status": "string",
+        "trial_end": "null"
+      }
+    },
+    "usage_history": [
+      {
+        "account_id": "string",
+        "ask": "number",
+        "docs": "number",
+        "invoices": "number",
+        "month": "string",
+        "topup_docs_remaining": "number",
+        "topup_expires_at": "null"
+      }
+    ]
+  },
+  "GET /plans": [
+    {
+      "code": "string",
+      "limits": {
+        "ask": "number",
+        "autopilot_rules": "null|number",
+        "bank_feeds": "null|number",
+        "docs": "number",
+        "invoices": "null|number",
+        "marketplaces": "null|number",
+        "multi_currency": "boolean",
+        "payroll_employees": "number",
+        "projects": "boolean",
+        "support": "string",
+        "users": "number"
+      },
+      "name": "string",
+      "price_month_pence": "number",
+      "price_year_pence": "number"
+    }
+  ],
+  "PATCH /account": {
+    "analytics_opt_out": "boolean",
+    "billing_interval": "null",
+    "cancel_at_period_end": "boolean",
+    "comp_until": "null",
+    "configured": "boolean",
+    "current_period_end": "null",
+    "display_name": "null",
+    "email": "string",
+    "has_payment_account": "boolean",
+    "id": "string",
+    "limits": {
+      "ask": "number",
+      "autopilot_rules": "null",
+      "bank_feeds": "number",
+      "docs": "number",
+      "invoices": "null",
+      "marketplaces": "number",
+      "multi_currency": "boolean",
+      "payroll_employees": "number",
+      "projects": "boolean",
+      "support": "string",
+      "users": "number"
+    },
+    "own_ai": "boolean",
+    "payments_provider": "string",
+    "plan_code": "string",
+    "read_only": "boolean",
+    "status": "string",
+    "trial_ends_at": "string",
+    "upgrade_url": "string",
+    "usage": {
+      "ask": "number",
+      "autopilot_rules": "number",
+      "bank_feeds": "number",
+      "docs": "number",
+      "invoices": "number",
+      "marketplaces": "number",
+      "topup_docs_remaining": "number",
+      "topup_expires_at": "null",
+      "users": "number"
+    }
+  },
+  "PATCH /admin/bug-reports/{id}": {
+    "account_id": "string",
+    "admin_notes": "string",
+    "app": "string",
+    "at": "string",
+    "closed_at": "null",
+    "email": "string",
+    "id": "string",
+    "message": "string",
+    "page": "string",
+    "screenshot_path": "string",
+    "status": "string",
+    "ua": "string",
+    "version": "string"
+  },
+  "PATCH /admin/codes/{code}": {
+    "active": "boolean",
+    "code": "string",
+    "created_at": "string",
+    "created_by": "string",
+    "duration_months": "number",
+    "expires_at": "string",
+    "kind": "string",
+    "max_redemptions": "number",
+    "plan_codes": [
+      "string"
+    ],
+    "redeemed_count": "number",
+    "stripe_coupon_id": "string",
+    "value": "number"
+  },
+  "PATCH /admin/plans/{code}": {
+    "active": "boolean",
+    "code": "string",
+    "limits": {
+      "ask": "number",
+      "autopilot_rules": "number",
+      "bank_feeds": "number",
+      "docs": "number",
+      "invoices": "number",
+      "marketplaces": "number",
+      "multi_currency": "boolean",
+      "payroll_employees": "number",
+      "projects": "boolean",
+      "support": "string",
+      "users": "number"
+    },
+    "name": "string",
+    "price_month_pence": "number",
+    "price_year_pence": "number",
+    "sort": "number",
+    "stripe_price_month": "null",
+    "stripe_price_year": "null"
+  },
+  "PATCH /admin/users/{id}": {
+    "analytics_opt_out": "boolean",
+    "auth_kind": "string",
+    "auth_subject": "string",
+    "billing_interval": "string",
+    "cancel_at_period_end": "boolean",
+    "comp_until": "null",
+    "country": "null",
+    "created_at": "string",
+    "current_period_end": "null",
+    "display_name": "null",
+    "email": "string",
+    "id": "string",
+    "last_seen_at": "string",
+    "notes": "string",
+    "plan_code": "string",
+    "status": "string",
+    "stripe_customer_id": "string",
+    "stripe_subscription_id": "string",
+    "trial_ends_at": "string"
+  },
+  "POST /admin/codes": {
+    "active": "boolean",
+    "code": "string",
+    "created_at": "string",
+    "created_by": "string",
+    "duration_months": "number",
+    "expires_at": "string",
+    "kind": "string",
+    "max_redemptions": "number",
+    "plan_codes": [
+      "string"
+    ],
+    "redeemed_count": "number",
+    "stripe_coupon_id": "string",
+    "value": "number"
+  },
+  "POST /admin/users/{id}/actions (apply_code)": {
+    "account": {
+      "analytics_opt_out": "boolean",
+      "auth_kind": "string",
+      "auth_subject": "string",
+      "billing_interval": "string",
+      "cancel_at_period_end": "boolean",
+      "comp_until": "string",
+      "country": "null",
+      "created_at": "string",
+      "current_period_end": "null",
+      "display_name": "null",
+      "email": "string",
+      "id": "string",
+      "last_seen_at": "string",
+      "notes": "string",
+      "plan_code": "string",
+      "status": "string",
+      "stripe_customer_id": "string",
+      "stripe_subscription_id": "null",
+      "trial_ends_at": "string"
+    },
+    "message": "string",
+    "ok": "boolean"
+  },
+  "POST /admin/users/{id}/actions (extend_trial)": {
+    "account": {
+      "analytics_opt_out": "boolean",
+      "auth_kind": "string",
+      "auth_subject": "string",
+      "billing_interval": "string",
+      "cancel_at_period_end": "boolean",
+      "comp_until": "null",
+      "country": "null",
+      "created_at": "string",
+      "current_period_end": "null",
+      "display_name": "null",
+      "email": "string",
+      "id": "string",
+      "last_seen_at": "string",
+      "notes": "string",
+      "plan_code": "string",
+      "status": "string",
+      "stripe_customer_id": "string",
+      "stripe_subscription_id": "string",
+      "trial_ends_at": "string"
+    },
+    "ok": "boolean"
+  },
+  "POST /admin/users/{id}/actions (send_portal_link)": {
+    "account": {
+      "analytics_opt_out": "boolean",
+      "auth_kind": "string",
+      "auth_subject": "string",
+      "billing_interval": "string",
+      "cancel_at_period_end": "boolean",
+      "comp_until": "null",
+      "country": "null",
+      "created_at": "string",
+      "current_period_end": "null",
+      "display_name": "null",
+      "email": "string",
+      "id": "string",
+      "last_seen_at": "string",
+      "notes": "string",
+      "plan_code": "string",
+      "status": "string",
+      "stripe_customer_id": "string",
+      "stripe_subscription_id": "string",
+      "trial_ends_at": "string"
+    },
+    "ok": "boolean",
+    "url": "string"
+  },
+  "POST /billing/checkout": {
+    "url": "string"
+  },
+  "POST /billing/portal": {
+    "url": "string"
+  },
+  "POST /billing/redeem": {
+    "account": {
+      "analytics_opt_out": "boolean",
+      "billing_interval": "null",
+      "cancel_at_period_end": "boolean",
+      "comp_until": "null",
+      "configured": "boolean",
+      "current_period_end": "null",
+      "display_name": "null",
+      "email": "string",
+      "has_payment_account": "boolean",
+      "id": "string",
+      "limits": {
+        "ask": "number",
+        "autopilot_rules": "null",
+        "bank_feeds": "number",
+        "docs": "number",
+        "invoices": "null",
+        "marketplaces": "number",
+        "multi_currency": "boolean",
+        "payroll_employees": "number",
+        "projects": "boolean",
+        "support": "string",
+        "users": "number"
+      },
+      "own_ai": "boolean",
+      "payments_provider": "string",
+      "plan_code": "string",
+      "read_only": "boolean",
+      "status": "string",
+      "trial_ends_at": "string",
+      "upgrade_url": "string",
+      "usage": {
+        "ask": "number",
+        "autopilot_rules": "null",
+        "bank_feeds": "null",
+        "docs": "number",
+        "invoices": "number",
+        "marketplaces": "null",
+        "topup_docs_remaining": "number",
+        "topup_expires_at": "null",
+        "users": "null"
+      }
+    },
+    "code": "string",
+    "kind": "string",
+    "message": "string",
+    "ok": "boolean"
+  },
+  "POST /billing/topup": {
+    "url": "string"
+  },
+  "POST /bug-reports": {
+    "id": "string"
+  },
+  "POST /events (batch)": {
+    "accepted": "number",
+    "dropped": "number"
+  }
+}

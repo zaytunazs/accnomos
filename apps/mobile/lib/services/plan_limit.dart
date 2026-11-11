@@ -6,23 +6,49 @@ import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../widgets/web_only.dart' show webAppBase;
 import 'navigation.dart';
+import 'store_policy.dart';
 
 /// The web's Settings › Plan & billing page. The app never sells anything
 /// itself (no Google Play billing): plans, cards and top-ups are managed there.
 const planBillingUrl = '$webAppBase/settings#plan-billing';
 
-/// A refused request at a plan limit: HTTP 402 `{"code": "plan_limit"}`
-/// (docs/billing/PLANS_AND_CONTRACT.md), the same body the web's
-/// `lib/plan-limit.ts` reads, top level or under `detail`.
+/// A refused request: HTTP 402 from the runtime
+/// (services/runtime/app/billing/service.py), top level or under `detail`:
+///
+/// * `{"code": "plan_limit", "counter", "limit", "used", "upgrade_url", "detail"}`:
+///   an allowance is used up;
+/// * `{"code": "read_only", "status", "upgrade_url", "detail"}`: the trial
+///   ended or the plan was cancelled, so the books can be viewed and exported
+///   but nothing added.
+///
+/// The same bodies the web's `lib/plan-limit.ts` reads.
 class PlanLimitInfo {
-  const PlanLimitInfo({this.message, this.limitKey});
+  const PlanLimitInfo(
+      {this.code = 'plan_limit',
+      this.counter,
+      this.limit,
+      this.used,
+      this.status,
+      this.detail});
 
-  final String? message;
+  /// `plan_limit` or `read_only`.
+  final String code;
 
-  /// docs, ask, invoices, bank_feeds, users, marketplaces, payroll_employees, ...
-  final String? limitKey;
+  /// docs, ask, invoices, bank_feeds, users, marketplaces, payroll_employees,
+  /// autopilot_rules (plan_limit only).
+  final String? counter;
+  final int? limit;
+  final int? used;
 
-  /// Null unless [status] is 402 and the body says `plan_limit`.
+  /// trial_ended or cancelled (read_only only).
+  final String? status;
+
+  /// The runtime's own sentence.
+  final String? detail;
+
+  bool get readOnly => code == 'read_only';
+
+  /// Null unless [status] is 402 and the body is `plan_limit` or `read_only`.
   static PlanLimitInfo? parse(int status, String body) {
     if (status != 402) return null;
     Object? decoded;
@@ -34,12 +60,24 @@ class PlanLimitInfo {
     if (decoded is! Map) return null;
     final detail = decoded['detail'];
     final inner = detail is Map ? detail : decoded;
-    if (inner['code'] != 'plan_limit') return null;
     String? text(Object? v) => v is String && v.isNotEmpty ? v : null;
-    return PlanLimitInfo(
-      message: text(inner['message']),
-      limitKey: text(inner['limit']) ?? text(inner['limit_key']) ?? text(inner['feature']),
-    );
+    int? whole(Object? v) => v is int ? v : null;
+    switch (inner['code']) {
+      case 'plan_limit':
+        return PlanLimitInfo(
+          counter: text(inner['counter']),
+          limit: whole(inner['limit']),
+          used: whole(inner['used']),
+          detail: text(inner['detail']),
+        );
+      case 'read_only':
+        return PlanLimitInfo(
+          code: 'read_only',
+          status: text(inner['status']),
+          detail: text(inner['detail']),
+        );
+    }
+    return null;
   }
 
   static const _words = {
@@ -52,18 +90,38 @@ class PlanLimitInfo {
     'payroll_employees': 'payroll employees',
     'autopilot_rules': 'Autopilot rules',
   };
+  static const _monthly = {'docs', 'ask', 'invoices'};
+  static const _nothingLost =
+      'Nothing is lost: you can still approve, edit and export everything already in your books.';
 
-  /// Friendly, never blaming, and says nothing is locked away.
+  bool get _cancelled => status == 'cancelled';
+
+  /// The dialog's title.
+  String get title => readOnly
+      ? (_cancelled ? 'Your plan has been cancelled' : 'Your free trial has ended')
+      : "You have reached your plan's limit";
+
+  /// Friendly, never blaming, and says nothing is locked away. Never mentions
+  /// buying or a website: [PlanLimitDialog] adds that only where
+  /// [StorePolicy.purchaseLinksAllowed].
   String get sentence {
-    final what = _words[limitKey];
-    final lead = what != null
-        ? "You have reached this month's limit for $what on your plan."
-        : 'You have reached a limit on your plan.';
-    return '$lead Nothing is lost: you can still approve, edit and export everything already in your books.';
+    if (readOnly) {
+      final why = _cancelled ? 'Your plan has been cancelled' : 'Your free trial has ended';
+      return '$why, so your books are read-only. Everything is still there: you can view and export it.';
+    }
+    final what = _words[counter];
+    if (what == null) return 'You have reached a limit on your plan. $_nothingLost';
+    if (limit == 0) return 'Your plan does not include $what. $_nothingLost';
+    final all = limit == null ? 'all of' : 'all $limit of';
+    final lead = _monthly.contains(counter)
+        ? "You have used $all this month's $what on your plan."
+        : 'Your plan allows ${limit ?? 'a set number of'} $what, and that many are already set up.';
+    return '$lead $_nothingLost';
   }
 }
 
-/// The one dialog for every 402 plan limit, shown over whatever screen is open.
+/// The one dialog for every 402 (plan limit or read-only), shown over whatever
+/// screen is open.
 class PlanLimit {
   PlanLimit._();
 
@@ -89,47 +147,62 @@ class PlanLimit {
 }
 
 class PlanLimitDialog extends StatelessWidget {
-  const PlanLimitDialog({super.key, required this.info, this.open});
+  const PlanLimitDialog(
+      {super.key, required this.info, this.open, this.purchaseLinksAllowed});
 
   final PlanLimitInfo info;
 
   /// Test seam for opening the web page.
   final Future<void> Function(Uri uri)? open;
 
+  /// Test seam for [StorePolicy.purchaseLinksAllowed]. On iOS the dialog
+  /// says what happened and what still works, with no link, price or
+  /// "on the web" (App Store Review Guidelines 3.1.1 and 3.1.3).
+  final bool? purchaseLinksAllowed;
+
   @override
   Widget build(BuildContext context) {
+    final links = purchaseLinksAllowed ?? StorePolicy.purchaseLinksAllowed;
+    final String? where = !links
+        ? null
+        : info.readOnly
+            ? 'Choose a plan on the web to carry on adding and changing things.'
+            : 'You can buy 100 more documents or change plan on the web. Usage resets on the 1st of each month.';
     return AlertDialog(
       key: const Key('plan-limit-dialog'),
-      title: const Text("You have reached your plan's limit"),
+      title: Text(info.title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(info.sentence),
-          if (info.message != null) ...[
+          if (!info.readOnly && !links) ...[
             const SizedBox(height: 8),
-            Text(info.message!, style: const TextStyle(color: AccnomosColors.muted)),
+            const Text('Usage resets on the 1st of each month.',
+                style: TextStyle(color: AccnomosColors.muted)),
           ],
-          const SizedBox(height: 8),
-          const Text(
-              'You can buy 100 more documents or change plan on the web. Usage resets on the 1st of each month.',
-              style: TextStyle(color: AccnomosColors.muted)),
+          if (where != null) ...[
+            const SizedBox(height: 8),
+            Text(where, style: const TextStyle(color: AccnomosColors.muted)),
+          ],
         ],
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Not now'),
+          child: Text(links ? 'Not now' : 'OK'),
         ),
-        FilledButton(
-          key: const Key('plan-limit-open-web'),
-          onPressed: () async {
-            final uri = Uri.parse(planBillingUrl);
-            await (open ?? (u) => launchUrl(u, mode: LaunchMode.externalApplication))(uri);
-            if (context.mounted) Navigator.of(context).pop();
-          },
-          child: const Text('Manage plan on the web'),
-        ),
+        if (links)
+          FilledButton(
+            key: const Key('plan-limit-open-web'),
+            onPressed: () async {
+              final uri = Uri.parse(planBillingUrl);
+              await (open ??
+                  (u) => launchUrl(u, mode: LaunchMode.externalApplication))(uri);
+              if (context.mounted) Navigator.of(context).pop();
+            },
+            child: Text(info.readOnly ? 'Choose a plan on the web' : 'Manage plan on the web'),
+          ),
       ],
     );
   }

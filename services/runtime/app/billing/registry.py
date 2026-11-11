@@ -595,7 +595,7 @@ class MemoryRegistry(Registry):
     # bug reports
     async def add_bug_report(self, row: Row) -> Row:
         rid = str(uuid.uuid4())
-        rec = {"id": rid, "at": _now(), "status": "new", "admin_notes": None, **copy.deepcopy(row)}
+        rec = {"id": rid, "at": _now(), "status": "new", "admin_notes": None, "closed_at": None, **copy.deepcopy(row)}
         self.bug_reports[rid] = rec
         return copy.deepcopy(rec)
 

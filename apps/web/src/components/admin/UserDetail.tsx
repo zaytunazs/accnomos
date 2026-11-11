@@ -7,7 +7,7 @@ import AdminFrame, { ConfirmDialog, ErrorLine, card, h2, input, td, th, useLoad 
 import { fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { adminApi } from "@/lib/billing-api";
 import { PLAN_CODES, PLAN_NAMES, STATUS_LABEL, longDate, money, type PlanCode } from "@/lib/billing";
-import type { AdminAction, AdminUserPatch } from "@/lib/admin";
+import { fromUnix, type AdminAction, type AdminUserPatch } from "@/lib/admin";
 
 export default function UserDetail() {
   const [id, setId] = useState<string | null>(null);
@@ -48,7 +48,7 @@ function Body({ account, id }: { account: AccountInfo; id: string }) {
       body,
       run: async () => {
         const r = await adminApi.action(account, id, action);
-        setNotice(r.message ?? "Done.");
+        setNotice(r.url ? `Portal link, valid for a short time: ${r.url}` : (r.message ?? "Done."));
       },
     });
   const patch = (title: string, body: ReactNode, p: AdminUserPatch) =>
@@ -116,7 +116,7 @@ function Body({ account, id }: { account: AccountInfo; id: string }) {
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" className={secondaryButton} onClick={() => act("Cancel at period end", <>Cancel the subscription of {a.email} at the end of the current period? They keep access until then.</>, { action: "cancel_at_period_end" })}>Cancel at period end</button>
           <button type="button" className={secondaryButton} onClick={() => act("Resume subscription", <>Resume the subscription of {a.email}, undoing a pending cancellation?</>, { action: "resume" })}>Resume</button>
-          <button type="button" className={secondaryButton} onClick={() => act("Send portal link", <>Email {a.email} a link to their Stripe billing portal?</>, { action: "send_portal_link" })}>Send portal link</button>
+          <button type="button" className={secondaryButton} onClick={() => act("Send portal link", <>Make a link to the Stripe billing portal of {a.email}? It is shown here for you to send; nothing is emailed.</>, { action: "send_portal_link" })}>Send portal link</button>
           <button type="button" className={secondaryButton} onClick={() => act("Grant top-up", <>Give {a.email} 100 extra AI-read documents, free of charge, valid for 12 months?</>, { action: "grant_topup", docs: 100 })}>Grant top-up (100 documents)</button>
         </div>
       </section>
@@ -132,15 +132,17 @@ function Body({ account, id }: { account: AccountInfo; id: string }) {
 
       <section aria-labelledby="u-stripe" className={card}>
         <h2 id="u-stripe" className={h2}>Stripe</h2>
-        {!data.stripe || (!data.stripe.customer_id && !sub) ? <p className="mt-1 text-sm text-muted">No Stripe customer yet (no card added).</p> : (
+        {!data.stripe ? <p className="mt-1 text-sm text-muted">No Stripe customer yet (no card added), or Stripe is not set up on this server.</p> : (
           <>
             <dl className="mt-2 divide-y divide-border">
-              {dl("Customer", data.stripe.customer_id ?? "—")}
+              {dl("Customer", data.stripe.customer || "—")}
               {sub && dl("Subscription", `${sub.status}${sub.cancel_at_period_end ? ", cancels at period end" : ""}`)}
-              {sub && dl("Current period ends", longDate(sub.current_period_end))}
+              {sub && dl("Current period ends", longDate(fromUnix(sub.current_period_end)))}
+              {sub?.trial_end ? dl("Stripe trial ends", longDate(fromUnix(sub.trial_end))) : null}
             </dl>
+            {data.stripe.error && <p role="alert" className="mt-2 text-sm font-bold text-red-700">Stripe: {data.stripe.error}</p>}
             {data.stripe.invoices.length > 0 && (
-              <ul className="mt-2 text-sm">{data.stripe.invoices.map((i) => <li key={i.id} className="flex justify-between border-t border-border py-1.5"><span>{longDate(i.created)} · {i.status}</span><span>{money(i.amount_pence)}</span></li>)}</ul>
+              <ul className="mt-2 text-sm">{data.stripe.invoices.map((i) => <li key={i.id} className="flex justify-between border-t border-border py-1.5"><span>{longDate(fromUnix(i.created))} · {i.number ?? i.id} · {i.status}</span><span>{i.hosted_invoice_url ? <a href={i.hosted_invoice_url} target="_blank" rel="noreferrer" className="font-bold text-teal-dark underline underline-offset-2">{money(i.total)}</a> : money(i.total)}{i.currency && i.currency !== "gbp" ? ` ${i.currency.toUpperCase()}` : ""}</span></li>)}</ul>
             )}
           </>
         )}
@@ -148,13 +150,13 @@ function Body({ account, id }: { account: AccountInfo; id: string }) {
 
       <section aria-labelledby="u-redeem" className={card}>
         <h2 id="u-redeem" className={h2}>Redemptions</h2>
-        {data.redemptions.length === 0 ? <p className="mt-1 text-sm text-muted">No codes redeemed.</p> : <ul className="mt-1 text-sm">{data.redemptions.map((r) => <li key={r.code + r.redeemed_at}>{r.code} · {longDate(r.redeemed_at)}</li>)}</ul>}
+        {data.redemptions.length === 0 ? <p className="mt-1 text-sm text-muted">No codes redeemed.</p> : <ul className="mt-1 text-sm">{data.redemptions.map((r) => <li key={r.id}>{r.code} · {longDate(r.redeemed_at)}</li>)}</ul>}
       </section>
 
       <section aria-labelledby="u-notes" className={card}>
         <h2 id="u-notes" className={h2}>Notes</h2>
-        <textarea aria-label="Notes" className="mt-2 w-full rounded-xl border border-border p-3 text-sm" rows={4} value={notes ?? data.notes} onChange={(e) => setNotes(e.target.value)} />
-        <button type="button" className={`${primaryButton} mt-2`} disabled={notes === null || notes === data.notes} onClick={() => patch("Save notes", <>Save these notes on {a.email}? Support notes are visible only to administrators.</>, { notes: notes ?? "" })}>Save notes</button>
+        <textarea aria-label="Notes" className="mt-2 w-full rounded-xl border border-border p-3 text-sm" rows={4} value={notes ?? data.notes ?? ""} onChange={(e) => setNotes(e.target.value)} />
+        <button type="button" className={`${primaryButton} mt-2`} disabled={notes === null || notes === (data.notes ?? "")} onClick={() => patch("Save notes", <>Save these notes on {a.email}? Support notes are visible only to administrators.</>, { notes: notes ?? "" })}>Save notes</button>
       </section>
 
       <section aria-labelledby="u-audit" className={card}>

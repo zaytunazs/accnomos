@@ -84,9 +84,15 @@ def code_problem(row: Row | None, plan_code: str | None, at: datetime) -> str | 
 
 
 def stripe_or_503() -> stripe_api.StripeBilling:
+    from app.billing import payments
+
+    if not payments.taking_payments():
+        raise HTTPException(
+            503, "Paid plans can't be bought on this server. Your free trial and promo codes work as usual."
+        )
     client = stripe_api.client()
     if client is None:
-        raise HTTPException(503, "Card payments are not set up on this server yet")
+        raise HTTPException(503, "Card payments are not set up on this server")
     return client
 
 

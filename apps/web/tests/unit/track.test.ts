@@ -31,7 +31,7 @@ test("events are batched: one send after the timer, with the app and version", a
 
 test("a full batch is sent at once", async () => {
   const { t, sent } = make({ maxBatch: 3 });
-  for (let i = 0; i < 3; i++) t.track(`e${i}`);
+  for (let i = 0; i < 3; i++) t.track(`event_${i}`);
   await Promise.resolve();
   assert.equal(sent.length, 1);
   assert.equal(sent[0].length, 3);
@@ -40,9 +40,9 @@ test("a full batch is sent at once", async () => {
 test("opted out: nothing is queued or sent, and what waited is dropped", async () => {
   let out = false;
   const { t, sent } = make({ optedOut: () => out });
-  t.track("before");
+  t.track("before_x");
   out = true;
-  t.track("after");
+  t.track("after_x");
   await t.flush();
   assert.equal(sent.length, 0);
   assert.equal(t.pending(), 0);
@@ -50,7 +50,7 @@ test("opted out: nothing is queued or sent, and what waited is dropped", async (
 
 test("discard clears the queue", () => {
   const { t } = make();
-  t.track("x");
+  t.track("page_view");
   t.discard();
   assert.equal(t.pending(), 0);
 });
@@ -59,8 +59,21 @@ test("properties keep counts and short labels, never money, people or files", ()
   assert.deepEqual(cleanProps({ page: "/vat", count: 3, ok: true, amount: 12.5, supplier_name: "Novex", email: "a@b.c", note: "a@b.com", long: "x".repeat(60), file: "r.pdf", nested: { a: 1 } }), { page: "/vat", count: 3, ok: true });
 });
 
+test("only what the runtime's property rules accept is kept", () => {
+  assert.deepEqual(cleanProps({ page: "/Review Page", feature: "Acme Ltd", plan: "gold", count: 1.5, source: "settings", interval: "year" }), { source: "settings", interval: "year" });
+  assert.deepEqual(cleanProps({ limit: "docs", from: "settings" }), {});
+});
+
+test("names the runtime records itself, or would refuse, are never queued", () => {
+  const { t } = make();
+  for (const n of ["signup", "ask", "api_error", "Bad-Name", "x", ""]) t.track(n);
+  assert.equal(t.pending(), 0);
+  t.track("ask_question");
+  assert.equal(t.pending(), 1);
+});
+
 test("a failing send never throws", async () => {
   const t = createTracker({ send: async () => { throw new Error("offline"); }, optedOut: () => false, version: "1", setTimer: () => 0, clearTimer: () => undefined });
-  t.track("x");
+  t.track("page_view");
   await t.flush();
 });

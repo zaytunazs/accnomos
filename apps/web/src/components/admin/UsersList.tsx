@@ -20,7 +20,7 @@ function Body({ account }: { account: Parameters<typeof adminApi.users>[0] }) {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const { data, error } = useLoad(() => adminApi.users(account, { q, plan, status, page }), [account, q, plan, status, page]);
-  const pages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
+  const pages = data ? Math.max(1, Math.ceil(data.total / data.per_page)) : 1;
   return (
     <section className={card} aria-label="Users">
       <div className="flex flex-wrap gap-2">

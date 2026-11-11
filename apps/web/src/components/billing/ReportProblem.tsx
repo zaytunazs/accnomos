@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Modal, { fieldArea, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { useAccount } from "@/components/jobs/useAccount";
 import { supportApi } from "@/lib/billing-api";
-import { REPORT_PROBLEM_EVENT, takeReportRequest } from "@/lib/report-problem";
+import { REPORT_PROBLEM_EVENT, reportClosed, reportRequested } from "@/lib/report-problem";
 import { APP_VERSION } from "@/lib/version";
 
 
@@ -22,7 +22,11 @@ function readAsBase64(file: File): Promise<string> {
 /** Help › Report a problem: a message and, if you like, a screenshot from your device. Sends the page, app version and browser. */
 export default function ReportProblem() {
   const account = useAccount();
-  const [open, setOpen] = useState(() => takeReportRequest());
+  const [open, setOpenState] = useState(() => reportRequested());
+  const setOpen = (v: boolean) => {
+    if (!v) reportClosed();
+    setOpenState(v);
+  };
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
@@ -31,7 +35,6 @@ export default function ReportProblem() {
 
   useEffect(() => {
     const on = () => {
-      takeReportRequest();
       setPage(window.location.pathname);
       setMessage("");
       setFile(null);

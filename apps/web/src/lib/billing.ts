@@ -4,13 +4,36 @@
  * Prices are pence, ex VAT; UK VAT (20 %) is added at checkout and shown beside them.
  */
 
+import type { PaymentsProvider } from "./payments";
+
 export type PlanCode = "starter" | "comprehensive" | "ultimate";
 export type BillingStatus = "trialing" | "active" | "past_due" | "trial_ended" | "cancelled" | "comped";
 export type BillingInterval = "month" | "year";
 
 /** One limit: a number, null for unlimited, true/false for included/not included, text for a service level. */
 export type LimitValue = number | boolean | string | null;
-export type PlanLimits = Record<string, LimitValue | undefined>;
+
+/**
+ * A plan's limits, as GET /plans, GET /account and the admin's plans carry them (services/runtime/app/billing/plans.py).
+ * Counters are a whole number (0: not on this plan) or null (unlimited); the features are booleans; `support` is
+ * `email` or `priority_email`.
+ */
+export interface PlanLimits {
+  users: number | null;
+  docs: number | null;
+  ask: number | null;
+  bank_feeds: number | null;
+  invoices: number | null;
+  marketplaces: number | null;
+  payroll_employees: number | null;
+  autopilot_rules: number | null;
+  multi_currency: boolean;
+  projects: boolean;
+  support: "email" | "priority_email";
+}
+export type LimitKey = keyof PlanLimits;
+/** The counters a 402 plan_limit can name (`counter`): monthly allowances and what is set up. */
+export type CounterKey = Exclude<LimitKey, "multi_currency" | "projects" | "support">;
 
 export const PLAN_CODES: PlanCode[] = ["starter", "comprehensive", "ultimate"];
 export const VAT_RATE = 0.2;
@@ -28,30 +51,68 @@ export interface RtPlan {
   limits: PlanLimits;
 }
 
-/** What GET /account returns for this month's use. */
+/**
+ * GET /account `usage`: this month's counts (`docs`, `ask`, `invoices`) and what is set up now. A set-up count is null
+ * when the runtime could not open the books to count it.
+ */
 export interface RtUsage {
   docs: number;
   ask: number;
   invoices: number;
-  bank_feeds: number;
-  users: number;
-  marketplaces: number;
+  bank_feeds: number | null;
+  users: number | null;
+  marketplaces: number | null;
+  autopilot_rules: number | null;
   topup_docs_remaining: number;
+  topup_expires_at: string | null;
 }
 
+/** GET /account (and PATCH /account) when billing is configured on the runtime. */
 export interface RtAccount {
+  configured: true;
   id: string;
   email: string;
+  display_name: string | null;
   plan_code: PlanCode;
   status: BillingStatus;
+  /** trial_ended or cancelled: everything can be viewed and exported, nothing added. */
+  read_only: boolean;
   trial_ends_at: string | null;
   comp_until: string | null;
   billing_interval: BillingInterval | null;
+  current_period_end: string | null;
+  cancel_at_period_end: boolean;
+  /** A Stripe customer exists (Manage card & invoices works). */
+  has_payment_account: boolean;
+  analytics_opt_out: boolean;
   usage: RtUsage;
   limits: PlanLimits;
   own_ai: boolean;
-  /** Not in the first contract: GET /account reports the opt-out so the toggle can show it (see docs/billing/ADMIN_UI_NOTES.md). */
-  analytics_opt_out?: boolean;
+  upgrade_url: string;
+  /** Who takes payment for plans (lib/payments.ts); `none`: nothing can be bought, so no buy buttons. */
+  payments_provider: PaymentsProvider;
+}
+
+/** GET /account when the runtime has no billing set up: every feature is available without limits. */
+export interface RtAccountOff {
+  configured: false;
+  detail: string;
+}
+
+export type RtAccountAnswer = RtAccount | RtAccountOff;
+
+/** POST /billing/redeem: `code` and `kind` are there when the code was found. */
+export interface RedeemResult {
+  ok: boolean;
+  message: string;
+  code?: string;
+  kind?: "percent" | "fixed" | "free_months";
+  account: RtAccount;
+}
+
+/** POST /billing/checkout, /billing/portal, /billing/topup: where to send the browser (Stripe). */
+export interface StripeRedirect {
+  url: string;
 }
 
 /** The plans as the contract sets them, used until (and if) GET /plans answers: a signed-out visitor sees prices at once. */
@@ -61,21 +122,21 @@ export const DEFAULT_PLANS: RtPlan[] = [
     name: "Starter",
     price_month_pence: 1000,
     price_year_pence: 10000,
-    limits: { users: 1, docs: 50, ask: 100, bank_feeds: 1, invoices: 20, marketplaces: 0, payroll_employees: 0, autopilot_rules: 5, multicurrency: false, support: "Email" },
+    limits: { users: 1, docs: 50, ask: 100, bank_feeds: 1, invoices: 20, marketplaces: 0, payroll_employees: 0, autopilot_rules: 5, multi_currency: false, projects: false, support: "email" },
   },
   {
     code: "comprehensive",
     name: "Comprehensive",
     price_month_pence: 2000,
     price_year_pence: 20000,
-    limits: { users: 3, docs: 300, ask: 500, bank_feeds: 3, invoices: null, marketplaces: 1, payroll_employees: 3, autopilot_rules: null, multicurrency: false, support: "Email" },
+    limits: { users: 3, docs: 300, ask: 500, bank_feeds: 3, invoices: null, marketplaces: 1, payroll_employees: 3, autopilot_rules: null, multi_currency: false, projects: false, support: "email" },
   },
   {
     code: "ultimate",
     name: "Ultimate",
     price_month_pence: 5000,
     price_year_pence: 50000,
-    limits: { users: 10, docs: 1500, ask: 3000, bank_feeds: null, invoices: null, marketplaces: null, payroll_employees: 20, autopilot_rules: null, multicurrency: true, support: "Priority email" },
+    limits: { users: 10, docs: 1500, ask: 3000, bank_feeds: null, invoices: null, marketplaces: null, payroll_employees: 20, autopilot_rules: null, multi_currency: true, projects: true, support: "priority_email" },
   },
 ];
 
@@ -87,7 +148,7 @@ export const WHO_FOR: Record<PlanCode, string> = {
 
 /** A row of the limits table. `key` is the limit's name in `limits` (null: the same on every plan, `all` says what). */
 export interface LimitRow {
-  key: string | null;
+  key: LimitKey | null;
   label: string;
   note?: string;
   /** Rows that do not come from `limits`: the same for each plan. */
@@ -105,9 +166,12 @@ export const LIMIT_ROWS: LimitRow[] = [
   { key: null, label: "Income Tax: Self Assessment and quarterly figures", all: true },
   { key: "payroll_employees", label: "Payroll (employees)", note: "Up to" },
   { key: "autopilot_rules", label: "Autopilot rules" },
-  { key: "multicurrency", label: "Multi-currency, projects and job costing" },
+  { key: "multi_currency", label: "Multi-currency, projects and job costing" },
   { key: "support", label: "Support" },
 ];
+
+/** `support` in words. */
+export const SUPPORT_LABEL: Record<string, string> = { email: "Email", priority_email: "Priority email" };
 
 /** The text in one cell of the limits table. */
 export function formatLimit(v: LimitValue | undefined, opts: { upTo?: boolean } = {}): string {
@@ -115,7 +179,7 @@ export function formatLimit(v: LimitValue | undefined, opts: { upTo?: boolean } 
   if (v === undefined || v === false || v === 0) return "—";
   if (v === true) return "Included";
   if (typeof v === "number") return `${opts.upTo ? "Up to " : ""}${v.toLocaleString("en-GB")}`;
-  return v;
+  return SUPPORT_LABEL[v] ?? v;
 }
 
 /** Whether a limit means "no cap": null, or a negative number. */
@@ -124,7 +188,7 @@ export const isUnlimited = (v: LimitValue | undefined): boolean => v === null ||
 /** A row's value for a plan: the live plan from GET /plans when it has the key, else the contract's table. */
 export function limitFor(row: LimitRow, code: PlanCode, plans: RtPlan[] = DEFAULT_PLANS): LimitValue | undefined {
   if (row.key === null) return row.all;
-  const live = plans.find((p) => p.code === code)?.limits;
+  const live: Partial<PlanLimits> | undefined = plans.find((p) => p.code === code)?.limits;
   if (live && row.key in live) return live[row.key];
   return DEFAULT_PLANS.find((p) => p.code === code)?.limits[row.key];
 }
@@ -188,20 +252,26 @@ export interface Meter {
   extra?: string;
 }
 
-const METERS: { key: keyof RtUsage; label: string }[] = [
+const METERS: { key: Exclude<keyof RtUsage, "topup_docs_remaining" | "topup_expires_at"> & CounterKey; label: string }[] = [
   { key: "docs", label: "AI-read documents" },
   { key: "ask", label: "Ask questions" },
   { key: "invoices", label: "Sales invoices and quotes" },
   { key: "bank_feeds", label: "Live bank feeds" },
   { key: "users", label: "Users" },
   { key: "marketplaces", label: "Marketplace connections" },
+  { key: "autopilot_rules", label: "Autopilot rules" },
 ];
 
-/** Usage against limits for the meters. Rows the plan does not include (limit 0) are left out unless something is used. */
+/**
+ * Usage against limits for the meters. Rows the plan does not include (limit 0) are left out unless something is used,
+ * and so is a set-up count the runtime could not read (null).
+ */
 export function usageMeters(a: Pick<RtAccount, "usage" | "limits" | "own_ai">): Meter[] {
   const out: Meter[] = [];
   for (const m of METERS) {
-    const used = a.usage[m.key] ?? 0;
+    const counted = a.usage[m.key];
+    if (counted === null || counted === undefined) continue;
+    const used = counted;
     const raw = a.limits[m.key];
     const unlimited = isUnlimited(raw) || ((m.key === "docs" || m.key === "ask") && a.own_ai);
     const limit = unlimited ? null : typeof raw === "number" ? raw : 0;

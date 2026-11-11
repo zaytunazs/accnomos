@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { DEFAULT_PLANS, LIMIT_ROWS, PLAN_CODES, annualSaving, daysUntil, formatLimit, limitCell, money, trialReminder, usageMeters, withVat, type RtAccount } from "../../src/lib/billing.ts";
+import { DEFAULT_PLANS, LIMIT_ROWS, PLAN_CODES, annualSaving, daysUntil, formatLimit, limitCell, money, trialReminder, usageMeters, withVat, type RtAccount, type RtPlan } from "../../src/lib/billing.ts";
 import { scrub } from "../../src/lib/sentry.ts";
 
 const grid = (plans = DEFAULT_PLANS) => Object.fromEntries(LIMIT_ROWS.map((r) => [r.label, PLAN_CODES.map((c) => limitCell(r, c, plans))]));
@@ -21,7 +21,8 @@ test("the limits table is the contract's, row by row", () => {
 });
 
 test("live limits from GET /plans win over the table; missing keys fall back", () => {
-  const live = DEFAULT_PLANS.map((p) => (p.code === "starter" ? { ...p, limits: { docs: 75 } } : p));
+  // a hand-edited plans row may lack keys: those fall back to the contract's table
+  const live = DEFAULT_PLANS.map((p) => (p.code === "starter" ? { ...p, limits: { docs: 75 } as unknown as RtPlan["limits"] } : p));
   const g = grid(live);
   assert.equal(g["AI-read documents"][0], "75");
   assert.equal(g["Users"][0], "1");
@@ -43,9 +44,11 @@ test("prices: ex VAT, with VAT and the annual saving (2 months free)", () => {
 });
 
 const acct = (over: Partial<RtAccount> = {}): RtAccount => ({
-  id: "1", email: "a@b.c", plan_code: "starter", status: "trialing", trial_ends_at: "2026-12-01T00:00:00Z", comp_until: null, billing_interval: null,
-  usage: { docs: 45, ask: 10, invoices: 20, bank_feeds: 1, users: 1, marketplaces: 0, topup_docs_remaining: 100 },
-  limits: DEFAULT_PLANS[0].limits, own_ai: false, ...over,
+  configured: true, id: "1", email: "a@b.c", display_name: null, plan_code: "starter", status: "trialing", read_only: false,
+  trial_ends_at: "2026-12-01T00:00:00Z", comp_until: null, billing_interval: null, current_period_end: null, cancel_at_period_end: false,
+  has_payment_account: false, analytics_opt_out: false,
+  usage: { docs: 45, ask: 10, invoices: 20, bank_feeds: 1, users: 1, marketplaces: 0, autopilot_rules: 6, topup_docs_remaining: 100, topup_expires_at: "2027-10-01T00:00:00Z" },
+  limits: DEFAULT_PLANS[0].limits, own_ai: false, upgrade_url: "https://accnomos.com/settings/billing", payments_provider: "none", ...over,
 });
 
 test("trial reminder: only while trialing and in the last 14 days", () => {
@@ -63,6 +66,9 @@ test("usage meters: against the limits, near and full, unlimited, own AI", () =>
   assert.equal(m.docs.extra, "100 top-up documents left");
   assert.equal(m.invoices.state, "full");
   assert.equal(m.marketplaces, undefined); // not on this plan and unused
+  assert.equal(m.autopilot_rules.state, "full"); // 6 of 5
+  const unread = usageMeters(acct({ usage: { ...acct().usage, bank_feeds: null } })).map((x) => x.key);
+  assert.ok(!unread.includes("bank_feeds")); // the runtime could not count it: no meter rather than a wrong one
   const own = Object.fromEntries(usageMeters(acct({ own_ai: true })).map((x) => [x.key, x]));
   assert.equal(own.docs.limit, null);
 });

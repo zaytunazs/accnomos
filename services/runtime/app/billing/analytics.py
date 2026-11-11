@@ -1,6 +1,7 @@
 """First-party product analytics and bug reports (docs/billing/PLANS_AND_CONTRACT.md, "Analytics").
 
-    POST /events        {name, props, app, version}  (signed in; dropped silently when opted out; rate-limited)
+    POST /events        {name, props, app, version}, or a batch {events: [{name, props, app, version}, ...]} of up to
+                        20 (signed in; dropped silently when opted out; rate-limited per event, batch or not)
     POST /bug-reports   {message, page, app, version, ua, screenshot_b64?} -> {id}
 
 Events never carry amounts, supplier or person names, document text, emails or file names. That is enforced, not
@@ -128,22 +129,56 @@ class EventIn(StrictBody):
     version: str | None = Field(default=None, max_length=40)
 
 
-@router.post("/events", status_code=202, response_model=None)
-async def post_event(body: EventIn, acc: Annotated[Row | None, Depends(maybe_account)]) -> Response:
-    reg = R.registry()
-    if reg is None or acc is None:
-        return Response(status_code=202)  # nowhere to keep it: dropped
+MAX_BATCH = 20
+
+
+class EventBatchIn(StrictBody):
+    events: list[EventIn] = Field(min_length=1, max_length=MAX_BATCH)
+
+
+def check_event(body: EventIn) -> None:
+    """422 unless the event is one a client may send, with allowed properties only."""
     if not NAME_RE.fullmatch(body.name) or body.name in SERVER_ONLY:
         raise HTTPException(422, "Event name not allowed")
     validate_props(body.props)
     if body.version is not None and not VERSION_RE.fullmatch(body.version):
         raise HTTPException(422, "Bad version")
-    if (refusal := _limited(EVENTS_LIMITER, acc["id"])) is not None:
-        return refusal
-    if acc.get("analytics_opt_out"):
-        return Response(status_code=202)  # opted out: dropped silently
-    await S.emit(reg, acc, body.name, body.props, app=body.app)
-    return Response(status_code=202)
+
+
+@router.post("/events", status_code=202, response_model=None)
+async def post_event(
+    body: EventIn | EventBatchIn, acc: Annotated[Row | None, Depends(maybe_account)]
+) -> Response | dict[str, int]:
+    """One event (202, no body), or a batch: each event is checked on its own, so one the rules refuse is dropped
+    without losing the rest (202 `{accepted, dropped}`). Every event takes one token from the account's rate limit;
+    once it runs out the remaining events are dropped and the answer is 429."""
+    reg = R.registry()
+    batch = body.events if isinstance(body, EventBatchIn) else None
+    if reg is None or acc is None:
+        return Response(status_code=202) if batch is None else {"accepted": 0, "dropped": len(batch)}
+    if batch is None:
+        assert isinstance(body, EventIn)
+        check_event(body)
+        if (refusal := _limited(EVENTS_LIMITER, acc["id"])) is not None:
+            return refusal
+        if not acc.get("analytics_opt_out"):  # opted out: dropped silently
+            await S.emit(reg, acc, body.name, body.props, app=body.app)
+        return Response(status_code=202)
+    accepted = dropped = 0
+    for event in batch:
+        try:
+            check_event(event)
+        except HTTPException:
+            dropped += 1
+            continue
+        if (refusal := _limited(EVENTS_LIMITER, acc["id"])) is not None:
+            return refusal
+        if acc.get("analytics_opt_out"):
+            dropped += 1
+            continue
+        await S.emit(reg, acc, event.name, event.props, app=event.app)
+        accepted += 1
+    return {"accepted": accepted, "dropped": dropped}
 
 
 MAX_SCREENSHOT = 2 * 1024 * 1024

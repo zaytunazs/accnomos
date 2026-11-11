@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -9,6 +7,7 @@ import '../services/demo.dart';
 import '../services/navigation.dart';
 import '../services/plan_limit.dart' show planBillingUrl;
 import '../services/region.dart';
+import '../services/store_policy.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
@@ -59,10 +58,13 @@ Future<void> _openPlanBilling(BuildContext context) async {
 Future<void> _openReport(BuildContext context) => showReportProblem(context);
 
 /// The last rows of every More, business and household books alike. Plan &
-/// billing is not offered on iOS (no purchase links there; the iOS branch's
-/// StorePolicy.purchaseLinksAllowed replaces this check when merged).
-List<MoreEntry> get _accountEntries => [
-      if (!Platform.isIOS)
+/// billing opens the web, so it is left out where the store does not allow a
+/// purchase link ([StorePolicy.purchaseLinksAllowed]: iOS).
+List<MoreEntry> get _accountEntries => accountEntries(StorePolicy.purchaseLinksAllowed);
+
+/// [_accountEntries] for a store that does, or does not, allow purchase links.
+List<MoreEntry> accountEntries(bool purchaseLinksAllowed) => [
+      if (purchaseLinksAllowed)
         const MoreEntry(Icons.workspace_premium_outlined, 'Plan & billing',
             'Your plan, usage and invoices, on the web', null,
             action: _openPlanBilling),

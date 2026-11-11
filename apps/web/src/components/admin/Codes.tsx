@@ -39,16 +39,21 @@ function Body({ account }: { account: AccountInfo }) {
   const valid = form && form.code.trim() && Number(form.value) > 0 && (form.kind !== "percent" || Number(form.value) <= 100);
 
   async function save(f: Form) {
-    const body = {
-      kind: f.kind,
-      value: f.kind === "fixed" ? Math.round(Number(f.value)) : Number(f.value),
+    // The kind and value of a code are fixed once made (PATCH takes only these four).
+    const limits = {
       plan_codes: f.plans.length ? f.plans : null,
       max_redemptions: f.max ? Number(f.max) : null,
       expires_at: f.expires ? `${f.expires}T23:59:59Z` : null,
       active: f.active,
     };
-    if (f.editing) await adminApi.patchCode(account, f.code, body);
-    else await adminApi.createCode(account, { code: f.code.trim().toUpperCase(), ...body });
+    if (f.editing) await adminApi.patchCode(account, f.code, limits);
+    else
+      await adminApi.createCode(account, {
+        code: f.code.trim().toUpperCase(),
+        kind: f.kind,
+        value: f.kind === "fixed" ? Math.round(Number(f.value)) : Number(f.value),
+        ...limits,
+      });
     setPending(null);
     setForm(null);
     reload();

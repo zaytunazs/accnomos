@@ -48,9 +48,20 @@ def handle(request: httpx.Request) -> httpx.Response:
             "id": path.rsplit("/", 1)[-1],
             "status": "active",
             "cancel_at_period_end": form.get("cancel_at_period_end") == "true",
+            "current_period_end": 1_800_000_000,
+            "trial_end": None,
         }
     elif path == "/v1/invoices" and method == "GET":
-        out = {"data": [], "has_more": False}
+        invoice = {
+            "id": "in_fake1",
+            "number": "ACC-0001",
+            "status": "paid",
+            "total": 2400,
+            "currency": "gbp",
+            "created": 1_790_000_000,
+            "hosted_invoice_url": "https://invoice.stripe.test/i/in_fake1",
+        }
+        out = {"data": [invoice], "has_more": False}
     else:
         return httpx.Response(404, json={"error": {"message": f"fake: no {method} {path}"}})
     return httpx.Response(200, json=out)
