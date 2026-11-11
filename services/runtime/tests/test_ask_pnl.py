@@ -147,7 +147,8 @@ async def test_demo_vat_jul_sep_unchanged_and_oct_dec_sensible(company: Books) -
     q3 = box_amounts(compute_vat_return(events, "26A3", date(2026, 7, 1), date(2026, 9, 30)))
     assert (q3[1], q3[4], q3[5], q3[6], q3[7]) == ("3857.63", "50.30", "3807.33", "19288", "1698")  # as filed
     q4 = box_amounts(compute_vat_return(events, "26A4", date(2026, 10, 1), date(2026, 12, 31)))
-    assert (q4[1], q4[4], q4[5], q4[6]) == ("646.00", "148.18", "497.82", "3230")  # the recent sales and costs
+    # the recent sales and costs, and the three bills to pay through PayPal (input VAT £19.00 + £25.60 + £21.00)
+    assert (q4[1], q4[4], q4[5], q4[6]) == ("646.00", "213.78", "432.22", "3230")
     review = [p for p in await company.list_proposals() if p.status != "posted"]
     assert len(review) == 6  # Review still shows "6 waiting for you": the recent documents are all approved
 
