@@ -1,68 +1,94 @@
-# PayPal AI Hackathon: demo video script
+# PayPal AI Hackathon: demo video script (v2, 11 Nov 2026)
 
-Target length **2:45** (hard limit 2:50; the rules allow under 3:00). Narration is 313 words at about 150 words a
-minute (2:05 of speech); the rest is screen time between lines. Voice: the existing voice-over tool, voice `bf_emma`
-(`docs/submission/paypal/narration/render.sh`). Click paths, the pre-recording checklist and what to blur are in
-[`SHOT_LIST.md`](SHOT_LIST.md); per-scene narration files are in [`narration/`](narration/).
+Planned length **2:48** (hard limit 2:50; the rules allow under 3:00). Three parts:
 
-**Pitch (one sentence, kept to throughout):** Accnomos keeps a UK small business's books in its own OneDrive or Google
-Drive and files VAT to HMRC; PayPal is where it gets paid and pays its bills.
+1. **PRESENTER intro**, 10 s: the founder, first person, either on camera or a clearly labelled AI presenter (the
+   owner decides).
+2. **PayPal hero scenes**, 1:45: what small businesses want most and other bookkeeping apps don't do. The AI fetches
+   PayPal's own data and explains it, code does the sums, the owner approves.
+3. **Montage**, 45 s: the rest of the app, 2–4 s a shot with captions, so judges see the full range. Then the
+   **PRESENTER outro**, 8 s.
+
+Narration: 328 words, about 2:11 of speech at 150 words a minute. Voice: female, British, `bf_emma`, through the
+existing voice-over tool (`docs/submission/paypal/narration/render.sh`). Click paths, the checklist and the blur list
+are in [`SHOT_LIST.md`](SHOT_LIST.md).
+
+**Pitch (kept to throughout):** Accnomos keeps a UK small business's books in its own OneDrive or Google Drive and files
+VAT to HMRC; PayPal is where it gets paid and pays its bills.
 
 **Rules this script follows**
 
-- Under 3 minutes, public on YouTube, the project shown working on the device it was built for: the web app in a
-  desktop browser (the Android app has no PayPal screen, so there is no phone shot).
-- PayPal is the centre: every scene after the pitch is a PayPal call or its result in the books.
-- No third-party logos or music. PayPal's name is used as the sponsor; PayPal's own sandbox checkout pages appear in
-  scene p3 as they are. Background music, if any, must be original or licensed for this use (none is planned).
-- Only fictional data: the sample books' business, customers and suppliers; sandbox buyer and payee accounts.
-- Honest limits on screen: sandbox only (p2, p3 captions); PayPal's reporting lag with its refresh time (p4, p5);
-  payouts cannot be future-dated in PayPal (p6). Every claim is one `docs/HONESTY.md` allows.
-- The AI is described only as "the AI": no model names, no Settings › AI, no model bylines on screen (blur them where a
-  card shows one, see SHOT_LIST.md). Autopilot, voice and chat apps are not in this video.
+- Under 3 minutes, public on YouTube, shown working on the devices it was built for: the web app in a desktop browser,
+  plus the Android app in the montage. The Android app has no PayPal screens, so the hero scenes are all on the web.
+- PayPal is central: every hero scene is a PayPal API call or its result in the books.
+- No third-party logos and no music unless it is original or licensed. PayPal is named as the sponsor. The demo's
+  PayPal sample history uses fictional suppliers.
+- Fictional data only. Sandbox only, and the video says so (captions and outro).
+- No model names, no Settings › AI page, no model bylines on screen (blur them, see SHOT_LIST.md). The AI is "the AI".
+- Every claim is one `docs/HONESTY.md` allows. Where it matters: "How much is in PayPal?" is answered from the books'
+  PayPal account (filled by Sync PayPal), and the tie-out is what reads PayPal's live balance. The narration says
+  exactly that.
 
 ## Scenes
 
-Times are the planned cut. "Narration" is spoken and captioned verbatim (spoken-only fixes are in
-`narration/lines.json` under `say`).
+"Narration" is spoken and captioned word for word (spoken-only spellings are under `say` in `narration/lines.json`).
 
 | # | Time | Screen / route | Action | Narration | On-screen caption |
 |---|---|---|---|---|---|
-| p0 | 0:00–0:10 | `/invoices` (signed-in sandbox books), invoice DEMO-1001 row with **Paid** chip; quick cuts (1 s each) to the PayPal proposal card, the Purchases **Due today** card and the VAT boxes | Cursor rests on the paid invoice; three one-second flash-forwards | A customer just paid this invoice with PayPal. Watch the money reach the books, pay a supplier and land in the VAT return. | **Accnomos × PayPal** · AI bookkeeping and VAT for UK small businesses |
-| p1 | 0:10–0:25 | `/` Home, then `/files` (the books folder in the owner's own drive) | Scroll Home once; open Files, hover the books folder and `Books.xlsx` | This is Accnomos. It keeps a UK small business's books in its own OneDrive or Google Drive, and files VAT to HMRC. PayPal is where the business gets paid, and where it pays its bills. | Your books, in your own drive · VAT filed to HMRC (sandbox in this video) |
-| p2 | 0:25–0:43 | `/invoices` → DEMO-1003 → **Add payment link** → dialog *Payment link for DEMO-1003* → **Paid into: PayPal** → **Make payment link**; then **View PDF** | Make the link; the dialog shows the PayPal link; open the PDF and hover the pay link | I add a PayPal payment link to an invoice. Accnomos creates a real PayPal invoice, in PayPal's sandbox, with the same lines and VAT, and puts the link on the PDF and in the email. | PayPal Invoicing API · create and send · **PayPal sandbox: no real money** |
-| p3 | 0:43–0:55 | PayPal's sandbox pay page for DEMO-1003 (separate browser profile, signed in as the sandbox buyer) | Pay; PayPal's confirmation | The customer pays in PayPal. This is PayPal's sandbox, so no real money moves. | Customer's view · PayPal sandbox buyer account (fictional) |
-| p4 | 0:55–1:22 | `/invoices` → **PayPal** panel → **Sync PayPal** → status line *"N new from PayPal · N waiting for you"* → proposal cards | Click Sync; hover a card for DEMO-1001: *"Invoice payment · … received £… · PayPal fee £… · you receive £…"* and its Dr/Cr lines; scroll to the sale with no invoice, open **VAT on this sale (choose before approving)**, pick *Standard rate*; back to DEMO-1001 → **Approve £…** | PayPal's reports can lag by up to three hours, so here are payments from earlier today. Sync PayPal proposes each one: the gross, PayPal's fee and the net, matched to its invoice. A sale with no invoice waits until I choose its VAT. The AI suggests, code does the sums in pence, and nothing posts until I approve. | PayPal Transaction Search · paid ≥ 3 h ago (PayPal's reporting delay) · nothing posts without your approval |
-| p5 | 1:22–1:33 | Same page, the tie-out line at the top of the PayPal panel: *"PayPal says £… (as of 11 Nov, 14:05) · your books (1240 PayPal clearing) £…"* and *"Difference … = waiting for your approval … + not posted …"* | Zoom (edit) on the line; cursor under the "as of" time | Then the tie-out: PayPal's own balance, with the time PayPal last refreshed it, against PayPal in my books, with the difference explained. | PayPal Balances API · PayPal's figure as of its last refresh |
-| p6 | 1:33–1:58 | `/purchases` → **Pay bills with PayPal** → **Due today** card (fictional supplier, sandbox payee email) → **Approve payment** → *"Pay £… to … from your PayPal account now?"* → **Pay £…**; status *Paid and posted*; then the upcoming payments list → **Add to calendar** (only if the schedule work is deployed, see SHOT_LIST.md) | Approve and pay; hover the status; hover the next payment's date and Add to calendar | Bills work the other way. On a supplier bill's due date, Accnomos offers to pay it by PayPal Payout. I approve, and it posts when PayPal confirms. PayPal can't schedule a payout ahead, so Accnomos pays on or after the due date, when the app is open. Upcoming payments can go in my calendar. | PayPal Payouts API · one payout per bill, retried safely (same batch id) · pays on or after the due date |
-| p7 | 1:58–2:15 | `/invoices` → **PayPal disputes** panel (the demo's SAMPLE dispute) → **Build evidence** → *Response for PayPal (preview)* → **Send to PayPal (demo)** | Build; scroll the preview (invoice number, amounts, dates); blur the "Drafted by …" byline; click Send (demo) | If a customer opens a dispute, Accnomos builds the evidence from the books: the invoice, the payment and the dates, every figure checked by code. I read it before anything goes to PayPal. | PayPal Disputes API · SAMPLE dispute in the demo: nothing is sent to PayPal |
-| p8 | 2:15–2:26 | `/vat` → the open period's nine boxes; hover Box 1 and Box 6 | Hover; optionally open Box 6's explanation and point at the PayPal sale | And when the quarter ends, those PayPal sales are already in the VAT return, ready to file with HMRC's sandbox. | Box 1 and Box 6 include the approved PayPal sales · HMRC sandbox |
-| p9 | 2:26–2:45 | End card (still, no logos but Accnomos's) | Hold | Accnomos. The AI proposes, code calculates, and you approve. Try the demo at accnomos.com. The code is on GitHub. | **accnomos.com** · Try the demo, no sign-in · github.com/zaytunazs/accnomos · PayPal sandbox only; no real money moved |
+| i0 **PRESENTER** | 0:00–0:10 | Founder to camera, or an AI presenter labelled "AI presenter" on screen for the whole slot | Speaks to camera; Accnomos wordmark lower third | I run a small UK business that gets paid, and pays suppliers, through PayPal. So I built Accnomos to keep those books. | **Accnomos × PayPal** · AI bookkeeping and VAT for UK small businesses |
+| h1 | 0:10–0:38 | 2 s on `/files` (books folder in the owner's drive), then `/invoices` → **PayPal** panel → **Sync PayPal** → proposal cards (signed-in sandbox books) | Click Sync; status line *"N new from PayPal · N waiting for you"*; hover the DEMO-1002 card (title, *PayPal fee £… · you receive £…*, Dr/Cr lines); scroll to the sale with no invoice → **VAT on this sale (choose before approving)** → *Standard rate*; back to DEMO-1002 → **Approve £…** → green note | Accnomos keeps the books in your own OneDrive or Google Drive, and files VAT to HMRC. Press Sync PayPal, and it fetches every payment from PayPal itself: the gross, PayPal's fee and the net, matched to the invoice it pays. A sale with no invoice waits for me to choose its VAT. Nothing posts until I approve. | PayPal Transaction Search · gross / fee / net matched to the invoice · nothing posts without your approval |
+| h2 | 0:38–0:56 | `/ask` | Type *What did PayPal cost me this quarter?* → answer with the figure; then *How much is in PayPal?* → answer. Blur the model byline under each answer | Then I just ask. What did PayPal cost me this quarter? How much is in PayPal? The answers come from those PayPal entries, worked out by code to the penny, and explained in plain English. | Figures by code from the PayPal entries in your books |
+| h3 | 0:56–1:06 | `/invoices`, top of the PayPal panel: *"PayPal says £… (as of 11 Nov, 19:05) · your books (1240 PayPal clearing) £…"* and *"Difference … = waiting for your approval … + not posted …"* | Zoom (edit) on the line; cursor under the "as of" time | And the tie-out checks the books against PayPal's own balance, shows when PayPal last refreshed it, and explains any difference. | PayPal Balances API · PayPal's figure as of its last refresh (it can lag up to 3 h) |
+| h4 | 1:06–1:32 | `/purchases` → **Pay bills with PayPal** → **Due today** (fictional supplier, registered sandbox payee) → **Approve payment** → *"Pay £… to … from your PayPal account now?"* → **Pay £…** → *PayPal is processing it* → *Paid and posted* | Approve and pay; hold through the status change (about 30 s, sped up in the edit and marked "sped up") | Paying a supplier works the other way. When a bill falls due, Accnomos offers to pay it by PayPal payout. I approve, PayPal confirms in about half a minute, and only then does it post. A retry can never pay twice. PayPal can't date a payout ahead, so it goes on the due date, when the app is open. | PayPal Payouts API · SUCCESS before it posts · same batch id on a retry, so never paid twice |
+| h5 | 1:32–1:48 | `/invoices` → **PayPal disputes** (the demo's SAMPLE dispute) → **Build evidence** → *Response for PayPal (preview)* → **Send to PayPal (demo)** | Build; scroll the preview (invoice number, amounts, dates); blur the byline; Send (demo) | If a customer opens a dispute, Accnomos builds the evidence pack from the books, checks every figure by code, and waits for me to read it before anything goes to PayPal. | PayPal Disputes API · SAMPLE dispute in the demo: nothing sent to PayPal |
+| h6 | 1:48–1:55 | Title card over a blurred Invoices page | Three lines appear one by one | The AI fetches and explains. Code calculates. I approve. | **The AI fetches and explains · Code calculates · You approve** |
+| m1 | 1:55–2:40 | Montage, 15 shots of about 3 s each (list below) | Cut to the narration's beats | And PayPal sits inside a full set of books. Scan a receipt and approve it. Match the bank. Send invoices and quotes. Work out VAT and file it to HMRC's sandbox. Run reports. Ask by typing or by voice. Track jobs, mileage and payroll estimates. Plan the day around your calendar. Keep your contacts. The books stay in your own drive, on the web and on Android, with guides built in, and upcoming PayPal payments go straight into your calendar. | One caption per shot (list below) |
+| o0 **PRESENTER** | 2:40–2:48 | Founder to camera (or the labelled AI presenter); end card behind or after: `accnomos.com` · github.com/zaytunazs/accnomos | Speaks; end card holds | Everything you saw runs on PayPal's sandbox. Try it yourself at accnomos.com, no sign-in needed. | **accnomos.com** · Try the demo, no sign-in · github.com/zaytunazs/accnomos · PayPal sandbox; no real money moved |
+
+### Montage shots (m1)
+
+Only screens that exist on `paypal-wave3` or a branch named here; each is in "Try the demo" unless marked.
+
+| # | Time | Route | Shot | Caption |
+|---|---|---|---|---|
+| 1 | 1:55 | `/review` | **Add a receipt** → proposal card → **Approve** | Receipt read by AI, checked by code, approved by you |
+| 2 | 1:58 | `/bank` | Bank lines matched (the Bank feed card in view) | Bank feed and matching |
+| 3 | 2:01 | `/invoices` → `/sales/quotes` | Invoice list, then a quote | Invoices and quotes |
+| 4 | 2:04 | `/vat` | The nine boxes | VAT return worked out from the ledger |
+| 5 | 2:07 | `/vat` → HMRC sandbox → receipt | HMRC's sandbox receipt (password blurred) | Filed to HMRC's sandbox |
+| 6 | 2:10 | `/reports/profit-and-loss` | Profit and loss | Reports and exports |
+| 7 | 2:13 | `/ask` and **Talk to Accnomos** | A typed question, then the voice button (byline blurred) | Ask by typing or by voice |
+| 8 | 2:16 | `/jobs` | A job with its costs | Jobs |
+| 9 | 2:19 | `/vehicles` | Mileage log | Mileage |
+| 10 | 2:22 | `/payroll` | Pay run estimate | Payroll estimates |
+| 11 | 2:25 | `/calendar`, then Home **Plan today** (signed-in) | Calendar, then the proposed day | Calendar and day plan |
+| 12 | 2:28 | `/contacts` | Contact with its statement | Contacts |
+| 13 | 2:31 | `/files` (signed-in) | The books folder and `Books.xlsx` | Your books in your own OneDrive or Google Drive |
+| 14 | 2:34 | Android phone (APK, **Try the company demo**) | Home, then Review | Android app |
+| 15 | 2:37 | `/purchases` → **Upcoming PayPal payments** → **Calendar** / **Download all (.ics)**; or `/help` | The schedule and the calendar button; else the help page | Upcoming PayPal payments in your calendar · Help and guides |
+
+Shot 15 depends on the upcoming-payments work (`billpay-schedule`, commit `3dfb7b39`) being merged and deployed. If it
+is not, show `/help` and cut "and upcoming PayPal payments go straight into your calendar" from m1. A support desk
+(help centre and tickets, branch `support-desk`) can replace `/help` only if it is deployed.
 
 ## Timing check
 
-| Scene | Narration (words) | Speech at 150 wpm | Slot |
-|---|---|---|---|
-| p0 | 23 | 9.2 s | 10 s |
-| p1 | 35 | 14.0 s | 15 s |
-| p2 | 35 | 14.0 s | 18 s |
-| p3 | 14 | 5.6 s | 12 s |
-| p4 | 58 | 23.2 s | 27 s |
-| p5 | 22 | 8.8 s | 11 s |
-| p6 | 54 | 21.6 s | 25 s |
-| p7 | 33 | 13.2 s | 17 s |
-| p8 | 20 | 8.0 s | 11 s |
-| p9 | 19 | 7.6 s | 19 s (end card held) |
-| **Total** | **313** | **2:05** | **2:45** |
+| Part | Lines | Words | Speech at 150 wpm | Slot |
+|---|---|---|---|---|
+| PRESENTER intro | i0 | 22 | 8.8 s | 10 s |
+| Hero | h1–h6 | 211 | 1:24 | 1:45 |
+| Montage | m1 | 80 | 32 s | 45 s |
+| PRESENTER outro | o0 | 15 | 6.0 s | 8 s |
+| **Total** | | **328** | **2:11** | **2:48** |
 
-If the rendered voice runs long, cut in this order: the calendar sentence in p6 (if the upcoming-payments list is not
-deployed, it must go anyway), the flash-forwards in p0, the PDF in p2.
+If the cut runs long, trim in this order: the calendar clause in m1, shot 5 (HMRC receipt) into shot 4, the `/files`
+lead-in to h1.
 
 ## Upload
 
-- YouTube, **Public**, title "Accnomos: PayPal-powered bookkeeping and VAT for UK small businesses (PayPal AI
+- YouTube, **Public**. Title: "Accnomos: PayPal-powered bookkeeping and VAT for UK small businesses (PayPal AI
   Hackathon)". Description: the pitch sentence, `https://accnomos.com`, `https://github.com/zaytunazs/accnomos`,
-  "Recorded against PayPal's sandbox; no real money moved."
-- Captions: upload the narration as the caption track (the text in `narration/lines.json`).
-- No music, or only original or properly licensed music; YouTube's Content ID check must show no claims before the
-  link goes on Devpost.
+  "Recorded against PayPal's sandbox; no real money moved." If the presenter is AI-generated, say so in the
+  description too.
+- Captions: upload the narration (`narration/lines.json`, the `text` fields) as the caption track.
+- Check YouTube shows no Content ID claims before the link goes on Devpost.

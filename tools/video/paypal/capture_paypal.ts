@@ -5,7 +5,9 @@
  * SHOT_LIST.md. Nothing is faked: a screen that is not there ends the shot with an error in its marks file.
  *
  *   PW_FROM=apps/web node tools/video/paypal/capture_paypal.ts OUTDIR [shot,shot,...]
- * Shots: pp-invoice, pp-sync, pp-billpay, pp-disputes, pp-vat.
+ * Hero shots: pp-sync, pp-ask, pp-billpay, pp-disputes (pp-invoice, pp-vat as inserts). Montage: m-review, m-bank,
+ * m-invoices, m-quotes, m-vat, m-reports, m-ask, m-jobs, m-vehicles, m-payroll, m-calendar, m-contacts, m-upcoming
+ * (needs the upcoming-payments work deployed), m-help. Blur model bylines in the edit (docs/submission/paypal/SHOT_LIST.md).
  * Env: PW_FROM (a folder whose node_modules has playwright or @playwright/test), SITE (default https://accnomos.com),
  * PAYPAL_CONNECT=1 (connect PayPal in test mode in the demo copy first: needs PAYPAL_DIRECT=1 on the server),
  * PAY=1 (pp-billpay presses "Pay £…": a real sandbox payout; without it the shot ends on the confirmation),
@@ -174,6 +176,14 @@ const SHOTS: Record<string, Shot> = {
         c.mark("wait");
         await vis(page.getByText(/Paid and posted|PayPal is processing it|Waiting for the supplier to claim it|Not paid/)).waitFor({ timeout: 90_000 }).catch(() => undefined);
         c.mark("ready");
+        // PayPal answered SUCCESS in about 30 s in the sandbox (11 Nov 2026); Accnomos checks again when Purchases opens
+        for (let i = 0; i < 4 && !(await page.getByText("Paid and posted").first().isVisible().catch(() => false)); i++) {
+          await sleep(15_000);
+          await page.reload();
+          await settle(page, 1500);
+          await page.getByRole("heading", { name: "Pay bills with PayPal" }).first().scrollIntoViewIfNeeded().catch(() => undefined);
+        }
+        c.mark("paid");
         await hoverText(c, /Paid and posted|PayPal is processing it|Waiting for the supplier to claim it/, 2000);
       }
       await hoverText(c, /Upcoming|Add to calendar/, 1500); // the schedule, where deployed
@@ -207,6 +217,25 @@ const SHOTS: Record<string, Shot> = {
       await hoverText(c, /Nothing was sent to PayPal/, 2200);
     },
   },
+  // h2: Ask the PayPal questions (answered by code from the books' PayPal entries; blur the byline in the edit)
+  "pp-ask": {
+    setup: async ({ page }) => { await go(page, "/ask"); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 300);
+      const qs = [process.env.ASK_Q1 ?? "What did PayPal cost me this quarter?", process.env.ASK_Q2 ?? "How much is in PayPal?"];
+      for (const [i, q] of qs.entries()) {
+        await h.type(vis(page.getByLabel(/Ask your books/)), q, 300);
+        await h.click(vis(page.getByRole("button", { name: "Ask", exact: true })), 200);
+        c.mark(`wait${i + 1}`);
+        await page.getByText(ANSWERED).nth(i).waitFor({ timeout: 180_000 });
+        await page.waitForTimeout(600);
+        c.mark(`ready${i + 1}`);
+        await h.hold(2200);
+      }
+    },
+  },
+  ...montage(),
   // p8: the VAT return's Box 1 and Box 6
   "pp-vat": {
     setup: async ({ page }) => { await go(page, "/vat"); await page.waitForTimeout(3000); },
@@ -218,6 +247,39 @@ const SHOTS: Record<string, Shot> = {
     },
   },
 };
+
+/** An Ask answer is in: worded by a model (checked) or worked out by code alone. */
+const ANSWERED = /explanation by |^Worked out by code/;
+
+/** Montage: about 3 s of footage per screen (the edit trims), each a plain look at a page that exists. */
+function montage(): Record<string, Shot> {
+  const look = (route: string, focus: (string | RegExp)[] = [], scroll = 0): Shot => ({
+    setup: async ({ page }) => { await go(page, route); await page.waitForTimeout(2500); },
+    run: async (c) => {
+      await c.h.park(800, 260);
+      await c.h.hold(700);
+      for (const t of focus) await hoverText(c, t, 900);
+      if (scroll) await c.h.scrollBy(scroll, 900);
+      await c.h.hold(1200);
+    },
+  });
+  return {
+    "m-review": look("/review", [/waiting for you/]),
+    "m-bank": look("/bank", [/^Bank feed/, /matched/i], 250),
+    "m-invoices": look("/invoices", [/Awaiting payment/]),
+    "m-quotes": look("/sales/quotes", [], 150),
+    "m-vat": look("/vat", [/^Box 1\b/, /^Box 6\b/]),
+    "m-reports": look("/reports/profit-and-loss", [], 200),
+    "m-ask": look("/ask", [/Ask your books/]),
+    "m-jobs": look("/jobs", [], 150),
+    "m-vehicles": look("/vehicles", [/mileage/i], 150),
+    "m-payroll": look("/payroll", [], 150),
+    "m-calendar": look("/calendar", [], 120),
+    "m-contacts": look("/contacts", [], 150),
+    "m-upcoming": look("/purchases", [/^Upcoming PayPal payments$/, /Download all \(\.ics\)|^Calendar$/]),
+    "m-help": look("/help", [/Step-by-step guides/]),
+  };
+}
 
 async function demoSession(page: any) {
   await page.goto(`${SITE}/judges`);

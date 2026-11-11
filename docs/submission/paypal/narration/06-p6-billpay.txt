@@ -1,1 +1,0 @@
-Bills work the other way. On a supplier bill's due date, Accnomos offers to pay it by PayPal Payout. I approve, and it posts when PayPal confirms. PayPal can't schedule a payout ahead, so Accnomos pays on or after the due date, when the app is open. Upcoming payments can go in my calendar.

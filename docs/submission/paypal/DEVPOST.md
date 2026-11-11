@@ -38,11 +38,14 @@ it gets paid and pays its bills.
 - **Sync PayPal.** Reads the PayPal account's transactions and proposes each one: gross, PayPal fee and net, matched to
   the invoice it pays. A sale with no invoice waits until the owner chooses its VAT. Nothing posts until the owner
   approves.
+- **Ask about PayPal.** "What did PayPal cost me this quarter?" and "How much is in PayPal?" are answered with a
+  figure worked out by code from the PayPal entries in the books, and explained in plain English.
 - **Tie-out.** PayPal's own balance (with the time PayPal last refreshed it) against the PayPal account in the books,
   with the difference explained: waiting for approval, never posted (withdrawals, refunds, the opening balance), or
   unexplained.
 - **Pay bills.** On a supplier bill's due date, Accnomos offers to pay it with a PayPal Payout to the supplier's saved
-  PayPal email. The owner approves; the payment posts when PayPal reports success. A retry can never pay twice.
+  PayPal email. The owner approves; the payment posts only when PayPal reports SUCCESS (about 30 seconds in the
+  sandbox). A retry can never pay twice.
 - **Disputes.** When a customer opens a PayPal dispute, Accnomos builds an evidence pack from the books (the invoice,
   the payment, the dates), checks every figure and date in the draft by code, and sends it only after the owner reads
   and approves it.
@@ -64,7 +67,7 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
   - **Transaction Search** (`GET /v1/reporting/transactions`, 31-day windows): the source for Sync PayPal.
   - **Balances** (`GET /v1/reporting/balances`): PayPal's own balance and its refresh time for the tie-out.
   - **Payouts v1:** one payout per bill, with a `sender_batch_id` derived from the bill, the amount and the attempt, so
-    a retry after a lost answer returns the original batch instead of paying again.
+    a retry after a lost answer returns the original batch instead of paying again; a bill posts only on SUCCESS.
   - **Disputes v1:** list and read disputes, provide evidence (notes plus a PDF from the books), send a message, accept
     a claim.
   - **Two modes:** *partner* mode (each business connects its own PayPal account through partner onboarding and
@@ -87,7 +90,7 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
   it is open on or after that date (writing to the books needs the owner's sign-in, so there is no overnight job).
 - **The real sandbox disagreed with the docs.** Invoice create answered with only a `self` link, so the invoice id is
   read from it; the duplicate-payout refusal links the original batch inside `details[].link`. Both are fixed and
-  noted.
+  noted. A payout to a registered sandbox account then went from PENDING to SUCCESS in about 30 seconds.
 - **Fees and VAT.** PayPal's fee is VAT-exempt and comes out of the gross, so each payment becomes three figures and a
   clearing account (1240 PayPal clearing) that the bank payout later clears, so money is never counted twice.
 
@@ -113,8 +116,8 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
 
 - PayPal partner approval, so each business connects its own PayPal account (partner mode is written and tested
   against fakes).
-- Run the remaining calls against the sandbox: Invoicing remind, itemised invoices, Disputes, the capture read for the
-  fee, and a payout to a registered sandbox account.
+- Run the remaining calls against the sandbox: Invoicing remind, itemised invoices, Disputes and the capture read for
+  the fee.
 - PayPal webhooks, so payments are proposed without opening the app.
 - PayPal screens in the Android app.
 
@@ -144,18 +147,21 @@ company's books (guide at `https://accnomos.com/judges`).
 1. **Invoices:** the **PayPal** panel: press **Sync PayPal**. In the demo, with no PayPal connected, this reads a fixed
    sample history, labelled "Sample PayPal history for this demo" (it is not PayPal data). Each card shows gross,
    PayPal fee and net, the invoice it pays, the entry approving would post, and **Approve** / **Reject**.
-2. **Invoices › PayPal disputes:** one SAMPLE dispute built by code. **Build evidence** → read the preview → **Send to
+2. **Ask:** after approving a PayPal card, ask *What did PayPal cost me this quarter?* or *How much is in PayPal?*: the
+   figure is worked out by code from the PayPal entries in the books (not a live PayPal call; the tie-out on Invoices
+   is the screen that reads PayPal's own balance when PayPal is connected).
+3. **Invoices › PayPal disputes:** one SAMPLE dispute built by code. **Build evidence** → read the preview → **Send to
    PayPal (demo)** records it as sent; nothing goes to PayPal.
-3. **To use PayPal's real sandbox in the demo:** Settings › Online payments → **Connect PayPal (test mode)**. Then on
+4. **To use PayPal's real sandbox in the demo:** Settings › Online payments → **Connect PayPal (test mode)**. Then on
    Invoices, **Add payment link** on an unpaid invoice → PayPal → **Make payment link**, open the link and pay as a
    sandbox buyer: `<<SANDBOX BUYER LOGIN>>` / `<<SANDBOX BUYER PASSWORD>>`. Note: every demo visitor's links pay into
    the same Accnomos sandbox business account, and PayPal's Transaction Search can take up to 3 hours to list a payment,
    so **Sync PayPal** may show it only later; the invoice's own payment is also looked for each time you open Invoices
    and shown under **Paid online: waiting for your approval**.
-4. **Purchases › Pay bills with PayPal** (after step 3): save a supplier's PayPal email (a sandbox account:
+5. **Purchases › Pay bills with PayPal** (after step 4): save a supplier's PayPal email (a sandbox account:
    `<<SANDBOX PAYEE EMAIL>>`); a bill due today shows under **Due today** → **Approve payment** → **Pay £…** sends a
    sandbox payout.
-5. **VAT** (`/vat`): the nine boxes from the ledger; filing goes to HMRC's sandbox with a test user HMRC makes for the
+6. **VAT** (`/vat`): the nine boxes from the ledger; filing goes to HMRC's sandbox with a test user HMRC makes for the
    demo.
 
 **Android:** install the newest `android-*` APK from `https://github.com/zaytunazs/accnomos/releases` and press **Try
@@ -172,6 +178,6 @@ ledger, the VAT engine, the web and Android apps, and on **28 Oct 2026** the fir
 Accnomos invoices, PayPal receipts through a clearing account, payouts matched to the bank). For this hackathon, on
 **11 Nov 2026** (and the final changes up to the 12 Nov deadline), we made PayPal the centre of the product: direct
 mode and the first runs against PayPal's real sandbox (Invoicing, Transaction Search, Balances, Payouts), **Sync
-PayPal**, the **tie-out** against PayPal's balance, the owner's VAT choice on unmatched sales, **bill pay by PayPal
+PayPal**, PayPal questions in Ask, the **tie-out** against PayPal's balance, the owner's VAT choice on unmatched sales, **bill pay by PayPal
 Payouts** with idempotent batch ids, **PayPal disputes** with evidence from the books, itemised PayPal invoices with the
 business's details, and PayPal as the default way to get paid. Dates are in `git log`.

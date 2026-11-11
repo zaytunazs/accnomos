@@ -1,45 +1,41 @@
 [
  {
-  "id": "p0",
-  "text": "A customer just paid this invoice with PayPal. Watch the money reach the books, pay a supplier and land in the VAT return."
+  "id": "i0",
+  "text": "I run a small UK business that gets paid, and pays suppliers, through PayPal. So I built Accnomos to keep those books."
  },
  {
-  "id": "p1",
-  "text": "This is Accnomos. It keeps a UK small business's books in its own OneDrive or Google Drive, and files VAT to HMRC. PayPal is where the business gets paid, and where it pays its bills.",
-  "say": "This is Accnomos. It keeps a UK small business's books in its own One Drive or Google Drive, and files VAT to H M R C. PayPal is where the business gets paid, and where it pays its bills."
+  "id": "h1",
+  "text": "Accnomos keeps the books in your own OneDrive or Google Drive, and files VAT to HMRC. Press Sync PayPal, and it fetches every payment from PayPal itself: the gross, PayPal's fee and the net, matched to the invoice it pays. A sale with no invoice waits for me to choose its VAT. Nothing posts until I approve.",
+  "say": "Accnomos keeps the books in your own One Drive or Google Drive, and files VAT to H M R C. Press Sync PayPal, and it fetches every payment from PayPal itself: the gross, PayPal's fee and the net, matched to the invoice it pays. A sale with no invoice waits for me to choose its VAT. Nothing posts until I approve."
  },
  {
-  "id": "p2",
-  "text": "I add a PayPal payment link to an invoice. Accnomos creates a real PayPal invoice, in PayPal's sandbox, with the same lines and VAT, and puts the link on the PDF and in the email."
+  "id": "h2",
+  "text": "Then I just ask. What did PayPal cost me this quarter? How much is in PayPal? The answers come from those PayPal entries, worked out by code to the penny, and explained in plain English."
  },
  {
-  "id": "p3",
-  "text": "The customer pays in PayPal. This is PayPal's sandbox, so no real money moves."
+  "id": "h3",
+  "text": "And the tie-out checks the books against PayPal's own balance, shows when PayPal last refreshed it, and explains any difference."
  },
  {
-  "id": "p4",
-  "text": "PayPal's reports can lag by up to three hours, so here are payments from earlier today. Sync PayPal proposes each one: the gross, PayPal's fee and the net, matched to its invoice. A sale with no invoice waits until I choose its VAT. The AI suggests, code does the sums in pence, and nothing posts until I approve."
+  "id": "h4",
+  "text": "Paying a supplier works the other way. When a bill falls due, Accnomos offers to pay it by PayPal payout. I approve, PayPal confirms in about half a minute, and only then does it post. A retry can never pay twice. PayPal can't date a payout ahead, so it goes on the due date, when the app is open."
  },
  {
-  "id": "p5",
-  "text": "Then the tie-out: PayPal's own balance, with the time PayPal last refreshed it, against PayPal in my books, with the difference explained."
+  "id": "h5",
+  "text": "If a customer opens a dispute, Accnomos builds the evidence pack from the books, checks every figure by code, and waits for me to read it before anything goes to PayPal."
  },
  {
-  "id": "p6",
-  "text": "Bills work the other way. On a supplier bill's due date, Accnomos offers to pay it by PayPal Payout. I approve, and it posts when PayPal confirms. PayPal can't schedule a payout ahead, so Accnomos pays on or after the due date, when the app is open. Upcoming payments can go in my calendar."
+  "id": "h6",
+  "text": "The AI fetches and explains. Code calculates. I approve."
  },
  {
-  "id": "p7",
-  "text": "If a customer opens a dispute, Accnomos builds the evidence from the books: the invoice, the payment and the dates, every figure checked by code. I read it before anything goes to PayPal."
+  "id": "m1",
+  "text": "And PayPal sits inside a full set of books. Scan a receipt and approve it. Match the bank. Send invoices and quotes. Work out VAT and file it to HMRC's sandbox. Run reports. Ask by typing or by voice. Track jobs, mileage and payroll estimates. Plan the day around your calendar. Keep your contacts. The books stay in your own drive, on the web and on Android, with guides built in, and upcoming PayPal payments go straight into your calendar.",
+  "say": "And PayPal sits inside a full set of books. Scan a receipt and approve it. Match the bank. Send invoices and quotes. Work out VAT and file it to H M R C's sandbox. Run reports. Ask by typing or by voice. Track jobs, mileage and payroll estimates. Plan the day around your calendar. Keep your contacts. The books stay in your own drive, on the web and on Android, with guides built in, and upcoming PayPal payments go straight into your calendar."
  },
  {
-  "id": "p8",
-  "text": "And when the quarter ends, those PayPal sales are already in the VAT return, ready to file with HMRC's sandbox.",
-  "say": "And when the quarter ends, those PayPal sales are already in the VAT return, ready to file with H M R C's sandbox."
- },
- {
-  "id": "p9",
-  "text": "Accnomos. The AI proposes, code calculates, and you approve. Try the demo at accnomos.com. The code is on GitHub.",
-  "say": "Accnomos. The AI proposes, code calculates, and you approve. Try the demo at accnomos dot com. The code is on GitHub."
+  "id": "o0",
+  "text": "Everything you saw runs on PayPal's sandbox. Try it yourself at accnomos.com, no sign-in needed.",
+  "say": "Everything you saw runs on PayPal's sandbox. Try it yourself at accnomos dot com, no sign-in needed."
  }
 ]
