@@ -22,8 +22,7 @@ const fieldLabel: Record<string, string> = {
   gross_total: "Total",
 };
 
-const verifierName = (model: string) =>
-  model.startsWith("baseten:") ? "the open-weights verifier model" : model.startsWith("meta:") ? "the hosted model" : model.replace(/^ollama:/, "");
+const verifierName = (model: string) => (model.startsWith("baseten:") ? "the open-weights verifier model" : shortModelName(model));
 
 const shown = (v: string | number | null) => (v === null || v === "" ? "none" : typeof v === "number" ? v.toFixed(2) : v);
 
@@ -42,7 +41,7 @@ function verifierView(p: RtProposal): Pick<UiProposal, "verifierNote" | "verifie
     const why = p.status === "needs_a_look" ? "skipped, checks already flagged it" : "not run";
     return { verifierNote: `Second reading ${why}`, verifierTone: "none" };
   }
-  if (v.error) return { verifierNote: `Second reading unavailable (${v.model})`, verifierTone: "none" };
+  if (v.error) return { verifierNote: `Second reading unavailable (${verifierName(v.model)})`, verifierTone: "none" };
   const fields = Object.entries(v.fields);
   if (v.agree_all)
     return { verifierNote: `Verifier agrees · all ${fields.length} fields match — ${verifierName(v.model)}`, verifierTone: "agree" };
@@ -121,6 +120,6 @@ export function toUi(p: RtProposal): UiProposal {
     reviewerNote: why,
     failedChecks,
     servedLine: servedLine(p),
-    ...withCrop(verifierView(p), `checks by code: ${verified.filter((c) => c.ok).length} of ${verified.length} passed · ${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`),
+    ...withCrop(verifierView(p), `checks by code: ${verified.filter((c) => c.ok).length} of ${verified.length} passed · ${shortModelName(p.model)} · ${p.elapsed_s.toFixed(1)} s${cropped}`),
   };
 }
