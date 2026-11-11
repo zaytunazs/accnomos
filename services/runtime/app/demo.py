@@ -342,6 +342,7 @@ async def build_full(day: date) -> Snapshot:
 
     await demo_recent.add_recent_trading(st, seed, plan)  # Oct/Nov sales and job purchases, up to `day`
     await demo_recent.add_arrears_invoice(st, seed, plan)  # a customer about £500 overdue, paid through PayPal
+    await demo_recent.add_bill_pay(st, seed, plan)  # three supplier bills to pay through PayPal (nothing paid)
     await demo_personal.add_company_goals(st, day)  # three goals sized from these books (app/goals.py)
     # The books' own profile (app/profile.py), as Settings › Profile would save it: the header names the company
     # instead of "Profile not set up". A VAT-registered company with the VAT number the seed prints on its invoices.

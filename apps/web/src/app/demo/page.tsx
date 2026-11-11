@@ -30,6 +30,11 @@ const steps: { title: string; href: string; body: string }[] = [
     body: "Invoices with VAT, due dates and who has paid. Send one: in the demo nothing is actually emailed, and the page says so (“Sent (demo — not actually sent)”).",
   },
   {
+    title: "Pay a supplier's bill with PayPal",
+    href: "/purchases",
+    body: "Three supplier bills wait in Purchases › Pay bills with PayPal: one due today, one you approved in advance for its due date, and one planned for PayPal; Home shows what leaves PayPal in the next 7 and 30 days. Connect PayPal’s sandbox in Settings › Online payments, then approve the one due today. The supplier’s email is a made-up address, so the sandbox payment waits unclaimed. Nothing is paid until you press Pay.",
+  },
+  {
     title: "Match the bank",
     href: "/bank",
     body: "Two imported statements matched against the books, bank rules that code the regular lines for you, and what is still to match. Connect the test bank to see a live feed come in, labelled as the sandbox it is.",
