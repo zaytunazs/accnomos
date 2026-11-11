@@ -70,6 +70,8 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   calendar_add_event: "Add to calendar",
   calendar_remove_event: "Remove from calendar",
   calendar_move_event: "Move in calendar",
+  remind_unpaid: "Payment reminders",
+  payment_link_message: "Payment message",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -90,6 +92,8 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   calendar_add_event: "your calendar",
   calendar_remove_event: "your calendar",
   calendar_move_event: "your calendar",
+  remind_unpaid: "each invoice's reminders on Invoices",
+  payment_link_message: "the invoice on Invoices",
 };
 
 /**
@@ -104,7 +108,50 @@ function stalledAdvice(message: string, kind: RtProposedAction["kind"]): string 
   return "";
 }
 /** Kinds whose preview is plain label/value rows worked out by code (app/assistant_tasks.py). */
-const ROW_KINDS = new Set<RtProposedAction["kind"]>(["save_note", "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event", "calendar_move_event"]);
+const ROW_KINDS = new Set<RtProposedAction["kind"]>([
+  "save_note",
+  "delete_note",
+  "add_todo",
+  "calendar_add_event",
+  "calendar_remove_event",
+  "calendar_move_event",
+  "remind_unpaid", // app/paypal_assistant.py: rows worked out by code too
+  "payment_link_message",
+]);
+
+/** A payment message (app/paypal_assistant.py): the text to copy and links that open WhatsApp or Messages with it.
+ * Nothing is sent by Accnomos; the user sends it from their own phone. */
+function ShareMessage({ result }: { result: Record<string, unknown> }) {
+  const [copied, setCopied] = useState(false);
+  const text = typeof result.message === "string" ? result.message : null;
+  if (!text) return null;
+  const wa = typeof result.whatsapp_url === "string" ? result.whatsapp_url : null;
+  const sms = typeof result.sms_url === "string" ? result.sms_url : null;
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      <p className="whitespace-pre-wrap rounded-xl bg-white p-3 text-[14px] leading-6 text-ink">{text}</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void navigator.clipboard?.writeText(text).then(() => setCopied(true))}
+          className="flex h-10 items-center rounded-xl border border-teal px-4 text-[14px] font-bold text-teal hover:bg-teal-tint"
+        >
+          {copied ? "Copied" : "Copy message"}
+        </button>
+        {wa && (
+          <a href={wa} target="_blank" rel="noopener noreferrer" className="flex h-10 items-center rounded-xl border border-teal px-4 text-[14px] font-bold text-teal hover:bg-teal-tint">
+            Open in WhatsApp
+          </a>
+        )}
+        {sms && (
+          <a href={sms} className="flex h-10 items-center rounded-xl border border-teal px-4 text-[14px] font-bold text-teal hover:bg-teal-tint">
+            Open in Messages
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
 function Details({ action }: { action: RtProposedAction }) {
   if (ROW_KINDS.has(action.kind)) {
     const rows = (action.preview.rows as { label: string; value: string }[] | undefined) ?? [];
@@ -439,6 +486,7 @@ export default function ActionCard({
       {state.step === "done" ? (
         <div className="mt-4 rounded-xl bg-teal-tint p-3 text-teal-dark" role="status">
           <Markdown md={`✓ ${unescape(state.result.summary_md)}`} />
+          {action.kind === "payment_link_message" && <ShareMessage result={state.result.result} />}
           {state.result.status === "already_done" && <p className="text-[13px]">This was already done; nothing was repeated.</p>}
         </div>
       ) : state.step === "rejected" ? (

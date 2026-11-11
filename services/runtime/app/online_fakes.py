@@ -17,10 +17,14 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import secrets
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from email.parser import BytesParser
+from email.policy import default
 from typing import Any
 from urllib.parse import parse_qsl, urlencode
 
@@ -63,6 +67,13 @@ class Fakes:
     invoices: dict[str, dict[str, Any]] = field(default_factory=dict)  # INV2-… -> PayPal invoice, with "_merchant"
     captures: dict[str, dict[str, Any]] = field(default_factory=dict)
     paypal_fee_known: bool = True
+    # Transaction Search rows (`transaction_details[]`). None: the sample history (sample_transactions), dated back
+    # from the end of the first search, so test mode has something to sync. Payments made through fake PayPal
+    # invoices (pay_paypal) are listed as well, as PayPal would.
+    reporting: list[dict[str, Any]] | None = None
+    paypal_tax_on_total: bool = False  # PayPal rounds tax once on the whole invoice (see _invoice_total)
+    disputes: dict[str, dict[str, Any]] = field(default_factory=dict)  # PP-D-… -> PayPal dispute, with "_merchant"
+    evidence: dict[str, list[dict[str, Any]]] = field(default_factory=dict)  # dispute id -> what was provided
     base: str = "http://127.0.0.1:8780"  # where the fake browser pages are (test mode sets the runtime's own)
 
     def reset(self) -> None:
@@ -162,6 +173,97 @@ class Fakes:
         }
         return tid
 
+    def open_dispute(
+        self, invoice_id: str, *, reason: str = "MERCHANDISE_OR_SERVICE_NOT_RECEIVED", dispute_id: str | None = None
+    ) -> str:
+        """The payer disputes the last payment on the PayPal invoice: a dispute waiting for the seller's answer."""
+        inv = self.invoices[invoice_id]
+        tx = inv["payments"]["transactions"][-1]
+        d = dispute_shape(
+            dispute_id or f"PP-D-{secrets.randbelow(10**8):08d}",
+            paypal_invoice_number=inv["detail"]["invoice_number"],
+            transaction_id=tx["payment_id"],
+            amount_pence=_pence(tx["amount"]["value"]),
+            reason=reason,
+            created="2026-11-05T10:00:00.000Z",
+            due="2026-11-15T10:00:00.000Z",
+        )
+        self.disputes[d["dispute_id"]] = {**d, "_merchant": inv["_merchant"]}
+        return d["dispute_id"]
+
+    def resolve_dispute(self, dispute_id: str, *, buyer_wins: bool) -> None:
+        d = self.disputes[dispute_id]
+        d.update(
+            status="RESOLVED",
+            dispute_state="RESOLVED",
+            dispute_outcome={
+                "outcome_code": "RESOLVED_BUYER_FAVOUR" if buyer_wins else "RESOLVED_SELLER_FAVOUR",
+                **({"amount_refunded": dict(d["dispute_amount"])} if buyer_wins else {}),
+            },
+            update_time="2026-11-20T10:00:00.000Z",
+            links=[],
+        )
+
+
+def dispute_shape(
+    dispute_id: str,
+    *,
+    paypal_invoice_number: str,
+    transaction_id: str,
+    amount_pence: int,
+    reason: str,
+    created: str,
+    due: str,
+) -> dict[str, Any]:
+    """A dispute as `GET /v1/customer/disputes/{id}` shows it (Disputes v1 schema 1.12), waiting for the seller."""
+    money = {"currency_code": "GBP", "value": _value(amount_pence)}
+    base = f"https://api-m.sandbox.paypal.com/v1/customer/disputes/{dispute_id}"
+    return {
+        "dispute_id": dispute_id,
+        "create_time": created,
+        "update_time": created,
+        "disputed_transactions": [
+            {
+                "seller_transaction_id": transaction_id,
+                "create_time": created,
+                "transaction_status": "COMPLETED",
+                "gross_amount": dict(money),
+                "invoice_number": paypal_invoice_number,
+                "buyer": {"name": "Payer (sample)"},
+            }
+        ],
+        "reason": reason,
+        "status": "WAITING_FOR_SELLER_RESPONSE",
+        "dispute_state": "REQUIRED_ACTION",
+        "dispute_amount": dict(money),
+        "dispute_life_cycle_stage": "CHARGEBACK",
+        "dispute_channel": "INTERNAL",
+        "seller_response_due_date": due,
+        "messages": [{"posted_by": "BUYER", "time_posted": created, "content": "I have not received what I paid for."}],
+        "links": [
+            {"href": base, "rel": "self", "method": "GET"},
+            {"href": f"{base}/provide-evidence", "rel": "provide_evidence", "method": "POST"},
+            {"href": f"{base}/accept-claim", "rel": "accept_claim", "method": "POST"},
+        ],
+    }
+
+
+def dispute_summary(d: dict[str, Any]) -> dict[str, Any]:
+    keys = (
+        "dispute_id",
+        "create_time",
+        "update_time",
+        "reason",
+        "status",
+        "dispute_state",
+        "dispute_amount",
+        "dispute_life_cycle_stage",
+        "seller_response_due_date",
+    )
+    return {k: d[k] for k in keys if k in d} | {
+        "links": [{"href": f"https://api-m.sandbox.paypal.com/v1/customer/disputes/{d['dispute_id']}", "rel": "self"}]
+    }
+
 
 FAKES = Fakes()
 
@@ -172,6 +274,206 @@ def _pence(value: str) -> int:
 
 def _value(pence: int) -> str:
     return f"{pence // 100}.{pence % 100:02d}"
+
+
+def _signed(pence: int) -> str:
+    return f"-{_value(-pence)}" if pence < 0 else _value(pence)
+
+
+def reporting_row(
+    tid: str,
+    when: datetime,
+    *,
+    code: str,
+    gross: int,
+    fee: int = 0,
+    name: str | None = None,
+    email: str | None = None,
+    items: list[tuple[str, int]] | None = None,
+    invoice_id: str | None = None,
+    custom: str | None = None,
+    subject: str | None = None,
+    status: str = "S",
+    currency: str = "GBP",
+) -> dict[str, Any]:
+    """One `transaction_details[]` entry shaped like the Transaction Search sample response (fields=all): amounts as
+    signed strings, the fee negative, dates as `2014-07-11T04:03:52+0000`, the other party in `payer_info`."""
+    ts = when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+0000")
+    info: dict[str, Any] = {
+        "paypal_account_id": "FAKEACCOUNT1",
+        "transaction_id": tid,
+        "transaction_event_code": code,
+        "transaction_initiation_date": ts,
+        "transaction_updated_date": ts,
+        "transaction_amount": {"currency_code": currency, "value": _signed(gross)},
+        "transaction_status": status,
+        "protection_eligibility": "01",
+    }
+    if fee:
+        info["fee_amount"] = {"currency_code": currency, "value": _signed(-abs(fee))}
+    if invoice_id:
+        info["invoice_id"] = invoice_id
+    if custom:
+        info["custom_field"] = custom
+    if subject:
+        info["transaction_subject"] = subject
+    payer: dict[str, Any] = {"account_id": "FAKEPAYER" + tid[:4], "address_status": "Y", "payer_status": "Y"}
+    if email:
+        payer["email_address"] = email
+    if name:
+        payer["payer_name"] = {"alternate_full_name": name}
+    row: dict[str, Any] = {"transaction_info": info, "payer_info": payer, "shipping_info": {}, "store_info": {}}
+    if items:
+        row["cart_info"] = {
+            "item_details": [
+                {
+                    "item_name": n,
+                    "item_quantity": "1",
+                    "item_unit_price": {"currency_code": currency, "value": _value(p)},
+                    "item_amount": {"currency_code": currency, "value": _value(p)},
+                }
+                for n, p in items
+            ]
+        }
+    else:
+        row["cart_info"] = {}
+    return row
+
+
+def sample_transactions(end: date, invoice: tuple[str, int, str] | None = None) -> list[dict[str, Any]]:
+    """A small, believable month of a joinery firm's PayPal account, dated back from `end`: two sales, a payment
+    naming one of the user's invoices (when given: number, amount and customer), two purchases (Screwfix, Adobe), a
+    withdrawal to the bank and a payment still pending. Ids are fixed per day, so syncing twice finds the same rows.
+    Fees are the made-up 2.9% + 30p above."""
+
+    def at(days: int, hour: int = 10) -> datetime:
+        d = end - timedelta(days=days)
+        return datetime(d.year, d.month, d.day, hour, 15, tzinfo=UTC)
+
+    def tid(n: int) -> str:
+        return f"{end:%y%m%d}SMPL{n:04d}X"[:17]
+
+    rows = [
+        reporting_row(
+            tid(1),
+            at(12),
+            code="T0006",
+            gross=4800,
+            fee=paypal_fee(4800),
+            name="Amelia Clarke",
+            email="amelia.clarke@example.com",
+            items=[("Oak chopping board", 4800)],
+            subject="Oak chopping board",
+        ),
+        reporting_row(
+            tid(2),
+            at(15),
+            code="T0002",
+            gross=-1997,
+            name="Adobe Systems Software Ireland Ltd",
+            email="billing@adobe.example",
+            items=[("Creative Cloud Photography plan (monthly)", 1997)],
+        ),
+        reporting_row(
+            tid(3),
+            at(9),
+            code="T0006",
+            gross=-3699,
+            name="Screwfix Direct Ltd",
+            email="orders@screwfix.example",
+            items=[("Wood screws 4.0 x 40mm (200)", 1299), ("Wood glue 1L", 2400)],
+        ),
+        reporting_row(
+            tid(4),
+            at(3),
+            code="T0001",
+            gross=12000,
+            fee=paypal_fee(12000),
+            name="Ben Hughes",
+            email="ben.hughes@example.com",
+            items=[("Floating shelf set, walnut", 12000)],
+        ),
+        reporting_row(tid(5), at(2), code="T0400", gross=-15000, subject="Withdrawal to bank account"),
+        reporting_row(tid(6), at(0, 8), code="T0006", gross=2500, fee=paypal_fee(2500), name="Chloe Patel", status="P"),
+    ]
+    if invoice:
+        number, pence, customer = invoice
+        rows.append(
+            reporting_row(
+                tid(7),
+                at(6),
+                code="T0007",
+                gross=pence,
+                fee=paypal_fee(pence),
+                name=customer,
+                invoice_id=number,
+                subject=f"Payment for invoice {number}",
+            )
+        )
+    return rows
+
+
+def _invoice_rows() -> list[dict[str, Any]]:
+    """Payments made through fake PayPal invoices, as Transaction Search lists them (T0007, the invoice number)."""
+    out = []
+    for inv in FAKES.invoices.values():
+        for t in inv["payments"]["transactions"]:
+            day = date.fromisoformat(str(t["payment_date"])[:10])
+            gross = _pence(t["amount"]["value"])
+            out.append(
+                reporting_row(
+                    t["payment_id"],
+                    datetime(day.year, day.month, day.day, 12, 0, tzinfo=UTC),
+                    code="T0007",
+                    gross=gross,
+                    fee=paypal_fee(gross),
+                    name=((inv.get("primary_recipients") or [{}])[0].get("billing_info") or {})
+                    .get("name", {})
+                    .get("full_name"),
+                    invoice_id=inv["detail"]["invoice_number"],
+                    subject=inv["detail"].get("note"),
+                )
+            )
+    return out
+
+
+def _reporting(request: httpx.Request) -> httpx.Response:
+    q = request.url.params
+    start = payment_providers.paypal_parse_time(q.get("start_date"))
+    end = payment_providers.paypal_parse_time(q.get("end_date"))
+    if start is None or end is None or end <= start:
+        return _paypal_error(400, "INVALID_REQUEST", "start_date and end_date are required")
+    if end - start > timedelta(days=31):
+        return _paypal_error(400, "INVALID_REQUEST", "Date range is greater than 31 days")
+    try:
+        size, page = int(q.get("page_size", "100")), int(q.get("page", "1"))
+    except ValueError:
+        return _paypal_error(400, "INVALID_REQUEST", "page")
+    if not 1 <= size <= 500 or page < 1:
+        return _paypal_error(400, "INVALID_REQUEST", "page_size is 1 to 500")
+    if FAKES.reporting is None:
+        FAKES.reporting = sample_transactions(end.date())
+    rows = []
+    for row in [*FAKES.reporting, *_invoice_rows()]:
+        when = payment_providers.paypal_parse_time(row["transaction_info"]["transaction_initiation_date"])
+        if when is not None and start <= when <= end:
+            rows.append(row)
+    rows.sort(key=lambda r: r["transaction_info"]["transaction_initiation_date"])
+    pages = max(1, -(-len(rows) // size))
+    return _json(
+        200,
+        {
+            "transaction_details": rows[(page - 1) * size : page * size],
+            "account_number": "FAKEACCOUNT1",
+            "start_date": q.get("start_date"),
+            "end_date": q.get("end_date"),
+            "last_refreshed_datetime": payment_providers.paypal_time(datetime.now(UTC)),
+            "page": page,
+            "total_items": len(rows),
+            "total_pages": pages,
+            "links": [],
+        },
+    )
 
 
 def _json(status: int, body: Any) -> httpx.Response:
@@ -321,6 +623,70 @@ def _assertion_merchant(request: httpx.Request) -> str | None:
     return claims.get("payer_id") if claims.get("iss") == PAYPAL_CLIENT[0] else None
 
 
+QTY_RE = re.compile(r"\d+(\.\d{1,5})?")
+
+
+def _invoice_problem(body: dict[str, Any]) -> str | None:
+    """The Invoicing v2 (schema 2.12) rules the fake checks: field lengths, item shape, invoicer shape."""
+    detail = body.get("detail") or {}
+    for key, most in (("note", 4000), ("terms_and_conditions", 4000), ("memo", 500), ("reference", 120)):
+        if len(str(detail.get(key) or "")) > most:
+            return f"detail.{key} is longer than {most}"
+    items = body.get("items") or []
+    if not items or len(items) > 100:
+        return "items: 1 to 100"
+    for it in items:
+        if not it.get("name") or len(it["name"]) > 200 or not QTY_RE.fullmatch(str(it.get("quantity"))):
+            return "item name or quantity"
+        if (it.get("unit_amount") or {}).get("currency_code") != "GBP":
+            return "currency"
+        tax = it.get("tax")
+        if tax is not None and (not tax.get("name") or not 0 <= Decimal(str(tax.get("percent"))) <= 100):
+            return "item tax needs name and percent 0-100"
+        if it.get("unit_of_measure", "QUANTITY") not in ("QUANTITY", "HOURS", "AMOUNT"):
+            return "unit_of_measure"
+    inv = body.get("invoicer")
+    if inv is not None:
+        if not inv.get("business_name") or len(inv["business_name"]) > 300:
+            return "invoicer.business_name"
+        if "email_address" in inv:
+            return "invoicer.email_address must be listed in the user's PayPal profile"
+        if "address" in inv and not inv["address"].get("country_code"):
+            return "invoicer.address.country_code is required"
+        for ph in inv.get("phones") or []:
+            if not (
+                re.fullmatch(r"\d{1,3}", ph.get("country_code", ""))
+                and re.fullmatch(r"\d{1,14}", ph.get("national_number", ""))
+            ):
+                return "invoicer.phones: E.164 digits"
+            if ph.get("phone_type") not in ("FAX", "HOME", "MOBILE", "OTHER", "PAGER"):
+                return "invoicer.phones.phone_type"
+        if len(inv.get("additional_notes") or "") > 400:
+            return "invoicer.additional_notes"
+    return None
+
+
+def _invoice_total(items: list[dict[str, Any]]) -> int:
+    """PayPal's total as the fake works it out: per item, quantity × unit price, plus its tax, each rounded half up
+    to the penny (how PayPal really rounds is not documented). `FAKES.paypal_tax_on_total` rounds the tax once on
+    the whole instead, to test the fall-back to one line."""
+    nets: list[tuple[Decimal, Decimal]] = []
+    for it in items:
+        net = Decimal(str(it["quantity"])) * Decimal(it["unit_amount"]["value"]) * 100
+        pct = Decimal(str((it.get("tax") or {}).get("percent", "0")))
+        nets.append((net, pct))
+    whole = Decimal("1")
+    if FAKES.paypal_tax_on_total:
+        net_sum = sum((n.quantize(whole, ROUND_HALF_UP) for n, _ in nets), Decimal(0))
+        tax = sum((n * p / 100 for n, p in nets), Decimal(0)).quantize(whole, ROUND_HALF_UP)
+        return int(net_sum + tax)
+    total = Decimal(0)
+    for net, pct in nets:
+        n = net.quantize(whole, ROUND_HALF_UP)
+        total += n + (n * pct / 100).quantize(whole, ROUND_HALF_UP)
+    return int(total)
+
+
 def _paypal(request: httpx.Request) -> httpx.Response:
     path, method = request.url.path, request.method
     if path == "/v1/oauth2/token" and method == "POST":
@@ -346,7 +712,8 @@ def _paypal(request: httpx.Request) -> httpx.Response:
         )
     if not request.headers.get("PayPal-Partner-Attribution-Id"):
         return _paypal_error(400, "INVALID_REQUEST", "PayPal-Partner-Attribution-Id is required for partners")
-    body = json.loads(request.content) if request.content else {}
+    multipart = request.headers.get("Content-Type", "").startswith("multipart/")
+    body = json.loads(request.content) if request.content and not multipart else {}
     if path == "/v2/customer/partner-referrals" and method == "POST":
         features = body["operations"][0]["api_integration_preference"]["rest_api_integration"]["third_party_details"][
             "features"
@@ -377,21 +744,26 @@ def _paypal(request: httpx.Request) -> httpx.Response:
             return _paypal_error(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.")
         return _json(200, FAKES.merchants[mid])
     merchant = _assertion_merchant(request)
-    if path.startswith(("/v2/invoicing/", "/v2/payments/")) and (merchant is None or merchant not in FAKES.merchants):
+    if path.startswith(("/v2/invoicing/", "/v2/payments/", "/v1/reporting/", "/v1/customer/disputes")) and (
+        merchant is None or merchant not in FAKES.merchants
+    ):
         return _paypal_error(403, "NOT_AUTHORIZED", "Authorization failed due to insufficient permissions.")
+    if path == "/v1/reporting/transactions" and method == "GET":
+        return _reporting(request)
     if path == "/v2/invoicing/invoices" and method == "POST":
         number = body["detail"]["invoice_number"]
         if any(i["detail"]["invoice_number"] == number and i["_merchant"] == merchant for i in FAKES.invoices.values()):
             return _paypal_error(422, "UNPROCESSABLE_ENTITY", "Invoice number already exists")
-        item = body["items"][0]
-        if item["unit_amount"]["currency_code"] != "GBP":
-            return _paypal_error(422, "UNPROCESSABLE_ENTITY", "currency")
+        problem = _invoice_problem(body)
+        if problem:
+            return _paypal_error(400, "INVALID_REQUEST", problem)
         iid = "INV2-" + "-".join(secrets.token_hex(2).upper() for _ in range(4))
-        amount = {"currency_code": "GBP", "value": item["unit_amount"]["value"]}
+        amount = {"currency_code": "GBP", "value": _value(_invoice_total(body["items"]))}
         FAKES.invoices[iid] = {
             "id": iid,
             "status": "DRAFT",
             "detail": {**body["detail"], "metadata": {"create_time": "2026-10-27T09:00:00Z"}},
+            "invoicer": body.get("invoicer", {}),
             "primary_recipients": body.get("primary_recipients", []),
             "items": body["items"],
             "configuration": body.get("configuration", {}),
@@ -417,12 +789,98 @@ def _paypal(request: httpx.Request) -> httpx.Response:
         if rest[1:] == ["cancel"] and method == "POST":
             inv["status"] = "CANCELLED"
             return httpx.Response(204)
+        if rest[1:] == ["remind"] and method == "POST":  # PayPal emails the payer; 204, no body
+            if inv["status"] not in ("UNPAID", "SENT", "PARTIALLY_PAID"):
+                return _paypal_error(422, "UNPROCESSABLE_ENTITY", "Invoice is not in a remindable state.")
+            inv["reminders"] = int(inv.get("reminders", 0)) + 1
+            return httpx.Response(204)
+    if path.startswith("/v1/customer/disputes"):
+        return _disputes(request, merchant, path, method)
     if path.startswith("/v2/payments/captures/") and method == "GET":
         cap = FAKES.captures.get(path.rsplit("/", 1)[1])
         if cap is None or not FAKES.paypal_fee_known:
             return _paypal_error(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.")
         return _json(200, cap)
     return _paypal_error(404, "NOT_FOUND", f"{method} {path}")
+
+
+MAX_EVIDENCE_BYTES = 10 * 1024 * 1024  # UNVERIFIED: the per-document limit as remembered from PayPal's guide
+
+
+def _multipart(request: httpx.Request) -> list[tuple[dict[str, str], bytes]]:
+    """The parts of a multipart/form-data body: (Content-Disposition params + content type, bytes)."""
+    raw = b"Content-Type: " + request.headers["Content-Type"].encode() + b"\r\n\r\n" + request.content
+    msg = BytesParser(policy=default).parsebytes(raw)
+    out = []
+    for part in msg.iter_parts():
+        params = dict(part.get_params(header="content-disposition") or [])
+        params["_type"] = part.get_content_type()
+        out.append((params, part.get_payload(decode=True) or b""))
+    return out
+
+
+def _disputes(request: httpx.Request, merchant: str | None, path: str, method: str) -> httpx.Response:
+    mine = {k: d for k, d in FAKES.disputes.items() if d["_merchant"] == merchant}
+    if path == "/v1/customer/disputes" and method == "GET":
+        size = int(request.url.params.get("page_size", "10"))
+        if not 1 <= size <= 50:
+            return _paypal_error(400, "INVALID_REQUEST", "page_size")
+        items = [dispute_summary(_public(d)) for d in mine.values()][:size]
+        return _json(200, {"items": items, "links": []})
+    rest = path.removeprefix("/v1/customer/disputes/").split("/")
+    d = mine.get(rest[0])
+    if d is None:
+        return _paypal_error(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.")
+    if len(rest) == 1 and method == "GET":
+        return _json(200, _public(d))
+    action = rest[1] if len(rest) == 2 and method == "POST" else ""
+    if action == "provide-evidence":
+        if d["status"] != "WAITING_FOR_SELLER_RESPONSE":
+            return _paypal_error(422, "UNPROCESSABLE_ENTITY", "Evidence can only be provided while waiting for seller")
+        if not request.headers.get("Content-Type", "").startswith("multipart/form-data"):
+            return _paypal_error(415, "UNSUPPORTED_MEDIA_TYPE", "multipart/form-data")
+        parts = _multipart(request)
+        inputs = [b for p, b in parts if p.get("name") == "input" and p["_type"] == "application/json"]
+        files = [(p, b) for p, b in parts if p.get("name") == "evidence-file"]
+        if len(inputs) != 1:
+            return _paypal_error(400, "MISSING_OR_INVALID_REQUEST_BODY", "input")
+        evidences = json.loads(inputs[0]).get("evidences")
+        if not isinstance(evidences, list) or not evidences:
+            return _paypal_error(400, "MISSING_OR_INVALID_REQUEST_BODY", "evidences")
+        for ev in evidences:
+            if ev.get("evidence_type") not in EVIDENCE_TYPES or len(ev.get("notes") or "") > 2000:
+                return _paypal_error(400, "INVALID_REQUEST", "evidence_type or notes")
+        for p, b in files:
+            if p["_type"] != "application/pdf" or not b.startswith(b"%PDF") or len(b) > MAX_EVIDENCE_BYTES:
+                return _paypal_error(400, "INVALID_REQUEST", "evidence file")
+        FAKES.evidence[d["dispute_id"]] = [
+            {"evidences": evidences, "files": [(p.get("filename"), len(b)) for p, b in files]}
+        ]
+        d.update(status="UNDER_REVIEW", dispute_state="UNDER_PAYPAL_REVIEW", links=d["links"][:1])
+        return _json(200, {"links": [{"href": d["links"][0]["href"], "rel": "self", "method": "GET"}]})
+    if action == "send-message":
+        if d.get("dispute_life_cycle_stage") != "INQUIRY":
+            return _paypal_error(422, "UNPROCESSABLE_ENTITY", "Messages can only be sent in the INQUIRY stage")
+        msg = str(json.loads(request.content).get("message") or "")
+        d["messages"].append({"posted_by": "SELLER", "time_posted": "2026-11-11T10:00:00.000Z", "content": msg})
+        return _json(200, {"links": []})
+    if action == "accept-claim":
+        FAKES.resolve_dispute(d["dispute_id"], buyer_wins=True)
+        d["dispute_outcome"]["outcome_code"] = "RESOLVED_BUYER_FAVOUR"
+        return _json(200, {"links": []})
+    return _paypal_error(404, "NOT_FOUND", f"{method} {path}")
+
+
+EVIDENCE_TYPES = frozenset(
+    {
+        "PROOF_OF_FULFILLMENT",
+        "PROOF_OF_REFUND",
+        "PROOF_OF_RECEIPT_COPY",
+        "COPY_OF_CONTRACT",
+        "OTHER",
+        "ITEM_DESCRIPTION",
+    }
+)  # a few of the schema's evidence_type enum; the code only sends these
 
 
 def handle(request: httpx.Request) -> httpx.Response:
@@ -500,6 +958,23 @@ async def paypal_signup(rid: str) -> RedirectResponse:
     return RedirectResponse(f"{ref['return_url']}{sep}{extra}", 303)
 
 
+@router.post("/paypal/dispute/{iid}")
+async def paypal_open_dispute(iid: str, reason: str = "MERCHANDISE_OR_SERVICE_NOT_RECEIVED") -> dict[str, str]:
+    """The payer opens a dispute on the last payment of a fake PayPal invoice (for the end-to-end tests)."""
+    inv = FAKES.invoices.get(iid)
+    if inv is None or not inv["payments"]["transactions"]:
+        raise HTTPException(404, "no such paid invoice")
+    return {"dispute_id": FAKES.open_dispute(iid, reason=reason)}
+
+
+@router.post("/paypal/dispute/{did}/resolve")
+async def paypal_resolve_dispute(did: str, buyer_wins: bool = True) -> dict[str, str]:
+    if did not in FAKES.disputes:
+        raise HTTPException(404, "no such dispute")
+    FAKES.resolve_dispute(did, buyer_wins=buyer_wins)
+    return {"status": "RESOLVED"}
+
+
 @router.get("/stripe/pay/{lid}", response_class=HTMLResponse)
 async def stripe_pay_page(lid: str) -> HTMLResponse:
     link = FAKES.links.get(lid)
@@ -530,7 +1005,7 @@ async def paypal_pay_page(iid: str) -> HTMLResponse:
         body = f"<p>This invoice is {inv['status'].lower()}.</p>"
     else:
         body = f'<form method="post"><button type="submit">Pay £{inv["due_amount"]["value"]}</button></form>'
-    return HTMLResponse(PAGE.format(title=inv["detail"]["note"], who="PayPal", body=body))
+    return HTMLResponse(PAGE.format(title=f"Invoice {inv['detail']['invoice_number']}", who="PayPal", body=body))
 
 
 @router.post("/paypal/pay/{iid}", response_class=HTMLResponse)

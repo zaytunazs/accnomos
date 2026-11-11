@@ -1,0 +1,269 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import type { AccountInfo } from "@azure/msal-browser";
+import { fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
+import { RuntimeErrorNote } from "@/components/States";
+import { money } from "@/lib/invoices";
+import { runtime, ukDate, type RtPaypalSyncItem, type RtPaypalSyncView } from "@/lib/runtime";
+
+/** The cost accounts a PayPal purchase can go to (services/runtime/app/journal.py CATEGORY_ACCOUNTS and Sundry). */
+const COST_ACCOUNTS = [
+  "5000 Materials",
+  "5100 Tools & small equipment",
+  "6200 Advertising",
+  "7100 Rent",
+  "7200 Utilities",
+  "7300 Motor expenses",
+  "7400 Travel",
+  "7410 Subsistence",
+  "7500 Office supplies",
+  "7510 Software & subscriptions",
+  "7520 Postage",
+  "7550 Telephone & internet",
+  "7600 Professional fees",
+  "7700 Insurance",
+  "7900 Bank charges",
+  "7999 Sundry expenses",
+];
+const VAT_CODES: Record<string, string> = {
+  S: "Standard 20%",
+  R: "Reduced 5%",
+  Z: "Zero rated",
+  E: "Exempt",
+  N: "No VAT to reclaim",
+  O: "Outside the scope of VAT",
+};
+const KIND: Record<RtPaypalSyncItem["kind"], string> = {
+  invoice: "Invoice payment",
+  sale: "Sale",
+  expense: "Purchase",
+  fee: "PayPal fee",
+  withdrawal: "Withdrawal to bank",
+  deposit: "Added from bank",
+  refund: "Refund or reversal",
+  other: "Not posted",
+};
+
+/** "Sync PayPal": one tap reads the PayPal history; each transaction waits here for the user's yes. */
+export default function PayPalSync({ account, onPosted }: { account: AccountInfo; onPosted: () => void }) {
+  const [view, setView] = useState<RtPaypalSyncView | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [showDone, setShowDone] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      setView(await runtime.paypalSyncView(account));
+    } catch {
+      /* the invoices page works without it */
+    }
+  }, [account]);
+  useEffect(() => {
+    queueMicrotask(load);
+  }, [load]);
+
+  if (!view || (!view.available && view.items.length === 0)) return null;
+  const waiting = view.items.filter((i) => i.status === "proposed");
+  const rest = view.items.filter((i) => i.status !== "proposed");
+
+  function update(item: RtPaypalSyncItem, message: string) {
+    setView((v) => (v ? { ...v, items: v.items.map((i) => (i.transaction_id === item.transaction_id ? item : i)) } : v));
+    setNote(message);
+    if (item.status === "approved") onPosted();
+  }
+
+  return (
+    <section aria-label="PayPal" className="space-y-3 rounded-2xl border border-border bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-extrabold">PayPal</h2>
+          <p className="text-sm text-muted">
+            {view.last_synced_at ? `Last synced ${ukDate(view.last_synced_at.slice(0, 10))}. ` : ""}
+            Every transaction waits for your approval; nothing goes in your books on its own.
+          </p>
+          {view.sample && (
+            <p className="mt-1 text-sm font-bold text-warn-ink">Sample PayPal history for this demo, not a real PayPal account.</p>
+          )}
+        </div>
+        {view.available ? (
+          <button
+            type="button"
+            className={primaryButton}
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              setNote(null);
+              try {
+                const out = await runtime.paypalSync(account, { ai: true });
+                setView((v) => ({ ...(v as RtPaypalSyncView), items: out.items, last_synced_at: new Date().toISOString() }));
+                const waitingNow = out.items.filter((i) => i.status === "proposed").length;
+                setNote(
+                  `${out.new === 0 ? "Nothing new" : `${out.new} new`} from PayPal · ${waitingNow} waiting for you` +
+                    (out.pending ? ` · ${out.pending} still pending at PayPal` : ""),
+                );
+              } catch (e) {
+                setError((e as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "Syncing PayPal…" : "Sync PayPal"}
+          </button>
+        ) : (
+          <p className="text-sm">
+            {view.reason}{" "}
+            <Link href="/settings#settings-payments" className="font-bold text-teal-dark underline">Online payments</Link>
+          </p>
+        )}
+      </div>
+      {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-2 text-sm font-bold text-teal-dark">{note}</p>}
+      {error && <RuntimeErrorNote message={error} title="Could not sync PayPal" />}
+      {waiting.length > 0 && (
+        <ul className="space-y-2" aria-label="PayPal transactions waiting for approval">
+          {waiting.map((i) => (
+            <SyncRow key={i.transaction_id} account={account} item={i} onChanged={update} />
+          ))}
+        </ul>
+      )}
+      {rest.length > 0 && (
+        <div>
+          <button type="button" className="text-[13px] font-bold text-teal-dark hover:underline" onClick={() => setShowDone((s) => !s)}>
+            {showDone ? "Hide" : "Show"} {rest.length} other PayPal transaction{rest.length === 1 ? "" : "s"}
+          </button>
+          {showDone && (
+            <ul className="mt-2 divide-y divide-border text-sm">
+              {rest.map((i) => (
+                <li key={i.transaction_id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+                  <span>
+                    <span className="font-bold">{ukDate(i.date)} · {i.name}</span>{" "}
+                    <span className="text-muted">· {KIND[i.kind]} · {statusText(i)}</span>
+                    {i.notes[0] && <span className="block text-[13px] text-muted">{i.notes[0]}</span>}
+                  </span>
+                  <span className="tabular-nums font-bold">{signed(i)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function signed(i: RtPaypalSyncItem): string {
+  if (i.currency !== "GBP") return i.currency;
+  return i.gross_pence < 0 ? `−${money(-i.gross_pence)}` : money(i.gross_pence);
+}
+
+function statusText(i: RtPaypalSyncItem): string {
+  return { approved: "approved", rejected: "rejected", already: "already in your books", info: "not posted", proposed: "waiting" }[i.status];
+}
+
+/** Preview the journal the runtime worked out. A changed account or VAT code is sent to the runtime, which works the
+ *  figures out again on approval; the preview shows the runtime's own lines. */
+function SyncRow({
+  account, item, onChanged,
+}: { account: AccountInfo; item: RtPaypalSyncItem; onChanged: (item: RtPaypalSyncItem, message: string) => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [acct, setAcct] = useState(item.account ?? "");
+  const [vat, setVat] = useState(item.vat_code ?? "N");
+  const editable = item.kind === "expense";
+  const id = `pp-${item.transaction_id}`;
+  const gross = Math.abs(item.gross_pence);
+  return (
+    <li className="rounded-xl border border-border bg-ground/40 p-3">
+      <p className="flex flex-wrap items-center gap-2 text-[15px] font-bold">
+        {KIND[item.kind]} · {item.name} · {item.gross_pence < 0 ? "paid" : "received"} {money(gross)} on {ukDate(item.date)}
+        {item.invoice && <span className="text-teal-dark">· {item.invoice}</span>}
+      </p>
+      <p className="text-sm text-muted">
+        {item.items.length > 0 && <>{item.items.join(", ")} · </>}
+        {item.fee_pence > 0 ? <>PayPal fee {money(item.fee_pence)} · you receive {money(item.net_pence)}</> : <>No PayPal fee</>}
+        {item.coded_by && <> · coded by {item.coded_by}</>}
+      </p>
+      {item.notes.map((n) => (
+        <p key={n} className={`text-sm ${n.startsWith("No receipt") || n.includes("twice") || n.includes("not both") ? "font-bold text-warn-ink" : "text-muted"}`}>
+          {n}
+        </p>
+      ))}
+      {item.notes.some((n) => n.startsWith("No receipt")) && (
+        <p className="text-sm">
+          <Link href="/review" className="font-bold text-teal-dark underline">Add the receipt</Link>
+        </p>
+      )}
+      <table className="mt-2 w-full text-[13px] tabular-nums">
+        <caption className="sr-only">What approving posts</caption>
+        <tbody>
+          {item.journal.map((j, n) => (
+            <tr key={n}>
+              <td className="py-0.5">{j.account}{j.vat_code ? ` (VAT ${j.vat_code})` : ""}</td>
+              <td className="text-right">{j.debit_pence ? `Dr ${money(j.debit_pence)}` : ""}</td>
+              <td className="text-right">{j.credit_pence ? `Cr ${money(j.credit_pence)}` : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {editable && (
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div>
+            <label className={fieldLabel} htmlFor={`${id}-acct`}>Account</label>
+            <select id={`${id}-acct`} className={fieldInput} value={acct} onChange={(e) => setAcct(e.target.value)}>
+              {COST_ACCOUNTS.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={fieldLabel} htmlFor={`${id}-vat`}>VAT</label>
+            <select id={`${id}-vat`} className={fieldInput} value={vat} onChange={(e) => setVat(e.target.value)}>
+              {["S", "R", "Z", "E", "N"].map((c) => <option key={c} value={c}>{VAT_CODES[c]}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+      <div className="mt-2 flex flex-wrap justify-end gap-2">
+        <button
+          type="button"
+          className={secondaryButton}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              onChanged(await runtime.paypalSyncReject(account, item.transaction_id), `Rejected: ${item.name}, ${money(gross)}.`);
+            } catch (e) {
+              setError((e as Error).message);
+              setBusy(false);
+            }
+          }}
+        >
+          Reject
+        </button>
+        <button
+          type="button"
+          className={primaryButton}
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            setError(null);
+            try {
+              const changed = editable && (acct !== item.account || vat !== item.vat_code);
+              const out = await runtime.paypalSyncApprove(account, item.transaction_id, changed ? { account: acct, vat_code: vat } : {});
+              onChanged(out, `${KIND[item.kind]} of ${money(gross)} (${item.name}) is in your books.`);
+            } catch (e) {
+              setError((e as Error).message);
+              setBusy(false);
+            }
+          }}
+        >
+          Approve {money(gross)}
+        </button>
+      </div>
+      {error && <RuntimeErrorNote message={error} title="Could not post it" />}
+    </li>
+  );
+}

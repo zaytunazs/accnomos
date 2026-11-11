@@ -29,6 +29,33 @@ PayPal (partner onboarding and Invoicing v2; checked 28 Oct 2026):
   * Orders v2 (schema 2.36): `GET /v2/payments/captures/{id}` gives `seller_receivable_breakdown.paypal_fee`.
     UNVERIFIED: that an invoice payment's `payment_id` is a capture id this call accepts. When it fails the fee is
     left for the user to type in.
+  * Invoicing v2 fields filled from the invoice profile (schema 2.12, read 11 Nov 2026): `detail.note` (to the
+    payer, max 4000), `detail.terms_and_conditions` (max 4000), `detail.memo` (private, max 500); `invoicer`
+    (`invoicer_info`: `business_name` max 300, `address` as `address_portable` with `country_code` required,
+    `phones[]` as E.164 `country_code` + `national_number` digits with `phone_type`, `tax_id` max 100,
+    `additional_notes` max 400). `invoicer.email_address` is left out on purpose: the schema says it "must be listed
+    in the user's PayPal profile", which Accnomos cannot check, so the email goes in the note instead. `items[]`:
+    `name` (max 200), `quantity` (digits, up to five decimals), `unit_amount` (before tax), `tax` {`name`,
+    `percent`} ("The tax amount is added to the item total"), `unit_of_measure` QUANTITY | HOURS | AMOUNT.
+    UNVERIFIED: how PayPal rounds item tax. So the read-back `amount` must equal the pence owed, else that invoice
+    is cancelled and one single-line invoice is made instead (`create_invoice`).
+  * Disputes v1 (https://developer.paypal.com/api/customer-disputes/v1/schema.json, version 1.12, and
+    https://developer.paypal.com/docs/api/customer-disputes/v1/, both read 11 Nov 2026): `GET /v1/customer/disputes`
+    (`page_size` 1-50, `next_page_token`, `dispute_state`; answers `items[]` of `dispute_info`: `dispute_id`,
+    `reason`, `status`, `dispute_state`, `dispute_amount`, `seller_response_due_date`, `dispute_life_cycle_stage`),
+    `GET /v1/customer/disputes/{id}` (`disputed_transactions[]` with `seller_transaction_id`, `invoice_number`,
+    `gross_amount`; `dispute_outcome.outcome_code` RESOLVED_BUYER_FAVOUR | RESOLVED_SELLER_FAVOUR | ...,
+    `dispute_outcome.amount_refunded`; `links[]` with `provide_evidence`/`send_message`/`accept_claim` when allowed),
+    `POST .../provide-evidence` (multipart/form-data: the merchant may answer while the status is
+    WAITING_FOR_SELLER_RESPONSE; `evidence` objects have `evidence_type`, `notes` max 2000, `documents`),
+    `POST .../send-message` (only in the INQUIRY stage; "specify the message in the JSON request body") and
+    `POST .../accept-claim` (PayPal then refunds the customer from the merchant's balance).
+    UNVERIFIED, and different between PayPal's own pages: the multipart part names. The schema names only the file
+    part, `evidence-file`; the description and PayPal community answers send the evidence JSON as a part named
+    `input` (`{"evidences": [...]}`, application/json). This sends `input` + `evidence-file`. The send-message and
+    accept-claim bodies (`{"message"}`, `{"note", "accept_claim_type"}`) follow the descriptions; the schema shows
+    only optional document parts. Partner onboarding asks for READ_SELLER_DISPUTE and UPDATE_SELLER_DISPUTE
+    (partner-referrals v2 `rest_endpoint_features_enum`, read 11 Nov 2026).
 
 Every amount crosses this module as integer pence; the conversions are `stripe_minor`, `paypal_value` and
 `pence_from_paypal`, and only GBP is accepted.
@@ -38,8 +65,10 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import urlencode
@@ -123,6 +152,10 @@ class StripeConfig:
     authorize_url: str = "https://connect.stripe.com/oauth/authorize"
     connect_base: str = "https://connect.stripe.com"
     api_base: str = "https://api.stripe.com"
+    # Direct mode (STRIPE_DIRECT=1): no Connect. Every call is made on the server's own Stripe account with its own
+    # key, so no `Stripe-Account` header is sent. For the sandbox demo, where every user's links are paid into one
+    # test account; the Connect flow is the one for real users.
+    direct: bool = False
 
     @property
     def test_mode(self) -> bool:
@@ -143,7 +176,7 @@ class StripeApi:
         account: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        headers = {"Stripe-Account": account} if account else {}
+        headers = {"Stripe-Account": account} if account and not self.cfg.direct else {}
         if idempotency_key:
             headers["Idempotency-Key"] = idempotency_key
         try:
@@ -178,6 +211,10 @@ class StripeApi:
             f"{self.cfg.connect_base}/oauth/deauthorize",
             data=[("client_id", self.cfg.client_id), ("stripe_user_id", account)],
         )
+
+    async def own_account(self) -> dict[str, Any]:
+        """GET /v1/account: the key's own account (`id`, `charges_enabled`), used by direct mode to link it."""
+        return await self._call("GET", f"{self.cfg.api_base}/v1/account")
 
     async def create_link(
         self, account: str, *, amount_pence: int, invoice_number: str, ref: str, idempotency_key: str
@@ -255,6 +292,10 @@ class PayPalConfig:
     attribution_id: str  # the partner's BN code (PayPal-Partner-Attribution-Id)
     return_url: str
     base: str = PAYPAL_SANDBOX
+    # Direct mode (PAYPAL_DIRECT=1): no partner onboarding. Every call is made on the REST app's own PayPal account
+    # with its own token, so no `PayPal-Auth-Assertion` (and no partner attribution) is sent. For the sandbox demo,
+    # where every user's links are paid into one sandbox business account; partner onboarding is for real users.
+    direct: bool = False
 
     @property
     def test_mode(self) -> bool:
@@ -310,9 +351,10 @@ class PayPalApi:
         headers = {
             "Authorization": f"Bearer {await self.token()}",
             "Content-Type": "application/json",
-            "PayPal-Partner-Attribution-Id": self.cfg.attribution_id,
         }
-        if merchant:
+        if self.cfg.attribution_id and not self.cfg.direct:
+            headers["PayPal-Partner-Attribution-Id"] = self.cfg.attribution_id
+        if merchant and not self.cfg.direct:
             headers["PayPal-Auth-Assertion"] = auth_assertion(self.cfg.client_id, merchant)
         if request_id:
             headers["PayPal-Request-Id"] = request_id
@@ -338,7 +380,15 @@ class PayPalApi:
                             "rest_api_integration": {
                                 "integration_method": "PAYPAL",
                                 "integration_type": "THIRD_PARTY",
-                                "third_party_details": {"features": ["PAYMENT", "REFUND", "INVOICE_READ_WRITE"]},
+                                "third_party_details": {
+                                    "features": [
+                                        "PAYMENT",
+                                        "REFUND",
+                                        "INVOICE_READ_WRITE",
+                                        "READ_SELLER_DISPUTE",
+                                        "UPDATE_SELLER_DISPUTE",
+                                    ]
+                                },
                             }
                         },
                     }
@@ -368,39 +418,104 @@ class PayPalApi:
         customer_name: str,
         customer_email: str | None,
         request_id: str,
+        details: PayPalInvoiceDetails | None = None,
     ) -> dict[str, Any]:
         """Create a PayPal invoice for the amount on the merchant's account, send it without emailing anyone, and
-        return it read back (its `detail.metadata.recipient_view_url` is the link the customer pays through)."""
+        return it read back (its `detail.metadata.recipient_view_url` is the link the customer pays through).
+
+        With `details`, the business's note, terms, memo and invoicer block go on it, and its real lines when
+        `details.items` is set (only when code worked out that they add up to `amount_pence`). PayPal works the total
+        out itself, so it is read back: when an itemised invoice's `amount` is not exactly `amount_pence` it is
+        cancelled and one single-line invoice for `amount_pence` is made instead. The PayPal total therefore always
+        equals what Accnomos says is owed (a read-back with no `amount` is taken as PayPal's word for it)."""
+        made = await self._create_and_send(
+            merchant,
+            number,
+            amount_pence,
+            ref,
+            customer_name,
+            customer_email,
+            request_id,
+            details,
+            f"{number}-{ref[:6]}",
+        )
+        if details is None or not details.items:
+            return made
+        total = pence_from_paypal(made.get("amount")) if made.get("amount") is not None else amount_pence
+        if total == amount_pence:
+            return made
+        await self.cancel_invoice(merchant, str(made["id"]))
+        one = PayPalInvoiceDetails(
+            note=details.note, terms=details.terms, memo=details.memo, invoicer=details.invoicer, items=None
+        )
+        return await self._create_and_send(
+            merchant,
+            number,
+            amount_pence,
+            ref,
+            customer_name,
+            customer_email,
+            f"{request_id}-one",
+            one,
+            f"{number}-{ref[:6]}-1",
+        )
+
+    async def _create_and_send(
+        self,
+        merchant: str,
+        number: str,
+        amount_pence: int,
+        ref: str,
+        customer_name: str,
+        customer_email: str | None,
+        request_id: str,
+        details: PayPalInvoiceDetails | None,
+        paypal_number: str,
+    ) -> dict[str, Any]:
         billing: dict[str, Any] = {"name": {"full_name": customer_name[:300]}}
         if customer_email:
             billing["email_address"] = customer_email
+        detail: dict[str, Any] = {
+            # PayPal wants invoice numbers unique per merchant; a new link for the same invoice gets a suffix.
+            "invoice_number": paypal_number,
+            "reference": ref,
+            "currency_code": "GBP",
+            "note": f"Invoice {number}",
+            "payment_term": {"term_type": "DUE_ON_RECEIPT"},
+        }
+        body: dict[str, Any] = {
+            "detail": detail,
+            "primary_recipients": [{"billing_info": billing}],
+            "items": [
+                {
+                    "name": f"Invoice {number}",
+                    "quantity": "1",
+                    "unit_amount": {"currency_code": "GBP", "value": paypal_value(amount_pence)},
+                    "unit_of_measure": "AMOUNT",
+                }
+            ],
+            "configuration": {"allow_tip": False, "partial_payment": {"allow_partial_payment": False}},
+        }
+        if details is not None:
+            if details.note:
+                detail["note"] = details.note[:4000]
+            if details.terms:
+                detail["terms_and_conditions"] = details.terms[:4000]
+            if details.memo:
+                detail["memo"] = details.memo[:500]
+            if details.invoicer:
+                body["invoicer"] = details.invoicer
+            if details.items:
+                body["items"] = details.items
         created = await self._call(
-            "POST",
-            "/v2/invoicing/invoices",
-            merchant=merchant,
-            request_id=request_id,
-            body={
-                "detail": {
-                    # PayPal wants invoice numbers unique per merchant; a new link for the same invoice gets a suffix.
-                    "invoice_number": f"{number}-{ref[:6]}",
-                    "reference": ref,
-                    "currency_code": "GBP",
-                    "note": f"Invoice {number}",
-                    "payment_term": {"term_type": "DUE_ON_RECEIPT"},
-                },
-                "primary_recipients": [{"billing_info": billing}],
-                "items": [
-                    {
-                        "name": f"Invoice {number}",
-                        "quantity": "1",
-                        "unit_amount": {"currency_code": "GBP", "value": paypal_value(amount_pence)},
-                        "unit_of_measure": "AMOUNT",
-                    }
-                ],
-                "configuration": {"allow_tip": False, "partial_payment": {"allow_partial_payment": False}},
-            },
+            "POST", "/v2/invoicing/invoices", merchant=merchant, request_id=request_id, body=body
         )
+        # PayPal answers 201 with only a link to the new invoice unless asked for the representation (seen against the
+        # sandbox, 11 Nov 2026: {"rel": "self", "href": ".../v2/invoicing/invoices/INV2-…", "method": "GET"}).
         invoice_id = str(created.get("id") or "")
+        href = str(created.get("href") or "")
+        if not invoice_id and created.get("rel") == "self" and "/v2/invoicing/invoices/" in href:
+            invoice_id = href.rsplit("/", 1)[-1]
         if not invoice_id:
             raise ProviderError("PayPal", 0, "the invoice id was missing from PayPal's answer")
         await self._call(
@@ -425,6 +540,134 @@ class PayPalApi:
 
     async def capture(self, merchant: str, capture_id: str) -> dict[str, Any]:
         return await self._call("GET", f"/v2/payments/captures/{capture_id}", merchant=merchant)
+
+    # --- Disputes v1 (customer-disputes) -------------------------------------------------------------------
+
+    def _headers(self, merchant: str | None) -> dict[str, str]:
+        headers: dict[str, str] = {}
+        if self.cfg.attribution_id and not self.cfg.direct:
+            headers["PayPal-Partner-Attribution-Id"] = self.cfg.attribution_id
+        if merchant and not self.cfg.direct:
+            headers["PayPal-Auth-Assertion"] = auth_assertion(self.cfg.client_id, merchant)
+        return headers
+
+    async def list_disputes(self, merchant: str, *, pages: int = 4) -> list[dict[str, Any]]:
+        """GET /v1/customer/disputes, 50 a page, following `next_page_token` for at most `pages` pages."""
+        out: list[dict[str, Any]] = []
+        token: str | None = None
+        for _ in range(pages):
+            q = "page_size=50" + (f"&next_page_token={token}" if token else "")
+            page = await self._call("GET", f"/v1/customer/disputes?{q}", merchant=merchant)
+            out += [d for d in page.get("items") or [] if isinstance(d, dict)]
+            token = None
+            for link in page.get("links") or []:
+                if isinstance(link, dict) and link.get("rel") == "next" and "next_page_token=" in str(link.get("href")):
+                    token = str(link["href"]).split("next_page_token=", 1)[1].split("&", 1)[0]
+            if not token:
+                break
+        return out
+
+    async def dispute(self, merchant: str, dispute_id: str) -> dict[str, Any]:
+        return await self._call("GET", f"/v1/customer/disputes/{dispute_id}", merchant=merchant)
+
+    async def provide_evidence(
+        self, merchant: str, dispute_id: str, evidences: list[dict[str, Any]], files: list[tuple[str, bytes]]
+    ) -> dict[str, Any]:
+        """POST provide-evidence as multipart/form-data: `input` (the evidence JSON) and one `evidence-file` part
+        per (file name, PDF bytes). See the module docstring for why these part names."""
+        headers = {"Authorization": f"Bearer {await self.token()}", **self._headers(merchant)}
+        parts: list[tuple[str, tuple[str | None, bytes, str]]] = [
+            ("input", (None, json.dumps({"evidences": evidences}).encode(), "application/json"))
+        ]
+        parts += [("evidence-file", (name, data, "application/pdf")) for name, data in files]
+        try:
+            resp = await self.http.post(
+                f"{self.cfg.base}/v1/customer/disputes/{dispute_id}/provide-evidence", files=parts, headers=headers
+            )
+        except httpx.HTTPError as exc:
+            raise ProviderError("PayPal", 0, f"could not be reached ({type(exc).__name__})") from exc
+        if resp.status_code >= 400:
+            raise ProviderError("PayPal", resp.status_code, _error_text(resp))
+        return resp.json() if resp.content else {}
+
+    async def send_dispute_message(self, merchant: str, dispute_id: str, message: str) -> dict[str, Any]:
+        return await self._call(
+            "POST", f"/v1/customer/disputes/{dispute_id}/send-message", merchant=merchant, body={"message": message}
+        )
+
+    async def accept_claim(self, merchant: str, dispute_id: str, note: str) -> dict[str, Any]:
+        return await self._call(
+            "POST",
+            f"/v1/customer/disputes/{dispute_id}/accept-claim",
+            merchant=merchant,
+            body={"note": note[:2000], "accept_claim_type": "REFUND"},
+        )
+
+    async def transactions(
+        self, merchant: str | None, *, start: datetime, end: datetime, page: int = 1, page_size: int = 500
+    ) -> dict[str, Any]:
+        """One page of the account's history (Transaction Search, `GET /v1/reporting/transactions`; guide at
+        developer.paypal.com/docs/transaction-search, read 11 Nov 2026: at most 31 days per request, `page_size` at
+        most 500). Dates are sent as PayPal prints them (`2014-07-11T04:03:52+0000`). UNVERIFIED against the
+        sandbox: that PayPal-Auth-Assertion is accepted here for a partner's merchant (the guide says third-party
+        use needs the partner network)."""
+        q = urlencode(
+            {
+                "start_date": paypal_time(start),
+                "end_date": paypal_time(end),
+                "fields": "all",
+                "page_size": str(page_size),
+                "page": str(page),
+            }
+        )
+        return await self._call("GET", f"/v1/reporting/transactions?{q}", merchant=merchant)
+
+    async def remind_invoice(self, merchant: str, invoice_id: str) -> None:
+        """`POST /v2/invoicing/invoices/{id}/remind` (Invoicing v2 schema, checked 11 Nov 2026): PayPal emails the payer
+        a reminder and answers 204. Its `notification` body's `subject` and `note` are documented as not honoured
+        (PayPal writes its own), so only who gets it is sent. The id is checked before it goes into the path."""
+        if not PAYPAL_INVOICE_ID.fullmatch(invoice_id):
+            raise ProviderError("PayPal", 0, "that does not look like a PayPal invoice id")
+        await self._call(
+            "POST",
+            f"/v2/invoicing/invoices/{invoice_id}/remind",
+            merchant=merchant,
+            body={"send_to_recipient": True, "send_to_invoicer": False},
+        )
+
+
+@dataclass(frozen=True)
+class PayPalInvoiceDetails:
+    """What the business adds to a PayPal invoice beyond the amount (app/online_payments.paypal_details builds it)."""
+
+    note: str | None = None
+    terms: str | None = None
+    memo: str | None = None
+    invoicer: dict[str, Any] | None = None
+    items: list[dict[str, Any]] | None = None  # None: one line for the amount
+
+
+def paypal_time(when: datetime) -> str:
+    """2026-11-11T09:00:00+0000 (UTC), the form PayPal's own transaction dates take."""
+    return when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+0000")
+
+
+def paypal_parse_time(raw: Any) -> datetime | None:
+    """A PayPal transaction date (`2014-07-11T04:03:52+0000`, or with `Z`) as an aware datetime; None if unreadable."""
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    text = text.replace("Z", "+00:00")
+    if len(text) >= 5 and text[-5] in "+-" and text[-3] != ":":  # +0000 -> +00:00
+        text = f"{text[:-2]}:{text[-2:]}"
+    try:
+        got = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return got if got.tzinfo else got.replace(tzinfo=UTC)
+
+
+PAYPAL_INVOICE_ID = re.compile(r"INV2(?:-[A-Z0-9]{1,8}){1,6}")  # "INV2-Z56S-5LLA-Q52L-CPZ5"
 
 
 def recipient_view_url(invoice: dict[str, Any]) -> str | None:

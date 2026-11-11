@@ -17,10 +17,11 @@ through them (app/online_payments.py). Same headers as /books/*.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Literal
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field, StrictBool
 
@@ -34,8 +35,24 @@ from app.routes_invoices import InvoiceRow, _row
 from app.validation import Pence, StrictBody
 
 router = APIRouter(tags=["online payments"])
-#: Connecting reaches the provider with the server's credentials: never from a demo sandbox (app/demo.py).
-NOT_IN_DEMO = [Depends(demo.refuse_external("Connecting Stripe or PayPal"))]
+#: Connecting reaches the provider with the server's credentials: never from a demo sandbox (app/demo.py), except in
+#: direct mode, where "connecting" only points the demo's books at the server's own sandbox/test account.
+_REFUSE_IN_DEMO = demo.refuse_external("Connecting Stripe or PayPal")
+
+
+def _not_in_demo(provider: str) -> Callable[[Request], None]:
+    def check(request: Request) -> None:
+        if not op.direct_mode(provider):
+            _REFUSE_IN_DEMO(request)
+
+    return check
+
+
+def _not_in_demo_start(request: Request, provider: Literal["stripe", "paypal"]) -> None:
+    _not_in_demo(provider)(request)
+
+
+NOT_IN_DEMO = [Depends(_not_in_demo_start)]
 
 
 def _http(exc: InvoiceError) -> HTTPException:
@@ -150,7 +167,7 @@ class PayPalConnectBody(StrictBody):
 @router.post(
     "/payments/online/stripe/connect",
     response_model=list[op.ProviderStatus],
-    dependencies=NOT_IN_DEMO,
+    dependencies=[Depends(_not_in_demo("stripe"))],
 )
 async def stripe_connect(
     body: StripeConnectBody, books: Books = Depends(get_books), user: str = Depends(require_user)
@@ -165,7 +182,7 @@ async def stripe_connect(
 @router.post(
     "/payments/online/paypal/connect",
     response_model=list[op.ProviderStatus],
-    dependencies=NOT_IN_DEMO,
+    dependencies=[Depends(_not_in_demo("paypal"))],
 )
 async def paypal_connect(
     body: PayPalConnectBody, books: Books = Depends(get_books), user: str = Depends(require_user)

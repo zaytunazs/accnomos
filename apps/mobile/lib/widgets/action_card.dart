@@ -19,6 +19,8 @@ const actionKindLabels = <String, String>{
   'calendar_add_event': 'Add to calendar',
   'calendar_remove_event': 'Remove from calendar',
   'calendar_move_event': 'Move in calendar',
+  'remind_unpaid': 'Payment reminders',
+  'payment_link_message': 'Payment message',
 };
 
 /// One signed card that does nothing until approved: summary, warnings,

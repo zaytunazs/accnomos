@@ -89,6 +89,10 @@ export function readBack(kind: string, preview: Record<string, unknown>): ReadBa
     }
     case "chase_invoice":
       return money("Owed", preview.total_pence);
+    case "remind_unpaid":
+      return money("Owed in all", preview.total_pence);
+    case "payment_link_message":
+      return money("Owed", preview.balance_pence);
     case "match_bank_line":
       return money("Amount", preview.amount_pence);
     case "log_mileage":

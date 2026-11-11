@@ -72,13 +72,16 @@ IntentKind = Literal[
     "add_to_shopping_list",
     "create_quote",
     "convert_quote_to_invoice",
+    "remind_unpaid",  # app/paypal_assistant.py
+    "payment_link_message",  # app/paypal_assistant.py
     "none",
 ]
 
 # Only questions that might be an instruction cost a second model call.
 _ACTION_WORDS = re.compile(
     r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet"
-    r"|pay|overtime|double|shopping|buy|order|remember|quotes?|quotation|estimate|convert)\b",
+    r"|pay|overtime|double|shopping|buy|order|remember|quotes?|quotation|estimate|convert"
+    r"|whats\s?app|text|sms|message|link|nudge)\b",
     re.I,
 )
 _QUESTION_START = re.compile(
@@ -121,6 +124,11 @@ INTENT_PROMPT = (
     "as said ('Hendon' for 'the Hendon job'). date_text: the day as said "
     "('yesterday', 'Monday', '3 Oct') or null. description: what the invoice is for, in the user's words "
     '(e.g. "this month\'s work"); for a timesheet, any note. Leave every field that does not apply null.'
+    " Two more kinds: remind_unpaid (send payment reminders, through PayPal where possible, to everyone who owes "
+    "money or to one customer: customer_ref is the customer as said, or null for everyone) and "
+    "payment_link_message (write a text or WhatsApp message with the payment link for a customer's unpaid invoice: "
+    "customer_ref or invoice_ref as said). Use chase_invoice for an email reminder about one invoice when PayPal is "
+    "not mentioned."
 )
 
 
@@ -787,11 +795,13 @@ UNAVAILABLE = {
     "create_invoice": "I can't create invoices from Ask yet: sales invoicing isn't in this version of Accnomos.",
     "chase_invoice": "I can't chase invoices from Ask yet: sales invoicing isn't in this version of Accnomos.",
     "log_mileage": "I can't log mileage yet: the mileage log isn't in this version of Accnomos.",
+    "remind_unpaid": "I can't send payment reminders yet: sales invoicing isn't in this version of Accnomos.",
+    "payment_link_message": "I can't write payment messages yet: sales invoicing isn't in this version of Accnomos.",
 }
 
 
 def available(kind: ActionKind) -> bool:
-    if kind in ("create_invoice", "chase_invoice"):
+    if kind in ("create_invoice", "chase_invoice", "remind_unpaid", "payment_link_message"):
         return invoicing() is not None
     if kind == "log_mileage":
         return mileage() is not None
@@ -842,7 +852,9 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
         warnings.append(
             f"{contact.name} has no email address in your contacts, so the invoice will be saved as a draft, not sent."
         )
+    pay_online = await _pay_online_provider(books)
     preview = {
+        "pay_online": pay_online,
         "customer": {
             "contact_id": contact.id,
             "name": contact.name,
@@ -870,8 +882,29 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
             else "".join(f"\n- {_md(ln['description'])}" for ln in priced["lines"])
         )
     )
+    if pay_online:
+        label = "PayPal" if pay_online == "paypal" else "Stripe"
+        summary += f"\n\nWith a **Pay online** link through your {label} account on the invoice."
     confirm = f"Create the invoice and email it to {email}" if send else "Create the invoice as a draft (not sent)"
     return Draft("create_invoice", summary, preview, confirm)
+
+
+async def _pay_online_provider(books: Books) -> str | None:
+    """The connected online-payment account a new invoice gets a "Pay online" link from: PayPal first, then Stripe.
+    None when neither is connected and set up on this server (the invoice then carries bank details only)."""
+    try:
+        from app import online_payments as op
+    except ImportError:  # sales invoicing not in this build
+        return None
+    try:
+        c = await op.load_connections(books)
+    except Exception:  # noqa: BLE001  a payments problem never blocks the invoice itself
+        return None
+    if c.paypal and op.paypal_config()[0] is not None:
+        return "paypal"
+    if c.stripe and op.stripe_config()[0] is not None:
+        return "stripe"
+    return None
 
 
 async def resolve_quote(books: Books, intent: CreateQuoteIntent, today: date) -> Draft | Clarification:
@@ -1400,9 +1433,23 @@ async def propose(
     out = await read_intent(question, cfg)
     if out is None or out.kind == "none":
         return None
+    from app import paypal_assistant  # PayPal reminders and payment-link messages
+
+    out = paypal_assistant.reroute(out, question)  # "chase everyone through PayPal" is a PayPal reminder run
+    if out.kind == "none":
+        return None
     if not available(out.kind):
         return NotAvailable(out.kind, UNAVAILABLE[out.kind])
     today = today or london_today()
+    if out.kind in ("remind_unpaid", "payment_link_message"):
+        found = paypal_assistant.parse(out, question)
+        if isinstance(found, paypal_assistant.RemindIntent):
+            pp = await paypal_assistant.resolve_remind(books, found, cfg, today)
+        elif isinstance(found, paypal_assistant.LinkMessageIntent):
+            pp = await paypal_assistant.resolve_message(books, found, cfg, today)
+        else:
+            return found
+        return pp if isinstance(pp, Clarification) else new_action(pp, graph_token)
     intent = parse_intent(out, question, today)
     if intent is None or isinstance(intent, Clarification):
         return intent
@@ -1457,7 +1504,9 @@ class Context:
 # records, locking a month, and contact merges. Notes, to-dos, the shopping list, calendar changes and drafts may be
 # approved by voice. Each card carries the answer as `tap_only` for the web and Android assistants to say so; the
 # runtime decides again here at approval and refuses a voice yes whatever the client sends.
-TAP_ONLY: frozenset[str] = frozenset({"pay_overtime", "match_bank_line", "close_month", "chase_invoice"})
+TAP_ONLY: frozenset[str] = frozenset(
+    {"pay_overtime", "match_bank_line", "close_month", "chase_invoice", "remind_unpaid"}
+)
 
 
 def needs_tap(kind: str, preview: dict[str, Any]) -> bool:
@@ -1679,8 +1728,16 @@ async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
         "status": inv.status,
         "sent_to": None,
     }
+    if p.get("pay_online") in ("paypal", "stripe"):  # approved on the card; added before sending so the email has it
+        from app import online_payments as op
+
+        try:
+            inv, _ = await op.add_link(ctx.books, inv.number, p["pay_online"], ctx.user)
+            result["payment_link"] = inv.payment_link.url if inv.payment_link else None
+        except Exception as exc:  # noqa: BLE001  the invoice stands without the link; say so
+            result["payment_link_error"] = str(exc)[:300]
     if not p.get("send"):
-        return f"Invoice **{inv.number}** for {money(inv.total_pence)} saved as a draft.", result
+        return f"Invoice **{inv.number}** for {money(inv.total_pence)} saved as a draft.{_link_note(result)}", result
     try:
         pdf = await _invoice_pdf(ctx.books, inv_mod, inv)
         sender = ctx.mail_sender() if ctx.mail_sender else None
@@ -1699,7 +1756,18 @@ async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
             result,
         )
     result.update(status=inv.status, sent_to=inv.sent_to)
-    return f"Invoice **{inv.number}** for {money(inv.total_pence)} sent to {_md(inv.sent_to or '')}.", result
+    return (
+        f"Invoice **{inv.number}** for {money(inv.total_pence)} sent to {_md(inv.sent_to or '')}.{_link_note(result)}",
+        result,
+    )
+
+
+def _link_note(result: dict[str, Any]) -> str:
+    if result.get("payment_link"):
+        return " It has a **Pay online** link; the payment is found when you open Invoices, for you to approve."
+    if result.get("payment_link_error"):
+        return f" The **Pay online** link could not be added: {_md(str(result['payment_link_error'])[:200])}."
+    return ""
 
 
 async def run_chase(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
@@ -1852,6 +1920,8 @@ EXECUTORS: dict[str, Executor] = {
     "calendar_add_event": lambda a, c: tasks_.run_calendar_add(a, c.calendar),
     "calendar_remove_event": lambda a, c: tasks_.run_calendar_remove(a, c.calendar),
     "calendar_move_event": lambda a, c: tasks_.run_calendar_move(a, c.calendar),
+    "remind_unpaid": lambda a, c: importlib.import_module("app.paypal_assistant").run_remind(a, c),
+    "payment_link_message": lambda a, c: importlib.import_module("app.paypal_assistant").run_message(a, c),
 }
 
 

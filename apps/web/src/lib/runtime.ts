@@ -974,6 +974,22 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ ...body, confirm: true }),
     }),
+  /** Sync PayPal (services/runtime/app/routes_paypal_sync.py): read PayPal, propose each transaction, approve one by one. */
+  paypalSyncView: (a: AccountInfo) => call<RtPaypalSyncView>(a, "/payments/paypal/sync"),
+  paypalSync: (a: AccountInfo, body: { days?: number; ai?: boolean } = {}) =>
+    call<RtPaypalSyncResult>(a, "/payments/paypal/sync", { method: "POST", body: JSON.stringify(body) }),
+  paypalSyncApprove: (a: AccountInfo, id: string, body: { account?: string; vat_code?: string } = {}) =>
+    call<RtPaypalSyncItem>(a, `/payments/paypal/sync/${encodeURIComponent(id)}/approve`, {
+      method: "POST",
+      body: JSON.stringify({ ...body, confirm: true }),
+    }),
+  paypalSyncReject: (a: AccountInfo, id: string, reason?: string) =>
+    call<RtPaypalSyncItem>(a, `/payments/paypal/sync/${encodeURIComponent(id)}/reject`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+  paypalFees: (a: AccountInfo, start: string, end: string) =>
+    call<RtPaypalFees>(a, `/payments/paypal/fees?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
   invoiceCustomers: (a: AccountInfo) => call<RtInvoiceCustomer[]>(a, "/invoices/customers"),
   // ---- Products and services, quotes, purchase orders, repeating, overviews, statements ----
   items: (a: AccountInfo, archived = false) => call<RtItem[]>(a, `/items${archived ? "?archived=true" : ""}`),
@@ -2404,6 +2420,58 @@ export interface RtFoundPayment {
   test_mode: boolean;
   journal: { account: string; debit_pence: number; credit_pence: number; vat_code: string | null }[];
 }
+export interface RtPaypalSyncItem {
+  transaction_id: string;
+  date: string;
+  kind: "invoice" | "sale" | "expense" | "fee" | "withdrawal" | "deposit" | "refund" | "other";
+  status: "proposed" | "approved" | "rejected" | "info" | "already";
+  event_code: string;
+  name: string;
+  items: string[];
+  currency: string;
+  gross_pence: number; // signed: money in is positive
+  fee_pence: number;
+  net_pence: number;
+  invoice: string | null;
+  via_link: boolean;
+  account: string | null;
+  vat_code: string | null;
+  coded_by: string | null;
+  receipt: { proposal_id: string; status: string; supplier: string; date: string; gross_pence: number } | null;
+  notes: string[];
+  journal: { account: string; debit_pence: number; credit_pence: number; vat_code: string | null }[];
+  event_ids: string[];
+  reject_reason: string | null;
+}
+export interface RtPaypalSyncView {
+  available: boolean;
+  reason: string | null;
+  source: "paypal" | "sample" | null;
+  sample: boolean;
+  last_synced_at: string | null;
+  items: RtPaypalSyncItem[];
+}
+export interface RtPaypalSyncResult {
+  source: "paypal" | "sample";
+  sample: boolean;
+  start: string;
+  end: string;
+  requests: number;
+  read: number;
+  new: number;
+  pending: number;
+  items: RtPaypalSyncItem[];
+}
+export interface RtPaypalFees {
+  start: string;
+  end: string;
+  fees_pence: number;
+  transactions: number;
+  received_pence: number;
+  fees_in_books_pence: number;
+  by_month: Record<string, number>;
+  synced_through: string | null;
+}
 export interface RtOnlineCheck {
   checked: number;
   found: RtFoundPayment[];
@@ -3147,7 +3215,9 @@ export type RtActionKind =
   | "add_todo"
   | "calendar_add_event"
   | "calendar_remove_event"
-  | "calendar_move_event";
+  | "calendar_move_event"
+  | "remind_unpaid" // PayPal (or email) reminders to everyone overdue, or one customer (app/paypal_assistant.py)
+  | "payment_link_message"; // a WhatsApp/text message with the pay link, sent by the user from their own phone
 /** A saved note (GET /notes; app/assistant_tasks.py). */
 export interface RtNote {
   id: string;

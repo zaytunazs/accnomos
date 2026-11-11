@@ -227,6 +227,7 @@ TALKS_HTTP = {
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
     "payment_providers.py": "Stripe and PayPal: the bases in StripeConfig/PayPalConfig, from server env only",
     "online_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
+    "paypal_disputes.py": "httpx errors only (the model call is ai/ask.py's; PayPal calls are payment_providers.py's)",
     "ai/config.py": "httpx.Timeout only; sends nothing",
     "ai/chain.py": "httpx errors and timeouts only; sends nothing",
     "routes_ai.py": "/ai/health and /ai/warm: the chain providers' c.base_url (server env, ai/providers.py)",

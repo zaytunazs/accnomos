@@ -296,11 +296,24 @@ SUMMARIES: dict[str, Summary] = {
         f"Made a {_provider(r)} payment link" + _pounds(r, "amount_pence") + f" for invoice {_inv(r)}"
     ),
     "payment_link_removed": lambda r, w: f"Removed the {_provider(r)} payment link from invoice {_inv(r)}",
+    "payment_message_prepared": lambda r, w: (  # app/paypal_assistant.py: the user sends it from their own phone
+        f"Prepared a payment message with the {_provider(r)} link for invoice {_inv(r)}"
+    ),
     "online_payment_approved": lambda r, w: (
         f"Posted a {_provider(r)} payment"
         + _pounds(r, "amount_pence")
         + f" against invoice {_inv(r)}"
         + (f", fee £{int(r['fee_pence']) // 100}.{int(r['fee_pence']) % 100:02d}" if r.get("fee_pence") else "")
+    ),
+    # PayPal disputes (app/paypal_disputes.py)
+    "dispute_evidence_built": lambda r, w: f"Built evidence for PayPal dispute {r.get('dispute')} on invoice {_inv(r)}",
+    "dispute_evidence_sent": lambda r, w: (
+        f"Sent evidence for PayPal dispute {r.get('dispute')} on invoice {_inv(r)}"
+        + (" (demo: not sent to PayPal)" if r.get("demo") else "")
+    ),
+    "dispute_reversal_posted": lambda r, w: (
+        f"Took back the PayPal payment{_pounds(r, 'amount_pence')} on invoice {_inv(r)}"
+        f" after dispute {r.get('dispute')}"
     ),
     "payout_matched": lambda r, w: (
         f"Matched a bank line as a {_provider(r)} payout"
@@ -308,6 +321,18 @@ SUMMARIES: dict[str, Summary] = {
         + ", moved from clearing to the bank"
     ),
     "payout_unmatched": lambda r, w: f"Unmatched a {_provider(r)} payout; the money is back in clearing",
+    # Sync PayPal (app/paypal_sync.py)
+    "paypal_synced": lambda r, w: (
+        ("Read the sample PayPal history" if r.get("source") == "sample" else "Synced PayPal")
+        + f": {_n(r, 'new')} new, {_n(r, 'proposed')} to approve"
+    ),
+    "paypal_transaction_approved": lambda r, w: (
+        "Posted a PayPal "
+        + {"invoice": "payment", "sale": "sale", "expense": "purchase", "fee": "fee"}.get(str(r.get("kind")), "entry")
+        + _pounds(r, "amount_pence")
+        + (f" against invoice {_inv(r)}" if r.get("invoice") else "")
+    ),
+    "paypal_transaction_rejected": lambda r, w: "Rejected a synced PayPal transaction",
     # Credits on contacts (app/credits.py)
     "credit_applied": lambda r, w: "Applied a credit on account to another document" + _pounds(r, "amount_pence"),
     "credit_refunded": lambda r, w: (

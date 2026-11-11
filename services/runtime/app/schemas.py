@@ -378,6 +378,8 @@ ActionKind = Literal[
     "calendar_add_event",
     "calendar_remove_event",
     "calendar_move_event",
+    "remind_unpaid",  # app/paypal_assistant.py: PayPal (or email) reminders to everyone overdue, or one customer
+    "payment_link_message",  # app/paypal_assistant.py: a WhatsApp/text message with the pay link, sent by the user
 ]
 
 
