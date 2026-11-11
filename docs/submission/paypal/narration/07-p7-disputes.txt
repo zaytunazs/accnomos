@@ -1,0 +1,1 @@
+If a customer opens a dispute, Accnomos builds the evidence from the books: the invoice, the payment and the dates, every figure checked by code. I read it before anything goes to PayPal.

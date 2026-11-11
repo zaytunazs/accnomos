@@ -1,0 +1,1 @@
+I add a PayPal payment link to an invoice. Accnomos creates a real PayPal invoice, in PayPal's sandbox, with the same lines and VAT, and puts the link on the PDF and in the email.
