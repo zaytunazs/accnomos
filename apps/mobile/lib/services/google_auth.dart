@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:msal_auth/msal_auth.dart' show Account;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Google sign-in for Android ("Continue with Google").
+/// Google sign-in for Android and iOS ("Continue with Google").
 ///
 /// The runtime receives the Google access token as `Authorization: Bearer`
 /// with `X-Account-Kind: google` (see [AuthService.accountKindHeader]). The
@@ -19,8 +20,24 @@ class GoogleAuth {
   /// Web application OAuth client id (the "server client id").
   static const serverClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
 
+  /// iOS OAuth client id (`--dart-define=GOOGLE_IOS_CLIENT_ID=<id>.apps.googleusercontent.com`).
+  /// iOS needs its own client as well as [serverClientId]; Android does not use it.
+  /// Public configuration, like the server id. See docs/IOS_APP_STORE.md.
+  static const iosClientId = String.fromEnvironment('GOOGLE_IOS_CLIENT_ID');
+
   /// False unless the build was given [serverClientId]: the Google buttons stay hidden.
   static bool get configured => serverClientId.trim().isNotEmpty;
+
+  /// Whether "Continue with Google" can work on [platform]: Android with the
+  /// server client id; iOS with the iOS client id too; nowhere else.
+  static bool supportedOn(TargetPlatform platform) => switch (platform) {
+        TargetPlatform.android => configured,
+        TargetPlatform.iOS => configured && iosClientId.trim().isNotEmpty,
+        _ => false,
+      };
+
+  /// [supportedOn] for this phone.
+  static bool get available => supportedOn(defaultTargetPlatform);
 
   /// The scopes the runtime's Google backend needs, asked for together at sign-in.
   static const scopes = <String>[
@@ -43,7 +60,11 @@ class GoogleAuth {
 
   Future<void> _init() async {
     if (_initialised) return;
-    await GoogleSignIn.instance.initialize(serverClientId: serverClientId.trim());
+    final ios = defaultTargetPlatform == TargetPlatform.iOS && iosClientId.trim().isNotEmpty;
+    await GoogleSignIn.instance.initialize(
+      clientId: ios ? iosClientId.trim() : null,
+      serverClientId: serverClientId.trim(),
+    );
     _initialised = true;
   }
 

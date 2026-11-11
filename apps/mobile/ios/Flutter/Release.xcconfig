@@ -1,0 +1,4 @@
+#include "Generated.xcconfig"
+#include "GoogleSignIn.xcconfig"
+// CI only (.github/workflows/ios.yml writes it; git-ignored): manual App Store signing.
+#include? "Signing.xcconfig"

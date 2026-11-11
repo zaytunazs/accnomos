@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Keychain Sharing, as msal_auth requires ("iOS Configuration"): MSAL keeps its token cache in the
+	     com.microsoft.adalcache group; without it sign-out cannot find the account and the Microsoft
+	     Authenticator broker cannot be used. Team-prefixed keychain groups need no extra App ID capability
+	     in the developer portal: any provisioning profile for com.accnomos.app allows them. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.microsoft.adalcache</string>
+	</array>
+</dict>
+</plist>

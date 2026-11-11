@@ -52,6 +52,14 @@ class AuthService {
     return 'msauth://com.accnomos.app/$encoded';
   }
 
+  /// iOS redirect URI: `msauth.<bundle id>://auth` (Info.plist registers the
+  /// `msauth.com.accnomos.app` scheme).
+  static const appleRedirectUri = 'msauth.$_packageName://auth';
+
+  /// Work and personal Microsoft accounts, as `assets/msal_config.json`'s
+  /// `AzureADandPersonalMicrosoftAccount` audience does on Android.
+  static const appleAuthority = 'https://login.microsoftonline.com/common';
+
   /// Scopes for personal accounts (same plain names the web uses).
   static const personalScopes = [
     'User.Read',
@@ -148,6 +156,15 @@ class AuthService {
       androidConfig: AndroidConfig(
         configFilePath: 'assets/msal_config.json',
         redirectUri: redirectUri,
+      ),
+      // iOS reads no JSON: the authority and redirect are given here. The
+      // redirect must be registered in Azure (iOS/macOS platform, bundle id
+      // com.accnomos.app) — docs/IOS_APP_STORE.md. Microsoft Authenticator
+      // brokers the sign-in when installed, Safari otherwise.
+      appleConfig: AppleConfig(
+        authority: appleAuthority,
+        broker: Broker.msAuthenticator,
+        redirectUri: appleRedirectUri,
       ),
     );
     _pca = pca;

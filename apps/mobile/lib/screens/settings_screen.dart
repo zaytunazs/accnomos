@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -403,7 +401,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   /// The Google button: Android builds given GOOGLE_SERVER_CLIENT_ID only.
-  bool get _googleVisible => GoogleAuth.configured && Platform.isAndroid;
+  bool get _googleVisible => GoogleAuth.available;
 
   Future<void> _signIn({bool google = false}) async {
     if (_authBusy) return;
