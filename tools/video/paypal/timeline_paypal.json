@@ -1,0 +1,415 @@
+{
+ "media_root": ".",
+ "width": 1920,
+ "height": 1080,
+ "fps": 30,
+ "xfade": 0.25,
+ "vo_lead": 0.3,
+ "segments": [
+  {
+   "id": "i0",
+   "type": "presenter",
+   "file": "presenter_intro.mp4",
+   "dur": 11,
+   "vo": "i0",
+   "slate_text": "PRESENTER (AI, labelled) — intro 10.4 s",
+   "tag": "AI presenter — generated",
+   "caption": "AI presenter · Accnomos × PayPal"
+  },
+  {
+   "id": "pr",
+   "type": "still",
+   "src": "cards/problem.png",
+   "dur": 6,
+   "vo": "pr"
+  },
+  {
+   "id": "hw",
+   "type": "stills",
+   "srcs": [
+    "cards/how-it-works-1.png",
+    "cards/how-it-works-2.png",
+    "cards/how-it-works-3.png",
+    "cards/how-it-works-4.png"
+   ],
+   "dur": 7,
+   "vo": "hw"
+  },
+  {
+   "id": "h1",
+   "type": "group",
+   "dur": 20,
+   "vo": "h1",
+   "note": "REAL PayPal sandbox (demo copy connected in direct mode); £85 = DEMO-1002 paid 11 Nov",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-sync.webm",
+     "in": 0.0,
+     "dur": 3.6,
+     "caption": "PayPal Transaction Search · gross / fee / net matched to the invoice · nothing posts without your approval",
+     "tag": "PayPal sandbox"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-sync.webm",
+     "in": 10.4,
+     "dur": 16.4,
+     "caption": "PayPal Transaction Search · gross / fee / net matched to the invoice · nothing posts without your approval",
+     "tag": "PayPal sandbox"
+    }
+   ]
+  },
+  {
+   "id": "ag",
+   "type": "group",
+   "dur": 12,
+   "vo": "ag",
+   "note": "demo sample PayPal history",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 1.5,
+     "dur": 5.6,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters (filters never change the books)",
+     "tag": "Demo sample history"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 12.6,
+     "dur": 1.5,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters (filters never change the books)",
+     "tag": "Demo sample history"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 21.2,
+     "speed": 2.0,
+     "dur": 2.5,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters (filters never change the books)",
+     "tag": "Typing sped up"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 34.1,
+     "dur": 2.4,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters (filters never change the books)",
+     "tag": "Demo sample history"
+    }
+   ]
+  },
+  {
+   "id": "h2",
+   "type": "group",
+   "dur": 14,
+   "vo": "h2",
+   "note": "demo sample PayPal history (not connected)",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 0.0,
+     "speed": 3.0,
+     "dur": 3.7,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "tag": "Typing sped up"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 16.4,
+     "dur": 3.3,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "tag": "Demo sample history"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 20.5,
+     "speed": 3.0,
+     "dur": 4.5,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "tag": "Typing sped up"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 40.4,
+     "dur": 2.5,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "tag": "Demo sample history"
+    }
+   ]
+  },
+  {
+   "id": "h3",
+   "type": "video",
+   "src": "raw/pp-tieout.webm",
+   "in": 0.3,
+   "dur": 10,
+   "vo": "h3",
+   "crop": [
+    380,
+    300,
+    1520,
+    855
+   ],
+   "caption": "PayPal Balances API · PayPal's figure as of its last refresh (it can lag up to 3 h)",
+   "tag": "PayPal sandbox",
+   "note": "REAL PayPal sandbox balance"
+  },
+  {
+   "id": "h4",
+   "type": "group",
+   "dur": 24,
+   "vo": "h4",
+   "note": "demo bill-pay seed; Pay NOT pressed",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-billpay.webm",
+     "in": 0.0,
+     "speed": 0.75,
+     "dur": 13.7,
+     "caption": "PayPal Payouts API · posts only on SUCCESS · same batch id on a retry, so never paid twice",
+     "tag": "PayPal sandbox · Pay not pressed in this draft",
+     "blur": [
+      {
+       "x": 560,
+       "y": 443,
+       "w": 460,
+       "h": 28
+      },
+      {
+       "x": 590,
+       "y": 538,
+       "w": 450,
+       "h": 30,
+       "from": 3.0
+      },
+      {
+       "x": 540,
+       "y": 974,
+       "w": 400,
+       "h": 26,
+       "to": 3.4
+      }
+     ]
+    },
+    {
+     "type": "video",
+     "src": "raw/m-upcoming.webm",
+     "in": 2.5,
+     "dur": 3.9,
+     "caption": "PayPal Payouts API · posts only on SUCCESS · same batch id on a retry, so never paid twice",
+     "tag": "PayPal sandbox",
+     "blur": [
+      {
+       "x": 540,
+       "y": 88,
+       "w": 480,
+       "h": 26
+      },
+      {
+       "x": 540,
+       "y": 620,
+       "w": 400,
+       "h": 24
+      },
+      {
+       "x": 540,
+       "y": 764,
+       "w": 400,
+       "h": 24
+      },
+      {
+       "x": 540,
+       "y": 908,
+       "w": 400,
+       "h": 24
+      }
+     ]
+    },
+    {
+     "type": "slate",
+     "dur": 6.4,
+     "color": "0x2c1c10",
+     "caption": "PayPal Payouts API · posts only on SUCCESS · same batch id on a retry, so never paid twice",
+     "text": "RE-SHOOT h4: press Pay £114.00 → 'PayPal is processing it' → 'Paid and posted' (sped up)"
+    }
+   ]
+  },
+  {
+   "id": "h5",
+   "type": "group",
+   "dur": 14,
+   "vo": "h5",
+   "note": "demo SAMPLE dispute; Send to PayPal (demo) sends nothing",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-disputes.webm",
+     "in": 0.0,
+     "dur": 4.0,
+     "caption": "PayPal Disputes API · SAMPLE dispute in the demo: nothing sent to PayPal"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-disputes.webm",
+     "in": 24.4,
+     "speed": 1.1,
+     "dur": 10.0,
+     "caption": "PayPal Disputes API · SAMPLE dispute in the demo: nothing sent to PayPal"
+    }
+   ]
+  },
+  {
+   "id": "ai",
+   "type": "still",
+   "src": "cards/ai-in-action.png",
+   "zoom": 0.03,
+   "dur": 6,
+   "vo": "ai"
+  },
+  {
+   "id": "m1",
+   "type": "group",
+   "dur": 30,
+   "vo": "m1",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/m-files.webm",
+     "in": 1.8,
+     "dur": 3,
+     "caption": "Your books, in your own OneDrive or Google Drive"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-review.webm",
+     "in": 1.6,
+     "dur": 3,
+     "caption": "Receipts read by AI, checked by code"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-bank.webm",
+     "in": 0.0,
+     "dur": 3,
+     "caption": "Bank feed and matching",
+     "blur": [
+      {
+       "x": 400,
+       "y": 900,
+       "w": 1500,
+       "h": 180
+      }
+     ]
+    },
+    {
+     "type": "video",
+     "src": "raw/m-vat.webm",
+     "in": 0.0,
+     "dur": 3,
+     "caption": "VAT filed to HMRC (sandbox)"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-reports.webm",
+     "in": 0.0,
+     "dur": 3,
+     "caption": "Reports"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-talk.webm",
+     "in": 4.0,
+     "dur": 3,
+     "caption": "Ask by voice"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-jobs.webm",
+     "in": 0.0,
+     "dur": 3,
+     "caption": "Jobs"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-payroll.webm",
+     "in": 0.0,
+     "dur": 3,
+     "caption": "Payroll estimates"
+    },
+    {
+     "type": "slate",
+     "dur": 3,
+     "color": "0x2c1c10",
+     "caption": "Android app",
+     "text": "ANDROID (owner to drop in): Try the company demo › Home, then Review"
+    },
+    {
+     "type": "video",
+     "src": "raw/m-upcoming.webm",
+     "in": 3.0,
+     "dur": 2,
+     "caption": "Upcoming PayPal payments in your calendar · Help centre",
+     "blur": [
+      {
+       "x": 540,
+       "y": 88,
+       "w": 480,
+       "h": 26
+      },
+      {
+       "x": 540,
+       "y": 620,
+       "w": 400,
+       "h": 24
+      },
+      {
+       "x": 540,
+       "y": 764,
+       "w": 400,
+       "h": 24
+      },
+      {
+       "x": 540,
+       "y": 908,
+       "w": 400,
+       "h": 24
+      }
+     ]
+    },
+    {
+     "type": "video",
+     "src": "raw/m-support.webm",
+     "in": 1.5,
+     "dur": 1,
+     "caption": "Upcoming PayPal payments in your calendar · Help centre"
+    }
+   ]
+  },
+  {
+   "id": "fl",
+   "type": "still",
+   "src": "cards/features.png",
+   "dur": 5,
+   "vo": "fl"
+  },
+  {
+   "id": "o0",
+   "type": "presenter",
+   "file": "presenter_outro.mp4",
+   "dur": 8,
+   "vo": "o0",
+   "slate_text": "PRESENTER (AI, labelled) — outro 7.4 s",
+   "tag": "AI presenter — generated",
+   "caption": "accnomos.com · Try the demo, no sign-in · github.com/zaytunazs/accnomos · PayPal sandbox; no real money moved"
+  }
+ ]
+}

@@ -11,7 +11,11 @@
  * Env: PW_FROM (a folder whose node_modules has playwright or @playwright/test), SITE (default https://accnomos.com),
  * PAYPAL_CONNECT=1 (connect PayPal in test mode in the demo copy first: needs PAYPAL_DIRECT=1 on the server),
  * PAY=1 (pp-billpay presses "Pay £…": a real sandbox payout; without it the shot ends on the confirmation),
- * GAP_MS (pause between shots for the live API's per-IP limit, default 25 s), DEMO_WAIT_MS (default 12 s).
+ * GAP_MS (pause between shots for the live API's per-IP limit, default 25 s), DEMO_WAIT_MS (default 12 s),
+ * CHROME (a Chromium binary, if Playwright's own is missing), HTTPS_PROXY (passed to Chromium when set, for a sandboxed
+ * agent), CALLBACK_HOST (e.g. https://api.accnomos.com: if the server's PayPal connect sends the browser to its internal
+ * http://127.0.0.1:8780 address, the browser is sent to this host instead; seen on the live server 11 Nov 2026),
+ * SYNC_FIRST=1 (press Sync PayPal off camera before the shot: pp-tieout, pp-grid).
  * The PayPal checkout (scene p3) and the signed-in sandbox scenes (p4 with real payments, p5 tie-out, p8) are filmed by
  * hand: they need the owner's sign-in and the sandbox buyer, whose credentials never go in the repo.
  */
@@ -70,6 +74,22 @@ async function toRegion(page: any, name: string) {
   return r;
 }
 
+/** The live server's connect callback can point at its internal address (PAYPAL_RETURN_URL unset): follow it on the public host. */
+async function fixCallback(page: any) {
+  const host = process.env.CALLBACK_HOST;
+  if (!host) return;
+  await page.route(/^http:\/\/127\.0\.0\.1:8780\//, (r: any) =>
+    r.fulfill({ status: 302, headers: { location: r.request().url().replace("http://127.0.0.1:8780", host) } }));
+}
+/** Press Sync PayPal off camera, so a shot opens on the synced panel. */
+async function syncOffCamera(page: any) {
+  await go(page, "/invoices");
+  const panel = page.locator('section[aria-label="PayPal"]').first();
+  await panel.getByRole("button", { name: "Sync PayPal" }).first().click();
+  await panel.getByRole("status").first().waitFor({ timeout: 90_000 }).catch(() => undefined);
+  await settle(page, 1500);
+}
+
 /** Settings › Online payments → "Connect PayPal (test mode)": in direct mode the server sends the browser straight back. */
 async function connectPayPal(page: any) {
   await go(page, "/settings#settings-payments");
@@ -79,7 +99,8 @@ async function connectPayPal(page: any) {
     return;
   }
   await btn.click();
-  await page.waitForURL((u: URL) => u.href.startsWith(SITE) && u.pathname.startsWith("/settings"), { timeout: 60_000 }).catch(() => undefined);
+  // The page is already on /settings, so wait for the round trip's result rather than the URL.
+  await page.getByText(/^Connected:/).first().waitFor({ timeout: 60_000 }).catch(() => undefined);
   await settle(page, 1500);
   console.log("  PayPal connected:", await page.getByText(/^Connected:/).first().isVisible().catch(() => false));
 }
@@ -129,15 +150,22 @@ const SHOTS: Record<string, Shot> = {
         await hoverText(c, /PayPal fee/, 1500, inv);
         await hoverText(c, /^Pays invoice/, 1200, inv);
       }
-      const vatSel = vis(panel.getByLabel(/VAT on this sale/));
+      // The sale with no invoice in the books (SALE_MATCH picks one, e.g. "DEMO-1002"): choose its VAT
+      const sale = vis(list.getByRole("listitem").filter({ hasText: /^Sale/ }).filter({ hasText: process.env.SALE_MATCH ?? /./ }));
+      const vatSel = vis(sale.getByLabel(/VAT on this sale/).or(panel.getByLabel(/VAT on this sale/)));
       if (await vatSel.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await h.scrollIntoView(vatSel, 900);
+        await h.scrollIntoView(sale, 900);
+        await hoverText(c, /PayPal fee/, 1400, sale);
+        await hoverText(c, /choose its VAT/, 1200, sale);
+        await h.scrollIntoView(vatSel, 700);
         await h.hover(vatSel, 600);
         await vatSel.selectOption("S");
+        c.mark("vat");
         await h.hold(1200);
       }
-      if (await inv.isVisible().catch(() => false)) {
-        const approve = vis(inv.getByRole("button", { name: /^Approve £/ }));
+      const target = (await inv.isVisible().catch(() => false)) ? inv : sale;
+      if (await target.isVisible().catch(() => false)) {
+        const approve = vis(target.getByRole("button", { name: /^Approve £/ }));
         await h.scrollIntoView(approve, 800);
         c.mark("approve");
         await h.click(approve, 300);
@@ -163,7 +191,11 @@ const SHOTS: Record<string, Shot> = {
       await hoverText(c, /^Due today$/, 1000);
       const approve = vis(page.getByRole("button", { name: /^Approve payment$|^Try again$/ }));
       if (!(await approve.isVisible({ timeout: 5000 }).catch(() => false))) {
-        await hoverText(c, /No bill is due for PayPal today/, 2000);
+        await hoverText(c, /No bill is due for PayPal today|Connect PayPal in Settings/, 2000);
+        c.mark("empty"); // no bill due today with a PayPal email: see SHOT_LIST.md, Bill pay (re-shoot)
+        await hoverText(c, /^Upcoming PayPal payments$/, 1500);
+        await h.scrollBy(260, 1200);
+        await h.hold(1500);
         throw new Error("no bill due today with a PayPal email: see SHOT_LIST.md, Bill pay");
       }
       await h.click(approve, 600);
@@ -229,21 +261,39 @@ const SHOTS: Record<string, Shot> = {
       const grid = vis(page.getByRole("grid").or(page.locator(".ag-root")));
       await grid.waitFor({ timeout: 30_000 });
       await h.park(900, 240);
-      const boxes = page.locator(".ag-center-cols-container .ag-checkbox-input, .ag-pinned-left-cols-container .ag-checkbox-input");
-      const n = Math.min(3, await boxes.count());
-      for (let i = 0; i < n; i++) await h.click(boxes.nth(i), 350);
+      // Tick up to three waiting rows that can be approved as they are (not a sale still waiting for its VAT choice)
+      // (AG Grid 34 puts body rows in .ag-grid-scrolling-container; the totals row is row-index "b-0")
+      const rows = page.locator(".ag-row[row-index]");
+      const picks: any[] = [];
+      const seen = new Set<string>();
+      for (let i = 0; i < (await rows.count()) && picks.length < 3; i++) {
+        const row = rows.nth(i);
+        const idx = (await row.getAttribute("row-index")) ?? "";
+        if (idx.startsWith("b") || seen.has(idx)) continue;
+        seen.add(idx);
+        if (/Choose the VAT/.test(await row.innerText().catch(() => ""))) continue;
+        if (!(await row.locator(".ag-checkbox-input:not([disabled])").count())) continue;
+        picks.push(row.locator(".ag-selection-checkbox").first());
+      }
+      await h.scrollIntoView(grid, 800);
+      for (const box of picks) await h.click(box, 350);
+      const n = picks.length;
       await hoverText(c, /^Total of \d+ shown/, 1200);
       const approve = vis(page.getByRole("button", { name: /^Approve selected/ }));
       if (n > 0 && process.env.GRID_APPROVE === "1") {
         page.once("dialog", (d: any) => d.accept());
         c.mark("approve");
         await h.click(approve, 300);
+        const confirm = vis(page.getByRole("dialog").getByRole("button", { name: /^Approve/ }));
+        if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) await h.click(confirm, 300);
         await page.waitForTimeout(5000);
         c.mark("approved");
+        await h.hold(1500);
       } else {
         await h.hover(approve, 1200);
       }
       await go(page, "/reports/ledger-grid");
+      await page.getByText("Opening the ledger explorer").first().waitFor({ state: "detached", timeout: 30_000 }).catch(() => undefined);
       c.mark("explorer");
       const box = vis(page.getByLabel(/Describe the lines you want to see/).or(page.getByPlaceholder(/Describe the lines/)));
       await h.type(box, process.env.GRID_Q ?? "PayPal fees over £5", 300);
@@ -251,6 +301,8 @@ const SHOTS: Record<string, Shot> = {
       c.mark("wait");
       await page.getByText("Working it out…").first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
       c.mark("ready");
+      await h.hold(900);
+      await h.scrollBy(280, 1000);
       await h.hold(2500);
     },
   },
@@ -260,7 +312,11 @@ const SHOTS: Record<string, Shot> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(700, 300);
-      const qs = [process.env.ASK_Q1 ?? "What did PayPal cost me this quarter?", process.env.ASK_Q2 ?? "How much is in PayPal?"];
+      // v4 (checked live 11 Nov 2026 on a demo WITHOUT PayPal connected: the sample history answers £492.00 / £97.79)
+      const qs = [
+        process.env.ASK_Q1 ?? "Did that client pay all the arrears? They had around £500 overdue — check PayPal.",
+        process.env.ASK_Q2 ?? "There was a payment via PayPal last month, probably around £100 for stationery — how much exactly was it?",
+      ];
       for (const [i, q] of qs.entries()) {
         await h.type(vis(page.getByLabel(/Ask your books/)), q, 300);
         await h.click(vis(page.getByRole("button", { name: "Ask", exact: true })), 200);
@@ -268,8 +324,26 @@ const SHOTS: Record<string, Shot> = {
         await page.getByText(ANSWERED).nth(i).waitFor({ timeout: 180_000 });
         await page.waitForTimeout(600);
         c.mark(`ready${i + 1}`);
-        await h.hold(2200);
+        const ans = page.getByText(ANSWERED).nth(i);
+        await ans.evaluate((e: Element) => e.closest("li,article,section,div")?.scrollIntoView({ block: "end", behavior: "smooth" })).catch(() => undefined);
+        await h.hold(3200);
       }
+    },
+  },
+  // h3: the tie-out at the top of the PayPal panel (only when PayPal is really connected: PAYPAL_CONNECT=1 SYNC_FIRST=1)
+  "pp-tieout": {
+    setup: async ({ page }) => { await go(page, "/invoices"); await toRegion(page, "PayPal"); await page.evaluate(() => window.scrollBy(0, -140)); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 200);
+      await h.hold(600);
+      const says = vis(page.getByText(/^PayPal says/));
+      await says.waitFor({ timeout: 20_000 });
+      await h.hover(says, 1600);
+      await hoverText(c, /\(as of/, 1800);
+      await hoverText(c, /^Difference/, 2600);
+      await hoverText(c, /refreshes this balance/, 1800);
+      await h.hold(800);
     },
   },
   ...montage(),
@@ -301,6 +375,19 @@ function montage(): Record<string, Shot> {
     },
   });
   return {
+    "m-files": look("/files", [/Books\.xlsx/]),
+    "m-home": look("/", [/^Upcoming PayPal payments$/]),
+    "m-talk": {
+      setup: async ({ page }) => { await go(page, "/review"); await page.waitForTimeout(1500); },
+      run: async (c) => {
+        await c.h.park(800, 300);
+        await c.h.click(vis(c.page.getByRole("button", { name: "Talk to Accnomos" })), 700);
+        await hoverText(c, /Ask by voice/, 1500);
+        const mic = vis(c.page.getByRole("button", { name: "Ask by voice" }));
+        if (await mic.isVisible().catch(() => false)) await c.h.hover(mic, 1500);
+        await c.h.hold(800);
+      },
+    },
     "m-review": look("/review", [/waiting for you/]),
     "m-bank": look("/bank", [/^Bank feed/, /matched/i], 250),
     "m-quotes": look("/sales/quotes", [], 150),
@@ -325,15 +412,20 @@ for (const [id, shot] of Object.entries(SHOTS)) {
   if (ONLY && !ONLY.has(id)) continue;
   if (!first) await sleep(Number(process.env.GAP_MS ?? 25_000));
   first = false;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    ...(process.env.CHROME ? { executablePath: process.env.CHROME } : {}),
+    ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}),
+  });
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2, locale: "en-GB", timezoneId: "Europe/London" });
     await context.addInitScript(CURSOR_SCRIPT);
     await context.addInitScript(`(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(CLEAN_CSS)}; (document.head || document.documentElement).appendChild(s); })()`);
     const page = await context.newPage();
     const h = new Human(page);
+    await fixCallback(page);
     await demoSession(page);
     if (process.env.PAYPAL_CONNECT === "1") await connectPayPal(page);
+    if (process.env.SYNC_FIRST === "1") await syncOffCamera(page);
     const marks: Record<string, number> = {};
     let t0 = 0;
     const ctx: Ctx = { page, h, mark: (n) => { marks[n] = Date.now() / 1000 - t0; } };
