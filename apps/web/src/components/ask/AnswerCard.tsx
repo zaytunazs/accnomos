@@ -4,12 +4,24 @@ import ByWhom from "@/components/ByWhom";
 import type { AccountInfo } from "@azure/msal-browser";
 import { shortModelName } from "@/lib/ai-config";
 import { getFileWebUrl } from "@/lib/graph";
+import { helpCitation } from "@/lib/help";
 import type { RtAskAnswer, RtSuggestedAction } from "@/lib/runtime";
 
-/** **bold** and `code` inside one line; everything else stays text (React escapes it). */
+/**
+ * **bold**, *emphasis*, `code` and [links](/help/…) inside one line; everything else stays text (React escapes it). Only
+ * links to our own pages (a path starting with one "/") become links: the help centre's answers cite their article.
+ */
 function inline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(\/[^)\s/][^)\s]*\)|\*[^*\s][^*]*\*)/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) return <strong key={i}>{part.slice(2, -2)}</strong>;
+    const link = /^\[([^\]]+)\]\((\/[^)\s]*)\)$/.exec(part);
+    if (link)
+      return (
+        <Link key={i} href={link[2]} className="font-bold text-teal-dark underline underline-offset-2">
+          {link[1]}
+        </Link>
+      );
+    if (part.length > 2 && part.startsWith("*") && part.endsWith("*")) return <em key={i}>{part.slice(1, -1)}</em>;
     if (part.startsWith("`") && part.endsWith("`") && part.length > 2)
       return (
         <code key={i} className="rounded bg-ground px-1 text-[0.95em]">
@@ -76,11 +88,14 @@ const ACTION_HREF: Record<RtSuggestedAction["kind"], string | null> = {
   open_vat: "/vat",
   plan_day: "/", // Home opens the plan for ?plan=YYYY-MM-DD
   open_spending: "/spending",
+  open_help: "/help",
+  open_support: "/support",
   none: null,
 };
 
 function actionHref(a: RtSuggestedAction): string | null {
   if (a.kind === "plan_day") return a.arg && /^\d{4}-\d{2}-\d{2}$/.test(a.arg) ? `/?plan=${a.arg}` : null;
+  if (a.kind === "open_help") return a.arg && /^[a-z0-9-]+$/.test(a.arg) ? `/help/${a.arg}` : "/help";
   return ACTION_HREF[a.kind];
 }
 
@@ -189,8 +204,9 @@ export function groupCitations(citations: string[], sheet: string): CitationGrou
 function CitationChip({ group, account }: { group: CitationGroup; account: AccountInfo | null }) {
   const [url, setUrl] = useState<string | null>(null);
   const first = group.paths[0];
+  const help = helpCitation(first);
   useEffect(() => {
-    if (!account) return;
+    if (!account || help) return;
     let stale = false;
     void getFileWebUrl(account, first).then((u) => {
       if (!stale) setUrl(u);
@@ -198,7 +214,13 @@ function CitationChip({ group, account }: { group: CitationGroup; account: Accou
     return () => {
       stale = true;
     };
-  }, [account, first]);
+  }, [account, first, help]);
+  if (help)
+    return (
+      <Link href={`/help/${help.id}`} title={`Help article: ${help.title}`} className={chip}>
+        Help · {help.title}
+      </Link>
+    );
   const label = group.label;
   const title = group.paths.length > 1 ? `${group.paths.join("\n")} — open the first` : `Open ${first}`;
   if (url) {

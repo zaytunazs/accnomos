@@ -11,7 +11,8 @@
  */
 export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/pricing", "/privacy", "/terms", "/demo", "/judges", "/join"]);
 
-export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
+/** The help centre (/help and every /help/<article>) is public too. */
+export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path) || path === "/help" || path.startsWith("/help/");
 
 /**
  * The build the hackathon judges see (NEXT_PUBLIC_SUBMISSION_MODE, default "1"): "Try the demo" and "Sign in with

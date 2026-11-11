@@ -535,6 +535,13 @@ NO_USER_NEEDED = {
     "PATCH /admin/bug-reports/{report_id}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
     "POST /events": "a product event for the verified caller's account (dropped when opted out); no books",
     "POST /bug-reports": "a problem report from the verified caller; no books",
+    "POST /support/assist": "help-centre answer for a signed-in caller or demo (X-Graph-Token / demo); no books",
+    "POST /support/assist/voice": "the same, spoken; no books",
+    "POST /support/tickets": "a ticket on the verified caller's own registry account; no books",
+    "POST /support/tickets/from-card": "the signed ticket card, for the verified caller's own account; no books",
+    "POST /support/tickets/{ticket_id}/messages": "a reply on the verified caller's own ticket; no books",
+    "POST /admin/support/tickets/{ticket_id}/messages": "admin (ADMIN_EMAILS, verified identity); in admin_audit",
+    "PATCH /admin/support/tickets/{ticket_id}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
 }
 
 
@@ -649,6 +656,8 @@ PUBLIC_ROUTES = {
     "GET /ebay/account-deletion": "eBay's endpoint challenge: a hash of its code and server env; no user data",
     "POST /ebay/account-deletion": "eBay's account deletion notice: acknowledged with 204; reads and writes no books",
     "GET /plans": "the public price list (app/billing); no user data",
+    "GET /support/articles": "the public help centre's articles; no user data",
+    "GET /support/articles/{article_id}": "one public help article; no user data",
     "POST /billing/stripe/webhook": "Stripe's webhook: authenticated by its Stripe-Signature, not a user token",
 }
 

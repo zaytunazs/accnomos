@@ -1496,6 +1496,7 @@ class Context:
     calendar: Callable[[], Any] | None = None  # () -> CalendarProvider; only for the calendar cards
     via: Literal["tap", "voice"] = "tap"  # how the user said yes: the Approve button, or "yes" to the assistant
     approval_heard: str | None = None  # voice: what the user said, as transcribed
+    request: Any = None  # the HTTP request, for cards that act on the caller's account (create_support_ticket)
 
 
 # Which cards a spoken "yes" may approve: the one place this is decided. Critical work needs the Approve button: the
@@ -1922,7 +1923,25 @@ EXECUTORS: dict[str, Executor] = {
     "calendar_move_event": lambda a, c: tasks_.run_calendar_move(a, c.calendar),
     "remind_unpaid": lambda a, c: importlib.import_module("app.paypal_assistant").run_remind(a, c),
     "payment_link_message": lambda a, c: importlib.import_module("app.paypal_assistant").run_message(a, c),
+    "create_support_ticket": lambda a, c: run_support_ticket(a, c),
 }
+
+
+async def run_support_ticket(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    """The assistant's ticket card approved from Ask (a tap, or a spoken yes). Nothing extra is attached this way: the
+    card's own Create ticket button (POST /support/tickets/from-card) is where the user ticks what to attach."""
+    if ctx.request is None:
+        raise ActionError("Support tickets can't be made from here; use the Support page.", 501)
+    from app.billing.routes import caller_account
+    from app.support.routes import Consent, create_from_card
+
+    acc = await caller_account(ctx.request)
+    row, made = await create_from_card(action, ctx.request, acc, Consent())
+    verb = "Created" if made else "Already created:"
+    return (
+        f"{verb} support ticket **{row['number']}**. Replies appear on the Support page.",
+        {"ticket_id": str(row["id"]), "number": row["number"], "created": made},
+    )
 
 
 async def approve(action: ProposedAction, ctx: Context) -> ActionResult:

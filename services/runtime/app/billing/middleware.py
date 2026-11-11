@@ -44,7 +44,7 @@ WRITES = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 # Never metered: health, public pages, billing/account/admin/analytics, the test stand-ins.
 SKIP = re.compile(
-    r"^/(health|plans|account|billing|admin|events|bug-reports|public|__test|demo|docs|openapi\.json)(/|$)"
+    r"^/(health|plans|account|billing|admin|events|bug-reports|support|public|__test|demo|docs|openapi\.json)(/|$)"
 )
 
 # Writes a read-only account may still make: settings, exports, disconnecting things, taking access back.
