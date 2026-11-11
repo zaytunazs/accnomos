@@ -1,5 +1,10 @@
 # Release notes — Accnomos mobile
 
+## 0.3.21 (26): no model names on screen
+
+- The goals note, the second-reading note and Settings › AI › Test connection name the AI in plain words, never a model id.
+- AI search in Ask: "did that client pay?" and "how much exactly was that PayPal payment?" (same runtime as the web).
+
 ## 0.3.20 (25): PayPal on the phone
 
 Play "What's new" (about 390 characters):
