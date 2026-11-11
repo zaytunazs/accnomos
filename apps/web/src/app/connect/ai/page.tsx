@@ -7,7 +7,7 @@ export default function ChooseAiPage() {
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
       <ConnectSteps current={2} />
-      <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#1B1F24]">Choose how Meta AI runs your books</h1>
+      <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-[#1B1F24]">Choose how AI runs your books</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-[#4B5159]">
         Either way, we never see your data. The key or the address stays on this device and goes only to your
         runtime.

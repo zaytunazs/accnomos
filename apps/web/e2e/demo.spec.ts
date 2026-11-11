@@ -87,11 +87,11 @@ for (const vp of VIEWPORTS) {
 
       await step(3, "choose-ai", "Connect → Choose your AI → Test connection", async () => {
         await page.goto("/connect/ai");
-        await expect(page.getByRole("heading", { name: "Choose how Meta AI runs your books" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Choose how AI runs your books" })).toBeVisible();
         await expect(page.getByRole("button", { name: /^On my own machine/ })).toHaveAttribute("aria-pressed", "true");
-        await expect(page.getByRole("button", { name: /^My own Meta API key/ })).toBeVisible();
+        await expect(page.getByRole("button", { name: /^My own API key for the hosted model/ })).toBeVisible();
         await page.getByRole("button", { name: "Test connection" }).click();
-        await expect(page.getByRole("status")).toContainText("Connected · accnomos-test-stub"); // live: the Glimmer model's name
+        await expect(page.getByRole("status")).toContainText("Connected · accnomos-test-stub"); // live: the local model's name
       });
 
       await step(4, "scan", "Review → Add a receipt → confirm it is a receipt", async () => {
@@ -108,7 +108,7 @@ for (const vp of VIEWPORTS) {
 
       const card = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });
       await step(5, "proposal", "The proposal card: source, checks, verifier, the document", async () => {
-        await expect(card).toContainText("Read by Glimmer 30B on your machine");
+        await expect(card).toContainText("Read by the open-weights model on your machine");
         await expect(card).toContainText("2 Nov 2026");
         await expect(card).toContainText("GB 882431902 ✓");
         await expect(card).toContainText("£43.25 · £8.65 · £51.90");

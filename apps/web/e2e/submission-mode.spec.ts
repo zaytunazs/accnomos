@@ -9,8 +9,9 @@ import { PAGES } from "./pages";
  * is read whole (title, meta description, all text in the DOM including closed menus, and accessible names held in
  * attributes); scripts are left out because test builds carry the pre-launch branch for specs that flip the mode.
  * The production export is checked file by file in CI (scripts/prelaunch-words.mjs).
- * The same read also finds no non-Meta model, tool, engine, host, vendor or hardware name (THIRD_PARTY_NAMES in
- * scripts/prelaunch-words.mjs): a non-Meta fallback is "a local fallback model" on every public or judge-facing page.
+ * The same read also finds no vendor or product name of a model, tool, engine, host or hardware (THIRD_PARTY_NAMES in
+ * scripts/prelaunch-words.mjs): models are "the hosted model", "the local open-weights model" and so on, on every
+ * public or judge-facing page.
  */
 
 async function pageWords(page: Page): Promise<string> {
@@ -31,11 +32,11 @@ async function sweep(page: Page, route: string) {
   await page.waitForLoadState("networkidle");
   const words = await pageWords(page);
   expect(prelaunchHits(words, NOT_YET_WORDS), `${route}: pre-launch wording`).toEqual([]);
-  expect(prelaunchHits(words, THIRD_PARTY_NAMES), `${route}: non-Meta tool names`).toEqual([]);
+  expect(prelaunchHits(words, THIRD_PARTY_NAMES), `${route}: vendor or model names`).toEqual([]);
 }
 
 /** Every page of the app, plus what only shows after a click: each Settings tab and the account menu. */
-const APP_PAGES = PAGES; // includes /help and /meta-models
+const APP_PAGES = PAGES; // includes /help and /ai-models
 
 async function sweepSettingsTabs(page: Page) {
   await page.goto("/settings");
@@ -45,7 +46,7 @@ async function sweepSettingsTabs(page: Page) {
     await page.waitForLoadState("networkidle");
     const words = await pageWords(page);
     expect(prelaunchHits(words, NOT_YET_WORDS), `Settings › ${name}`).toEqual([]);
-    expect(prelaunchHits(words, THIRD_PARTY_NAMES), `Settings › ${name}: non-Meta tool names`).toEqual([]);
+    expect(prelaunchHits(words, THIRD_PARTY_NAMES), `Settings › ${name}: vendor or model names`).toEqual([]);
   }
 }
 
@@ -76,7 +77,7 @@ test.describe("submission mode: no pre-launch wording", () => {
     await page.getByRole("button", { name: /^Account: / }).click();
     const menuWords = await pageWords(page);
     expect(prelaunchHits(menuWords, NOT_YET_WORDS), "account menu").toEqual([]);
-    expect(prelaunchHits(menuWords, THIRD_PARTY_NAMES), "account menu: non-Meta tool names").toEqual([]);
+    expect(prelaunchHits(menuWords, THIRD_PARTY_NAMES), "account menu: vendor or model names").toEqual([]);
   });
 
   test("every page in the demo sandbox", async ({ page }) => {

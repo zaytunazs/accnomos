@@ -1,48 +1,57 @@
 "use client";
 
 /**
- * "Meta models at work": who served each AI result (the runtime's provider chain, services/runtime/app/ai/chain.py),
+ * "AI models at work": who served each AI result (the runtime's provider chain, services/runtime/app/ai/chain.py),
  * the chain's live health (GET /ai/health) and the last AI calls (GET /ai/calls). No secrets come back from either.
+ * Models are shown by what they are ("Local open-weights model", "Hosted model"), never by a vendor or product name.
  */
 import { loadAiConfig, RUNTIME_URL } from "./ai-config";
 import type { RtProposal, RtServedBy } from "./runtime";
 
 const PROVIDERS: Record<string, string> = {
   modal: "hosted GPU",
-  meta: "Meta Model API",
+  meta: "hosted model API",
   spark: "our own server",
   baseten: "hosted open weights",
+  anthropic: "backup provider",
   local: "your machine",
-  key: "your Meta key",
+  key: "your own API key",
   test: "test stub",
   ollama: "your machine",
 };
 
-/** "hosted GPU", "Meta Model API", "our own server"... for a provider name the runtime records. */
+/** "hosted GPU", "hosted model API", "our own server"... for a provider name the runtime records. */
 export function providerLabel(name: string): string {
   return PROVIDERS[name] ?? name;
 }
 
-/** The Meta model's product name for a model id: "muse-glimmer:30b" -> "Muse Glimmer 30B". */
+/** A neutral name for a model id: "muse-glimmer:30b" -> "Local open-weights model". No raw id reaches the screen. */
 export function metaModelName(model: string): string {
-  const m = model.trim().replace(/^meta-models\//, "");
+  const m = model
+    .trim()
+    .replace(/^(meta|ollama|baseten|modal|spark|local|key|test|anthropic):/i, "")
+    .replace(/^meta-models\//, "");
   if (/stub/i.test(m)) return "Test stub";
-  if (/^muse-glimmer:30b$/i.test(m)) return "Muse Glimmer 30B";
-  if (/^muse-spark-open/i.test(m)) return "Muse Spark Open";
-  if (/^muse-spark/i.test(m)) return "Muse Spark";
-  return m || "a model";
+  if (/^(muse-)?glimmer/i.test(m)) return "Local open-weights model";
+  if (/^muse-spark-open/i.test(m)) return "Open-weights verifier model";
+  if (/^muse-spark/i.test(m)) return "Hosted model";
+  if (/^claude/i.test(m)) return "Backup model";
+  return m ? "AI model" : "a model";
 }
 
 const seconds = (ms: number) => `${ms < 10_000 ? (ms / 1000).toFixed(1) : Math.round(ms / 1000)} s`;
 
-/** "Muse Glimmer 30B (hosted GPU)" */
+/** "the local open-weights model (hosted GPU)" */
 export function servedName(s: RtServedBy): string {
   if (s.provider === "test") return "the test stub";
-  return `${metaModelName(s.model)} (${providerLabel(s.provider)})`;
+  const name = metaModelName(s.model);
+  const shown = name === "a model" || name === "Test stub" ? name : `the ${name.charAt(0).toLowerCase()}${name.slice(1)}`;
+  return `${shown} (${providerLabel(s.provider)})`;
 }
 
 /**
- * The Review card's line: "Read by Muse Glimmer 30B (hosted GPU) · 14 s · checked by Muse Spark Open (hosted open weights)", plus
+ * The Review card's line: "Read by the local open-weights model (hosted GPU) · 14 s · checked by the open-weights verifier model
+ * (hosted open weights)", plus
  * "· hosted GPU did not answer" when a provider was skipped. Null when the runtime did not say (older proposals, samples).
  */
 export function servedLine(p: Pick<RtProposal, "served_by" | "verification">): string | null {

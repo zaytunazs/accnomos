@@ -1,16 +1,16 @@
 /**
- * The public /meta-models page: which Meta model does which job in Accnomos, how it is called, what code checks
- * after it, and what the committed eval runs measured. Server-only (app/meta-models/page.tsx): the figures are read
+ * The public /ai-models page: which AI model does which job in Accnomos, how it is called, what code checks
+ * after it, and what the committed eval runs measured. Server-only (app/ai-models/page.tsx): the figures are read
  * from evals/runs/<run>/summary.json (or result.json) when the site is built, so they cannot drift from the runs.
  *
  * Built from the code (checked 29 Oct 2026): services/runtime/app/ai/{config,providers,chain,extract,verify,ask,
  * cis_read,property_read,home_summary,close_summary,spending,triage,remind,plan,items,duplicates,stt,voice,crop}.py,
- * app/{actions,bank_reconcile,cashflow,public_chat}.py and tools/brand_muse.py. docs/submission/META_MODELS.md
+ * app/{actions,bank_reconcile,cashflow,public_chat}.py and tools/brand_muse.py. docs/AI_MODELS.md
  * carries the same facts; keep the two in step.
  *
- * Wording rules for this page: name Meta's models and the Meta Model API only. No hardware, and no other company's
- * tools or engines; where a non-Meta fallback exists it is "a local fallback model". The submission build's rule
- * (no launch or "coming soon" words) applies too (e2e/meta-models.spec.ts checks both).
+ * Wording rules for this page: models are named by what they are ("the hosted model", "the local open-weights
+ * model"), never by vendor or product name. No hardware, and no other company's tools or engines. The submission
+ * build's rule (no launch or "coming soon" words) applies too (e2e/ai-models-page.spec.ts checks both).
  */
 import { readRun, REPO } from "./evals";
 
@@ -29,7 +29,7 @@ export interface Result {
   report: string | null;
 }
 
-export interface MetaModel {
+export interface AiModel {
   id: string; // anchor and test id
   name: string;
   modelId: string;
@@ -71,7 +71,7 @@ const COMMITTED: Record<string, string> = {
   spark13_messy_200: "4 Nov 2026",
 };
 
-/** Live checks against the live API in a demo session (evals/harness/live_checks.py), and the live SAM run. */
+/** Live checks against the live API in a demo session (evals/harness/live_checks.py), and the live crop run. */
 const LIVE_CHECKS = report("live_checks_2026-11-04");
 const SAM_LIVE = report("sam_crop_live");
 
@@ -160,7 +160,7 @@ function bankCoding(): Result {
   };
 }
 
-/** evals/harness/stt.py writes evals/runs/stt/ (synthetic speech clips, through the Meta Model API). */
+/** evals/harness/stt.py writes evals/runs/stt/ (synthetic speech clips, through the hosted speech-to-text model). */
 function speech(): Result {
   const s = readRun("stt", "summary.json");
   const muse = ((s?.providers as Json | undefined)?.muse ?? null) as Json | null;
@@ -189,7 +189,7 @@ function speech(): Result {
 
 /**
  * evals/harness/classify.py writes evals/runs/classify/: the upload flow's first step (what kind of document is this?)
- * through the live provider chain, so Muse Spark 1.3 first. Shown under Muse Spark only when Muse Spark answered.
+ * through the live provider chain, so the hosted model first. Shown under the hosted model only when it answered.
  */
 function classifier(): Result | null {
   const s = readRun("classify", "summary.json");
@@ -203,7 +203,7 @@ function classifier(): Result | null {
   };
 }
 
-/** evals/harness/sam_crop_live.py writes evals/runs/sam_crop_live/: SAM 3.1 live against known boxes, then read. */
+/** evals/harness/sam_crop_live.py writes evals/runs/sam_crop_live/: the crop model live against known boxes, then read. */
 function samLive(): Result | null {
   const s = readRun("sam_crop_live", "summary.json");
   if (!s) return null;
@@ -213,9 +213,9 @@ function samLive(): Result | null {
   const rc = (s.read_code ?? {}) as Json;
   const lat = (s.sam_call_latency_s ?? {}) as Json;
   return {
-    label: "Crop, live on the Meta Model API",
+    label: "Crop, live on the hosted model's API",
     short: `crop overlap ${num(sam.mean_iou)}`,
-    value: `a box for ${num(s.sam_box_returned)} of ${num(s.n)} photos; mean overlap ${num(sam.mean_iou)} against ${num(code.mean_iou)} for the plain-code crop; every field read right ${num(rs.all_fields_correct)}/${num(s.n)} after the SAM crop and ${num(rc.all_fields_correct)}/${num(s.n)} after the code crop; median ${num(lat.median)} s a call`,
+    value: `a box for ${num(s.sam_box_returned)} of ${num(s.n)} photos; mean overlap ${num(sam.mean_iou)} against ${num(code.mean_iou)} for the plain-code crop; every field read right ${num(rs.all_fields_correct)}/${num(s.n)} after the model crop and ${num(rc.all_fields_correct)}/${num(s.n)} after the code crop; median ${num(lat.median)} s a call`,
     basis: "4 Nov 2026 · 20 synthetic scenes",
     report: SAM_LIVE,
   };
@@ -224,20 +224,21 @@ function samLive(): Result | null {
 const present = (xs: (Result | null)[]) => xs.filter((x): x is Result => x !== null);
 
 /**
- * The live server's order (owner's decision, 29 Oct 2026): AI_PROVIDERS=meta,spark. The hosted GPU provider is supported by the code
- * (app/ai/providers.py) but not deployed, so it is mentioned only as an optional extra provider.
+ * The live server's order: AI_PROVIDERS=meta,spark from 29 Oct 2026, spark,anthropic since 11 Nov 2026 (owner's
+ * decisions). The hosted GPU provider is supported by the code (app/ai/providers.py) but not deployed, so it is
+ * mentioned only as an optional extra provider.
  */
 const CHAIN =
-  "On our live server, with no AI chosen, calls go in this order: 1st Muse Spark 1.3 on the Meta Model API (Contributor mode for the demo and testing); last, a local fallback model (Muse Glimmer 30B, open weights on our own server). A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
+  "On our live server, with no AI chosen, calls go in this order since 11 November 2026: 1st the local open-weights model on our own server; last, a backup AI provider when our server cannot answer. From 29 October to 11 November the order was: 1st the hosted model (Contributor mode for the demo and testing), last the local open-weights model. A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
 const MODAL_NOTE =
-  "The code also supports Muse Glimmer 30B on a hosted GPU as an optional extra provider in that order; it is not what runs live.";
+  "The code also supports the local open-weights model on a hosted GPU as an optional extra provider in that order; it is not what runs live.";
 
 /**
- * Owner's correction (29 Oct 2026): the live server runs MODEL_API_MODEL=muse-spark-1.3-contributor for the demo and
- * testers. The app's own key mode still asks for standard muse-spark-1.3 (lib/ai-config.ts DEFAULT_KEY).
+ * Owner's correction (29 Oct 2026): the live server ran the hosted model's Contributor tier (MODEL_API_MODEL) for the
+ * demo and testers until 11 Nov 2026. The app's own key mode asks for the standard tier (lib/ai-config.ts DEFAULT_KEY).
  */
 export const CONTRIBUTOR_NOTE =
-  "Our live server uses Muse Spark 1.3 in Contributor mode for the demo and testing. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only fictional sample data; anyone trying it with their own books is served the same way, so please test with documents you are happy to share. Before real customers use it, the server switches to standard mode. With your own Meta key (key mode) the app asks for standard Muse Spark 1.3.";
+  "Until 11 November 2026 our live server used the hosted model in Contributor mode for the demo and testing. In Contributor mode the model's provider may use the content sent to it to improve its models. The demo uses only fictional sample data; anyone who tried it with their own books was served the same way. Since 11 November 2026 our server sends nothing to the hosted model. With your own API key (key mode) the app asks for the hosted model's standard mode.";
 
 const TEXT_CHECKS = [
   "AI proposes, you approve, code calculates: the model returns strict JSON or words only; every amount is worked out in pence by code, and nothing is posted, sent or kept until you approve it.",
@@ -246,20 +247,20 @@ const TEXT_CHECKS = [
 ];
 
 /** The overview table's "Measured" cell: the short figures, or that nothing has been measured. */
-export function measured(m: MetaModel): string {
+export function measured(m: AiModel): string {
   const xs = m.results.map((r) => r.short).filter((x): x is string => !!x);
   return xs.length ? xs.join("; ") : "Not measured yet";
 }
 
-export function metaModels(): MetaModel[] {
+export function aiModels(): AiModel[] {
   return [
     {
-      id: "muse-spark",
-      name: "Muse Spark 1.3",
-      modelId: "muse-spark-1.3-contributor (live, demo and testing) · muse-spark-1.3 (your own key)",
+      id: "hosted-model",
+      name: "Hosted model",
+      modelId: "hosted · Contributor mode on our server until 11 Nov 2026 · standard mode with your own key",
       uses: "Reads documents and CIS and property paperwork; answers Ask; words the summaries; bank, inbox, reminder and duplicate suggestions",
-      via: "Meta Model API: 1st on our live server (Contributor mode, demo and testing), or standard with your own key",
-      what: "Meta's hosted Muse model on the Meta Model API: it reads images and text and replies in strict JSON. The first choice on our live server, in Contributor mode for the demo and testing.",
+      via: "A hosted model API: 1st on our live server until 11 Nov 2026 (Contributor mode, demo and testing), or standard with your own key",
+      what: "A hosted model on its provider's API: it reads images and text and replies in strict JSON. It was the first choice on our live server, in Contributor mode for the demo and testing, until 11 November 2026.",
       jobs: [
         { job: "Says what kind of document each upload is (receipt, bill, sales invoice, credit note, statement) before it is read; you confirm or change it", screen: "Upload" },
         { job: "Reads receipts, invoices, credit notes and emailed bills into a strict list (supplier, VAT number, date, lines, net, VAT, total) and suggests the category", screen: "Review" },
@@ -275,7 +276,7 @@ export function metaModels(): MetaModel[] {
       ],
       called: [
         CHAIN,
-        "Key mode: the Meta Model API (api.meta.ai/v1, /chat/completions) with your own Meta key, which stays on your device and is never logged.",
+        "Key mode: the hosted model's API (/chat/completions) with your own API key, which stays on your device and is never logged.",
         CONTRIBUTOR_NOTE,
       ],
       checks: TEXT_CHECKS,
@@ -285,27 +286,27 @@ export function metaModels(): MetaModel[] {
         extraction("spark13_messy_200", "Receipts and invoices, messy photos (reader and Verifier)"),
         {
           label: "Every other job",
-          value: "Run live on our server, not scored against an answer key: Ask (typed and spoken), the Home summary, the goals note and the upload's document type and reading were each answered by Muse Spark 1.3 in a demo session. CIS, property, bank, inbox and reminder jobs are measured on Muse Glimmer 30B below.",
+          value: "Run live on our server, not scored against an answer key: Ask (typed and spoken), the Home summary, the goals note and the upload's document type and reading were each answered by the hosted model in a demo session. CIS, property, bank, inbox and reminder jobs are measured on the local open-weights model below.",
           basis: "4 Nov 2026 · live checks on the live server",
           report: LIVE_CHECKS,
         },
       ]),
     },
     {
-      id: "muse-glimmer",
-      name: "Muse Glimmer 30B",
-      modelId: "muse-glimmer:30b",
-      uses: "The same jobs as Muse Spark, as the local fallback, or for everything in local mode; most of our measured results",
-      via: "A local fallback model, last on our live server; or your own machine",
-      what: "Meta's open-weights Muse model: it reads images and text and replies in strict JSON. We run the weights ourselves, as the local fallback.",
+      id: "local-model",
+      name: "Local open-weights model",
+      modelId: "open weights · on our own server or your computer",
+      uses: "The same jobs as the hosted model: first on our live server since 11 Nov 2026, or for everything in local mode; most of our measured results",
+      via: "Our own server, 1st on our live server since 11 Nov 2026 (last before that); or your own machine",
+      what: "An open-weights model: it reads images and text and replies in strict JSON. We run the weights ourselves.",
       jobs: [
-        { job: "Every Muse Spark job above, when the Meta Model API cannot answer: reading documents, CIS and property paperwork, Ask and action cards, the summaries, bank suggestions, inbox triage, reminders, duplicates and item matches", screen: "Review, CIS, Property, Ask, Home, Month end, Spending, Bank, Invoices, Contacts, Prices" },
+        { job: "Every hosted-model job above, when the hosted model is not used or cannot answer: reading documents, CIS and property paperwork, Ask and action cards, the summaries, bank suggestions, inbox triage, reminders, duplicates and item matches", screen: "Review, CIS, Property, Ask, Home, Month end, Spending, Bank, Invoices, Contacts, Prices" },
         { job: "All of them, when you choose local mode in Settings, including the Verifier's second reading", screen: "the same screens" },
       ],
       called: [
         CHAIN,
         MODAL_NOTE,
-        "Local mode: your own machine running Muse Glimmer, chosen in Settings. Documents then go only there.",
+        "Local mode: your own machine running the local open-weights model, chosen in Settings. Documents then go only there.",
       ],
       checks: TEXT_CHECKS,
       results: present([
@@ -320,12 +321,12 @@ export function metaModels(): MetaModel[] {
       ]),
     },
     {
-      id: "muse-spark-open",
-      name: "Muse Spark Open",
-      modelId: "meta-models/muse-spark-open",
+      id: "verifier-model",
+      name: "Open-weights verifier model",
+      modelId: "open weights · hosted",
       uses: "The Verifier: an independent second reading of each document",
       via: "Hosted open weights; switched off on the live server for now",
-      what: "The open-weights Muse Spark, on a hosted endpoint the server owner can switch on. A different model from the first reader, so the second reading is independent. It is off on the live server for now: the Verifier runs on the same Meta chain as the reader (Muse Spark, then Muse Glimmer). The results below are from earlier runs when it was on.",
+      what: "An open-weights model on a hosted endpoint the server owner can switch on. A different model from the first reader, so the second reading is independent. It is off on the live server for now: the Verifier runs on the same chain as the reader. The results below are from earlier runs when it was on.",
       jobs: [
         { job: "The Verifier: a second reading of each document with a different prompt and schema that never sees the first answer", screen: "Review card: “Verifier agrees” or “Needs a look”" },
       ],
@@ -342,46 +343,46 @@ export function metaModels(): MetaModel[] {
       ]),
     },
     {
-      id: "muse-voice-transcribe",
-      name: "Muse Voice Transcribe",
-      modelId: "muse-voice-transcribe-1.0",
+      id: "speech-to-text",
+      name: "Speech-to-text model",
+      modelId: "hosted speech-to-text · a local speech-to-text model on our own server",
       uses: "Speech to text for spoken questions and instructions on Ask",
-      via: "Meta Model API first, then a local fallback model",
-      what: "Meta's speech-to-text model on the Meta Model API.",
+      via: "Our own server since 11 Nov 2026; the hosted speech-to-text model with your own key, or first before that date",
+      what: "A hosted speech-to-text model, with a local speech-to-text model on our own server.",
       jobs: [
         { job: "Turns a spoken question or instruction (overtime, a quote, a shopping list) into text for Ask and action cards", screen: "Ask: the microphone button, on the web and Android" },
       ],
       called: [
-        "1st: the Meta Model API (/asr/transcribe), with your key in key mode, else the server's.",
-        "2nd: a local fallback model, if the first fails. If both fail you see why, and can type the question instead.",
+        "Since 11 Nov 2026: the local speech-to-text model on our own server; the hosted speech-to-text model (/asr/transcribe) only with your own key in key mode, or when the server owner switches it on.",
+        "Before that: the hosted speech-to-text model first, then a local fallback model if it failed. If both fail you see why, and can type the question instead.",
         "The audio is converted in a temporary folder that is deleted at once; it is not kept.",
       ],
       checks: [
         "The text goes through the same path as a typed question: figures checked against your books, action cards priced in pence by code and waiting for Approve.",
-        "The answer, the action card and the audit log say which service heard you (“Transcribed by Muse Voice Transcribe”).",
+        "The answer, the action card and the audit log say which service heard you (“Transcribed by the speech-to-text model”).",
       ],
       results: [
         speech(),
         {
           label: "Used live",
-          value: "Used from the Android app on a real phone by the owner, and in our live checks: two spoken questions (synthetic speech) transcribed by Muse Voice Transcribe on the live server, then answered by Muse Spark 1.3.",
+          value: "Used from the Android app on a real phone by the owner, and in our live checks: two spoken questions (synthetic speech) transcribed by the hosted speech-to-text model on the live server, then answered by the hosted model.",
           basis: "4 Nov 2026 · live server",
           report: LIVE_CHECKS,
         },
       ],
     },
     {
-      id: "sam",
-      name: "Segment Anything 3.1",
-      modelId: "sam-3.1",
+      id: "receipt-crop",
+      name: "Receipt-crop image model",
+      modelId: "hosted image segmentation",
       uses: "Finds and crops the receipt in a phone photo before it is read",
-      via: "Meta Model API (/responses), when the server owner switches it on",
-      what: "Meta's Segment Anything model: finds an object in a photo from a word.",
+      via: "The hosted model's API (/responses), when the server owner switches it on (off since 11 Nov 2026)",
+      what: "An image segmentation model: finds an object in a photo from a word.",
       jobs: [
         { job: "Finds and crops the receipt or invoice in a messy phone photo before it is read", screen: "Review (photo uploads)" },
       ],
       called: [
-        "The Meta Model API (/responses), only when the server owner switches it on (SAM_CROP=1): with your own Meta key in key mode, else the server's. Not when you choose a local model first or local only in Settings › AI.",
+        "The hosted model's API (/responses), only when the server owner switches it on: with your own API key in key mode, else the server's. Not when you choose a local model first or local only in Settings › AI.",
         "Otherwise, and whenever it is unsure, errors or times out, a plain-code crop runs instead (no AI).",
       ],
       checks: [
@@ -390,7 +391,7 @@ export function metaModels(): MetaModel[] {
       results: [
         samLive() ?? {
           label: "Crop",
-          value: "Not measured yet on SAM 3.1.",
+          value: "Not measured yet on the crop model.",
           basis: "no run committed",
           report: null,
         },
@@ -403,16 +404,16 @@ export function metaModels(): MetaModel[] {
       ],
     },
     {
-      id: "muse-image",
-      name: "Muse Image",
-      modelId: "muse-image-1.0",
+      id: "image-model",
+      name: "Image-generation model",
+      modelId: "hosted image generation · build time only",
       uses: "Made the brand artwork and the demo video title art; not in the running app",
-      via: "Meta Model API, from a build script",
-      what: "Meta's image model. Used once, at build time, not by the running app.",
+      via: "A hosted image API, from a build script",
+      what: "An image-generation model. Used once, at build time, not by the running app.",
       jobs: [
         { job: "Made the brand artwork: the hero illustration, the app icon and the store graphic, also used for the demo video's title art and thumbnail", screen: "Website, Android icon, demo video" },
       ],
-      called: ["The Meta Model API, from a build script (tools/brand_muse.py). The app never calls it."],
+      called: ["A hosted image API, from a build script (tools/brand_muse.py). The app never calls it."],
       checks: ["No figures involved; the images were chosen by a person."],
       results: [
         {

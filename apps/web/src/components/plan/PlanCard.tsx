@@ -8,6 +8,7 @@ import { errorText } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
 import { loadBusiness, planVat } from "@/lib/business";
 import { runtime, type RtPlan, type RtPlanApplied, type RtPlanItem } from "@/lib/runtime";
+import { shortModelName } from "@/lib/ai-config";
 
 const KIND: Record<RtPlanItem["kind"], { label: string; chip: string }> = {
   visit: { label: "Visit", chip: "bg-teal-tint text-teal-dark" },
@@ -141,7 +142,7 @@ export default function PlanCard({
             {plan.fallback_reason ? (
               <p className="mt-2 text-[12px] text-muted">{plan.fallback_reason}</p>
             ) : (
-              <ByWhom className="mt-2" code="Checked against the plan's times" ai={`words by ${plan.model}`} />
+              <ByWhom className="mt-2" code="Checked against the plan's times" ai={`words by ${shortModelName(plan.model ?? "")}`} />
             )}
           </div>
 

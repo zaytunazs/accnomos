@@ -12,7 +12,7 @@ const GUIDES: { href: string; title: string; body: string }[] = [
   { href: "/files", title: "Files and backups", body: "Where your documents are, earlier files not read yet, Back up now and how to restore." },
   { href: "/vat", title: "VAT returns", body: "The nine boxes worked out from your approved entries, and the file ready for HMRC." },
   { href: "/ask", title: "Ask about your books", body: "Questions in plain words; the figures come from your ledger, not from the AI." },
-  { href: "/meta-models", title: "Meta models at work", body: "Which Meta Muse models read your documents and how they scored on our test sets." },
+  { href: "/ai-models", title: "AI models at work", body: "Which AI models read your documents and how they scored on our test sets." },
   { href: "/settings", title: "Settings", body: "Your business, VAT periods, AI choice, your accountant, files and backups, your data." },
   { href: "/demo", title: "Demo guide", body: "A tour of the sample books: review and approve a receipt, ask, invoices, bank, VAT to HMRC's sandbox, goals." },
 ];

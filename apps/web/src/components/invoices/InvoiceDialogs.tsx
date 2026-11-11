@@ -6,6 +6,7 @@ import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButto
 import { RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
 import { money } from "@/lib/invoices";
 import { runtime, ukDate, type RtInvoice, type RtInvoicePdf, type RtReminderDraft } from "@/lib/runtime";
+import { shortModelName } from "@/lib/ai-config";
 
 type Done = (inv: RtInvoice) => void;
 
@@ -194,7 +195,7 @@ export function PreviewSendDialog({ account, invoice, onClose, onDone }: { accou
   );
 }
 
-/** Muse drafts a chase email from facts the runtime supplies; the user edits, confirms and sends. */
+/** The AI drafts a chase email from facts the runtime supplies; the user edits, confirms and sends. */
 export function ReminderDialog({ account, invoice, onClose, onDone }: { account: AccountInfo; invoice: RtInvoice; onClose: () => void; onDone: Done }) {
   const [draft, setDraft] = useState<RtReminderDraft | null>(null);
   const [email, setEmail] = useState({ to: "", subject: "", body: "" });
@@ -236,7 +237,7 @@ export function ReminderDialog({ account, invoice, onClose, onDone }: { account:
           <p className="mt-3 rounded-xl bg-ground px-4 py-2 text-xs text-muted">
             {draft.fallback_reason
               ? `Written by Accnomos from the invoice (${draft.fallback_reason})`
-              : `Drafted by ${draft.model}; every figure checked against the invoice.`}{" "}
+              : `Drafted by ${shortModelName(draft.model)}; every figure checked against the invoice.`}{" "}
             Nothing is sent until you confirm. The invoice PDF ({invoice.number}.pdf) is attached.
           </p>
           <EmailFields email={email} onChange={(e) => { setEmail(e); setConfirmed(false); }} idPrefix="remind" />

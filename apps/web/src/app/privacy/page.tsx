@@ -23,7 +23,7 @@ export default function PrivacyPage() {
           reads your documents runs <strong>on our own server</strong>. Only if it cannot answer does the document go to
           our backup AI provider, <strong>Anthropic</strong> (in the United States), under its commercial terms, which
           do not allow it to train models on your content. Since 11 November 2026 our server sends no documents to
-          Meta. You can instead run the AI on a machine you control or use your own API key
+          the hosted model&apos;s provider. You can instead run the AI on a machine you control or use your own API key
           (see <a className="font-semibold text-teal underline" href="#ai-documents">where your documents go</a>).
           {/* The "Join the waiting list" list (components/sign-up/JoinForm.tsx; the pre-launch build's EarlyAccessForm). */}
           {" "}The one exception is the{" "}
@@ -41,7 +41,7 @@ export default function PrivacyPage() {
           <li><strong>Google account (sign-in, if you choose Google):</strong> your name and e-mail, used only to show who is signed in. Your books go in an <em>Accnomos</em> folder in your Google Drive (My Drive), and the app can see only the files it created there, never the rest of your Drive.</li>
           <li><strong>Gmail, Google Calendar and Google Contacts (Google sign-in):</strong> Google asks for these at sign-in, all at once (see the table below). Gmail is read to find bills and receipts and the people who email you; Accnomos writes a draft or sends an email only when you have seen it and confirmed it. Calendar events are read to plan your day, and Accnomos writes only the events you approve. Contacts are read so you can tick which to add to your books; nothing is written back.</li>
           <li><strong>Camera / photos (Android):</strong> only when you choose to capture or pick a receipt; the image is uploaded to your books inbox (OneDrive or Google Drive).</li>
-          <li><strong>Your AI connection (optional):</strong> by default none: our server&apos;s own AI chain is used (see below). If you choose it, either the address of a model running on your own hardware, or a Meta Model API key you paste in. The key is stored on your device and sent only to our stateless runtime over HTTPS to make the request on your behalf; it is never logged or stored server-side.</li>
+          <li><strong>Your AI connection (optional):</strong> by default none: our server&apos;s own AI chain is used (see below). If you choose it, either the address of a model running on your own hardware, or an API key for the hosted model that you paste in. The key is stored on your device and sent only to our stateless runtime over HTTPS to make the request on your behalf; it is never logged or stored server-side.</li>
           <li><strong>HMRC (sandbox; filing to HMRC from Accnomos is planned):</strong> if you connect HMRC, the OAuth tokens stay in your browser session. Our relay holds only the HMRC application secret and forwards requests; it stores nothing about you. HMRC requires fraud-prevention headers (device, screen size, time zone, IP address) which the relay forwards with each request.</li>
         </ul>
       </section>
@@ -55,9 +55,9 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-2 pl-5">
           <li><strong>Default (you have made no AI choice):</strong> the AI on <strong>our own server</strong> reads it. We do not keep the request.</li>
           <li><strong>Backup, only when our server cannot answer:</strong> if our own server is down, too busy or cannot give a usable reading, the same document or question is sent to <strong>Anthropic</strong> (Anthropic PBC, United States) through its API, under Anthropic&apos;s <a className="font-semibold text-teal underline" href="https://www.anthropic.com/legal/commercial-terms">Commercial Terms</a>, which say it may not train models on the content it receives, and its Data Processing Addendum. Anthropic deletes API inputs and outputs within 30 days unless it must keep them longer to enforce its usage policy or by law (<a className="font-semibold text-teal underline" href="https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data">Anthropic&apos;s retention note</a>); we do not have a zero-retention arrangement with it.</li>
-          <li><strong>Meta:</strong> since 11 November 2026 our server sends no documents, questions or recordings to Meta. Before that date our live server used Meta&apos;s Model API in a mode in which Meta may use the content to improve its models; the demo used only fictional sample data.</li>
+          <li><strong>The hosted model&apos;s provider:</strong> since 11 November 2026 our server sends no documents, questions or recordings to the hosted model&apos;s provider. Before that date our live server used the hosted model&apos;s API in a mode in which the provider may use the content to improve its models; the demo used only fictional sample data.</li>
           <li><strong>Local mode (your choice):</strong> the document goes to the model address you give, on hardware you control, and to nobody else. Spoken questions are transcribed on our own server.</li>
-          <li><strong>Your own key (your choice):</strong> the document goes to Meta&apos;s Model API under your key, in standard mode, subject to Meta&apos;s terms for that key. It does not use the server owner&apos;s key.</li>
+          <li><strong>Your own key (your choice):</strong> the document goes to the hosted model&apos;s API under your key, in standard mode, subject to that provider&apos;s terms for your key. It does not use the server owner&apos;s key.</li>
           <li><strong>Optional extra provider:</strong> a hosted inference provider may be added to the server&apos;s chain as an optional extra provider; it is not used today and this page will be updated if that changes.</li>
         </ul>
         <p>Spoken questions are converted to text on our own server and the audio is not kept.</p>
@@ -231,7 +231,7 @@ export default function PrivacyPage() {
                 { data: "Microsoft sign-in (name, e-mail)", where: "This browser's sign-in cache", who: "You, shown as who is signed in" },
                 { data: "Google sign-in (name, e-mail, a one-hour access token)", where: "This browser's localStorage", who: "You, shown as who is signed in" },
                 { data: "Documents and questions sent to the AI (default: no AI choice made)", where: "Read by the AI on our own server; only if it cannot answer, sent over HTTPS to Anthropic's API (United States); not stored by us", who: "Nobody when our server answers; Anthropic as our processor when it is the backup (not used to train its models; deleted within 30 days unless its usage policy or the law needs longer)" },
-                { data: "Your Meta API key and AI address", where: "This device only", who: "Sent per request over HTTPS so the runtime can call the model for you; never logged or stored" },
+                { data: "Your API key for the hosted model and AI address", where: "This device only", who: "Sent per request over HTTPS so the runtime can call the model for you; never logged or stored" },
                 { data: "HMRC tokens", where: "This browser tab only", who: "Gone when the tab closes or you disconnect" },
                 { data: "Device ID and VAT number", where: "This device only", who: "Sent to HMRC as fraud-prevention data when you submit" },
                 { data: "Spoken questions", where: "Nowhere — converted then discarded", who: "Nobody keeps the audio" },
@@ -271,7 +271,7 @@ export default function PrivacyPage() {
           <li>Google (sign-in, Google Drive, and Gmail, Calendar and Contacts) — only if you sign in with Google, under your Google account terms.</li>
           <li>Our own server — runs the AI that reads your documents and questions and transcribes spoken questions; nothing is kept.</li>
           <li>Anthropic (Anthropic PBC, United States) — our backup AI provider and a processor: it receives a document or question only when our own server cannot answer, under its Commercial Terms (no training on your content) and Data Processing Addendum. Not used in local mode or with your own key.</li>
-          <li>Meta Model API — only with your own Meta key, if you provide one, under Meta&apos;s terms for that key. Our server sends it nothing of yours.</li>
+          <li>The hosted model&apos;s provider — only with your own API key, if you provide one, under that provider&apos;s terms for your key. Our server sends it nothing of yours.</li>
           <li>Our web host (IONOS, the server that terminates HTTPS for accnomos.com and api.accnomos.com) — carries your requests, including document content, over an encrypted tunnel to our own server; it is a processor for that transport only.</li>
           <li>TrueLayer — only if you connect a bank for bank feeds; it receives your bank sign-in choice and consent, and returns account and transaction data, which we write to your OneDrive.</li>
           <li>Stripe and PayPal — only if you connect either for payment links on invoices; they receive the invoice amount, reference and description needed to create the link, and tell us when it is paid.</li>

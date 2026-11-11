@@ -26,7 +26,7 @@ export interface Proposal {
   verifierTone?: "agree" | "differ" | "none";
   /** Both readings of each field that disagreed, for the user to choose between. */
   verifierDiffs?: { field: string; extractor: string; verifier: string }[];
-  /** "Read by Muse Glimmer 30B (hosted GPU) · 14 s · checked by ...": which Meta model and provider did the reading. */
+  /** "Read by the local open-weights model (hosted GPU) · 14 s · checked by ...": which model and provider did the reading. */
   servedLine?: string | null;
 }
 

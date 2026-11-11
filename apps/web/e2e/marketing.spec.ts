@@ -131,7 +131,7 @@ test.describe("process animation", () => {
     await expect(current(page)).toContainText("Snap it on your phone");
     await expect(stage(page).getByRole("img")).toHaveAttribute("alt", /Novex Office Supplies Ltd/);
     await page.clock.runFor(5000);
-    await expect(current(page)).toContainText("A Meta model reads it");
+    await expect(current(page)).toContainText("An AI model reads it");
 
     await page.getByRole("button", { name: /The VAT box fills/ }).click();
     await expect(stage(page).getByRole("img")).toHaveAttribute("alt", /Box 4, VAT reclaimed on purchases, £8.65/);
@@ -264,7 +264,7 @@ test.describe("Ask about Accnomos", () => {
     await page.goto("/");
     await page.locator("#chat-launcher").click();
     const chat = page.getByRole("dialog", { name: "Ask about Accnomos" });
-    await chat.getByRole("button", { name: "Which Meta models does it use?" }).click();
+    await chat.getByRole("button", { name: "Which AI models does it use?" }).click();
     await expect(chat.getByRole("alert")).toHaveText("That's a lot of questions in a minute. Try again in 20 s.");
   });
 });

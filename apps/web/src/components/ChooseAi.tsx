@@ -11,6 +11,7 @@ import {
   saveAiTest,
   type AiConfig,
   type AiMode,
+  shortModelName,
 } from "@/lib/ai-config";
 import { runtimeAiTest, type RtAiTest } from "@/lib/runtime";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
@@ -75,7 +76,7 @@ export default function ChooseAi() {
           <span className="rounded-full bg-[#F4EDE5] px-2 py-0.5 text-[11px] font-extrabold text-[#3F2000]">MOST PRIVATE</span>
         </div>
         <p className="mt-1 text-sm text-[#4B5159]">
-          Muse Glimmer 30B, open weights, running on your computer. Receipts never leave your network.
+          An open-weights model running on your computer. Receipts never leave your network.
         </p>
       </button>
       {mode === "local" && (
@@ -89,9 +90,9 @@ export default function ChooseAi() {
       )}
 
       <button type="button" onClick={() => setMode("key")} className={card(mode === "key")} aria-pressed={mode === "key"}>
-        <span className="text-[17px] font-extrabold">My own Meta API key</span>
+        <span className="text-[17px] font-extrabold">My own API key for the hosted model</span>
         <p className="mt-1 text-sm text-[#4B5159]">
-          Muse Spark via the Meta Model API. Fast, no hardware needed. Standard tier — not used for training.
+          The hosted model through its provider&apos;s API. Fast, no hardware needed. Standard tier — not used for training.
         </p>
       </button>
       {mode === "key" && (
@@ -107,8 +108,8 @@ export default function ChooseAi() {
             onChange={(e) => setKey({ ...key, apiKey: e.target.value })}
           />
           <p className="mt-2 text-xs text-[#4B5159]">
-            Stays on this device — stored in this browser only and sent straight to your runtime.{" "}
-            <a className="font-bold text-[#5A2D00]" href="https://dev.meta.ai" target="_blank" rel="noreferrer">Get a key at dev.meta.ai</a>
+            Stays on this device — stored in this browser only and sent straight to your runtime. Paste the API key from
+            your account with the hosted model&apos;s provider.
           </p>
         </div>
       )}
@@ -136,7 +137,7 @@ export default function ChooseAi() {
           className={`rounded-2xl border p-4 text-sm ${result.ok ? "border-[#5A2D00] bg-[#F4EDE5] text-[#3F2000]" : "border-[#F3C892] bg-[#FFF7ED] text-[#8A3F06]"}`}
         >
           {result.ok ? (
-            <p><strong>Connected</strong>{result.model ? ` · ${result.model}` : ""} · {result.detail}</p>
+            <p><strong>Connected</strong>{result.model ? ` · ${mode === "key" ? shortModelName(result.model) : result.model}` : ""} · {result.detail}</p>
           ) : (
             <div>
               <p><strong>Not connected</strong> — the test did not get an answer{mode === "local" ? " — check the address" : " — check the key"} and try again.</p>

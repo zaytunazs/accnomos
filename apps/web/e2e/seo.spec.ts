@@ -17,7 +17,7 @@ test("sitemap.xml lists the public pages, never the app shells", async ({ reques
   const res = await request.get("/sitemap.xml");
   expect(res.status()).toBe(200);
   const body = await res.text();
-  for (const page of ["/how-it-works", "/help", "/try", "/join", "/privacy", "/terms", "/models", "/meta-models"]) {
+  for (const page of ["/how-it-works", "/help", "/try", "/join", "/privacy", "/terms", "/models", "/ai-models"]) {
     expect(body).toContain(`https://accnomos.com${page}`);
   }
   expect(body).not.toContain("/review");

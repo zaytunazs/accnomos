@@ -22,7 +22,7 @@ export default function TermsPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">What Accnomos is</h2>
         <p>
-          Accnomos is bookkeeping software built for the Meta Global AI Developer Hackathon by Zaytuna Business Services
+          Accnomos is bookkeeping software built as a hackathon entry by Zaytuna Business Services
           Ltd (UK). It is a hackathon build, not a finished commercial product, and it is offered without charge. What has
           and has not been tested against real services is listed in{" "}
           <a className="font-semibold text-teal-dark underline" href={HONESTY_URL}>

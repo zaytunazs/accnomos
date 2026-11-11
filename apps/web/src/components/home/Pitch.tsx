@@ -12,7 +12,7 @@ const claims = [
   },
   {
     title: "AI you control",
-    body: "Run Meta's open-weight Muse Glimmer on your own machine, or bring your own Meta API key. The address or the key never leaves your device.",
+    body: "Run an open-weights model on your own machine, or bring your own API key for the hosted model. The address or the key never leaves your device.",
   },
 ];
 

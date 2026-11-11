@@ -23,11 +23,12 @@ export const PRELAUNCH_WORDS = [
 export const NOT_YET_WORDS = [/\bsoon\b/i, /coming next/i, /not yet available/i];
 
 /**
- * Non-Meta models, tools, engines, hosts, vendors and hardware that no public or judge-facing page may name (owner's
- * rules, 29 Oct and 4 Nov 2026: only Meta is named; the rest is "a local fallback model", "a hosted GPU", "other AI
- * tools"). Anthropic is allowed since 11 Nov 2026: the server's backup AI provider, which the privacy page names as a
- * processor; its model names are not. Checked on every rendered page by e2e/submission-mode.spec.ts only, not on the export's files: the JS keeps
- * internal provider ids (the runtime's chain names) to map them to Meta names.
+ * Model, tool, engine, host, vendor and hardware names that no public or judge-facing page may show (owner's rules,
+ * 29 Oct, 4 Nov and 11 Nov 2026): models are named by what they are ("the hosted model", "the local open-weights
+ * model", "a speech-to-text model"), never by vendor or product name. Anthropic is allowed since 11 Nov 2026: the
+ * server's backup AI provider, which the privacy page names as a processor; its model names are not. Checked on every
+ * rendered page by e2e/submission-mode.spec.ts only, not on the export's files: the JS keeps internal provider and
+ * model ids (the runtime's chain names) to map them to neutral labels.
  */
 export const THIRD_PARTY_NAMES = [
   /whisper/i,
@@ -51,6 +52,12 @@ export const THIRD_PARTY_NAMES = [
   /hugging ?face/i,
   /systran/i,
   /speaches/i,
+  /meta model/i,
+  /\bmeta (?:ai|api|key|hackathon|global)\b/i,
+  /\bmuse (?:spark|glimmer|voice|image|code|wonder)\b/i,
+  /\bglimmer\b/i,
+  /\bsam 3/i,
+  /segment anything/i,
 ];
 
 /** Each match in `text` as a short quoted excerpt. `extra`: more patterns (NOT_YET_WORDS on rendered pages). */

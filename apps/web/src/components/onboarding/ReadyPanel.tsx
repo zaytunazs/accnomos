@@ -13,7 +13,7 @@ import SampleBooks from "@/components/home/SampleBooks";
 
 const NEXT_STEPS = [
   "Drop receipts into 00 Inbox or snap them in the app",
-  "Accnomos reads them with Meta AI and proposes entries",
+  "Accnomos reads them with AI and proposes entries",
   "You approve; code posts and keeps the VAT return",
 ];
 

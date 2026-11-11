@@ -1,8 +1,8 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { CONTRIBUTOR_NOTE, measured, metaModels, type MetaModel, type Result } from "@/lib/meta-models-page";
+import { aiModels, CONTRIBUTOR_NOTE, measured, type AiModel, type Result } from "@/lib/ai-models-page";
 
-export const metadata = { title: "Meta models in Accnomos · Accnomos" };
+export const metadata = { title: "AI models in Accnomos · Accnomos" };
 
 const CHECKED = "29 Oct 2026";
 
@@ -24,8 +24,8 @@ function ResultLine({ r }: { r: Result }) {
 }
 
 /** The overview: a table from 768 px, the same rows as stacked cards below that. */
-function Overview({ models }: { models: MetaModel[] }) {
-  const label = "Meta models used in Accnomos";
+function Overview({ models }: { models: AiModel[] }) {
+  const label = "AI models used in Accnomos";
   return (
     <>
       <table aria-label={label} className="hidden w-full border-collapse overflow-hidden rounded-2xl bg-white text-left text-[14px] leading-6 md:table">
@@ -74,7 +74,7 @@ function Overview({ models }: { models: MetaModel[] }) {
   );
 }
 
-function Detail({ m }: { m: MetaModel }) {
+function Detail({ m }: { m: AiModel }) {
   const h = `${m.id}-title`;
   const sub = "mt-4 text-[13px] font-extrabold uppercase tracking-[0.06em] text-teal-dark";
   return (
@@ -118,14 +118,14 @@ function Detail({ m }: { m: MetaModel }) {
   );
 }
 
-export default function MetaModelsPage() {
+export default function AiModelsPage() {
   // Read from evals/runs/*/summary.json when the site is built: the numbers are the committed runs', not typed in.
-  const models = metaModels();
+  const models = aiModels();
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Meta models in Accnomos"
-        description="Which Meta model does which job, where you see it in the app, how it is called, what code checks after it, and how it scored on our test sets."
+        title="AI models in Accnomos"
+        description="Which AI model does which job, where you see it in the app, how it is called, what code checks after it, and how it scored on our test sets."
       />
       <p className="text-[15px] leading-7">
         The rule everywhere: <strong>AI proposes, you approve, code calculates.</strong> A model reads or words things;
@@ -134,15 +134,15 @@ export default function MetaModelsPage() {
         on {CHECKED}.
       </p>
       <p data-testid="live-order" className="rounded-2xl border border-teal/30 bg-teal-tint p-4 text-[15px] leading-7">
-        <strong>On our live server</strong> the Meta Model API (Muse Spark 1.3) answers first and a local fallback model
-        answers last. {CONTRIBUTOR_NOTE}
+        <strong>On our live server</strong> the local open-weights model on our own server answers first since 11 November
+        2026, and a backup AI provider answers only when it cannot. {CONTRIBUTOR_NOTE}
       </p>
       <Overview models={models} />
       {models.map((m) => (
         <Detail key={m.id} m={m} />
       ))}
       <p className="text-[14px] leading-6 text-muted">
-        No other Meta model is called. Every figure above is read from the committed eval runs when this site is built.
+        No other model is called. Every figure above is read from the committed eval runs when this site is built.
         See also{" "}
         <Link href="/how-it-works" className="font-semibold text-teal-dark underline underline-offset-2 hover:text-teal">
           how each feature works

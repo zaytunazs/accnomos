@@ -6,10 +6,10 @@
 /**
  * Routes shown in the marketing shell to signed-out visitors. `/` is the landing page (signed in: Home); `/demo`
  * is the demo guide (inside a demo sandbox, which counts as signed in, it keeps the app shell and the demo bar);
- * `/judges` is the hackathon judges' notes, linked from the footer and the repository only; `/meta-models` says
- * which Meta model does which job.
+ * `/judges` is the hackathon judges' notes, linked from the footer and the repository only; `/ai-models` says
+ * which AI model does which job.
  */
-export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/pricing", "/privacy", "/terms", "/demo", "/judges", "/join"]);
+export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/ai-models", "/pricing", "/privacy", "/terms", "/demo", "/judges", "/join"]);
 
 export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
 

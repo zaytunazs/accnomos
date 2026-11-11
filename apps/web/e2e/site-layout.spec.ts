@@ -7,7 +7,7 @@ import { PAGES } from "./pages";
  * The one-click demo from the landing page is driven end to end in sandbox.spec.ts (it waits for the seed).
  */
 
-const PUBLIC = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/demo", "/judges", "/join"]); // lib/public-site.ts PUBLIC_PATHS
+const PUBLIC = new Set(["/", "/how-it-works", "/ai-models", "/privacy", "/terms", "/demo", "/judges", "/join"]); // lib/public-site.ts PUBLIC_PATHS
 
 test.describe("signed out, / is the marketing home", () => {
   test.use({ viewport: { width: 1440, height: 900 } });
@@ -64,7 +64,7 @@ test.describe("signed out, / is the marketing home", () => {
     await expect(footer.getByRole("link", { name: "Privacy policy" })).toHaveAttribute("href", "/privacy");
     await expect(footer.getByRole("link", { name: "Terms of use" })).toHaveAttribute("href", "/terms");
     await expect(footer.getByRole("link", { name: "Contact us" })).toHaveAttribute("href", /^mailto:.+@/);
-    await expect(footer.getByRole("link", { name: "The Meta models we use" })).toHaveAttribute("href", "/meta-models");
+    await expect(footer.getByRole("link", { name: "The AI models we use" })).toHaveAttribute("href", "/ai-models");
   });
 
   test("the hero screen is the LCP image: fetched first and never hidden by its entrance", async ({ page }) => {

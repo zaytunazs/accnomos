@@ -52,7 +52,7 @@ test.describe("signed in", () => {
     const menu = page.getByRole("menu", { name: "Account" });
     await expect(menu).toContainText(NAME);
     await expect(menu).toContainText(USER);
-    await expect(menu.getByRole("menuitem", { name: /^AI: / })).toHaveAttribute("href", "/meta-models");
+    await expect(menu.getByRole("menuitem", { name: /^AI: / })).toHaveAttribute("href", "/ai-models");
     await page.screenshot({ path: `${SHOTS}/account-menu-1440.png` });
     // Sign out goes to Microsoft's sign-out and back to the site (the test sign-in helper signs in again on load).
     await menu.getByRole("menuitem", { name: "Sign out of this one" }).click();
@@ -68,7 +68,7 @@ test.describe("signed in", () => {
         ["How it works", "/how-it-works"],
         ["Help and guides", "/help"],
         ["Privacy", "/privacy"],
-        ["Meta models at work", "/models"],
+        ["AI models at work", "/models"],
         ["Demo guide", "/demo"],
         ["For judges", "/judges"],
       ] as const) {
@@ -182,18 +182,18 @@ test.describe("signed in", () => {
     await expect(page.getByRole("region", { name: /earlier files? in your OneDrive/ })).toHaveCount(0);
   });
 
-  test("the AI line names Meta's Muse models in plain words and links to /meta-models", async ({ page }) => {
+  test("the AI line describes the AI in plain words, with no model name, and links to /ai-models", async ({ page }) => {
     await page.addInitScript(() =>
       window.localStorage.setItem("accnomos.ai", JSON.stringify({ mode: "local", baseUrl: "http://192.168.1.176:11434", model: "muse-glimmer:30b" })),
     );
     await page.goto("/");
     await page.getByRole("button", { name: /^Account: / }).click();
     const ai = page.getByRole("menu", { name: "Account" }).getByRole("menuitem", { name: /^AI: / });
-    await expect(ai).toHaveText("AI: Meta Muse models on your own computer");
-    await expect(ai).not.toContainText("Glimmer");
+    await expect(ai).toHaveText("AI: open-weights model on your own computer");
+    await expect(ai).not.toContainText("muse");
     await ai.click();
-    await expect(page).toHaveURL(/\/meta-models$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Meta models in Accnomos" })).toBeVisible();
+    await expect(page).toHaveURL(/\/ai-models$/);
+    await expect(page.getByRole("heading", { level: 1, name: "AI models in Accnomos" })).toBeVisible();
   });
 });
 

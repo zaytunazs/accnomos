@@ -26,6 +26,7 @@ import PlanBilling from "@/components/settings/PlanBilling";
 import PrivacySettings from "@/components/settings/PrivacySettings";
 import { hasMsalSignIn } from "@/lib/signed-in";
 import { useHousehold } from "@/lib/profiles";
+import { shortModelName } from "@/lib/ai-config";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "files" | "data" | "billing" | "privacy";
@@ -164,7 +165,7 @@ export default function SettingsPanels() {
         try {
           const parsed = JSON.parse(rawAi) as { mode?: string; model?: string };
           setAiSummary(
-            parsed.mode && parsed.model ? `${parsed.mode} · ${parsed.model}` : "Set up",
+            parsed.mode && parsed.model ? `${parsed.mode} · ${shortModelName(parsed.model)}` : "Set up",
           );
         } catch {
           setAiSummary("Set up");
@@ -370,9 +371,9 @@ export default function SettingsPanels() {
           </p>
           <ChooseAi />
           <p className="mt-3 text-sm text-muted">
-            Without a choice here, the server&apos;s own Meta models answer, trying each in turn if one is down.{" "}
+            Without a choice here, the server&apos;s own AI models answer, trying each in turn if one is down.{" "}
             <Link href="/models" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
-              See the Meta models at work
+              See the AI models at work
             </Link>
           </p>
         </section>

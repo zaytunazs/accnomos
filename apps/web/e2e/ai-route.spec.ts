@@ -34,8 +34,8 @@ test("AI step: three options, the local-only warning, saved and sent as X-AI-Rou
   const section = page.getByRole("region", { name: "Which AI answers first" });
   const group = section.getByRole("radiogroup", { name: "Which AI answers first" });
   await expect(group.getByRole("radio")).toHaveCount(3);
-  const metaFirst = group.getByRole("radio", { name: /^Meta Model API first/ });
-  const localFirst = group.getByRole("radio", { name: /^Local model first, Meta API when unsure/ });
+  const metaFirst = group.getByRole("radio", { name: /^Hosted model first/ });
+  const localFirst = group.getByRole("radio", { name: /^Local model first, hosted model when unsure/ });
   const localOnly = group.getByRole("radio", { name: /^Local model only/ });
   await expect(metaFirst).toBeChecked(); // the default, shown before anything is saved
   await expect(localFirst).not.toBeChecked();
@@ -48,7 +48,7 @@ test("AI step: three options, the local-only warning, saved and sent as X-AI-Rou
   for (const line of [
     "Slower: reading a receipt or invoice can take a minute or more.",
     "Less accurate on messy photos, handwriting and long PDFs, so more items are left for you to check.",
-    "No voice input: speech-to-text (Muse Voice Transcribe) runs on the Meta Model API.",
+    "No voice input: speech-to-text runs on the hosted model's API.",
     "If the local model is offline, AI features wait; nothing falls back.",
     "Every number is still checked by code before anything is saved, whichever you pick.",
   ]) {
@@ -76,15 +76,15 @@ test("Settings › AI: the choice persists across a reload and every books reque
   let panel = await settingsTab(page, "AI");
   let group = panel.getByRole("radiogroup", { name: "Which AI answers first" });
   await expect(group.getByRole("radio")).toHaveCount(3);
-  await group.getByRole("radio", { name: /^Local model first, Meta API when unsure/ }).check();
+  await group.getByRole("radio", { name: /^Local model first, hosted model when unsure/ }).check();
   await expect(panel.getByRole("region", { name: "Which AI answers first" }).getByRole("status")).toHaveText("Saved on this device.");
 
   const seen = recordRuntime(page);
   await page.reload();
   panel = await settingsTab(page, "AI");
   group = panel.getByRole("radiogroup", { name: "Which AI answers first" });
-  await expect(group.getByRole("radio", { name: /^Local model first, Meta API when unsure/ })).toBeChecked();
-  await expect(group.getByRole("radio", { name: /^Meta Model API first/ })).not.toBeChecked();
+  await expect(group.getByRole("radio", { name: /^Local model first, hosted model when unsure/ })).toBeChecked();
+  await expect(group.getByRole("radio", { name: /^Hosted model first/ })).not.toBeChecked();
   await expect(page.getByTestId("ai-route-local-warning")).toHaveAttribute("data-selected", "false");
 
   // The signed-in page's own runtime calls (the books, with a Graph token) carry the saved route.

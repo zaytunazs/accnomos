@@ -171,7 +171,7 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
         <p data-testid="served-by" className="mt-1 break-words px-1 text-[12px] leading-5 text-muted">
           {proposal.servedLine} ·{" "}
           <Link href="/models" className="text-teal-dark underline underline-offset-2 hover:text-teal">
-            Meta models at work
+            AI models at work
           </Link>
         </p>
       )}

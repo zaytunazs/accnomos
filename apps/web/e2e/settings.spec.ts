@@ -99,8 +99,8 @@ test("the account menu names the AI chosen in Settings", async ({ page }) => {
 
   await page.goto("/settings");
   const ai = await settingsTab(page, "AI");
-  await ai.getByRole("button", { name: "My own Meta API key" }).click();
+  await ai.getByRole("button", { name: "My own API key for the hosted model" }).click();
   await ai.getByRole("button", { name: /Save.*Continue/ }).click();
   await account.click();
-  await expect(menu).toContainText("AI: Meta Muse models, your own key");
+  await expect(menu).toContainText("AI: hosted model, your own key");
 });

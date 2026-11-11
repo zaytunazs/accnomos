@@ -21,6 +21,7 @@ import {
   type RtCloseSummary,
   type RtProposedAction,
 } from "@/lib/runtime";
+import { shortModelName } from "@/lib/ai-config";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -421,7 +422,7 @@ export default function MonthEnd() {
                 <Markdown md={summary.summary_md} />
               </div>
               <p className="mt-2 text-[12px] text-muted">
-                {summary.fallback_reason ? `Written by code: ${summary.fallback_reason}` : `Written by ${summary.model}; every figure checked by code.`}
+                {summary.fallback_reason ? `Written by code: ${summary.fallback_reason}` : `Written by ${shortModelName(summary.model)}; every figure checked by code.`}
               </p>
             </>
           ) : (

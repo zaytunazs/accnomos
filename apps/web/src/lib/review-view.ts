@@ -1,6 +1,7 @@
 /** Runtime proposal → the Review card's display model: plain English only, never a raw check code. */
 import { gbp, ukDate, type RtProposal } from "./runtime";
-import { metaModelName, servedLine } from "./meta-models";
+import { servedLine } from "./ai-models";
+import { shortModelName } from "./ai-config";
 import type { Proposal as UiProposal } from "./sample-review";
 
 const codeMeaning: Record<string, string> = {
@@ -22,7 +23,7 @@ const fieldLabel: Record<string, string> = {
 };
 
 const verifierName = (model: string) =>
-  model.startsWith("baseten:") ? "Muse Spark Open" : model.startsWith("meta:") ? "Muse Spark" : model.replace(/^ollama:/, "");
+  model.startsWith("baseten:") ? "the open-weights verifier model" : model.startsWith("meta:") ? "the hosted model" : model.replace(/^ollama:/, "");
 
 const shown = (v: string | number | null) => (v === null || v === "" ? "none" : typeof v === "number" ? v.toFixed(2) : v);
 
@@ -106,11 +107,11 @@ export function toUi(p: RtProposal): UiProposal {
       ? "Calculated by code from your mileage log"
       : p.model.startsWith("seed:")
         ? "Pre-read sample document" // the sample books' seed: the gold fields, no model ran (tools/seed_demo.py)
-        : p.served_by && ["modal", "meta", "spark"].includes(p.served_by.provider)
-          ? `Read by ${metaModelName(p.served_by.model)}` // the server's chain: the card's line says where
+        : p.served_by && ["modal", "meta", "spark", "anthropic"].includes(p.served_by.provider)
+          ? `Read by ${shortModelName(p.served_by.model)}` // the server's chain: the card's line says where
           : local
-            ? "Read by Glimmer 30B on your machine"
-            : "Read by Muse Spark",
+            ? "Read by the open-weights model on your machine"
+            : "Read by the hosted model",
     date: ukDate(x.date),
     vatNumber: x.supplier_vat_number ? `${x.supplier_vat_number} ✓` : "none shown",
     net: gbp(x.net_total),

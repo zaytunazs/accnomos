@@ -282,7 +282,7 @@ export default function VatPage() {
                   id="reviewer-note-heading"
                   className="text-[15px] font-extrabold tracking-tight"
                 >
-                  Reviewer&apos;s note (Muse Spark)
+                  Reviewer&apos;s note (AI)
                 </h2>
                 <p className="mt-2 text-[14px] leading-6 text-muted">
                   Box 4 is 18% higher than Q2, mainly the Howdens kitchen order
