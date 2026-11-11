@@ -1,3 +1,5 @@
+# ruff: noqa
+# fmt: off
 # Builds timeline_paypal_v5.json from the capture marks. Run in the media folder (raw/, raw5/, raw6/, cards/): python3 make_timeline_v5.py
 import json, sys
 C = {

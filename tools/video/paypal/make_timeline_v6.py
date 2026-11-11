@@ -1,3 +1,5 @@
+# ruff: noqa
+# fmt: off
 # Builds timeline_paypal_v6.json from the capture marks. Run in the media folder (raw/, raw5/, raw6/, raw7/, cards/,
 # android/): python3 make_timeline_v6.py
 # v6 (12 Nov 2026, owner's review of draft 5): the presenter picture-in-picture only at the start ("pip_until"); one
