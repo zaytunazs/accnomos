@@ -983,6 +983,8 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ ...body, confirm: true }),
     }),
+  /** PayPal's own balance against 1240 PayPal clearing, with the gap explained (read-only). */
+  paypalTieOut: (a: AccountInfo) => call<RtPaypalTieOut>(a, "/payments/paypal/tieout"),
   paypalSyncReject: (a: AccountInfo, id: string, reason?: string) =>
     call<RtPaypalSyncItem>(a, `/payments/paypal/sync/${encodeURIComponent(id)}/reject`, {
       method: "POST",
@@ -2443,6 +2445,19 @@ export interface RtPaypalSyncItem {
   event_ids: string[];
   reject_reason: string | null;
 }
+export interface RtPaypalTieOut {
+  available: boolean;
+  reason: string | null;
+  paypal_pence: number | null;
+  paypal_as_of: string | null;
+  books_pence: number;
+  difference_pence: number | null;
+  waiting_pence: number;
+  not_posted_pence: number;
+  unexplained_pence: number | null;
+  notes: string[];
+}
+
 export interface RtPaypalSyncView {
   available: boolean;
   reason: string | null;

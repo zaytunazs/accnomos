@@ -1,0 +1,1 @@
+Accnomos keeps the books in your own OneDrive or Google Drive, and files VAT to HMRC. Press Sync PayPal, and it fetches every payment from PayPal itself: the gross, PayPal's fee and the net, matched to the invoice it pays. A sale with no invoice waits for me to choose its VAT. Nothing posts until I approve.

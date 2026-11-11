@@ -2,6 +2,7 @@
 
 GET  /payments/paypal/sync                       what was synced, waiting or decided; whether sync is possible
 POST /payments/paypal/sync                       {days?, ai?}: read PayPal and propose each new transaction
+GET  /payments/paypal/tieout                     PayPal's balance against 1240 PayPal clearing
 POST /payments/paypal/sync/{id}/approve          {confirm: true, account?, vat_code?}: post it
 POST /payments/paypal/sync/{id}/reject           {reason?}
 GET  /payments/paypal/fees?start=&end=           PayPal's fees for the dates (synced history and the ledger)
@@ -113,6 +114,12 @@ async def reject(
         raise HTTPException(status_code=404, detail="No such synced PayPal transaction") from exc
     except InvoiceError as exc:
         raise _http(exc) from exc
+
+
+@router.get("/payments/paypal/tieout", response_model=ps.TieOut)
+async def tieout(request: Request, books: Books = Depends(get_books)) -> ps.TieOut:
+    """PayPal's own balance against 1240 PayPal clearing, with the gap explained. Read-only."""
+    return await ps.tie_out(books, demo.is_demo_request(request))
 
 
 @router.get("/payments/paypal/fees", response_model=ps.FeeSummary)

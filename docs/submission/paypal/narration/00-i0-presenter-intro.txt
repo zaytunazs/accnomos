@@ -1,0 +1,1 @@
+I run a small UK business that gets paid, and pays suppliers, through PayPal. So I built Accnomos to keep those books.

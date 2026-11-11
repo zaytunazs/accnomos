@@ -6,6 +6,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { RuntimeErrorNote } from "@/components/States";
 import { money } from "@/lib/invoices";
+import PayPalTieOut from "@/components/invoices/PayPalTieOut";
 import { runtime, ukDate, type RtPaypalSyncItem, type RtPaypalSyncView } from "@/lib/runtime";
 
 /** The cost accounts a PayPal purchase can go to (services/runtime/app/journal.py CATEGORY_ACCOUNTS and Sundry). */
@@ -66,6 +67,7 @@ export default function PayPalSync({ account, onPosted }: { account: AccountInfo
   }, [load]);
 
   if (!view || (!view.available && view.items.length === 0)) return null;
+  const tieKey = view.items.filter((i) => i.status === "approved").length + (view.last_synced_at ? 1 : 0);
   const waiting = view.items.filter((i) => i.status === "proposed");
   const rest = view.items.filter((i) => i.status !== "proposed");
 
@@ -77,6 +79,7 @@ export default function PayPalSync({ account, onPosted }: { account: AccountInfo
 
   return (
     <section aria-label="PayPal" className="space-y-3 rounded-2xl border border-border bg-white p-4">
+      {!view.sample && <PayPalTieOut account={account} refresh={tieKey} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-extrabold">PayPal</h2>
@@ -172,7 +175,8 @@ function SyncRow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [acct, setAcct] = useState(item.account ?? "");
-  const [vat, setVat] = useState(item.vat_code ?? "N");
+  const needsVat = item.kind === "sale" && item.status === "proposed" && item.vat_code == null;
+  const [vat, setVat] = useState(item.vat_code ?? (needsVat ? "" : "N"));
   const editable = item.kind === "expense";
   const id = `pp-${item.transaction_id}`;
   const gross = Math.abs(item.gross_pence);
@@ -225,6 +229,15 @@ function SyncRow({
           </div>
         </div>
       )}
+      {needsVat && (
+        <div className="mt-2 max-w-sm">
+          <label className={fieldLabel} htmlFor={`${id}-salevat`}>VAT on this sale (choose before approving)</label>
+          <select id={`${id}-salevat`} className={fieldInput} value={vat} onChange={(e) => setVat(e.target.value)}>
+            <option value="">Choose…</option>
+            {["S", "R", "Z", "E", "O"].map((c) => <option key={c} value={c}>{VAT_CODES[c] ?? "Outside the scope of VAT"}</option>)}
+          </select>
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap justify-end gap-2">
         <button
           type="button"
@@ -246,13 +259,14 @@ function SyncRow({
         <button
           type="button"
           className={primaryButton}
-          disabled={busy}
+          disabled={busy || (needsVat && !vat)}
           onClick={async () => {
             setBusy(true);
             setError(null);
             try {
               const changed = editable && (acct !== item.account || vat !== item.vat_code);
-              const out = await runtime.paypalSyncApprove(account, item.transaction_id, changed ? { account: acct, vat_code: vat } : {});
+              const body = needsVat ? { vat_code: vat } : changed ? { account: acct, vat_code: vat } : {};
+              const out = await runtime.paypalSyncApprove(account, item.transaction_id, body);
               onChanged(out, `${KIND[item.kind]} of ${money(gross)} (${item.name}) is in your books.`);
             } catch (e) {
               setError((e as Error).message);

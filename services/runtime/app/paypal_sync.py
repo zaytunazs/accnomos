@@ -78,10 +78,10 @@ EXPENSE_VAT = ("S", "R", "Z", "E", "N")
 #: never a VAT code. Lower-case words in the payee or the item names.
 HINTS: list[tuple[re.Pattern[str], str]] = [
     (
-        re.compile(r"\b(adobe|microsoft|google|apple|dropbox|canva|xero|zoom|slack|notion|github|openai)\b"),
+        re.compile(r"\b(adobe|microsoft|google|apple|dropbox|canva|xero|zoom|slack|notion|github|openai|software)\b"),
         "Software & subscriptions",
     ),
-    (re.compile(r"\b(screwfix|toolstation|wickes|b&q|travis perkins|jewson|selco|howdens)\b"), "Materials"),
+    (re.compile(r"\b(screwfix|toolstation|wickes|b&q|travis perkins|jewson|selco|howdens|timber|hardware)\b"), "Materials"),
     (re.compile(r"\b(royal mail|parcelforce|evri|hermes|dpd|ups|fedex|yodel|parcel2go)\b"), "Postage"),
     (re.compile(r"\b(ebay|amazon)\b"), "Office supplies"),
     (re.compile(r"\b(facebook|meta platforms|instagram|google ads|linkedin)\b"), "Advertising"),
@@ -556,11 +556,17 @@ async def _propose(
             ]
         else:
             item.account = SALES
-            item.vat_code = "S" if vat_registered else "O"
+            # VAT is never assumed on a sale with no invoice: standard, zero-rated, exempt and outside-the-scope
+            # receipts all reach PayPal, and output VAT goes to HMRC. A VAT-registered owner chooses it first.
+            item.vat_code = None if vat_registered else "O"
             item.coded_by = "code: money in with no invoice of yours named, so a sale"
             item.notes = [
                 "A sale with no invoice in your books: "
-                + ("20% VAT taken as included." if vat_registered else "no VAT (the books are not VAT registered).")
+                + (
+                    "choose its VAT before you approve it (no VAT is assumed)."
+                    if vat_registered
+                    else "no VAT (the books are not VAT registered)."
+                )
                 + " Reject it if it was not a sale (a refund, a loan, money from yourself)."
             ]
     elif kind == "fee":
@@ -941,6 +947,10 @@ async def approve(
                 raise SyncError(f"VAT code is one of {', '.join(ok_vat)}")
             item.vat_code = vat_code
         item.journal = journal_for(item)
+    if item.kind == "sale" and item.vat_code is None:
+        raise SyncError(
+            "Choose the VAT for this sale first (standard, reduced, zero-rated, exempt or outside the scope)"
+        )
     if item.kind == "invoice":
         events = await _post_invoice(books, item, user)
     elif item.kind in ("sale", "expense", "fee"):
@@ -1042,3 +1052,67 @@ __all__ = [
     "view",
     "windows",
 ]
+
+
+# --------------------------------------------------------------------------- #
+# Tie-out: the books' PayPal clearing account against PayPal's own balance
+# --------------------------------------------------------------------------- #
+
+
+class TieOut(BaseModel):
+    """What PayPal says it holds against what the books say (1240 PayPal clearing), with the gap explained by what
+    the sync has seen but not posted. Read-only; posts nothing."""
+
+    available: bool
+    reason: str | None = None
+    paypal_pence: int | None = None  # PayPal's total GBP balance
+    paypal_as_of: datetime | None = None  # PayPal refreshes this in batches: shown beside the figure
+    books_pence: int = 0  # 1240 PayPal clearing in the ledger
+    difference_pence: int | None = None  # paypal - books
+    waiting_pence: int = 0  # synced, proposed, not yet approved (net of fees)
+    not_posted_pence: int = 0  # synced, never posted by design (withdrawals, refunds, conversions, holds…)
+    unexplained_pence: int | None = None  # difference - waiting - not_posted
+    notes: list[str] = Field(default_factory=list)
+
+
+async def tie_out(books: Books, demo: bool) -> TieOut:
+    source, merchant, why = await source_for(books, demo)
+    books_pence = await op.clearing_balance(books, "paypal")
+    if source != "paypal":
+        return TieOut(
+            available=False,
+            reason=why or "A tie-out needs your real PayPal account connected (the demo shows sample history).",
+            books_pence=books_pence,
+        )
+    cfg, _ = op.paypal_config()
+    assert cfg is not None
+    try:
+        async with client() as http:
+            got = await PayPalApi(cfg, http).balances(merchant)
+    except ProviderError as exc:
+        return TieOut(available=False, reason=f"PayPal did not answer: {exc.message}", books_pence=books_pence)
+    gbp = next((b for b in got.get("balances") or [] if isinstance(b, dict) and b.get("currency") == "GBP"), None)
+    paypal = pence_from_paypal((gbp or {}).get("total_balance")) if gbp else 0
+    as_of = paypal_parse_time(got.get("last_refresh_time") or got.get("as_of_time"))
+    state = await load_state(books)
+    waiting = sum(i.net_pence for i in state.items.values() if i.status == "proposed")
+    not_posted = sum(i.gross_pence for i in state.items.values() if i.status == "info")
+    diff = None if paypal is None else paypal - books_pence
+    unexplained = None if diff is None else diff - waiting - not_posted
+    notes = [
+        "PayPal lists payments up to 3 hours late, and refreshes this balance in batches: compare at the time shown.",
+        "Your sandbox or account's opening balance is never posted by Accnomos; it shows as not posted.",
+    ]
+    if unexplained == 0:
+        notes.insert(0, "Your books match PayPal to the penny once the items waiting are approved.")
+    return TieOut(
+        available=True,
+        paypal_pence=paypal,
+        paypal_as_of=as_of,
+        books_pence=books_pence,
+        difference_pence=diff,
+        waiting_pence=waiting,
+        not_posted_pence=not_posted,
+        unexplained_pence=unexplained,
+        notes=notes,
+    )
