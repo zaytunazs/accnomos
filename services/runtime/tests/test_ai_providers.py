@@ -439,11 +439,27 @@ async def test_warm_ping_sends_proxy_auth_and_marks_modal_warm(monkeypatch: pyte
     assert chain.BREAKER.state("modal")["last_ok_s_ago"] == 0
 
 
-def test_health_shows_the_chain_without_secrets() -> None:
+def test_health_says_only_that_accnomos_ai_is_up() -> None:
+    """Owner's request (11 Nov 2026): customers never see which providers or models the server uses."""
     r = _client().get("/health")
-    ai = r.json()["ai"]
-    assert ai["chain"] == ["modal", "meta", "spark"] and ai["configured"] == ["modal", "meta", "spark"]
-    assert ai["recommended"] == "modal,meta,spark"
+    body = r.json()
+    assert body["ai_ok"] is True and body["ai"]["ok"] is True
+    assert body["ai"]["providers"] == [{"name": "server", "model": "Accnomos AI", "configured": True}]
+    for leak in (*SECRETS, MODAL, SPARK, "modal", "meta", "spark", "muse", "glimmer", "anthropic", "recommended"):
+        assert leak not in r.text.lower(), leak
+
+
+def test_admin_ai_status_is_for_admins_only(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ADMIN_EMAILS", "ops@example.co.uk")
+    client = _client()
+    assert client.get("/admin/ai-status").status_code == 401
+    other = client.get("/admin/ai-status", headers={"X-Graph-Token": "t", "X-User": "sam@example.co.uk"})
+    assert other.status_code == 403
+    r = client.get("/admin/ai-status", headers={"X-Graph-Token": "t", "X-User": "ops@example.co.uk"})
+    assert r.status_code == 200, r.text
+    got = r.json()
+    assert got["health"]["chain"] == ["modal", "meta", "spark"] and got["recommended"] == "spark,anthropic"
+    assert got["verifier_provider"] == "chain" and isinstance(got["stt"], list)
     for secret in (*SECRETS, MODAL, SPARK):
         assert secret not in r.text
 

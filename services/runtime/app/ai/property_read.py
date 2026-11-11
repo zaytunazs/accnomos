@@ -18,6 +18,7 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field
 
+from app.ai import anthropic
 from app.ai.config import AiConfig
 from app.ai.extract import TIMEOUT_S, ExtractionError, image_mime, parse_model_json, user_message
 from app.property import BY_KEY
@@ -163,9 +164,10 @@ async def _post(messages: list[dict[str, Any]], cfg: AiConfig) -> str:
                 )
                 r.raise_for_status()
                 return r.json().get("message", {}).get("content", "")
-            r = await client.post(
-                f"{cfg.base_url}/chat/completions",
-                json={
+            r = await anthropic.post_openai(
+                client,
+                cfg,
+                {
                     "model": cfg.model,
                     "messages": messages,
                     "response_format": {
@@ -174,7 +176,7 @@ async def _post(messages: list[dict[str, Any]], cfg: AiConfig) -> str:
                     },
                     "reasoning_effort": "low",
                 },
-                headers={"Authorization": f"Bearer {cfg.api_key}"},
+                {"Authorization": f"Bearer {cfg.api_key}"},
             )
             r.raise_for_status()
             raw = r.json()["choices"][0]["message"].get("content") or ""

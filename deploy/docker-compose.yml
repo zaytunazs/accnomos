@@ -24,8 +24,21 @@ services:
       # use the content for training: fine for the demo and testers, not for real customers' books.
       MODEL_API_MODEL: ${MODEL_API_MODEL:-muse-spark-1.3}
       # The provider chain for requests with no AI choice (docs/PRODUCTION.md section 7). A provider without its
-      # settings drops out, so with none of the four below this is just the Spark, as before.
-      AI_PROVIDERS: ${AI_PROVIDERS:-modal,meta,spark}
+      # settings drops out, so without ANTHROPIC_API_KEY this is just the Spark. Owner's decision (11 Nov 2026): our
+      # own server first, Anthropic as the backup, nothing to Meta.
+      AI_PROVIDERS: ${AI_PROVIDERS:-spark,anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-5-5}
+      ANTHROPIC_VERIFY_MODEL: ${ANTHROPIC_VERIFY_MODEL:-}
+      ANTHROPIC_MAX_TOKENS: ${ANTHROPIC_MAX_TOKENS:-}
+      # Who reads second (app/ai/verify.py): chain (default) | anthropic (every document to Anthropic) | spark.
+      VERIFIER_PROVIDER: ${VERIFIER_PROVIDER:-chain}
+      # Speech-to-text (app/ai/stt.py): local = the Spark's spark-voice service at STT_BASE (default); meta = Muse
+      # Voice Transcribe first (sends recordings to Meta).
+      STT_PROVIDER: ${STT_PROVIDER:-local}
+      STT_BASE: ${STT_BASE:-http://host.docker.internal:8890}
+      SPARK_WHISPER_URL: ${SPARK_WHISPER_URL:-}
+      SPARK_WHISPER_MODEL: ${SPARK_WHISPER_MODEL:-}
       MODAL_GLIMMER_URL: ${MODAL_GLIMMER_URL:-}
       MODAL_PROXY_TOKEN_ID: ${MODAL_PROXY_TOKEN_ID:-}
       MODAL_PROXY_TOKEN_SECRET: ${MODAL_PROXY_TOKEN_SECRET:-}

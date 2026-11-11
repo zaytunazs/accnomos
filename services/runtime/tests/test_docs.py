@@ -71,11 +71,14 @@ def test_architecture_lists_the_books_xlsx_sheets_the_code_writes():
 
 # Owner's rule (4 Nov 2026): the public docs name Meta's models only; anything else is generic ("a local open-weight
 # model", "a hosted GPU", "other AI tools"). Prose only: code spans keep env names and ids (`BASETEN_API_KEY`,
-# `modal,meta,spark`), and `claude/...` branch names are git refs. The same list guards the public chat
+# `spark,anthropic`), and `claude/...` branch names are git refs. The same list guards the public chat
 # (tests/test_public_chat.py) and every rendered web page (apps/web/scripts/prelaunch-words.mjs).
+# Since 11 Nov 2026 Anthropic is the server's backup AI provider and a processor of customer documents, which the
+# privacy text must name: "Anthropic" is allowed. Its model names ("Claude ...") stay out of public prose: customers
+# are not told which models read their documents.
 NON_META_NAMES = re.compile(
     r"whisper|kokoro|ollama|vllm|qwen|comfyui|\bdgx\b|\bnvidia\b|\bl40s\b|baseten|\bmodal\b|\bllama\b|\bclaude\b(?!/)"
-    r"|anthropic|openai|\bchatgpt\b|\bgpt-\d|\bgemini\b|\bmistral\b|deepseek|hugging ?face|systran|speaches",
+    r"|openai|\bchatgpt\b|\bgpt-\d|\bgemini\b|\bmistral\b|deepseek|hugging ?face|systran|speaches",
     re.IGNORECASE,
 )
 PUBLIC_DOCS = sorted(

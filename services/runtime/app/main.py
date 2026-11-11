@@ -103,39 +103,51 @@ class AiTestResult(BaseModel):
 
 @app.get("/health")
 async def health() -> dict:
+    """Liveness, open to anyone. Since 11 Nov 2026 (owner's request) it says only whether the AI and voice are set up:
+    never which providers, models or speech-to-text services the server uses. The details are on the admins-only
+    `GET /admin/ai-status` (app/routes_ai.py)."""
+    ai = ai_chain_summary()
+    stt = stt_summary()
     return {
         "ok": True,
         "service": "runtime",
         "version": app.version,
         "uptime_s": int(time.time() - STARTED),
         "voice": bool(FFMPEG),
-        "stt": stt_summary(),
+        "ai_ok": ai["ok"],
+        "voice_ok": bool(FFMPEG) and stt[0]["configured"],
+        "stt": stt,
         "folder_layout": layout.health(),
-        "ai": ai_chain_summary(),
+        "ai": ai,
         **({"test_mode": True} if is_test_mode() else {}),
         **({"demo": demo.status()} if demo.enabled() else {}),
     }
 
 
+#: What a customer may see of the server's AI: our own name, never a provider's or a model's.
+PUBLIC_AI_NAME = "Accnomos AI"
+
+
 def stt_summary() -> list[dict]:
-    """The speech-to-text chain (app/ai/stt.py) as the server is set up: names, labels and models; never a key or URL.
-    A user's own Meta key in key mode also enables Muse Voice Transcribe for their requests."""
+    """Whether the server can transcribe speech, as one entry in the shape older clients read (`configured`); no
+    provider name, engine or model. A user's own Meta key in key mode also enables voice for their requests."""
     from app.ai import stt
 
-    return stt.describe()
+    configured = any(p["configured"] for p in stt.describe())
+    return [{"name": "server", "label": PUBLIC_AI_NAME, "model": PUBLIC_AI_NAME, "configured": configured}]
 
 
 def ai_chain_summary() -> dict:
-    """The provider chain and which providers are configured: names and models only, never keys or URLs."""
+    """Whether the server's own AI is set up, in the shape older clients read (`providers[].configured`, `.model`):
+    one entry named "Accnomos AI", never the chain, a provider or a model id."""
     from app.ai import providers
 
     infos = providers.describe()
+    ok = any(i.configured for i in infos) if infos else True  # no chain: the single default (AI_MODE), as before
     return {
-        "chain": [i.name for i in infos],
-        "configured": [i.name for i in infos if i.configured],
-        "providers": [{"name": i.name, "model": i.model, "configured": i.configured} for i in infos],
-        "default": "chain" if infos else (os.getenv("AI_MODE") or "local"),
-        "recommended": providers.RECOMMENDED,
+        "ok": ok,
+        "providers": [{"name": "server", "model": PUBLIC_AI_NAME, "configured": ok}],
+        "default": "chain" if infos else "server",
     }
 
 
@@ -174,10 +186,12 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
     raise HTTPException(400, "mode must be 'key' or 'local'")
 
 
+from app.routes_ai import admin_router as ai_admin_router  # noqa: E402  GET /admin/ai-status (ADMIN_EMAILS only)
 from app.routes_ai import router as ai_router  # noqa: E402  GET /ai/health, GET /ai/calls, POST /ai/warm
 from app.routes_extract import router as extract_router  # noqa: E402  POST /extract
 
 app.include_router(ai_router)
+app.include_router(ai_admin_router)
 
 app.include_router(extract_router)
 

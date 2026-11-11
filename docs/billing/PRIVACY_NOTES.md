@@ -57,3 +57,19 @@ server name are removed; and every remaining string is scrubbed of anything that
 - AI keys (`X-Meta-Api-Key`): read per request only to tell whether the user's own AI did the work; never kept.
 - Book contents, documents, amounts, supplier names: not in Supabase, Stripe metadata or Sentry.
 - The runtime sends no emails for billing; Stripe sends receipts and the 7-days-before-trial-end reminder.
+
+## AI processing (since 11 Nov 2026)
+
+- The server's AI chain is `AI_PROVIDERS=spark,anthropic`: our own server reads documents and questions first; only
+  when it cannot answer does the same request go to Anthropic's Messages API (`services/runtime/app/ai/anthropic.py`).
+  Anthropic is then a processor in the United States under its Commercial Terms ("Anthropic may not train models on
+  Customer Content from Services", anthropic.com/legal/commercial-terms, section B) and its Data Processing Addendum
+  (section C). Without a zero-data-retention arrangement, which is not on by default and is not in place, Anthropic
+  deletes API inputs and outputs within 30 days, longer only to enforce its usage policy or by law
+  (privacy.claude.com, "How long do you store my organization's data", read 11 Nov 2026).
+- Meta: our server no longer sends documents, questions or recordings to Meta's Model API (the live server's
+  `muse-spark-1.3-contributor` model was one Meta may train on). Voice is transcribed on our own server
+  (`STT_PROVIDER=local`); SAM crop (Meta) stays off (`SAM_CROP` unset or 0). A user's own Meta key still sends their
+  own requests to Meta, as they chose.
+- Logs: the runtime logs token counts per Anthropic call (`AI usage: provider=anthropic model=... prompt_tokens=...`),
+  never the prompt, the document or the reply; the key is sent only in the `x-api-key` header.

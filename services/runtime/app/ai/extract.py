@@ -22,7 +22,7 @@ from typing import Any
 import httpx
 from pydantic import ValidationError
 
-from app.ai import chain
+from app.ai import anthropic, chain
 from app.ai.config import AiConfig
 from app.schemas import CATEGORIES, CODE_CATEGORIES, ExtractedDoc, extraction_json_schema
 
@@ -150,7 +150,7 @@ async def _call_meta(
         },
         "reasoning_effort": "low",  # temperature deliberately omitted (not in verified API facts)
     }
-    r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers=cfg.auth_headers())
+    r = await anthropic.post_openai(client, cfg, body, cfg.auth_headers())
     r.raise_for_status()
     data = r.json()
     content = data["choices"][0]["message"].get("content") or ""

@@ -16,6 +16,19 @@ Backend choice (`select_backend`), keeping the user's own choice of where their 
   own server), with the same failover and circuit breaker as every other call (app/ai/chain.py). The hosted Spark Open
   goes first only with `BASETEN_ENABLED=1` and a key; it is off by default (owner's decision, 2 Nov 2026).
 
+`VERIFIER_PROVIDER` (the server's chain only) picks who reads second:
+
+* chain (default) - the chain's own order (with AI_PROVIDERS=spark,anthropic: Glimmer on our own server, Anthropic
+  when it is down). The reader and the Verifier are then usually the same model, which is less independent, but every
+  document stays on our own server whenever it is up: the promise the privacy page makes.
+* anthropic       - Anthropic first (ANTHROPIC_VERIFY_MODEL, else ANTHROPIC_MODEL), the rest of the chain after it.
+  A different model from the Glimmer reader, so a truly independent second reading, but EVERY document then goes to
+  Anthropic and costs one Messages API call: switch it on only together with privacy text that says so.
+* spark           - our own server first, the rest of the chain after it (useful when the reader is Anthropic).
+
+A provider that is not configured is skipped (falling back to the chain's order). A backend the user chose is
+unaffected: their own local agent or key stays their verifier.
+
 `VERIFIER=off` on the server disables the verifier entirely.
 """
 
@@ -34,8 +47,8 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
-from app.ai import chain
-from app.ai.config import AiConfig
+from app.ai import anthropic, chain
+from app.ai.config import AiConfig, is_test_mode
 from app.ai.extract import ExtractionError, image_mime, parse_model_json, user_message
 from app.checks import p
 from app.schemas import ExtractedDoc, FieldAgreement, Verification, strict_json_schema
@@ -44,7 +57,8 @@ TIMEOUT_S = 180.0
 BASETEN_BASE = "https://inference.baseten.co/v1"
 DEFAULT_BASETEN_MODEL = "meta-models/muse-spark-open"  # as Baseten's /v1/models lists it (checked 27 Oct 2026)
 
-BackendKind = Literal["baseten", "meta", "ollama"]
+BackendKind = Literal["baseten", "meta", "ollama", "anthropic"]
+VerifierProvider = Literal["chain", "anthropic", "spark"]
 
 
 class VerifierBackend(BaseModel):
@@ -85,8 +99,37 @@ def _baseten(env: Mapping[str, str], in_chain: bool) -> AiConfig | None:
 
 def backend_for(c: AiConfig) -> VerifierBackend:
     """The verifier backend that one provider config stands for."""
-    kind: BackendKind = "ollama" if c.mode == "local" else "baseten" if c.provider == "baseten" else "meta"
+    kind: BackendKind
+    if c.mode == "local":
+        kind = "ollama"
+    elif c.provider == "baseten":
+        kind = "baseten"
+    elif anthropic.is_anthropic(c):
+        kind = "anthropic"
+    else:
+        kind = "meta"
     return VerifierBackend(kind=kind, base_url=c.base_url, model=c.model, api_key=c.api_key, src=c)
+
+
+def verifier_provider(env: Mapping[str, str]) -> VerifierProvider:
+    raw = (env.get("VERIFIER_PROVIDER") or "chain").strip().lower()
+    return raw if raw in ("chain", "anthropic", "spark") else "chain"  # type: ignore[return-value]
+
+
+def _first(providers: list[AiConfig], name: str, env: Mapping[str, str]) -> list[AiConfig]:
+    """`providers` with `name` moved to the front (built from the environment when the chain lacks it), or unchanged
+    when that provider is not configured. The Anthropic Verifier uses ANTHROPIC_VERIFY_MODEL when it is set."""
+    from app.ai import providers as prov  # late: providers imports config, which this module's callers import
+
+    pick = next((c for c in providers if c.provider == name), None)
+    if pick is None and not is_test_mode():
+        pick = prov.provider_config(name, env)  # type: ignore[arg-type]
+    if pick is None:
+        return providers
+    if name == "anthropic" and anthropic.is_anthropic(pick) and (vm := anthropic.verify_model(env)):
+        pick = pick.model_copy(update={"model": vm})
+    rest = [c.model_copy(update={"fallbacks": []}) for c in providers if c.provider != name]
+    return [pick.model_copy(update={"fallbacks": []}), *rest]
 
 
 def verifier_chain(cfg: AiConfig, env: Mapping[str, str] | None = None) -> AiConfig | None:
@@ -96,6 +139,8 @@ def verifier_chain(cfg: AiConfig, env: Mapping[str, str] | None = None) -> AiCon
         return None
     if cfg.in_chain:
         providers = cfg.chain()
+        if (who := verifier_provider(env)) != "chain":
+            providers = _first(providers, who, env)
         if (baseten := _baseten(env, in_chain=True)) is not None:
             providers = [baseten, *providers]
         head, *rest = providers
@@ -276,12 +321,16 @@ async def _call_openai_compatible(
             "json_schema": {"name": "verifier", "strict": True, "schema": schema},
         },
     }
-    if be.kind == "meta":
+    if be.kind in ("meta", "anthropic"):
         body["reasoning_effort"] = "low"
     else:
         body["temperature"] = 0
     headers = {**(be.src.extra_headers if be.src else {}), "Authorization": f"Bearer {be.api_key}"}
-    r = await client.post(f"{be.base_url}/chat/completions", json=body, headers=headers)
+    r = await (
+        anthropic.post_chat(client, be.src, body)
+        if be.kind == "anthropic" and be.src is not None
+        else client.post(f"{be.base_url}/chat/completions", json=body, headers=headers)
+    )
     r.raise_for_status()
     content = r.json()["choices"][0]["message"].get("content") or ""
     if isinstance(content, list):

@@ -185,9 +185,12 @@ last declares UserDefaults). The app's own manifest declares:
   Emails, Other User Content, User ID, Device ID.
 
 **App Store Connect answers (App Privacy).** Apple counts data as "collected" when it leaves the device and is kept
-longer than needed to serve the request. The runtime keeps nothing, but (per accnomos.com/privacy) documents and
-questions go to Meta's Model API, which may use them in Contributor mode, and HMRC's fraud-prevention headers carry
-a device id and a hashed user id. Answer:
+longer than needed to serve the request. The runtime keeps nothing, but (per accnomos.com/privacy, updated 11 Nov 2026)
+documents and questions are read on our own server and, only when it cannot answer, by our backup AI provider
+Anthropic, which deletes API inputs and outputs within 30 days (longer only for its usage policy or the law) and may
+not train on them under its Commercial Terms; Meta no longer receives documents from our server. HMRC's
+fraud-prevention headers carry a device id and a hashed user id. The answers stay the same (the backup's 30-day
+retention is still "kept longer than needed to serve the request"):
 
 | Data type | Collected | Linked to user | Tracking | Purpose |
 | --- | --- | --- | --- | --- |

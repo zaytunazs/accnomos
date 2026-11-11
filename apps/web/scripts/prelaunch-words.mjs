@@ -25,7 +25,8 @@ export const NOT_YET_WORDS = [/\bsoon\b/i, /coming next/i, /not yet available/i]
 /**
  * Non-Meta models, tools, engines, hosts, vendors and hardware that no public or judge-facing page may name (owner's
  * rules, 29 Oct and 4 Nov 2026: only Meta is named; the rest is "a local fallback model", "a hosted GPU", "other AI
- * tools"). Checked on every rendered page by e2e/submission-mode.spec.ts only, not on the export's files: the JS keeps
+ * tools"). Anthropic is allowed since 11 Nov 2026: the server's backup AI provider, which the privacy page names as a
+ * processor; its model names are not. Checked on every rendered page by e2e/submission-mode.spec.ts only, not on the export's files: the JS keeps
  * internal provider ids (the runtime's chain names) to map them to Meta names.
  */
 export const THIRD_PARTY_NAMES = [
@@ -42,7 +43,6 @@ export const THIRD_PARTY_NAMES = [
   /\bmodal\b/i,
   /\bllama\b/i,
   /\bclaude\b/i,
-  /anthropic/i,
   /openai/i,
   /\bchatgpt\b|\bgpt-\d/i,
   /\bgemini\b/i,

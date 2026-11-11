@@ -252,10 +252,9 @@ async def ask_voice(
 ) -> AskVoiceAnswer:
     """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> speech-to-text chain -> the /books/ask answer.
 
-    Optional form fields `period` and `history` are JSON shaped as in AskRequest. Muse Voice Transcribe hears it when a
-    Meta key is available (the user's own in key mode, else the server's META_API_KEY); the local
-    speech-to-text model on our own server when that fails or is not configured. `transcribed_by` names the one that
-    did."""
+    Optional form fields `period` and `history` are JSON shaped as in AskRequest. The speech-to-text model on our own
+    server hears it; Muse Voice Transcribe only when the owner switched it on (STT_PROVIDER=meta, app/ai/stt.py).
+    `transcribed_by` names the one that did."""
     providers = stt.chain(cfg)
     if not providers:
         raise HTTPException(400, _no_voice(cfg))
@@ -287,10 +286,10 @@ async def ask_voice(
 def _no_voice(cfg: AiConfig) -> str:
     if cfg.route == "local_only":
         return (
-            "Voice input is off while Settings › AI is set to local model only: speech-to-text runs on the Meta "
-            "Model API. Type your question instead."
+            "Voice input is off while Settings › AI is set to local model only and this server has no speech-to-text "
+            "of its own. Type your question instead."
         )
-    return "Voice needs Muse Voice Transcribe (a Meta API key) or a local speech-to-text model on our own server"
+    return "Voice is not set up on this server (no speech-to-text model). Type your question instead."
 
 
 class HeardReply(BaseModel):

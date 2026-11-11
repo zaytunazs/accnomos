@@ -13,7 +13,7 @@ from typing import Any
 
 import httpx
 
-from app.ai import chain
+from app.ai import anthropic, chain
 from app.ai.config import AiConfig
 from app.ai.extract import TIMEOUT_S, ExtractionError, parse_model_json
 
@@ -90,9 +90,10 @@ async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], c
                 r.raise_for_status()
                 return r.json().get("message", {}).get("content", "")
             else:
-                r = await client.post(
-                    f"{c.base_url}/chat/completions",
-                    json={
+                r = await anthropic.post_openai(
+                    client,
+                    c,
+                    {
                         "model": c.model,
                         "messages": [
                             {"role": "system", "content": SYSTEM_PROMPT},
@@ -104,7 +105,7 @@ async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], c
                         },
                         "reasoning_effort": "low",
                     },
-                    headers=c.auth_headers(),
+                    c.auth_headers(),
                 )
                 r.raise_for_status()
                 data = r.json()
