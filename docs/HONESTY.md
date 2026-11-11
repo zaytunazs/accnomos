@@ -205,7 +205,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   JSON; code keeps only allowlisted columns and operators with valid values (`app/ai/grid_filter.py`) and the browser
   checks again (`grid-core.ts`). It cannot write, post or approve. On any failure the words become a plain search.
   The prompt was not evaluated against a set of real requests; only the stubbed model is tested.
-- **Not covered.** No e2e test; checked by hand against the test-mode runtime. Bank lines and the Review queue have no
+- **Not covered.** The e2e test (`apps/web/e2e/power-grid.spec.ts`) runs against the fake PayPal and the stub AI
+  only; no phone layout test beyond the fallback to the card list. Bank lines and the Review queue have no
   grid yet. Totals in the PayPal grid add GBP rows only. The ledger explorer reads the newest 500 lines.
 
 ## Sales and purchases: items, quotes, orders, repeating, overviews, statements

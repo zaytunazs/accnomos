@@ -57,6 +57,7 @@ export default function LedgerExplorer() {
       {
         field: "account",
         headerName: "Account",
+        cellDataType: "text",
         sort: "asc",
         sortIndex: 0,
         minWidth: 200,
@@ -74,14 +75,15 @@ export default function LedgerExplorer() {
         sortIndex: 1,
         width: 130,
       },
-      { field: "counterparty", headerName: "Payee or customer", minWidth: 160, flex: 1 },
-      { field: "memo", headerName: "Description", minWidth: 200, flex: 2, tooltipField: "memo" },
-      { field: "kind", headerName: "Entry type", width: 140 },
-      { field: "vat_code", headerName: "VAT", width: 90 },
+      { field: "counterparty", cellDataType: "text", headerName: "Payee or customer", minWidth: 160, flex: 1 },
+      { field: "memo", cellDataType: "text", headerName: "Description", minWidth: 200, flex: 2, tooltipField: "memo" },
+      { field: "kind", cellDataType: "text", headerName: "Entry type", width: 140 },
+      { field: "vat_code", cellDataType: "text", headerName: "VAT", width: 90 },
       ...(["debit", "credit", "amount"] as const).map(
         (c): ColDef<Row> => ({
           colId: c,
           headerName: { debit: "Debit", credit: "Credit", amount: "Amount" }[c],
+          cellDataType: "number",
           valueGetter: (p) => (p.data ? poundsValue(p.data[`${c}_pence`]) : null),
           valueFormatter: money(`${c}_pence`),
           filter: "agNumberColumnFilter",
@@ -93,7 +95,11 @@ export default function LedgerExplorer() {
     ],
     [],
   );
-  const defaultColDef = useMemo<ColDef<Row>>(() => ({ sortable: true, filter: true, resizable: true, floatingFilter: true }), []);
+  // Every column names its data type (no inferring), so a filter set while the books are still empty applies at once.
+  const defaultColDef = useMemo<ColDef<Row>>(
+    () => ({ sortable: true, filter: true, resizable: true, floatingFilter: true, cellDataType: false }),
+    [],
+  );
 
   const refreshTotals = useCallback(() => {
     const a = api.current;

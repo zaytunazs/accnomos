@@ -102,6 +102,7 @@ export default function PayPalReviewGrid({
         (f): ColDef<Row> => ({
           colId: f.replace("_pence", ""),
           headerName: { gross_pence: "Gross", fee_pence: "PayPal fee", net_pence: "Net" }[f],
+          cellDataType: "number",
           valueGetter: (p) => (p.data ? poundsValue(p.data[f]) : null),
           valueFormatter: money(f),
           filter: "agNumberColumnFilter",
@@ -171,7 +172,7 @@ export default function PayPalReviewGrid({
   );
 
   const defaultColDef = useMemo<ColDef<Row>>(
-    () => ({ sortable: true, filter: true, resizable: true, floatingFilter: true, suppressHeaderMenuButton: false }),
+    () => ({ sortable: true, filter: true, resizable: true, floatingFilter: true, cellDataType: false }),
     [],
   );
 
