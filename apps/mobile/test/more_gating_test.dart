@@ -40,7 +40,7 @@ void main() {
   test('features not known yet: every entry, as before profiles', () {
     expect(titles(null), [
       'Files', 'Contacts', 'Invoices', 'Jobs', 'Vehicles', 'Bank',
-      'Payroll', 'Month-end', 'Reports', 'Goals', 'Calendar', 'Notes', 'Your accountant',
+      'Payroll', 'Bill pay', 'Month-end', 'Reports', 'Goals', 'Calendar', 'Notes', 'Your accountant',
       'Audit trail',
       // the account rows every More ends with (test/plan_billing_test.dart)
       'Plan & billing', 'Report a problem',
@@ -51,6 +51,7 @@ void main() {
   test('personal books: no invoices or payroll, and Reports says no VAT', () {
     expect(titles(personal), isNot(contains('Invoices')));
     expect(titles(personal), isNot(contains('Payroll')));
+    expect(titles(personal), isNot(contains('Bill pay')));
     expect(titles(personal), containsAll(['Files', 'Bank', 'Reports']));
     expect(reportsNote(personal), isNot(contains('VAT')));
   });

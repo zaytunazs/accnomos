@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/ask_answer.dart';
 import '../models/calendar.dart';
+import '../models/paypal.dart';
 import '../models/sample_books.dart';
 import '../models/scan_job.dart';
 import '../models/storage.dart';
@@ -2097,6 +2098,120 @@ class RuntimeClient {
       'POST', '/queries/${_seg(id)}/resolve', what: 'mark that resolved');
 
   // --- end parity-a ---
+
+  // --- paypal --- Sync PayPal, the tie-out, disputes and bill pay, with the
+  // same routes and bodies as the web (apps/web/src/lib/runtime.ts,
+  // disputes.ts, billpay.ts). Every posting or payment carries
+  // `confirm: true`, sent only from the owner's tap.
+
+  /// `GET /payments/online/providers`: PayPal (and the others) connected or not.
+  Future<List<PayProviderStatus>> payProviders() async => [
+        for (final m in await _list('GET', '/payments/online/providers',
+            what: 'check online payments'))
+          PayProviderStatus.fromJson(m),
+      ];
+
+  /// `GET /payments/paypal/sync`: what was synced, waiting or decided.
+  Future<PayPalSyncView> paypalSyncView() async => PayPalSyncView.fromJson(
+      await _map('GET', '/payments/paypal/sync', what: 'load PayPal'));
+
+  /// `POST /payments/paypal/sync`: read PayPal and propose each new
+  /// transaction. Posts nothing.
+  Future<PayPalSyncResult> paypalSync({int? days, bool ai = true}) async =>
+      PayPalSyncResult.fromJson(await _map('POST', '/payments/paypal/sync',
+          body: {'ai': ai, 'days': ?days}, what: 'sync PayPal'));
+
+  /// `POST /payments/paypal/sync/{id}/approve` with `confirm: true`: the
+  /// owner's yes. [vatCode] is required by the runtime for a sale with no
+  /// invoice in VAT-registered books.
+  Future<PayPalSyncItem> paypalSyncApprove(String id,
+          {String? account, String? vatCode}) async =>
+      PayPalSyncItem.fromJson(await _map(
+          'POST', '/payments/paypal/sync/${_seg(id)}/approve',
+          body: {'account': ?account, 'vat_code': ?vatCode, 'confirm': true},
+          what: 'post that PayPal transaction'));
+
+  /// `POST /payments/paypal/sync/{id}/reject`.
+  Future<PayPalSyncItem> paypalSyncReject(String id, {String? reason}) async =>
+      PayPalSyncItem.fromJson(await _map(
+          'POST', '/payments/paypal/sync/${_seg(id)}/reject',
+          body: {'reason': ?reason}, what: 'reject that PayPal transaction'));
+
+  /// `GET /payments/paypal/fees?start=&end=`.
+  Future<PayPalFees> paypalFees(String start, String end) async =>
+      PayPalFees.fromJson(await _map('GET', '/payments/paypal/fees',
+          query: {'start': start, 'end': end}, what: 'load PayPal fees'));
+
+  /// `GET /payments/paypal/tieout`: PayPal's balance against 1240. Read-only.
+  Future<PayPalTieOut> paypalTieOut() async => PayPalTieOut.fromJson(
+      await _map('GET', '/payments/paypal/tieout', what: 'compare PayPal with your books'));
+
+  static const _disputes = '/payments/online/paypal/disputes';
+
+  /// `GET /payments/online/paypal/disputes`.
+  Future<PayPalDisputeList> paypalDisputes() async => PayPalDisputeList.fromJson(
+      await _map('GET', _disputes, what: 'check PayPal disputes'));
+
+  /// `POST …/{id}/evidence`: builds the evidence. Sends nothing.
+  Future<DisputeEvidence> buildDisputeEvidence(String id) async =>
+      DisputeEvidence.fromJson(await _map(
+          'POST', '$_disputes/${_seg(id)}/evidence',
+          what: 'build the evidence'));
+
+  /// `POST …/{id}/evidence/send` with `confirm: true`: the owner's yes.
+  Future<DisputeEvidence> sendDisputeEvidence(String id) async =>
+      DisputeEvidence.fromJson(await _map(
+          'POST', '$_disputes/${_seg(id)}/evidence/send',
+          body: {'confirm': true}, what: 'send the evidence to PayPal'));
+
+  /// `POST …/{id}/reversal` with `confirm: true`: take a lost payment back.
+  Future<DisputeReversal> postDisputeReversal(String id) async =>
+      DisputeReversal.fromJson(await _map(
+          'POST', '$_disputes/${_seg(id)}/reversal',
+          body: {'confirm': true}, what: 'post the reversing entry'));
+
+  /// `GET /billpay`.
+  Future<BillPayOverview> billPay() async => BillPayOverview.fromJson(
+      await _map('GET', '/billpay', what: 'load bills to pay with PayPal'));
+
+  /// `POST /billpay/run` on opening: follows payouts on their way, then
+  /// Autopilot pays only what the owner's own rules allow.
+  Future<BillPayRunResult> billPayRun() async => BillPayRunResult.fromJson(
+      await _map('POST', '/billpay/run', what: 'check payments to suppliers'));
+
+  /// `POST /billpay/bills/{id}/pay` with `confirm: true`: the owner's yes.
+  /// [amountPence] is what the card showed; the runtime refuses if it changed.
+  Future<BillPayout> billPayPay(String eventId, int amountPence,
+          {bool acknowledgeChangedDetails = false}) async =>
+      BillPayout.fromJson(await _map(
+          'POST', '/billpay/bills/${_seg(eventId)}/pay',
+          body: {
+            'amount_pence': amountPence,
+            'confirm': true,
+            'acknowledge_changed_details': acknowledgeChangedDetails,
+          },
+          what: 'pay that bill'));
+
+  /// `PUT /billpay/bills/{id}/plan`: `paypal`, `not_paypal` or null.
+  Future<Map<String, dynamic>> billPayPlan(String eventId, String? plan) => _map(
+      'PUT', '/billpay/bills/${_seg(eventId)}/plan',
+      body: {'plan': plan}, what: 'change how that bill is paid');
+
+  /// `POST /billpay/flags/{id}/clear` with `confirm: true`.
+  Future<Map<String, dynamic>> billPayClearFlag(String flagId) => _map(
+      'POST', '/billpay/flags/${_seg(flagId)}/clear',
+      body: {'confirm': true}, what: 'clear that warning');
+
+  /// `POST /billpay/autopilot/stop`: the kill switch.
+  Future<Map<String, dynamic>> billPayStopAutopilot() => _map(
+      'POST', '/billpay/autopilot/stop', what: 'stop automatic payments');
+
+  /// `POST /billpay/notices/seen`.
+  Future<void> billPayNoticesSeen(List<String> ids) => _json(
+      'POST', '/billpay/notices/seen',
+      body: {'ids': ids}, what: 'mark those as read');
+
+  // --- end paypal ---
 
   Future<Map<String, dynamic>> _map(
     String method,
