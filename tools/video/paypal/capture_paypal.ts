@@ -11,7 +11,11 @@
  * Env: PW_FROM (a folder whose node_modules has playwright or @playwright/test), SITE (default https://accnomos.com),
  * PAYPAL_CONNECT=1 (connect PayPal in test mode in the demo copy first: needs PAYPAL_DIRECT=1 on the server),
  * PAY=1 (pp-billpay presses "Pay £…": a real sandbox payout; without it the shot ends on the confirmation),
- * GAP_MS (pause between shots for the live API's per-IP limit, default 25 s), DEMO_WAIT_MS (default 12 s).
+ * GAP_MS (pause between shots for the live API's per-IP limit, default 25 s), DEMO_WAIT_MS (default 12 s),
+ * CHROME (a Chromium binary, if Playwright's own is missing), HTTPS_PROXY (passed to Chromium when set, for a sandboxed
+ * agent), CALLBACK_HOST (e.g. https://api.accnomos.com: if the server's PayPal connect sends the browser to its internal
+ * http://127.0.0.1:8780 address, the browser is sent to this host instead; seen on the live server 11 Nov 2026),
+ * SYNC_FIRST=1 (press Sync PayPal off camera before the shot: pp-tieout, pp-grid).
  * The PayPal checkout (scene p3) and the signed-in sandbox scenes (p4 with real payments, p5 tie-out, p8) are filmed by
  * hand: they need the owner's sign-in and the sandbox buyer, whose credentials never go in the repo.
  */
@@ -70,6 +74,38 @@ async function toRegion(page: any, name: string) {
   return r;
 }
 
+const RECEIPT = process.env.RECEIPT ?? path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../apps/web/public/sample-receipt.png");
+/** Home's summary is written by the live model: wait (off camera) until it is in words. */
+async function homeReady(page: any) {
+  await vis(page.getByText("Your summary")).waitFor({ timeout: 60_000 }).catch(() => undefined);
+  await page.getByText(/putting this into words/).first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
+  await page.waitForTimeout(800);
+}
+/** Glide to a visible element without scrolling the page. */
+async function point(c: Ctx, t: string | RegExp, dwell = 900) {
+  const l = vis(c.page.getByText(t));
+  const box = await l.boundingBox().catch(() => null);
+  const vp = c.page.viewportSize();
+  if (!box || box.y < 0 || box.y > vp.height - 20) return;
+  await c.h.moveTo(box.x + Math.min(box.width * 0.5, 160), box.y + box.height / 2);
+  await c.h.hold(dwell);
+}
+/** The live server's connect callback can point at its internal address (PAYPAL_RETURN_URL unset): follow it on the public host. */
+async function fixCallback(page: any) {
+  const host = process.env.CALLBACK_HOST;
+  if (!host) return;
+  await page.route(/^http:\/\/127\.0\.0\.1:8780\//, (r: any) =>
+    r.fulfill({ status: 302, headers: { location: r.request().url().replace("http://127.0.0.1:8780", host) } }));
+}
+/** Press Sync PayPal off camera, so a shot opens on the synced panel. */
+async function syncOffCamera(page: any) {
+  await go(page, "/invoices");
+  const panel = page.locator('section[aria-label="PayPal"]').first();
+  await panel.getByRole("button", { name: "Sync PayPal" }).first().click();
+  await panel.getByRole("status").first().waitFor({ timeout: 90_000 }).catch(() => undefined);
+  await settle(page, 1500);
+}
+
 /** Settings › Online payments → "Connect PayPal (test mode)": in direct mode the server sends the browser straight back. */
 async function connectPayPal(page: any) {
   await go(page, "/settings#settings-payments");
@@ -79,7 +115,8 @@ async function connectPayPal(page: any) {
     return;
   }
   await btn.click();
-  await page.waitForURL((u: URL) => u.href.startsWith(SITE) && u.pathname.startsWith("/settings"), { timeout: 60_000 }).catch(() => undefined);
+  // The page is already on /settings, so wait for the round trip's result rather than the URL.
+  await page.getByText(/^Connected:/).first().waitFor({ timeout: 60_000 }).catch(() => undefined);
   await settle(page, 1500);
   console.log("  PayPal connected:", await page.getByText(/^Connected:/).first().isVisible().catch(() => false));
 }
@@ -129,15 +166,22 @@ const SHOTS: Record<string, Shot> = {
         await hoverText(c, /PayPal fee/, 1500, inv);
         await hoverText(c, /^Pays invoice/, 1200, inv);
       }
-      const vatSel = vis(panel.getByLabel(/VAT on this sale/));
+      // The sale with no invoice in the books (SALE_MATCH picks one, e.g. "DEMO-1002"): choose its VAT
+      const sale = vis(list.getByRole("listitem").filter({ hasText: /^Sale/ }).filter({ hasText: process.env.SALE_MATCH ?? /./ }));
+      const vatSel = vis(sale.getByLabel(/VAT on this sale/).or(panel.getByLabel(/VAT on this sale/)));
       if (await vatSel.isVisible({ timeout: 3000 }).catch(() => false)) {
-        await h.scrollIntoView(vatSel, 900);
+        await h.scrollIntoView(sale, 900);
+        await hoverText(c, /PayPal fee/, 1400, sale);
+        await hoverText(c, /choose its VAT/, 1200, sale);
+        await h.scrollIntoView(vatSel, 700);
         await h.hover(vatSel, 600);
         await vatSel.selectOption("S");
+        c.mark("vat");
         await h.hold(1200);
       }
-      if (await inv.isVisible().catch(() => false)) {
-        const approve = vis(inv.getByRole("button", { name: /^Approve £/ }));
+      const target = (await inv.isVisible().catch(() => false)) ? inv : sale;
+      if (await target.isVisible().catch(() => false)) {
+        const approve = vis(target.getByRole("button", { name: /^Approve £/ }));
         await h.scrollIntoView(approve, 800);
         c.mark("approve");
         await h.click(approve, 300);
@@ -163,7 +207,11 @@ const SHOTS: Record<string, Shot> = {
       await hoverText(c, /^Due today$/, 1000);
       const approve = vis(page.getByRole("button", { name: /^Approve payment$|^Try again$/ }));
       if (!(await approve.isVisible({ timeout: 5000 }).catch(() => false))) {
-        await hoverText(c, /No bill is due for PayPal today/, 2000);
+        await hoverText(c, /No bill is due for PayPal today|Connect PayPal in Settings/, 2000);
+        c.mark("empty"); // no bill due today with a PayPal email: see SHOT_LIST.md, Bill pay (re-shoot)
+        await hoverText(c, /^Upcoming PayPal payments$/, 1500);
+        await h.scrollBy(260, 1200);
+        await h.hold(1500);
         throw new Error("no bill due today with a PayPal email: see SHOT_LIST.md, Bill pay");
       }
       await h.click(approve, 600);
@@ -229,21 +277,39 @@ const SHOTS: Record<string, Shot> = {
       const grid = vis(page.getByRole("grid").or(page.locator(".ag-root")));
       await grid.waitFor({ timeout: 30_000 });
       await h.park(900, 240);
-      const boxes = page.locator(".ag-center-cols-container .ag-checkbox-input, .ag-pinned-left-cols-container .ag-checkbox-input");
-      const n = Math.min(3, await boxes.count());
-      for (let i = 0; i < n; i++) await h.click(boxes.nth(i), 350);
+      // Tick up to three waiting rows that can be approved as they are (not a sale still waiting for its VAT choice)
+      // (AG Grid 34 puts body rows in .ag-grid-scrolling-container; the totals row is row-index "b-0")
+      const rows = page.locator(".ag-row[row-index]");
+      const picks: any[] = [];
+      const seen = new Set<string>();
+      for (let i = 0; i < (await rows.count()) && picks.length < 3; i++) {
+        const row = rows.nth(i);
+        const idx = (await row.getAttribute("row-index")) ?? "";
+        if (idx.startsWith("b") || seen.has(idx)) continue;
+        seen.add(idx);
+        if (/Choose the VAT/.test(await row.innerText().catch(() => ""))) continue;
+        if (!(await row.locator(".ag-checkbox-input:not([disabled])").count())) continue;
+        picks.push(row.locator(".ag-selection-checkbox").first());
+      }
+      await h.scrollIntoView(grid, 800);
+      for (const box of picks) await h.click(box, 350);
+      const n = picks.length;
       await hoverText(c, /^Total of \d+ shown/, 1200);
       const approve = vis(page.getByRole("button", { name: /^Approve selected/ }));
       if (n > 0 && process.env.GRID_APPROVE === "1") {
         page.once("dialog", (d: any) => d.accept());
         c.mark("approve");
         await h.click(approve, 300);
+        const confirm = vis(page.getByRole("dialog").getByRole("button", { name: /^Approve/ }));
+        if (await confirm.isVisible({ timeout: 2000 }).catch(() => false)) await h.click(confirm, 300);
         await page.waitForTimeout(5000);
         c.mark("approved");
+        await h.hold(1500);
       } else {
         await h.hover(approve, 1200);
       }
       await go(page, "/reports/ledger-grid");
+      await page.getByText("Opening the ledger explorer").first().waitFor({ state: "detached", timeout: 30_000 }).catch(() => undefined);
       c.mark("explorer");
       const box = vis(page.getByLabel(/Describe the lines you want to see/).or(page.getByPlaceholder(/Describe the lines/)));
       await h.type(box, process.env.GRID_Q ?? "PayPal fees over £5", 300);
@@ -251,6 +317,8 @@ const SHOTS: Record<string, Shot> = {
       c.mark("wait");
       await page.getByText("Working it out…").first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
       c.mark("ready");
+      await h.hold(900);
+      await h.scrollBy(280, 1000);
       await h.hold(2500);
     },
   },
@@ -260,7 +328,11 @@ const SHOTS: Record<string, Shot> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(700, 300);
-      const qs = [process.env.ASK_Q1 ?? "What did PayPal cost me this quarter?", process.env.ASK_Q2 ?? "How much is in PayPal?"];
+      // v4 (checked live 11 Nov 2026 on a demo WITHOUT PayPal connected: the sample history answers £492.00 / £97.79)
+      const qs = [
+        process.env.ASK_Q1 ?? "Did that client pay all the arrears? They had around £500 overdue — check PayPal.",
+        process.env.ASK_Q2 ?? "There was a payment via PayPal last month, probably around £100 for stationery — how much exactly was it?",
+      ];
       for (const [i, q] of qs.entries()) {
         await h.type(vis(page.getByLabel(/Ask your books/)), q, 300);
         await h.click(vis(page.getByRole("button", { name: "Ask", exact: true })), 200);
@@ -268,8 +340,306 @@ const SHOTS: Record<string, Shot> = {
         await page.getByText(ANSWERED).nth(i).waitFor({ timeout: 180_000 });
         await page.waitForTimeout(600);
         c.mark(`ready${i + 1}`);
-        await h.hold(2200);
+        const ans = page.getByText(ANSWERED).nth(i);
+        await ans.evaluate((e: Element) => e.closest("li,article,section,div")?.scrollIntoView({ block: "end", behavior: "smooth" })).catch(() => undefined);
+        await h.hold(3200);
       }
+    },
+  },
+  // h3: the tie-out at the top of the PayPal panel (only when PayPal is really connected: PAYPAL_CONNECT=1 SYNC_FIRST=1)
+  "pp-tieout": {
+    setup: async ({ page }) => { await go(page, "/invoices"); await toRegion(page, "PayPal"); await page.evaluate(() => window.scrollBy(0, -140)); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 200);
+      await h.hold(600);
+      const says = vis(page.getByText(/^PayPal says/));
+      await says.waitFor({ timeout: 20_000 });
+      await h.hover(says, 1600);
+      await hoverText(c, /\(as of/, 1800);
+      await hoverText(c, /^Difference/, 2600);
+      await hoverText(c, /refreshes this balance/, 1800);
+      await h.hold(800);
+    },
+  },
+  // v5 "Everything else, in action" (ported from tools/video/v3/capture_live.ts; the v3 helpers point/sidebar are inlined)
+  "f-receipt": {
+    setup: async ({ page }) => { await go(page, "/review"); await vis(page.getByText(/waiting for you/)).waitFor({ timeout: 60_000 }); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 250);
+      await h.hold(600);
+      const add = vis(page.getByRole("button", { name: "Add a receipt" }));
+      await h.moveToLocator(add);
+      const fcP = page.waitForEvent("filechooser", { timeout: 10_000 }).catch(() => null);
+      await h.click(add, 200);
+      const fc = await fcP;
+      if (fc) await fc.setFiles(RECEIPT);
+      c.mark("wait");
+      const confirm = vis(page.getByRole("button", { name: "Confirm" }));
+      await confirm.waitFor({ timeout: 120_000 });
+      c.mark("ready");
+      await hoverText(c, /Looks like a receipt/, 1300);
+      await h.click(confirm, 300);
+      c.mark("wait2");
+      const card = page.locator("section[aria-labelledby^=proposal-]").filter({ hasText: /NOVEX/i }).first();
+      await card.waitFor({ timeout: 180_000 });
+      await page.waitForTimeout(1500);
+      c.mark("ready2");
+      await h.scrollIntoView(card, 1100);
+      await h.hover(vis(card.getByText(/Read by/)), 1500);
+      await h.hover(vis(card.getByText(/^Net · VAT · Total/)), 1100);
+      await h.hover(vis(card.getByText(/^Why:/)), 1500);
+      await hoverText({ ...c, page: card } as any, /checks by code|Verifier agrees/, 1300);
+      const approve = vis(card.getByRole("button", { name: /^Approve/ }));
+      await h.click(approve, 400);
+      await vis(page.getByText(/Approved · posted to your books|Approved/)).waitFor({ timeout: 30_000 }).catch(() => undefined);
+      await h.hold(1800);
+    },
+  },
+  "f-invoice": {
+    setup: async ({ page }) => { await go(page, "/ask"); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 300);
+      await h.hold(500);
+      await h.type(vis(page.getByLabel(/Ask your books/)), "send a £450 invoice to Hartwell", 300);
+      await h.click(vis(page.getByRole("button", { name: "Ask", exact: true })), 200);
+      c.mark("wait");
+      const card = vis(page.getByRole("article", { name: /^Proposed:/ }));
+      await card.waitFor({ timeout: 150_000 });
+      await page.waitForTimeout(800);
+      c.mark("ready");
+      await h.scrollIntoView(card, 900);
+      await h.hover(card, 1600);
+      const approve = vis(card.getByRole("button", { name: "Approve" }));
+      await h.hover(approve, 700);
+      await h.click(approve, 300);
+      c.mark("wait2");
+      await vis(page.getByText(/INV-|Invoice .* (created|sent)|Done/)).waitFor({ timeout: 60_000 }).catch(() => undefined);
+      c.mark("ready2");
+      await h.hold(2200);
+    },
+  },
+  "f-reports": {
+    setup: async ({ page }) => {
+      await go(page, "/reports");
+      await page.getByRole("radio", { name: /Jul.Sep 2026/ }).first().click().catch(() => undefined);
+      await settle(page, 1500);
+      await page.evaluate(() => window.scrollTo(0, 0));
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(800, 300);
+      await point(c, /^Jul.Sep 2026$/, 700);
+      const pl = vis(page.getByRole("heading", { name: /^Profit and loss/ }));
+      await h.scrollIntoView(pl, 1200);
+      await h.hover(pl, 1000);
+      await h.scrollBy(260, 900);
+      await h.hold(900);
+      await h.scrollToTop(800);
+      await h.click(vis(page.getByRole("button", { name: /Export to OneDrive/ })), 300);
+      await vis(page.getByText(/Saved to 07 Reports/)).waitFor({ timeout: 20_000 }).catch(() => undefined);
+      await hoverText(c, /Saved to 07 Reports/, 1800);
+    },
+  },
+  "f-vat": {
+    setup: async ({ page }) => {
+      await go(page, "/vat");
+      await page.getByRole("radiogroup", { name: "VAT period" }).getByRole("radio", { name: /Jul–Sep 2026/ }).click();
+      await settle(page, 800);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 260);
+      const ret = page.getByRole("region", { name: /Your return/ });
+      await h.scrollIntoView(vis(ret.getByText("VAT due on sales")), 1000);
+      for (const t of ["VAT due on sales", "VAT reclaimed on purchases", /Net VAT to pay HMRC/]) await h.hover(vis(ret.getByText(t)), 700);
+      const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
+      await h.scrollIntoView(hmrc, 900);
+      await hoverText(c, /HMRC sandbox — real test service/, 1000);
+      c.mark("user");
+      await h.click(vis(hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" })), 300);
+      const user = hmrc.getByRole("group", { name: "HMRC sandbox test user" });
+      await user.waitFor({ timeout: 60_000 });
+      c.mark("userReady");
+      await h.hover(user, 1400);
+      const uid = (await user.getByTestId("sandbox-user-id").innerText()).trim();
+      const pwd = (await user.getByTestId("sandbox-password").innerText()).trim();
+      await h.click(vis(hmrc.getByRole("button", { name: "Connect to HMRC sandbox" })), 300);
+      await page.waitForURL((u: URL) => !u.href.startsWith(SITE), { timeout: 30_000 }).catch(() => undefined);
+      c.mark("hmrc");
+      // HMRC's own sandbox pages: Continue → Sign in to the HMRC online service → User ID + password → Give permission
+      for (let i = 0; i < 12 && !page.url().startsWith(SITE); i++) {
+        await page.waitForTimeout(2500);
+        if (page.url().startsWith(SITE)) break;
+        const idBox = page.getByLabel(/User ID/i).first();
+        if (await idBox.isVisible().catch(() => false)) {
+          // HMRC's own sandbox sign-in, with the throwaway test user the demo just made (cut in the edit)
+          await idBox.fill(uid);
+          await page.getByLabel(/Password/i).first().fill(pwd);
+          await page.getByRole("button", { name: /Sign in/i }).first().click();
+          continue;
+        }
+        for (const name of [/Give permission/i, /Sign in to the HMRC online service/i, /^Continue/i]) {
+          const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).first();
+          if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(1500); break; }
+        }
+      }
+      await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 60_000 });
+      c.mark("back");
+      await settle(page, 1000);
+      const hm = page.getByRole("region", { name: "Connect to HMRC" });
+      await vis(hm.getByText(/Connected to HMRC.s sandbox as test user/)).waitFor({ timeout: 30_000 });
+      await h.scrollIntoView(vis(hm.getByText(/Connected to HMRC.s sandbox as test user/)), 800);
+      await hoverText(c, /Connected to HMRC.s sandbox as test user/, 900);
+      await h.click(vis(hm.getByRole("button", { name: "Show obligations" })), 600);
+      await vis(hm.getByRole("button", { name: "Prepare submission" })).waitFor({ timeout: 30_000 });
+      await h.click(vis(hm.getByRole("button", { name: "Prepare submission" })), 700);
+      await h.click(vis(hm.getByLabel(/I confirm the information is true and complete/)), 600);
+      c.mark("submit");
+      await h.click(vis(hm.getByRole("button", { name: /Submit to HMRC sandbox/ })), 300);
+      const receipt = vis(hm.getByRole("heading", { name: /Submitted to HMRC sandbox/ }));
+      await receipt.waitFor({ timeout: 60_000 });
+      c.mark("receipt");
+      await h.scrollIntoView(receipt, 800);
+      await hoverText(c, /Form bundle number|form bundle/i, 1800);
+      await hoverText(c, /HMRC.s own sandbox receipt/, 1500);
+      await h.hold(800);
+    },
+  },
+  "f-files": {
+    setup: async ({ page }) => { await go(page, "/files"); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(800, 250);
+      await hoverText(c, /A live view of your Accnomos folder in OneDrive/, 1300);
+      await hoverText(c, /^00 Inbox$/, 800);
+      const books = vis(page.getByRole("button", { name: /Books\.xlsx/ }).or(page.getByText(/^Books\.xlsx$/)));
+      if (await books.isVisible({ timeout: 3000 }).catch(() => false)) { await h.scrollIntoView(books, 1200); await h.hover(books, 1300); }
+      const bk = vis(page.getByRole("heading", { name: /^Backups$|version/i }));
+      if (await bk.isVisible({ timeout: 3000 }).catch(() => false)) { await h.scrollIntoView(bk, 1200); await h.hover(bk, 1200); }
+      await hoverText(c, /version history|versions/i, 1500);
+      await h.hold(800);
+    },
+  },
+  "f-bank": {
+    setup: async ({ page }) => {
+      await go(page, "/bank");
+      const feed = page.getByRole("region", { name: "Bank feed" });
+      await feed.waitFor({ timeout: 30_000 }).catch(() => undefined);
+      await feed.evaluate((e: Element) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 120)).catch(() => undefined);
+      await page.waitForTimeout(600);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(900, 250);
+      const feed = page.getByRole("region", { name: "Bank feed" });
+      await hoverText(c, /^Bank feed/, 800);
+      const connect = vis(feed.getByRole("button", { name: /^Connect (a|the test) bank/ }).or(page.getByRole("button", { name: /^Connect the test bank/ })));
+      if (await connect.isVisible({ timeout: 3000 }).catch(() => false)) {
+        c.mark("connect");
+        await h.click(connect, 300);
+        await page.waitForURL((u: URL) => !u.href.startsWith(SITE), { timeout: 30_000 }).catch(() => undefined);
+        c.mark("tl");
+        // TrueLayer's sandbox: pick the mock bank, sign in with its public test login, allow
+        for (let i = 0; i < 16 && !page.url().startsWith(SITE); i++) {
+          await page.waitForTimeout(2500);
+          if (page.url().startsWith(SITE)) break;
+          const user = page.getByLabel(/user ?name|user id/i).or(page.getByPlaceholder(/user ?name/i)).first();
+          if ((await user.isVisible().catch(() => false)) && !(await user.inputValue().catch(() => "x"))) {
+            // TrueLayer's published sandbox test login (blurred in the edit); plain fills: the eased cursor stalls on these pages
+            await user.fill(process.env.TL_USER ?? "john");
+            await page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)).first().fill(process.env.TL_PASS ?? "doe");
+          }
+          let clicked = false;
+          for (const name of [/mock/i, /^Allow|^Approve|^Agree/i, /^Proceed|^Continue|^Submit|^Sign in|^Log in|^Confirm|^Next/i]) {
+            const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).or(page.getByRole("option", { name })).first();
+            if (await b.isVisible().catch(() => false)) { await b.click().catch(() => undefined); clicked = true; break; }
+          }
+          if (!clicked) {
+            const tile = page.getByText(/^Mock/i).first();
+            if (await tile.isVisible().catch(() => false)) await tile.click().catch(() => undefined);
+            else await page.waitForTimeout(1500);
+          }
+          console.log("  tl page", i, page.url().slice(0, 80));
+        }
+        await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 90_000 });
+        c.mark("back");
+        await settle(page, 1500);
+      }
+      const f2 = page.getByRole("region", { name: "Bank feed" });
+      await h.scrollIntoView(f2, 700);
+      const fetch = vis(f2.getByRole("button", { name: /^Fetch now|^Sync now/ }));
+      await fetch.waitFor({ timeout: 60_000 });
+      await h.hover(fetch, 600);
+      c.mark("fetch");
+      await h.click(fetch, 300);
+      await vis(f2.getByRole("button", { name: /^Fetch now|^Sync now/ })).waitFor({ timeout: 90_000 }).catch(() => undefined);
+      await page.waitForTimeout(800);
+      c.mark("fetched");
+      await hoverText(c, /new (bank )?lines?|fetched|Last fetched/i, 1400);
+      await h.scrollBy(320, 900);
+      await hoverText(c, /matched|Match/i, 1500);
+      await h.hold(1200);
+    },
+  },
+  // v5: a sure bank match confirmed (Bank › Matches: an "Exact" suggestion → Confirm)
+  "f-bankmatch": {
+    setup: async ({ page }) => {
+      await go(page, "/bank");
+      const all = page.getByRole("button", { name: /^Confirm all \d+ exact matches/ }).first();
+      await all.waitFor({ timeout: 30_000 });
+      await all.evaluate((e: Element) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 160));
+      await page.waitForTimeout(600);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(800, 200);
+      await hoverText(c, /^Confirm all \d+ exact matches/, 900);
+      const exact = vis(page.getByText(/^Exact$/));
+      await h.hover(exact, 900);
+      await hoverText(c, /^exact amount$/, 700);
+      await hoverText(c, /^same day$/, 700);
+      const confirm = vis(page.locator("button", { hasText: /^Confirm$/ })); // the first (top) suggestion (its aria-label names the line)
+      c.mark("confirm");
+      await h.click(confirm, 300);
+      await page.waitForTimeout(1500);
+      c.mark("confirmed");
+      await h.hold(1500);
+    },
+  },
+  "f-talk": {
+        setup: async ({ page }) => { await go(page, "/"); await homeReady(page); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(1000, 400);
+      await h.click(vis(page.getByRole("button", { name: "Talk to Accnomos" })), 900);
+      const dlg = page.getByRole("dialog");
+      if (process.env.FAKE_MIC) {
+        await h.moveToLocator(vis(dlg.getByRole("button", { name: "Ask by voice" })));
+        await h.hold(300);
+        c.mark("speak");
+        await h.click(vis(dlg.getByRole("button", { name: "Ask by voice" })), 300);
+      } else {
+        await h.type(vis(dlg.getByLabel("Your question")), process.env.TALK_TEXT ?? "add a site visit tomorrow at 10", 300);
+        await h.click(vis(dlg.getByRole("button", { name: "Send" })), 200);
+      }
+      c.mark("wait");
+      const card = vis(dlg.getByText(/NEEDS YOUR OK|Needs your OK/i));
+      await card.waitFor({ timeout: 150_000 });
+      c.mark("ready");
+      await h.hold(600);
+      await hoverText(c, /Transcribed by/, 1200);
+      await hoverText(c, /clash|free then|nothing else/i, 1200);
+      await hoverText(c, /^When$/, 900);
+      const approve = vis(dlg.getByRole("button", { name: "Approve" }));
+      await h.hover(approve, 600);
+      await h.click(approve, 300);
+      c.mark("wait2");
+      await vis(dlg.getByText(/Added|added to your calendar|Done/i)).waitFor({ timeout: 60_000 }).catch(() => undefined);
+      c.mark("ready2");
+      await h.hold(2200);
     },
   },
   ...montage(),
@@ -301,6 +671,19 @@ function montage(): Record<string, Shot> {
     },
   });
   return {
+    "m-files": look("/files", [/Books\.xlsx/]),
+    "m-home": look("/", [/^Upcoming PayPal payments$/]),
+    "m-talk": {
+      setup: async ({ page }) => { await go(page, "/review"); await page.waitForTimeout(1500); },
+      run: async (c) => {
+        await c.h.park(800, 300);
+        await c.h.click(vis(c.page.getByRole("button", { name: "Talk to Accnomos" })), 700);
+        await hoverText(c, /Ask by voice/, 1500);
+        const mic = vis(c.page.getByRole("button", { name: "Ask by voice" }));
+        if (await mic.isVisible().catch(() => false)) await c.h.hover(mic, 1500);
+        await c.h.hold(800);
+      },
+    },
     "m-review": look("/review", [/waiting for you/]),
     "m-bank": look("/bank", [/^Bank feed/, /matched/i], 250),
     "m-quotes": look("/sales/quotes", [], 150),
@@ -325,15 +708,20 @@ for (const [id, shot] of Object.entries(SHOTS)) {
   if (ONLY && !ONLY.has(id)) continue;
   if (!first) await sleep(Number(process.env.GAP_MS ?? 25_000));
   first = false;
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    ...(process.env.CHROME ? { executablePath: process.env.CHROME } : {}),
+    ...(process.env.HTTPS_PROXY ? { proxy: { server: process.env.HTTPS_PROXY } } : {}),
+  });
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 2, locale: "en-GB", timezoneId: "Europe/London" });
     await context.addInitScript(CURSOR_SCRIPT);
     await context.addInitScript(`(() => { const s = document.createElement('style'); s.textContent = ${JSON.stringify(CLEAN_CSS)}; (document.head || document.documentElement).appendChild(s); })()`);
     const page = await context.newPage();
     const h = new Human(page);
+    await fixCallback(page);
     await demoSession(page);
     if (process.env.PAYPAL_CONNECT === "1") await connectPayPal(page);
+    if (process.env.SYNC_FIRST === "1") await syncOffCamera(page);
     const marks: Record<string, number> = {};
     let t0 = 0;
     const ctx: Ctx = { page, h, mark: (n) => { marks[n] = Date.now() / 1000 - t0; } };

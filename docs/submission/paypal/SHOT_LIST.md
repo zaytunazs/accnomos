@@ -1,4 +1,36 @@
-# PayPal video: shot list and pre-recording checklist (v4, 12 Nov 2026)
+# PayPal video: shot list and pre-recording checklist (v5, 12 Nov 2026)
+
+## v5 capture (what draft 3 was cut from)
+
+All web footage is the live site in "Try the demo" (fictional books), recorded by
+`tools/video/paypal/capture_paypal.ts`; the phone clips are recorded on the Android emulator (`android/a-*.mp4`,
+1080 × 2400); the timeline is `tools/video/paypal/timeline_paypal_v5.json` (from `make_timeline_v5.py`) and the cut is
+made by `tools/video/paypal/assemble_paypal.sh`.
+
+```bash
+export PW_FROM=<folder with playwright in node_modules>          # agent sandbox: /opt/npm-tools
+R=<media>/raw5
+PAYPAL_CONNECT=1 SALE_MATCH=DEMO-1002 node tools/video/paypal/capture_paypal.ts <media>/raw pp-sync   # h1 (real sandbox)
+PAYPAL_CONNECT=1 SYNC_FIRST=1 node tools/video/paypal/capture_paypal.ts <media>/raw pp-tieout        # h3
+SYNC_FIRST=1 GRID_APPROVE=1 node tools/video/paypal/capture_paypal.ts <media>/raw pp-grid            # ag (sample history)
+node tools/video/paypal/capture_paypal.ts <media>/raw pp-ask,pp-disputes                             # h2 (NOT connected), h5
+PAYPAL_CONNECT=1 PAY=1 node tools/video/paypal/capture_paypal.ts $R pp-billpay,m-home,pp-invoice     # h4 (sandbox payout), ec link
+node tools/video/paypal/capture_paypal.ts <media>/raw6 f-receipt   # after the web fix
+node tools/video/paypal/capture_paypal.ts $R f-invoice,f-reports,f-vat,f-files,f-bank,f-bankmatch,f-talk
+```
+
+- `f-bank` signs in to TrueLayer's sandbox with its public mock login (john / doe): blur it. `f-vat` signs in to
+  HMRC's sandbox with the throwaway test user the demo makes: cut the HMRC pages and never show the password.
+- `f-receipt`: since web af90aeda the verifier line says "the local open-weights model" instead of the raw model id;
+  footage from before that deploy shows the id and must be blurred or cut. Check every frame anyway.
+- `pp-ask` must run on a demo **without** PayPal connected (with the real sandbox connected the answers are "no").
+- `pp-billpay` with `PAY=1` pays the demo's `example.com` payee in the sandbox: it ends *Waiting for the supplier to
+  claim it* (never *Paid and posted*); say nothing that claims otherwise.
+- Blur: bank names in Bank's drop zone ("Barclays, Starling, …") and `starling.csv`; the "Xero, QuickBooks, Sage and
+  FreeAgent" line on Reports.
+
+The v4 notes below still hold for the signed-in sandbox books and the checklist; the v4 montage is replaced by the
+"Everything else, in action" scenes ea–eh.
 
 Companion to [`VIDEO_SCRIPT.md`](VIDEO_SCRIPT.md). Footage comes from three places:
 

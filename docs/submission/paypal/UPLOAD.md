@@ -26,24 +26,24 @@ Try the demo (no sign-in): https://accnomos.com
 Code: https://github.com/zaytunazs/accnomos
 
 Recorded against PayPal's sandbox and HMRC's sandbox with fictional data. No real money moved.
-AI disclosure: the presenter and the voice-over in this video are AI-generated. Accnomos itself uses AI to propose entries and explain figures; every amount is calculated by code and approved by the owner.
+AI disclosure: the presenter (shown small, labelled "AI-generated presenter") and the voice-over in this video are AI-generated. Accnomos itself uses AI to propose entries and explain figures; every amount is calculated by code and approved by the owner.
 Music: <<TRACK TITLE>> from the YouTube Audio Library (no attribution required).
 
 Chapters
 0:00 Intro
-0:11 The problem and how it works
-0:24 Sync PayPal: fees, VAT and approval
-0:44 Power grid (AG Grid): bulk approve and filters
-0:56 Ask about PayPal and the balance tie-out
-1:20 Pay a supplier by PayPal Payout
-1:44 Dispute evidence from the books
-1:58 AI in action, and everything else in Accnomos
+0:10 The problem and how it works
+0:20 Sync PayPal: fees and the VAT choice
+0:38 Power grid (AG Grid), AI search and the balance tie-out
+1:10 Pay a supplier by PayPal Payout
+1:30 Dispute evidence, and AI in action
+1:43 Everything else: receipts, bank feed, invoices, VAT
+2:14 Reports, voice, jobs and your own drive
 
 #PayPal #MakingTaxDigital #SmallBusiness
 ```
 
 Chapter rules YouTube applies: the first starts at 0:00, there are at least three, each is at least 10 s, and they are
-in order. The list above meets them (the shortest is 0:44–0:56, 12 s). If the final cut's times move, update the
+in order. The list above meets them (v5: the shortest is 1:30–1:43, 13 s). If the final cut's times move, update the
 chapters to match the edit; don't reuse the planned times.
 
 ## Thumbnail
@@ -60,7 +60,7 @@ chapters to match the edit; don't reuse the planned times.
 ## Before you send the link
 
 - [ ] Plays in a private window while signed out (that is, Public).
-- [ ] Shorter than 3:00 (target 2:47).
+- [ ] Shorter than 3:00 (v5 cut: 2:46).
 - [ ] *Altered content* set to Yes; the description has the AI disclosure line.
 - [ ] YouTube Studio › Content: no copyright claims.
 - [ ] Chapters show in the progress bar.
