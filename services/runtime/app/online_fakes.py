@@ -63,6 +63,9 @@ class Fakes:
     invoices: dict[str, dict[str, Any]] = field(default_factory=dict)  # INV2-… -> PayPal invoice, with "_merchant"
     captures: dict[str, dict[str, Any]] = field(default_factory=dict)
     paypal_fee_known: bool = True
+    # Payouts v1 (bills paid through PayPal, app/billpay.py): sender_batch_id -> batch, with "_merchant"
+    payouts: dict[str, dict[str, Any]] = field(default_factory=dict)
+    payout_fail_next: int = 0  # answer the next N payout POSTs with a 503 (PayPal may or may not have it)
     base: str = "http://127.0.0.1:8780"  # where the fake browser pages are (test mode sets the runtime's own)
 
     def reset(self) -> None:
@@ -164,6 +167,51 @@ class Fakes:
 
 
 FAKES = Fakes()
+
+
+def payout_fee(pence: int) -> int:
+    """Made up for the fakes (2%, at most £1): PayPal's real payout fee depends on the account and country."""
+    return min(_fee(pence, "2", 0), 100)
+
+
+def payout_outcome(receiver: str) -> str:
+    """What the fake PayPal does with a payout, by the receiver's address: `unclaimed@…` has no PayPal account,
+    `fail…@…` fails, `pending…@…` stays pending, anything else succeeds."""
+    local = receiver.split("@", 1)[0].lower()
+    if "unclaimed" in local:
+        return "UNCLAIMED"
+    if local.startswith("fail"):
+        return "FAILED"
+    if local.startswith("pending"):
+        return "PENDING"
+    return "SUCCESS"
+
+
+def _payout_view(batch: dict[str, Any]) -> dict[str, Any]:
+    """GET /v1/payments/payouts/{id}: the header and each item with its status (PENDING on the first read, then
+    the outcome), as the Payouts v1 spec shapes them (fields in app/payment_providers.py)."""
+    batch["_reads"] = batch.get("_reads", 0) + 1
+    items = []
+    for it in batch["_items"]:
+        status = "PENDING" if batch["_reads"] < 2 and it["_outcome"] != "PENDING" else it["_outcome"]
+        if it["_outcome"] == "PENDING":
+            status = "PENDING"
+        pence = _pence(it["payout_item"]["amount"]["value"])
+        row = {
+            "payout_item_id": it["payout_item_id"],
+            "transaction_id": it["transaction_id"] if status in ("SUCCESS", "UNCLAIMED") else None,
+            "transaction_status": status,
+            "payout_item_fee": {"currency": "GBP", "value": _value(payout_fee(pence))},
+            "payout_batch_id": batch["batch_header"]["payout_batch_id"],
+            "payout_item": it["payout_item"],
+            "links": [],
+        }
+        if status == "FAILED":
+            row["errors"] = {"name": "RECEIVER_UNREGISTERED", "message": "Receiver is unregistered", "debug_id": "x"}
+        items.append(row)
+    done = all(i["transaction_status"] != "PENDING" for i in items)
+    header = {**batch["batch_header"], "batch_status": "SUCCESS" if done else "PROCESSING"}
+    return {"batch_header": header, "items": items, "links": []}
 
 
 def _pence(value: str) -> int:
@@ -377,7 +425,9 @@ def _paypal(request: httpx.Request) -> httpx.Response:
             return _paypal_error(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.")
         return _json(200, FAKES.merchants[mid])
     merchant = _assertion_merchant(request)
-    if path.startswith(("/v2/invoicing/", "/v2/payments/")) and (merchant is None or merchant not in FAKES.merchants):
+    if path.startswith(("/v2/invoicing/", "/v2/payments/", "/v1/payments/")) and (
+        merchant is None or merchant not in FAKES.merchants
+    ):
         return _paypal_error(403, "NOT_AUTHORIZED", "Authorization failed due to insufficient permissions.")
     if path == "/v2/invoicing/invoices" and method == "POST":
         number = body["detail"]["invoice_number"]
@@ -417,6 +467,63 @@ def _paypal(request: httpx.Request) -> httpx.Response:
         if rest[1:] == ["cancel"] and method == "POST":
             inv["status"] = "CANCELLED"
             return httpx.Response(204)
+    if path == "/v1/payments/payouts" and method == "POST":
+        if FAKES.payout_fail_next > 0:
+            FAKES.payout_fail_next -= 1
+            return _paypal_error(503, "SERVICE_UNAVAILABLE", "Service Unavailable")
+        sbh = body.get("sender_batch_header") or {}
+        sid = sbh.get("sender_batch_id")
+        items = body.get("items") or []
+        if not sid or not items or any(i.get("recipient_type") != "EMAIL" for i in items):
+            return _paypal_error(400, "VALIDATION_ERROR", "Invalid request - see details")
+        if any(i["amount"].get("currency") != "GBP" for i in items):
+            return _paypal_error(422, "UNPROCESSABLE_ENTITY", "currency")
+        if sid in FAKES.payouts:  # the spec: a sender_batch_id used in the last 30 days is refused, with a link
+            old = FAKES.payouts[sid]["batch_header"]["payout_batch_id"]
+            return _json(
+                400,
+                {
+                    "name": "USER_BUSINESS_ERROR",
+                    "message": f"Batch with given sender_batch_id already exists: {sid}",
+                    "debug_id": secrets.token_hex(6),
+                    "links": [
+                        {
+                            "href": f"https://api-m.sandbox.paypal.com/v1/payments/payouts/{old}",
+                            "rel": "self",
+                            "method": "GET",
+                        }
+                    ],
+                },
+            )
+        bid = secrets.token_hex(6).upper()
+        header = {
+            "payout_batch_id": bid,
+            "batch_status": "PENDING",
+            "sender_batch_header": {"sender_batch_id": sid, "email_subject": sbh.get("email_subject")},
+        }
+        FAKES.payouts[sid] = {
+            "batch_header": header,
+            "_merchant": merchant,
+            "_items": [
+                {
+                    "payout_item_id": secrets.token_hex(7).upper(),
+                    "transaction_id": secrets.token_hex(8).upper(),
+                    "payout_item": {
+                        k: i.get(k) for k in ("recipient_type", "amount", "note", "receiver", "sender_item_id")
+                    },
+                    "_outcome": payout_outcome(str(i.get("receiver", ""))),
+                }
+                for i in items
+            ],
+        }
+        link = {"href": f"https://api-m.sandbox.paypal.com/v1/payments/payouts/{bid}", "rel": "self", "method": "GET"}
+        return _json(201, {"batch_header": header, "links": [link]})
+    if path.startswith("/v1/payments/payouts/") and method == "GET":
+        bid = path.rsplit("/", 1)[1]
+        batch = next((b for b in FAKES.payouts.values() if b["batch_header"]["payout_batch_id"] == bid), None)
+        if batch is None or batch["_merchant"] != merchant:
+            return _paypal_error(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.")
+        return _json(200, _payout_view(batch))
     if path.startswith("/v2/payments/captures/") and method == "GET":
         cap = FAKES.captures.get(path.rsplit("/", 1)[1])
         if cap is None or not FAKES.paypal_fee_known:

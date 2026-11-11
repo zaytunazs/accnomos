@@ -671,6 +671,32 @@ SUMMARIES: dict[str, Summary] = {
         + (f" ({r['reason']})" if r.get("reason") else "")
     ),
     "action_failed": lambda r, w: f"An action from Ask did not finish: {_plain(r.get('error')) or 'unknown error'}",
+    # Bills paid through PayPal (app/billpay.py)
+    "billpay_payee_set": lambda r, w: f"Saved {r.get('supplier') or 'a supplier'}'s PayPal email for paying bills",
+    "billpay_payee_removed": lambda r, w: "Removed a supplier's PayPal email",
+    "billpay_plan_set": lambda r, w: (
+        "Set a bill to be paid with PayPal on its due date"
+        if r.get("plan") == "paypal"
+        else "Set a bill not to be paid through PayPal"
+        if r.get("plan") == "not_paypal"
+        else "Cleared a bill's PayPal plan"
+    ),
+    "billpay_details_changed": lambda r, w: "Flagged a bill whose payment details differ from the saved ones",
+    "billpay_flag_cleared": lambda r, w: "Cleared a changed-payment-details flag after checking with the supplier",
+    "billpay_payout_approved": lambda r, w: (
+        ("Autopilot sent" if r.get("via") == "autopilot" else "Approved")
+        + f" a PayPal payment to {r.get('supplier') or 'a supplier'}"
+        + _pounds(r, "amount_pence")
+    ),
+    "billpay_payout_status": lambda r, w: f"PayPal payment to a supplier is now {r.get('status') or 'updated'}",
+    "billpay_payout_posted": lambda r, w: "Posted a PayPal bill payment" + _pounds(r, "amount_pence"),
+    "billpay_autopilot_settings": lambda r, w: (
+        "Turned bill-pay Autopilot on" if r.get("enabled") else "Saved bill-pay Autopilot settings (off)"
+    ),
+    "billpay_autopilot_stopped": lambda r, w: "Stopped bill-pay Autopilot (kill switch)",
+    "billpay_autopilot_asked": lambda r, w: (
+        f"Autopilot left a bill from {r.get('supplier') or 'a supplier'} for you" + _pounds(r, "owed_pence")
+    ),
 }
 
 
