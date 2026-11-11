@@ -1,1 +1,0 @@
-This is Accnomos. It keeps a UK small business's books in its own OneDrive or Google Drive, and files VAT to HMRC. PayPal is where the business gets paid, and where it pays its bills.
