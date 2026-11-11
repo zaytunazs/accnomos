@@ -34,7 +34,8 @@ test("Settings: connect Stripe and PayPal in test mode, set a PayPal.me name, di
   const stored = (await runtime.files()).filter((f) => f.endsWith("providers.json"));
   expect(stored).toEqual(["_System/Payments/providers.json"]);
 
-  await card.getByRole("button", { name: "Disconnect" }).first().click();
+  // PayPal is listed first (the default); Stripe, shown here because the runtime has STRIPE_VISIBLE=1, comes last
+  await card.getByRole("button", { name: "Disconnect" }).last().click();
   await card.getByRole("button", { name: "Yes, disconnect Stripe" }).click();
   await expect(card.getByRole("button", { name: "Connect Stripe (test mode)" })).toBeVisible();
 });
