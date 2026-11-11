@@ -333,3 +333,12 @@ def test_test_mode_stub_reply_is_a_valid_query() -> None:
     b = s.check_query(s.ModelQuery.model_validate(testmode.ai_search_reply(f"TODAY: 2026-11-04\nQUESTION: {QB}")), QB,
                       "", "payment_search", date(2026, 11, 4))  # fmt: skip
     assert (b.start, b.end) == (date(2026, 10, 1), date(2026, 10, 31)) and "stationery" in b.keywords
+
+
+def test_code_settles_money_out_when_the_model_says_in() -> None:
+    """Live 11 Nov: the model read "a payment via PayPal … for stationery" as money in and the search missed it."""
+    from app import ai_search
+
+    q = "There was a payment via PayPal last month, probably around £100 for stationery — how much exactly was it?"
+    assert ai_search._direction("in", q) == "out"
+    assert ai_search._direction("in", "Did we receive anything from Wrenfield?") in {"in", "any"}

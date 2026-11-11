@@ -29,7 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
@@ -387,6 +387,13 @@ def _said(hint: str, text: str) -> bool:
     return bool(words) and all(w in hay for w in words)
 
 
+def _direction(model: Direction, question: str) -> Direction:
+    """Code's reading of in or out wins when the words settle it ("a payment for stationery" is money out); the
+    model's guess counts only when code cannot tell."""
+    mine = code_query(question, "payment_search", _today()).direction
+    return mine if mine != "any" else model
+
+
 def check_query(out: ModelQuery, question: str, history_text: str, kind: Kind, today: date) -> Query:
     """The model's reading, kept only where code can stand behind it."""
     said = amounts_said(question)
@@ -404,7 +411,7 @@ def check_query(out: ModelQuery, question: str, history_text: str, kind: Kind, t
         counterparty=counterparty,
         amount_pence=amount,
         tolerance_pct=tol,
-        direction=out.direction if kind == "payment_search" else "in",
+        direction=_direction(out.direction, question) if kind == "payment_search" else "in",
         start=start,
         end=end,
         span=span,
@@ -768,7 +775,13 @@ async def search(books: Books, q: Query, demo: bool) -> Found:
         searched = calls > 0
         if not searched:
             why_not, note = note, None
-    return Found(q, rank(merge(book, synced, live), q), note, why_not, searched)
+    hits = rank(merge(book, synced, live), q)
+    if not hits and q.direction != "any":  # a misread direction should not hide the payment: try both ways once
+        wider = replace(q, direction="any")
+        found = rank(merge(book, synced, live), wider)
+        if found:
+            return Found(wider, found, note, why_not, searched)
+    return Found(q, hits, note, why_not, searched)
 
 
 def _base(period: AskPeriod, q: Query, cfg: AiConfig | None) -> dict[str, Any]:
