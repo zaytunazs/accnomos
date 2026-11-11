@@ -1,0 +1,1 @@
+The customer pays in PayPal. This is PayPal's sandbox, so no real money moves.

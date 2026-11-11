@@ -1,0 +1,1 @@
+PayPal's reports can lag by up to three hours, so here are payments from earlier today. Sync PayPal proposes each one: the gross, PayPal's fee and the net, matched to its invoice. A sale with no invoice waits until I choose its VAT. The AI suggests, code does the sums in pence, and nothing posts until I approve.
