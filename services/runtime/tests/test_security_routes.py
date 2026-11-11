@@ -233,6 +233,9 @@ TALKS_HTTP = {
     "bankfeed_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
     "ebay.py": "eBay (Connect eBay): the hosts in EbayConfig (SANDBOX/PRODUCTION constants), chosen by server env",
     "ebay_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
+    "billing/registry.py": "Supabase (PostgREST and Storage) at SUPABASE_URL: server env only",
+    "billing/stripe_api.py": "Stripe Billing at the API constant (api.stripe.com); key from server env only",
+    "billing/fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
 }
 
 
@@ -514,6 +517,22 @@ NO_USER_NEEDED = {
     "POST /shopping/propose": "proposes a signed card that only /actions/approve (X-User) runs",
     "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
     "POST /ebay/account-deletion": "eBay's account deletion notice: acknowledged; reads and writes no books",
+    # app/billing: the account registry, not the books; each verifies the Graph/Google identity itself
+    "PATCH /account": "the caller's own analytics opt-out in the registry (verified identity); no books",
+    "POST /billing/checkout": "starts a Stripe Checkout for the verified caller's own account; no books",
+    "POST /billing/portal": "a Stripe Customer Portal link for the verified caller's own account; no books",
+    "POST /billing/redeem": "a promo code on the verified caller's own account; no books",
+    "POST /billing/topup": "a Stripe Checkout for a document top-up on the caller's own account; no books",
+    "POST /billing/stripe/webhook": "Stripe's signed webhook (STRIPE_WEBHOOK_SECRET); no user, no books",
+    "PATCH /admin/users/{account_id}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "POST /admin/users/{account_id}/actions": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "POST /admin/codes": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "PATCH /admin/codes/{code}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "PATCH /admin/plans/{code}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "POST /admin/plans/sync-stripe": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "PATCH /admin/bug-reports/{report_id}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
+    "POST /events": "a product event for the verified caller's account (dropped when opted out); no books",
+    "POST /bug-reports": "a problem report from the verified caller; no books",
 }
 
 
@@ -627,6 +646,8 @@ PUBLIC_ROUTES = {
     ),
     "GET /ebay/account-deletion": "eBay's endpoint challenge: a hash of its code and server env; no user data",
     "POST /ebay/account-deletion": "eBay's account deletion notice: acknowledged with 204; reads and writes no books",
+    "GET /plans": "the public price list (app/billing); no user data",
+    "POST /billing/stripe/webhook": "Stripe's webhook: authenticated by its Stripe-Signature, not a user token",
 }
 
 

@@ -17,6 +17,9 @@ COPY packages/ledger /srv/packages/ledger
 COPY packages/connectors /srv/packages/connectors
 COPY services/runtime /srv/services/runtime
 RUN pip install /srv/packages/ledger /srv/packages/connectors /srv/services/runtime
+# Error reports (app/billing/sentry.py): optional import, on only when SENTRY_DSN is set; not a runtime dependency so
+# dev and CI installs stay as they are.
+RUN pip install "sentry-sdk>=2.20,<3"
 # Load sample books (app/sample_books.py) runs tools/seed_demo.py's plan: it needs the script, the gold documents it
 # re-dates and the renderer that draws them. Fictional data only, all labelled SAMPLE.
 COPY tools/seed_demo.py /srv/tools/seed_demo.py

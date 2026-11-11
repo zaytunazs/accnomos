@@ -23,6 +23,10 @@ from app.security import SecurityMiddleware, install_log_scrubbing, scrub
 
 install_log_scrubbing()
 
+from app.billing import sentry as _sentry  # noqa: E402
+
+_sentry.init()  # error reports only when SENTRY_DSN is set (app/billing/sentry.py)
+
 app = FastAPI(title="Accnomos Agent Runtime", version="0.1.0")
 STARTED = time.time()
 
@@ -38,7 +42,12 @@ def cors_origins(raw: str) -> list[str]:
 
 # Browsers (PWA) call the runtime directly; it keeps nothing, so CORS is the only gate. The security middleware
 # sits inside CORS so its 4xx/5xx answers still reach the page.
-app.add_middleware(GoogleTokenAlias)  # innermost: a Google client's `Authorization: Bearer` -> X-Graph-Token
+from app.billing.middleware import BillingMiddleware  # noqa: E402
+
+app.add_middleware(BillingMiddleware)  # innermost: plan limits and read-only accounts (app/billing/middleware.py)
+app.add_middleware(
+    GoogleTokenAlias
+)  # next: a Google client's: a Google client's `Authorization: Bearer` -> X-Graph-Token
 app.add_middleware(SecurityMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -71,7 +80,8 @@ app.add_middleware(
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
     # Content-Disposition: the page names a downloaded report file (/books/self-employment/reports/*).
-    expose_headers=["X-Correlation-Id", "Retry-After", "Content-Disposition"],
+    # X-Plan-Limit: a plan limit met without refusing the request (an Autopilot rule not saved; app/billing).
+    expose_headers=["X-Correlation-Id", "Retry-After", "Content-Disposition", "X-Plan-Limit"],
     max_age=600,
 )
 
@@ -405,3 +415,24 @@ app.include_router(setup_wizard_router)
 from app.routes_close import router as close_router  # noqa: E402  /close (the month-end close agent)
 
 app.include_router(close_router)
+
+
+from app.billing import service as billing_service  # noqa: E402
+from app.billing.admin import router as billing_admin_router  # noqa: E402  /admin/* (ADMIN_EMAILS only)
+from app.billing.analytics import router as billing_analytics_router  # noqa: E402  POST /events, /bug-reports
+from app.billing.routes import router as billing_router  # noqa: E402  /plans, /account, /billing/*
+
+app.include_router(billing_router)
+app.include_router(billing_admin_router)
+app.include_router(billing_analytics_router)
+
+
+@app.exception_handler(billing_service.PlanLimit)
+async def plan_limit(_request: Request, exc: billing_service.PlanLimit) -> JSONResponse:
+    """An action past the plan's limit (app/billing/service.py): 402 with what to do about it."""
+    return JSONResponse(status_code=402, content=exc.body())
+
+
+@app.exception_handler(billing_service.ReadOnly)
+async def read_only_account(_request: Request, exc: billing_service.ReadOnly) -> JSONResponse:
+    return JSONResponse(status_code=402, content=exc.body())

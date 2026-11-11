@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field, StrictBool
 
 from app import bank_feeds as bf
 from app import demo
+from app.billing import gauges
 from app.books import Books
 from app.region import rules_for
 from app.routes_books import get_books, require_uk, require_user
@@ -87,6 +88,7 @@ async def start(
     books: Books = Depends(get_books),  # signed in to their books (or a live demo session): no anonymous connections
     user: str = Depends(require_user),
 ) -> StartResult:
+    await gauges.bank_feed_room(books)  # the plan's live bank feeds (app/billing): 402 when all are in use
     try:
         return StartResult(url=bf.start(body.redirect_to, body.binding_hash, user, _demo_session(request)))
     except bf.BankFeedError as exc:
