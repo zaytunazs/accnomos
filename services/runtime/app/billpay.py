@@ -28,9 +28,10 @@ Cr 1240. PENDING, ONHOLD and UNCLAIMED wait (unclaimed: PayPal holds it for 30 d
 returns it); FAILED, BLOCKED, RETURNED, DENIED and the like are shown with PayPal's reason and post nothing.
 
 **Autopilot** has no scheduler of its own: writing to OneDrive needs the user's sign-in token, which only exists
-while the app is open. So `run` is called when the app opens (Purchases), and a bill is paid the next time Accnomos is
-open on or after its due date. Every rule must hold, else the bill waits for the owner with the reasons (`ask`):
-see `autopilot_reasons`. Every automatic payment leaves an audit line (also in the Autopilot audit) and a notice.
+while the app is open. So `run` is called when the app opens (Home or Purchases), and a bill is paid the next time
+Accnomos is open on or after its due date. Every rule must hold, else the bill waits for the owner with the reasons
+(`ask`): see `autopilot_reasons`. Every automatic payment leaves an audit line (also in the Autopilot audit) and a
+notice.
 """
 
 from __future__ import annotations
@@ -38,6 +39,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import hashlib
+import json
 import logging
 import os
 import re
@@ -59,6 +61,7 @@ from app.payment_providers import PayPalApi, ProviderError, client, pence_from_p
 PAYEES = f"{SYSTEM}/Payments/billpay-payees.json"
 SETTINGS = f"{SYSTEM}/Payments/billpay-settings.json"
 PAYOUTS = f"{SYSTEM}/Payments/billpay-payouts.json"
+SCHEDULED = f"{SYSTEM}/Payments/billpay-scheduled.json"
 FEES = CATEGORY_ACCOUNTS["Bank charges"]  # 7900 Bank charges
 ACTOR = "agent:billpay-autopilot"
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+'-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
@@ -208,6 +211,48 @@ class Notice(BaseModel):
     seen: bool = False
 
 
+#: An approval in advance as stored. `paying`: a payout was sent for it (see `payout_id` for how PayPal answered).
+ApprovalStatus = Literal["scheduled", "paying", "needs_you", "cancelled"]
+
+
+class Approval(BaseModel):
+    """ "Approve now, pay on due date": the owner's yes to one payment, exactly as they saw it. It is only acted on
+    by `app/billpay_schedule.run_scheduled`, on or after `due_date`, and only if the amount owed, the supplier's saved
+    PayPal email and the bill itself (`bill_version`) are what they were when approved."""
+
+    event_id: str
+    contact_id: str
+    supplier: str
+    reference: str | None = None
+    amount_pence: int
+    payee_email: str
+    due_date: date
+    bill_version: str
+    approved_by: str
+    approved_at: datetime
+    status: ApprovalStatus = "scheduled"
+    reason: str | None = None  # why it was not paid (needs_you)
+    payout_id: str | None = None
+    cancelled_at: datetime | None = None
+    cancelled_by: str | None = None
+    updated_at: datetime
+
+
+class CalendarEntry(BaseModel):
+    """An event Accnomos put in the user's connected calendar (Google or Outlook) for one bill payment."""
+
+    calendar_event_id: str
+    day: date
+    title: str
+    added_at: datetime
+    added_by: str
+
+
+class Scheduled(BaseModel):
+    approvals: dict[str, Approval] = {}  # bill event id -> the latest approval in advance
+    calendar: dict[str, CalendarEntry] = {}  # bill event id -> the event in the connected calendar
+
+
 class Ledgerish(BaseModel):
     payouts: list[Payout] = []
     seen: dict[str, SeenDetails] = {}
@@ -251,6 +296,24 @@ async def _update_state(books: Books, change: Any) -> Ledgerish:
         return st.model_dump(mode="json")
 
     await books._update_json(PAYOUTS, {}, apply)
+    return out[-1]
+
+
+async def load_scheduled(books: Books) -> Scheduled:
+    return cast(Scheduled, _load(Scheduled, await books.read_json(SCHEDULED, {})))
+
+
+async def update_scheduled(books: Books, change: Any) -> Scheduled:
+    """Read-modify-write billpay-scheduled.json (ETag-guarded); `change(st)` mutates it and may raise to refuse."""
+    out: list[Scheduled] = []
+
+    def apply(raw: Any) -> Any:
+        st = cast(Scheduled, _load(Scheduled, raw))
+        change(st)
+        out.append(st)
+        return st.model_dump(mode="json")
+
+    await books._update_json(SCHEDULED, {}, apply)
     return out[-1]
 
 
@@ -582,6 +645,8 @@ class Bill(BaseModel):
     details_checked: Literal["checked", "nothing to check", "unreadable", "not yet"] = "not yet"
     autopilot: list[str] = []  # why Autopilot would not pay it (empty: it would)
     payout: Payout | None = None  # the latest payout for this bill
+    version: str = ""  # the bill's own entry, hashed (`bill_version`): an approval in advance is for this version
+    approval: Approval | None = None  # "Approve now, pay on due date", unless cancelled
 
 
 class Overview(BaseModel):
@@ -605,6 +670,12 @@ AUTOPILOT_NOTE = (
     "Accnomos has no server that can write to your books while you are away: it needs your sign-in. So an automatic "
     "payment is made the next time Accnomos is open on or after the bill's due date, never before."
 )
+
+
+def bill_version(event: LedgerEvent) -> str:
+    """The bill as posted (date, lines, totals, supplier), hashed. Any change to the entry changes it."""
+    raw = event.model_dump(mode="json", include={"id", "kind", "date", "lines", "net", "vat", "counterparty"})
+    return hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()[:24]
 
 
 def person_approved(approved_by: str) -> bool:
@@ -704,6 +775,7 @@ async def bills(books: Books, *, today: date | None = None, read_documents: bool
     payees = await load_payees(books)
     settings = await load_settings(books)
     st = await load_state(books)
+    approvals = (await load_scheduled(books)).approvals
     cfg, why = _paypal()
     conns = await op.load_connections(books)
     connected = conns.paypal is not None
@@ -792,6 +864,8 @@ async def bills(books: Books, *, today: date | None = None, read_documents: bool
                 else "checked"
             ),
             payout=latest,
+            version=bill_version(d.event),
+            approval=(a if (a := approvals.get(d.event.id)) is not None and a.status != "cancelled" else None),
         )
         bill.autopilot = autopilot_reasons(bill, settings.autopilot, payee, open_flags, st.payouts, clearing, today)
         out.append(bill)
@@ -1137,12 +1211,17 @@ class RunResult(BaseModel):
     refreshed: list[Payout] = []
     paid: list[Payout] = []  # sent by Autopilot this run (see each one's status)
     asked: list[dict[str, Any]] = []  # due bills Autopilot left for the owner, with the reasons
+    scheduled_paid: list[Payout] = []  # sent this run for bills the owner approved in advance
+    scheduled_held: list[dict[str, Any]] = []  # approved in advance but changed since: left for the owner, with why
     problems: list[str] = []
 
 
 async def run(books: Books, *, today: date | None = None) -> RunResult:
-    """When the app opens: follow every payout still waiting, then let Autopilot pay what every rule allows. A bill a
-    rule does not cover is left for the owner with its reasons (audited once per bill and day)."""
+    """When the app opens: follow every payout still waiting, pay the bills the owner approved in advance whose due
+    date has come (only if nothing changed since: app/billpay_schedule.py), then let Autopilot pay what every rule
+    allows. A bill a rule does not cover is left for the owner with its reasons (audited once per bill and day)."""
+    from app import billpay_schedule
+
     today = today or london_today()
     out = RunResult()
     cfg, _ = _paypal()
@@ -1159,6 +1238,7 @@ async def run(books: Books, *, today: date | None = None) -> RunResult:
                     out.refreshed.append(await refresh_one(books, p, cfg=cfg, merchant=merchant))
                 except InvoiceError as exc:
                     out.problems.append(f"{p.supplier}: {exc}")
+    await billpay_schedule.run_scheduled(books, out, today=today)
     settings = await load_settings(books)
     if not settings.autopilot.enabled or server_kill_switch():
         return out

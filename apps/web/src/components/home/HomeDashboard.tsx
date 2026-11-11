@@ -30,6 +30,7 @@ import SetupChecklist from "@/components/home/SetupChecklist";
 import { SnapshotCharts, SnapshotYear } from "@/components/home/Snapshot";
 import SpendingCard from "@/components/home/SpendingCard";
 import TodosTile from "@/components/home/TodosTile";
+import UpcomingPaymentsCard from "@/components/home/UpcomingPaymentsCard";
 
 /**
  * Home: signed in, the owner's dashboard (on `/`); signed out, the fictional Bramblewood sample (on `/try`, the
@@ -88,6 +89,7 @@ export default function HomeDashboard() {
                 <AgedCard />
                 <SpendingCard />
                 <BuyingCard />
+                <UpcomingPaymentsCard />
                 <TodosTile />
                 <MonthEndCard />
                 <IncomeTaxCard />

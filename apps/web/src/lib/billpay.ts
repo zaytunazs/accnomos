@@ -7,6 +7,7 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
+import { CALENDAR_SCOPES } from "./msal";
 import { runtimeHeaders } from "./runtime";
 
 export type BpPlan = "paypal" | "not_paypal" | null;
@@ -56,6 +57,67 @@ export interface BpBill {
   details_checked: "checked" | "nothing to check" | "unreadable" | "not yet";
   autopilot: string[];
   payout: BpPayout | null;
+  version: string;
+  /** "Approve now, pay on due date" (null when none, or cancelled). */
+  approval: BpApproval | null;
+}
+
+export interface BpApproval {
+  event_id: string;
+  supplier: string;
+  amount_pence: number;
+  payee_email: string;
+  due_date: string;
+  approved_by: string;
+  approved_at: string;
+  status: "scheduled" | "paying" | "needs_you" | "cancelled";
+  reason: string | null;
+  payout_id: string | null;
+}
+
+export type BpUpcomingStatus = "scheduled" | "planned" | "due_today" | "paying" | "paid" | "needs_you";
+
+export interface BpUpcomingItem {
+  event_id: string;
+  contact_id: string;
+  supplier: string;
+  reference: string | null;
+  date: string;
+  amount_pence: number;
+  payee_email: string | null;
+  status: BpUpcomingStatus;
+  approved: boolean;
+  approved_by: string | null;
+  approved_at: string | null;
+  reason: string | null;
+  payout_id: string | null;
+  calendar_uid: string;
+  in_calendar: boolean;
+  calendar_outdated: boolean;
+  title: string;
+  description: string;
+}
+
+export interface BpUpcoming {
+  today: string;
+  clearing_pence: number;
+  clearing_label: string;
+  next_7_pence: number;
+  next_30_pence: number;
+  shortfall_7_pence: number;
+  shortfall_30_pence: number;
+  warning: string | null;
+  items: BpUpcomingItem[];
+  calendar_stale: string[];
+  note: string;
+}
+
+export interface BpCalendarResult {
+  added: number;
+  updated: number;
+  unchanged: number;
+  removed: number;
+  not_found: number;
 }
 
 export interface BpPayee {
@@ -120,11 +182,13 @@ export interface BpRunResult {
   refreshed: BpPayout[];
   paid: BpPayout[];
   asked: { bill: string; supplier: string; owed_pence: number; reasons: string[] }[];
+  scheduled_paid: BpPayout[];
+  scheduled_held: { bill: string; supplier: string; amount_pence: number; reasons: string[] }[];
   problems: string[];
 }
 
-async function call<T>(a: AccountInfo, path: string, init: RequestInit = {}): Promise<T> {
-  const headers: Record<string, string> = { ...(await runtimeHeaders(a)) };
+async function send(a: AccountInfo, path: string, init: RequestInit, scopes: string[]): Promise<Response> {
+  const headers: Record<string, string> = { ...(await runtimeHeaders(a, scopes)) };
   if (typeof init.body === "string") headers["Content-Type"] = "application/json";
   const res = await fetch(`${RUNTIME_URL}${path}`, { ...init, headers });
   if (!res.ok) {
@@ -138,6 +202,11 @@ async function call<T>(a: AccountInfo, path: string, init: RequestInit = {}): Pr
     }
     throw new Error(detail || `Could not ${init.method ?? "GET"} ${path} (${res.status})`);
   }
+  return res;
+}
+
+async function call<T>(a: AccountInfo, path: string, init: RequestInit = {}, scopes: string[] = []): Promise<T> {
+  const res = await send(a, path, init, scopes);
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
@@ -165,7 +234,41 @@ export const billpay = {
     call<BpAutopilot>(a, "/billpay/autopilot", put({ enabled, rules })),
   stopAutopilot: (a: AccountInfo) => call<BpAutopilot>(a, "/billpay/autopilot/stop", { method: "POST" }),
   noticesSeen: (a: AccountInfo, ids: string[]) => call<void>(a, "/billpay/notices/seen", post({ ids })),
+  /** Every approved-in-advance and planned PayPal payment, the 7/30-day totals and the shortfall (books figure). */
+  upcoming: (a: AccountInfo) => call<BpUpcoming>(a, "/billpay/upcoming"),
+  /** "Approve now, pay on due date": paid the next time Accnomos is open on or after it, if nothing changed. */
+  schedule: (a: AccountInfo, b: { event_id: string; owed_pence: number; payee_email: string }, acknowledgeChangedDetails: boolean) =>
+    call<BpApproval>(
+      a,
+      `/billpay/bills/${enc(b.event_id)}/schedule`,
+      post({ amount_pence: b.owed_pence, payee_email: b.payee_email, confirm: true, acknowledge_changed_details: acknowledgeChangedDetails }),
+    ),
+  cancelSchedule: (a: AccountInfo, eventId: string) =>
+    call<BpApproval>(a, `/billpay/bills/${enc(eventId)}/schedule/cancel`, post({ confirm: true })),
+  /** The .ics text: one payment, or (no id) every one still to be sent. */
+  ics: async (a: AccountInfo, eventId?: string) =>
+    (await send(a, `/billpay/calendar.ics${eventId ? `?event_id=${enc(eventId)}` : ""}`, {}, [])).text(),
+  /** Into the calendar the user signed in with (Google or Outlook), on their tap. Asks for calendar write access. */
+  addToCalendar: (a: AccountInfo, eventIds?: string[]) =>
+    call<BpCalendarResult>(a, "/billpay/calendar", post({ confirm: true, ...(eventIds ? { event_ids: eventIds } : {}) }), CALENDAR_SCOPES),
+  /** Remove those events (default: the ones for payments cancelled, paid or no longer planned). */
+  removeFromCalendar: (a: AccountInfo, eventIds?: string[]) =>
+    call<BpCalendarResult>(a, "/billpay/calendar/remove", post({ confirm: true, ...(eventIds ? { event_ids: eventIds } : {}) }), CALENDAR_SCOPES),
 };
+
+/** Save text as a file in the browser (the .ics download). */
+export function downloadText(text: string, filename: string, type = "text/calendar;charset=utf-8"): void {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export { calendarName, paysLine, UPCOMING_STATUS } from "./billpay-text";
 
 /** "12.50" or "£1,200" -> pence, exactly (no floats); null when it is not an amount. */
 export function penceFromPounds(input: string): number | null {

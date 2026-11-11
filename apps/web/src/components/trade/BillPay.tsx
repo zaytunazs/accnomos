@@ -6,8 +6,10 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { RuntimeErrorNote } from "@/components/States";
 import { money, useMsAccount } from "@/lib/invoices";
 import { ukDate } from "@/lib/runtime";
+import { UpcomingTable } from "@/components/trade/UpcomingPayments";
 import {
   billpay,
+  paysLine,
   penceFromPounds,
   poundsFromPence,
   type BpBill,
@@ -105,6 +107,7 @@ export default function BillPay() {
       <Notices o={o} run={run} account={account} onDone={reload} />
       <Flags o={o} busy={busy} onClear={(id) => act(`flag-${id}`, () => billpay.clearFlag(account, id))} />
       <DueToday o={o} busy={busy} onPay={(b, ack) => act(`pay-${b.event_id}`, () => billpay.pay(account, b.event_id, b.owed_pence, ack))} />
+      <UpcomingTable account={account} refreshKey={o} onChanged={reload} />
       <Upcoming o={o} busy={busy} account={account} act={act} />
       <Payees o={o} busy={busy} account={account} act={act} />
       <Autopilot key={`${o.payees.map((p) => p.contact_id).join(",")}:${o.autopilot.changed_at ?? ""}`} o={o} busy={busy} account={account} act={act} />
@@ -188,6 +191,11 @@ function DueCard({ b, busy, onPay }: { b: BpBill; busy: string | null; onPay: (b
         {dueLine(b)}
         {b.payee_email ? ` · pays ${b.payee_email}` : ""}
       </p>
+      {b.approval?.status === "needs_you" && (
+        <p className="mt-2 rounded-lg bg-warn-bg px-3 py-2 text-sm font-bold text-warn-ink">
+          You approved this in advance, but Accnomos did not pay it: {b.approval.reason}. Look again and pay it here if it is right.
+        </p>
+      )}
       {b.changed_details.length > 0 && (
         <p className="mt-2 rounded-lg bg-warn-bg px-3 py-2 text-sm font-bold text-warn-ink">{b.changed_details.join(". ")}.</p>
       )}
@@ -243,24 +251,78 @@ function Upcoming({ o, busy, account, act }: { o: BpOverview; busy: string | nul
       <h3 className="text-lg font-extrabold">Bills to pay</h3>
       <ul className="mt-2 divide-y divide-border">
         {bills.map((b) => (
-          <li key={b.event_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-            <span className="min-w-0">
-              <strong>{b.supplier}</strong>
-              {b.reference ? ` · ${b.reference}` : ""} · {money(b.owed_pence)} · {dueLine(b)}
-              {!b.payee_email && <span className="text-muted"> · no PayPal email saved</span>}
-            </span>
-            <label className="flex items-center gap-2 font-semibold">
-              <input
-                type="checkbox"
-                checked={b.plan === "paypal" || (b.plan === null && b.payee_email !== null)}
-                disabled={busy !== null}
-                onChange={(e) => act(`plan-${b.event_id}`, () => billpay.setPlan(account, b.event_id, e.target.checked ? "paypal" : "not_paypal"))}
-              />
-              Pay with PayPal on due date
-            </label>
+          <li key={b.event_id} className="py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="min-w-0">
+                <strong>{b.supplier}</strong>
+                {b.reference ? ` · ${b.reference}` : ""} · {money(b.owed_pence)} · {dueLine(b)}
+                {!b.payee_email && <span className="text-muted"> · no PayPal email saved</span>}
+              </span>
+              <label className="flex items-center gap-2 font-semibold">
+                <input
+                  type="checkbox"
+                  checked={b.plan === "paypal" || (b.plan === null && b.payee_email !== null)}
+                  disabled={busy !== null || b.approval?.status === "scheduled"}
+                  onChange={(e) => act(`plan-${b.event_id}`, () => billpay.setPlan(account, b.event_id, e.target.checked ? "paypal" : "not_paypal"))}
+                />
+                Pay with PayPal on due date
+              </label>
+            </div>
+            <ApproveAhead b={b} busy={busy} account={account} act={act} />
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** "Approve now, pay on due date" for a bill not due yet. PayPal cannot hold a payment, so the approval is kept in the
+ *  books and paid by POST /billpay/run the next time Accnomos is open on or after the date, if nothing changed. */
+function ApproveAhead({ b, busy, account, act }: { b: BpBill; busy: string | null; account: AccountInfo; act: Act }) {
+  const [asking, setAsking] = useState(false);
+  const [ack, setAck] = useState(false);
+  if (b.due_now) return null;
+  if (b.approval?.status === "scheduled" || b.approval?.status === "paying") {
+    return (
+      <p className="mt-1 text-[13px] text-teal-dark">
+        <strong>Approved in advance</strong> for {money(b.approval.amount_pence)} to {b.approval.payee_email}. {paysLine(b.approval.due_date)} Cancel it in
+        Upcoming PayPal payments.
+      </p>
+    );
+  }
+  if (!b.payee_email || b.plan === "not_paypal" || b.blocks.length > 0) return null;
+  const email = b.payee_email;
+  if (!asking) {
+    return (
+      <button type="button" className={`${quiet} mt-1`} disabled={busy !== null} onClick={() => setAsking(true)}>
+        Approve now, pay on due date
+      </button>
+    );
+  }
+  return (
+    <div className="mt-2 rounded-xl bg-ground p-3">
+      <p>
+        Approve paying <strong>{money(b.owed_pence)}</strong> to <strong>{email}</strong> on {ukDate(b.due_date)}? {paysLine(b.due_date)} It is paid only if
+        the amount owed, {b.supplier}&apos;s saved PayPal email and the bill are still exactly these; otherwise it waits for you in Due today. You can
+        cancel it until it is sent.
+      </p>
+      {b.changed_details.length > 0 && (
+        <label className="mt-2 flex items-start gap-2 font-semibold text-warn-ink">
+          <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-1" />
+          {b.changed_details.join(". ")}. I checked with the supplier, by phone on a number I already had, that {email} is right.
+        </label>
+      )}
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          className={button}
+          disabled={busy !== null || (b.changed_details.length > 0 && !ack)}
+          onClick={() => void act(`schedule-${b.event_id}`, () => billpay.schedule(account, { event_id: b.event_id, owed_pence: b.owed_pence, payee_email: email }, ack)).then(() => setAsking(false))}
+        >
+          {busy === `schedule-${b.event_id}` ? "Approving…" : `Approve ${money(b.owed_pence)} for ${ukDate(b.due_date)}`}
+        </button>
+        <button type="button" className={quiet} onClick={() => setAsking(false)}>Not now</button>
+      </div>
     </div>
   );
 }
