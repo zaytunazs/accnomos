@@ -88,10 +88,16 @@ async def test_paid_on_or_after_due_date_by_run(books: Books, fake: FakeStorageP
 
 
 async def test_autopilot_off_does_not_stop_approved_payment(books: Books) -> None:
-    eid, _ = await _approved(books)
-    await bp.stop_autopilot(books, USER)
+    eid, _ = await _approved(books)  # Autopilot was never turned on: the owner's own approval still pays
     r = await bp.run(books, today=LATER)
     assert [p.event_id for p in r.scheduled_paid] == [eid]
+
+
+async def test_owner_kill_switch_keeps_approved_payment_back(books: Books) -> None:
+    await _approved(books)
+    await bp.stop_autopilot(books, USER)
+    r = await bp.run(books, today=LATER)
+    assert not r.scheduled_paid and not _payout_posts() and any("kill switch" in p for p in r.problems)
 
 
 async def test_changed_amount_blocks(books: Books) -> None:
@@ -302,3 +308,30 @@ async def test_routes_and_connected_calendar(client: TestClient, books: Books) -
     assert client.get("/billpay/upcoming", headers=H).json()["calendar_stale"] == []
     r = client.get(f"/billpay/calendar.ics?event_id={eid}", headers=H)
     assert r.status_code == 404
+
+
+def test_kill_switch_holds_back_approvals_in_advance(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    """The server kill switch stops approved-in-advance payments too; they stay approved."""
+    import asyncio
+
+    from app import billpay as bp
+    from app import billpay_schedule as bs
+
+    monkeypatch.setenv("BILLPAY_AUTOPILOT_OFF", "1")
+    appr = type("A", (), {"status": "scheduled", "due_date": __import__("datetime").date(2026, 1, 1)})()
+
+    async def load_scheduled(_b):  # type: ignore[no-untyped-def]
+        return type("S", (), {"approvals": {"x": appr}})()
+
+    async def load_settings(_b):  # type: ignore[no-untyped-def]
+        return bp.Settings()
+
+    async def boom(*_a, **_k):  # type: ignore[no-untyped-def]
+        raise AssertionError("must not read bills or pay")
+
+    monkeypatch.setattr(bp, "load_scheduled", load_scheduled)
+    monkeypatch.setattr(bp, "load_settings", load_settings)
+    monkeypatch.setattr(bp, "bills", boom)
+    out = bp.RunResult()
+    asyncio.run(bs.run_scheduled(None, out, today=__import__("datetime").date(2026, 1, 2)))  # type: ignore[arg-type]
+    assert out.problems and "kill switch" in out.problems[0] and appr.status == "scheduled"

@@ -222,6 +222,14 @@ async def run_scheduled(books: Books, out: bp.RunResult, *, today: date | None =
     due = [a for a in sched.approvals.values() if a.status == "scheduled" and a.due_date <= today]
     if not due:
         return
+    ap = (await bp.load_settings(books)).autopilot
+    if bp.server_kill_switch() or (ap.stopped_at is not None and not ap.enabled):
+        # The kill switch stops every payment Accnomos sends by itself, approvals in advance included; they stay
+        # approved and go out on the first visit after the switch is lifted (or the owner pays them by hand).
+        out.problems.append(
+            f"{len(due)} payment(s) you approved in advance were not sent: bill pay is stopped with the kill switch."
+        )
+        return
     ov = await bp.bills(books, today=today, read_documents=False)
     payees = await bp.load_payees(books)
     for a in sorted(due, key=lambda x: (x.due_date, x.supplier.lower())):
