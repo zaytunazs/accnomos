@@ -40,8 +40,6 @@ presenter are made by hand. Cut every loading spinner and set-up step: judges sh
 - [ ] One payment from the sandbox buyer to the sandbox business account **with no invoice** (PayPal sandbox "Send
       money"), at least 3 h before recording, so h1 has a sale whose VAT the owner chooses. If there is none, film the
       VAT choice on the demo's sample history and caption it "demo sample history".
-- [ ] For h2, at least one PayPal fee must be **approved** in the books in the current quarter (approve DEMO-1003's
-      card off camera, or film h2 after h1). Ask's answers count only approved entries.
 - [ ] Customer and supplier names and emails are fictional (for example `accounts@example.co.uk`). The sandbox
       buyer's login is `<<SANDBOX BUYER LOGIN>>`; it lives in the owner's password manager, never in the repo or on
       screen.
@@ -100,9 +98,14 @@ Film with the Power grid **off** (the card list); turn it on for `ag` afterwards
 4. Scroll to the sale with no invoice. Open **VAT on this sale (choose before approving)** → *Standard rate*.
 5. Back to DEMO-1002 → **Approve £…**. Hold on *"Invoice payment of £… (…) is in your books."*
 
-### h2 Ask about PayPal (signed-in, after h1 so fees are approved)
-1. Sidebar **Ask**. Type *What did PayPal cost me this quarter?* → **Ask**. Hold on the figure 2 s.
-2. Type *How much is in PayPal?* → **Ask**. Hold on the figure 2 s. Blur the byline under each answer.
+### h2 AI search in Ask (demo books: Try the demo › Start a new demo)
+1. Sidebar **Ask**. Type *Did that client pay all the arrears? They had around £500 overdue — check PayPal.* → **Ask**.
+   Hold 3 s on "Yes, the arrears look paid in full: **£492.00** on 8 Nov 2026 from Wrenfield Dental Studio through
+   PayPal … not in your books yet".
+2. Type *There was a payment via PayPal last month, probably around £100 for stationery — how much exactly was it?* →
+   **Ask**. Hold 3 s on "It was **£97.79** on 14 Oct 2026 to Quillstone Office Supplies Ltd through PayPal".
+   Both checked live on 11 Nov 2026. Cut the wait; blur any byline. Start a fresh demo just before filming (a demo ends
+   after 2 hours or when the server restarts).
 
 ### h3 Tie-out (signed-in)
 1. **Invoices**, top of the **PayPal** panel: *"PayPal says £… (as of …) · your books (1240 PayPal clearing) £…"*.

@@ -21,7 +21,8 @@
  },
  {
   "id": "h2",
-  "text": "Then just ask: what did PayPal cost me this quarter? How much is in PayPal? Code works out the figure from those PayPal entries, and the AI explains it."
+  "text": "Or just ask, in your own words. Did that client pay the arrears? Accnomos checks your books and PayPal itself. A stationery order last month, around £100? Exactly £97.79.",
+  "say": "Or just ask, in your own words. Did that client pay the arrears? Accnomos checks your books and PayPal itself. A stationery order last month, around a hundred pounds? Exactly ninety-seven pounds seventy-nine."
  },
  {
   "id": "h3",
