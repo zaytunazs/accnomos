@@ -20,7 +20,7 @@ The call, as documented by Meta (read 29 Oct 2026):
   * https://dev.meta.ai/docs/api-reference/images/schemas: CreateImageRequest fields (`model`, `prompt`, `n`, `size`,
     `response_format`, `output_format`, `reasoning_strength`, `tool_enablement`, ...). Unknown keys nested inside
     request objects are ignored, so the tool switches below cannot break the call.
-Price: USD 0.01 per image (docs/submission/META_MODELS.md); the 32 cards in IMAGE_PROMPTS.md cost about USD 0.32.
+Price: USD 0.01 per image (docs/AI_MODELS.md); the 32 cards in IMAGE_PROMPTS.md cost about USD 0.32.
 
 Because the size only sets the aspect ratio, each picture is cropped and scaled to the exact size its card asks for
 (Pillow if installed; otherwise the original is kept and assemble.sh crops it with ffmpeg). Each PNG gets a JSON

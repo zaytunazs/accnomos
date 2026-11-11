@@ -26,7 +26,7 @@ on its own. The eval has no books, so every supplier is unknown here.
   code scores 195/200 with 3 false alarms (057, 176, 184) and the same 2 false passes.
   The reading has no supplier address, so code can't tell an overseas supplier from a UK one.
 
-## The stored Glimmer readings (`runs/glimmer_messy_200`): not re-run
+## The stored the local open-weights model readings (`runs/glimmer_messy_200`): not re-run
 
 The per-document records of that run are kept locally only (`.gitignore`) and were not in the checkout this change was
 made in, so `python -m harness.replay runs/glimmer_messy_200` could not be run. Last measured (extraction-quality-2

@@ -165,7 +165,7 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
             base = cfg.base_url or os.getenv("MODEL_API_BASE", "https://api.meta.ai/v1")
             r = await client.get(f"{base}/models", headers={"Authorization": f"Bearer {x_meta_api_key}"})
             if r.status_code != 200:
-                return AiTestResult(ok=False, mode="key", detail=f"Meta API returned {r.status_code}")
+                return AiTestResult(ok=False, mode="key", detail=f"The hosted model's API returned {r.status_code}")
             ids = [m["id"] for m in r.json().get("data", [])]
             want = cfg.model or "muse-spark-1.3"
             return AiTestResult(ok=want in ids, mode="key", model=want, detail=f"{len(ids)} models available")

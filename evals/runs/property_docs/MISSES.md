@@ -1,6 +1,6 @@
 # Property docs eval misses: insurance, mortgage statements, invoices
 
-Run: `evals/runs/property_docs` on Muse Glimmer, 108 gold documents.
+Run: `evals/runs/property_docs` on the local open-weights model, 108 gold documents.
 Headline: 82.4% all fields exact; letting statements 72/72, invoices 17/24,
 insurance 0/6, mortgage statements 0/6. Line category 93.5%, line amount 89.8%.
 

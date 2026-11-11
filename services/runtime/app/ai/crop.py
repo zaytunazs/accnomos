@@ -433,7 +433,7 @@ async def crop_document(image_bytes: bytes, cfg: AiConfig | None = None) -> Crop
         out = await asyncio.to_thread(_encode, img.crop(box), fmt)
     except Exception as exc:  # noqa: BLE001
         return _original(image_bytes, f"could not encode crop: {exc}", **details)
-    label = "Cropped with SAM 3.1" if method == "sam" else "Cropped by code"
+    label = "Cropped by the image model" if method == "sam" else "Cropped by code"
     return CropResult(out, box, method, label, details)
 
 

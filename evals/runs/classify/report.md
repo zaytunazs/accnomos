@@ -1,6 +1,6 @@
 # Document-type classifier eval
 
-Model `muse-spark-1.3-contributor` at `https://api.meta.ai/v1`; 2026-11-01T08:23:32+00:00. Code under test: `app.ai.classify.classify` through the provider chain (Meta when `META_API_KEY` is set, else the Spark local model), with `app.ai.classify.by_words` on a model miss and code-only recognition for bank CSVs, exactly as the upload flow (`app/scan_jobs.py`) does.
+Model `muse-spark-1.3-contributor` at `https://api.meta.ai/v1`; 2026-11-01T08:23:32+00:00. Code under test: `app.ai.classify.classify` through the provider chain (the hosted model when `META_API_KEY` is set, else the Spark local model), with `app.ai.classify.by_words` on a model miss and code-only recognition for bank CSVs, exactly as the upload flow (`app/scan_jobs.py`) does.
 
 - Documents: **434** (434 answered, **0 refusals**, 0.0%)
 - Accuracy (predicted kind equals the gold label; a refusal counts as wrong): **96.5%**

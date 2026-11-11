@@ -34,7 +34,7 @@ Reviewed 27 Oct 2026 by the second agent on the branch.
 
 ## What remains
 
-- The hosted model slug `meta-models/muse-spark-open` is still unconfirmed against the host's docs (the code says so).
+- The hosted model slug the default `VERIFIER_MODEL` id is still unconfirmed against the host's docs (the code says so).
   No real hosted or the hosted model's API verifier call has been made; both paths are unit-tested with fakes only.
 - The eval covers 20 messy synthetic receipts with the local open-weights model verifying the local open-weights model: 0 extra catches and 1 false alarm on a
   mixed-rate receipt (the verifier reads the standard-rated subtotal as net). The catch rate is not yet measured; run

@@ -374,7 +374,7 @@ def test_transcribe_only_hears(client, monkeypatch: pytest.MonkeyPatch) -> None:
 
     class Heard:
         text = "yes please"
-        by = Transcription(provider="muse", label="Muse Voice Transcribe", model="muse-voice-transcribe-1.0")
+        by = Transcription(provider="muse", label="the hosted speech-to-text model", model="muse-voice-transcribe-1.0")
 
     async def fake_transcribe(wav, providers, **_):
         return Heard()

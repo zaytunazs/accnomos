@@ -445,7 +445,7 @@ def test_spoken_request_takes_the_same_path(books: Books, monkeypatch):
 
     class Heard:
         text = "WhatsApp JM Trading the payment link"
-        by = Transcription(provider="muse", label="Muse Voice Transcribe", model="muse-voice-transcribe-1.0")
+        by = Transcription(provider="muse", label="the hosted speech-to-text model", model="muse-voice-transcribe-1.0")
 
     async def fake_transcribe(wav, providers, **_):
         return Heard()

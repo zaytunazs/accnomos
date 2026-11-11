@@ -217,7 +217,7 @@ async def test_transcribe_network_failure_is_502():
 async def test_transcribe_refuses_local_mode():
     with pytest.raises(voice.VoiceError) as exc:
         await voice.transcribe(b"wav", LOCAL)
-    assert (exc.value.status, str(exc.value)) == (400, "voice needs a Meta API key")
+    assert (exc.value.status, str(exc.value)) == (400, "voice needs an API key for the hosted speech-to-text model")
 
 
 # --------------------------------------------------------------------------- #
@@ -296,7 +296,7 @@ def test_voice_route_answers_with_transcript(client: TestClient, monkeypatch: py
     assert got["transcript"] == "How much VAT do I owe?"
     assert got["transcribed_by"] == {
         "provider": "muse",
-        "label": "Muse Voice Transcribe",
+        "label": "the hosted speech-to-text model",
         "model": "muse-voice-transcribe-1.0",
         "fallback_reason": None,
     }
@@ -307,7 +307,7 @@ def test_voice_route_answers_with_transcript(client: TestClient, monkeypatch: py
 @needs_ffmpeg
 def test_voice_route_maps_transcribe_errors(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     async def fail(*_a, **_k) -> str:
-        raise voice.VoiceError(401, "Meta rejected the API key for Muse Voice")
+        raise voice.VoiceError(401, "The speech-to-text service rejected the API key")
 
     monkeypatch.setattr(voice, "transcribe", fail)
     r = client.post("/books/ask/voice", headers=KEY_HEADERS, files={"audio": ("q.wav", _tone_wav(), "audio/wav")})

@@ -11,7 +11,7 @@ disagreement on supplier/date/total/VAT puts the proposal into "Needs a look" wi
 ## Implementation
 - `app/ai/verify.py`: `verify(image_bytes, extracted: Doc, cfg) -> Verification(fields: {name: {extractor, verifier, agree: bool}}, agree_all: bool, model: str)`.
   Backends in priority: (1) the open-weights verifier model on the open-weights host — its standard-API `/v1/chat/completions`, model
-  `meta-models/muse-spark-open` (verify slug in docs; env `BASETEN_API_KEY`, `VERIFIER_MODEL`); (2) the hosted model's API `muse-spark-1.3` with the
+  the default `VERIFIER_MODEL` id (verify slug in docs; env `BASETEN_API_KEY`, `VERIFIER_MODEL`); (2) the hosted model's API with the
   user's key when (1) is not configured; (3) the local open-weights model via the local model server with a *different* prompt when in local mode. The user's choice of
   mode/key stays the same headers as today; hosted-verifier key is a server env **only if the owner sets it** (`.env.example` entry, never a real value).
 - Compare in code: strings normalised (case, punctuation, whitespace, "Ltd/Limited"), dates by value, money by pence with ±1p tolerance,

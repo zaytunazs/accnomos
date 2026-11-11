@@ -1,4 +1,4 @@
-# Extraction eval: Glimmer on 200 messy documents (muse-glimmer:30b, local)
+# Extraction eval: The local open-weights model on 200 messy documents (muse-glimmer:30b, local)
 
 Docs: **200** (60 original + 140 new from a second open-weight model) | messy phone-photo renders | errors: 0 | mean 22.16 s per document (max 39.81 s)
 

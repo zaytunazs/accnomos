@@ -50,7 +50,7 @@ demo session, so a bank connected there shows there, not on the phone.
 ## Live check
 
 **Run on 4 Nov 2026 on `accnomos.com`** (main `3c83782c`, which also taught the runtime to accept TrueLayer's base64 credentials
-ids), as the video's bank feed take (`docs/video/V3_EDIT.md`, scene s5a; the capture script is `tools/video/`): Try the demo
+ids), as in the earlier demo video's bank feed take (the capture script is `tools/video/`): Try the demo
 → Bank → *Connect the test bank* → TrueLayer's sandbox page listed Mock Bank only → signed in as `john` / `doe` → *Allow* →
 back on `/bank` connected ("mock · test bank, sample data only", *Last fetched 4 Nov 2026*). The take fetched 2,145 sample
 lines, all left unmatched because TrueLayer's mock data does not match the demo's books; since `e0a61829` (on `main`

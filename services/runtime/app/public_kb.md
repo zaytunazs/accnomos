@@ -2,8 +2,8 @@
 
 This file is the only knowledge the "Ask about Accnomos" chat on the public website is given (`app/public_chat.py`).
 Each `## Title {#id}` heading is one section; code picks the sections that match a question and passes only those to
-the model. Every statement here comes from `README.md`, `docs/HONESTY.md`, `docs/submission/DESCRIPTION.md`,
-`docs/submission/JUDGING.md`, `docs/submission/META_MODELS.md` and the privacy page. Keep it that way: when a claim
+the model. Every statement here comes from `README.md`, `docs/HONESTY.md`, `docs/AI_MODELS.md` and the privacy
+page. Keep it that way: when a claim
 changes there, change it here. Keywords after "Keywords:" help retrieval and are not shown to visitors.
 Lines starting `[prelaunch] ` are used only on the pre-launch site (PUBLIC_SUBMISSION_MODE=0) and lines starting
 `[submission] ` only on the judged build (the default), which never mentions a launch date or "coming soon".
@@ -11,11 +11,11 @@ Lines starting `[prelaunch] ` are used only on the pre-launch site (PUBLIC_SUBMI
 ## What Accnomos is {#what-it-is}
 
 Accnomos is bookkeeping and Making Tax Digital (MTD) VAT software for UK small businesses and sole traders who are
-VAT-registered and do their own books. Its rule is: AI proposes, you approve, code calculates. A Meta AI model reads
+VAT-registered and do their own books. Its rule is: AI proposes, you approve, code calculates. An AI model reads
 your receipts, invoices and credit notes and proposes an entry; nothing is posted until you tap Approve; the ledger and
 the nine VAT boxes are worked out by deterministic code, never by a model. Your books are files in your own Microsoft
-OneDrive, and Accnomos keeps no database of its own. It was built by Zaytuna Business Services Ltd (UK) for the Meta
-Global AI Developer Hackathon in October 2026, and it is a hackathon build, not a finished commercial product.
+OneDrive, and Accnomos keeps no database of its own. It was built by Zaytuna Business Services Ltd (UK) for a hackathon
+in October 2026, is entered in the PayPal AI Hackathon, and it is a hackathon build, not a finished commercial product.
 Keywords: about, overview, product, purpose, company, built, made, maker, behind, hackathon, bookkeeping, accounting, software, app, sole trader, small business, self-employed, limited company, suitable, landlord, freelancer, contractor
 
 ## Receipts, review and the ledger {#receipts-review}
@@ -110,22 +110,22 @@ number and VAT period. An empty folder can be filled with the sample books to tr
 deleting the folder. You need a Microsoft account with OneDrive; there is no other sign-in option.
 Keywords: sign in, login, log in, account, register, sign up, start, getting started, setup, set up, try, demo, sample, microsoft account, onboarding, connect
 
-## The AI {#meta-models}
+## The AI {#ai-models}
 
 Accnomos AI reads documents, answers Ask and words the summaries; code does every calculation and checks every figure
 the AI writes. It runs on Accnomos's own server. If that server cannot answer, the document or question goes to a
 backup AI provider under contract, which may not train its models on it; the privacy page names it. Nothing is sent
-to Meta from our server any more. A second, independent reading checks the six key fields of a document,
+to a hosted model provider from our server any more. A second, independent reading checks the six key fields of a document,
 and anything the two readings disagree on waits for you. You can instead point Accnomos at an AI running on your own
 hardware, or use your own API key, in Settings. Reading accuracy is measured on synthetic documents only. An optional
 photo crop step has been run live on synthetic photos only and is off; a plain-code crop finds the receipt instead.
-Keywords: ai, model, models, meta, muse, glimmer, spark, open weights, sam, voice, transcribe, image, gpu, local, key, api key, which ai, meta models
+Keywords: ai, model, models, which models, open weights, voice, transcribe, speech, image, crop, gpu, local, key, api key, which ai, ai models, meta, muse, glimmer, spark, sam
 
 ## How accurate it is {#accuracy}
 
 All figures are on synthetic documents, so real phone photos will score lower. On 200 clean and 200 messy synthetic
-documents, every field was read right on 85 % and 80 % of documents by Glimmer 30B and on 91 % and 93 % by Muse Spark
-Open, with code repairs, one re-read and the Verifier on. Glimmer takes about 18 seconds per document (24 seconds for
+documents, every field was read right on 85 % and 80 % of documents by the local open-weights model and on 91 % and 93 % by a
+hosted open-weights verifier model, with code repairs, one re-read and the Verifier on. The local model takes about 18 seconds per document (24 seconds for
 messy ones). Ask quoted figures exactly in 32 of 32 measured answers, and no invented figure reached the user. Because
 every proposal waits for your approval, a wrong reading is something you see on the card before it reaches your books.
 Keywords: accurate, accuracy, mistakes, errors, wrong, reliable, reliability, trust, measured, eval, evaluation, results, percent, speed, fast, slow, how long, seconds
@@ -143,7 +143,7 @@ Keywords: autopilot, automatic, automation, auto, without approval, rules, hands
 Honest status: only Microsoft sign-in, folder setup, reading a receipt through approval to the ledger and the VAT
 boxes, and the model evaluations have run for real, on the maintainers' own accounts and with no committed log.
 Everything else is tested with automated tests against fakes (in-memory OneDrive, mailbox and calendar, stubbed
-models and mocked HMRC); that proves the logic, not Microsoft, Meta or HMRC. The test suites cover about 1,260 runtime
+models and mocked HMRC); that proves the logic, not Microsoft, the AI providers or HMRC. The test suites cover about 1,260 runtime
 tests, 208 browser tests and 248 Android tests. HMRC is sandbox only. Not built yet: production HMRC filing, Google
 Drive, RTI payroll and a flat-rate VAT scheme. The full list of known gaps is in the project's docs/HONESTY.md.
 Keywords: status, tested, tests, testing, ready, production, live, beta, finished, limitations, limits, gaps, missing, not built, roadmap, honest, honesty, real, works, working, stable

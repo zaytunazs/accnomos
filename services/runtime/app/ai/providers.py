@@ -56,12 +56,12 @@ DEFAULT_TIMEOUTS: dict[str, tuple[float, float, float]] = {
 }
 
 LABELS: dict[str, str] = {
-    "modal": "hosted GPU",  # shown to users: no non-Meta host names
-    "meta": "Meta Model API",
-    "spark": "our own server",  # shown to users: no hardware or non-Meta names
+    "modal": "hosted GPU",  # shown to users: no vendor, host or hardware names
+    "meta": "hosted model API",
+    "spark": "our own server",  # shown to users: no hardware or vendor names
     "anthropic": "backup provider (Anthropic)",
     "local": "your machine",
-    "key": "your Meta key",
+    "key": "your own API key",
     "test": "test stub",
 }
 

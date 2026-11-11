@@ -32,9 +32,9 @@ The unanswerable check is a phrase match on the answer and only counts model-wri
 
 Before: the run at `efe0d67` (whole facts pack, the model wrote key numbers, citations and buttons too, 120 s
 timeout per answer). After: this run. Same books, prompts and machine; both models run at once in both runs.
-Prompt tokens are real Glimmer counts from `python -m harness.ask_pack_size` (`runs/ask_40/pack_size.json`).
+Prompt tokens are real the local open-weights model counts from `python -m harness.ask_pack_size` (`runs/ask_40/pack_size.json`).
 
-| Glimmer | before | after |
+| The local open-weights model | before | after |
 |---|---:|---:|
 | Prompt tokens per question, median (max) | 2,434 (2,441) | 813 (1,792) |
 | Reply tokens, typical (two measured prompts) | 251-341 | 93 |
@@ -52,24 +52,24 @@ words 30/32 then 32/32); no invented figure 34/35 then 35/35.
 
 ## Reading the numbers
 
-- Where the time went: Glimmer generates about 8 tokens/s here and reads the prompt in 0.4-2.7 s, so the answer
+- Where the time went: The local open-weights model generates about 8 tokens/s here and reads the prompt in 0.4-2.7 s, so the answer
   time is the reply's length. Code now supplies key numbers, citations and buttons; the model writes only
   `{answer_md, confidence}` (`AskExplanation`), capped at 320 tokens (~40 s), with a timeout per streamed chunk
   instead of per answer. The routed pack (`app/ask_router.py`, budget 1,500 tokens) saves only a second or two of
   prompt reading; its bigger effect is that the period not asked about is not in front of the model.
-- Wrong period: before, both models once quoted this quarter's figure for last quarter (Glimmer `vat_prev_box4`,
+- Wrong period: before, both models once quoted this quarter's figure for last quarter (the local open-weights model `vat_prev_box4`,
   a second open-weight model `prev_purchases_net`) and grounding could not tell. Now neither did (the pack for a one-period question
   holds only that period's figures, and FACTS.question_is_about names it), and grounding would replace such a
   figure anyway: 0 replacements were needed in this run; the check is covered by `test_ask.py` with a planted
   figure.
-- No invented figure is 34/35 for Glimmer against 31/31 before: the before run had 4 timed-out replies that were
+- No invented figure is 34/35 for the local open-weights model against 31/31 before: the before run had 4 timed-out replies that were
   never scored. The one this time is `corp_tax` ("600", not in the facts): grounding replaced it with the code
   fallback, which is also why that question no longer counts as a decline.
 - A second open-weight model's `fuel_2025` did decline ("March 2025 isn't in here"); the phrase match misses that wording.
-- The instruction rows do not go through the changed code. Glimmer asked one follow-up question instead of a
+- The instruction rows do not go through the changed code. The local open-weights model asked one follow-up question instead of a
   card twice (journey start and end on the mileage prompt; quantities on "£1,200 plus VAT for the office
   doors"), which the eval accepts; a second open-weight model asked for quantities once.
-- Streaming: on Glimmer the explanation arrives in one piece, because the local model server 0.40's glimmer parser holds a
+- Streaming: on the local open-weights model the explanation arrives in one piece, because the local model server 0.40's glimmer parser holds a
   schema-constrained reply until it is complete (and every unconstrained mode tried either reasoned silently
   despite `think: false` or ran away). The first event (code's figures) is still instant. A second open-weight model streams token by
   token.
@@ -122,7 +122,7 @@ words 30/32 then 32/32); no invented figure 34/35 then 35/35.
 | act_timesheet | | | | | expected `log_timesheet`, got `log_timesheet` |
 | act_invoice_vat | | | | | expected `create_invoice`, got `clarification` |
 
-## second model (open weights, not Meta's)
+## second model (open weights, a different model family)
 
 | Id | Exact | Cited | Invented (raw) | Fallback | Note |
 |---|---|---|---|---|---|

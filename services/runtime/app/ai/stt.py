@@ -57,7 +57,7 @@ OFF = ("off", "none", "0", "false", "no")
 _MODELS: dict[str, str] = {}  # url -> the model id its /models listed (asked once per process)
 DEFAULT_TIMEOUTS: dict[str, float] = {"muse": 45.0, "whisper": 90.0}
 # Shown to users (answers, action cards): no engine or vendor names for our own server's model.
-LABELS: dict[str, str] = {"muse": "Muse Voice Transcribe", "whisper": "our own server"}
+LABELS: dict[str, str] = {"muse": "the hosted speech-to-text model", "whisper": "our own server"}
 
 
 @dataclass(frozen=True)
@@ -257,7 +257,8 @@ async def transcribe(
     if not providers:
         raise voice.VoiceError(
             400,
-            "Voice needs the speech-to-text model on our own server (STT_BASE) or Muse Voice Transcribe (a Meta key)",
+            "Voice needs the speech-to-text model on our own server (STT_BASE)"
+            " or the hosted speech-to-text model (an API key)",
         )
     words = list(keywords or [])
     failures: list[tuple[SttProvider, voice.VoiceError]] = []
