@@ -194,6 +194,16 @@ def test_api_shapes_match_the_snapshot(reg: R.MemoryRegistry, client: TestClient
     )
     out["GET /admin/bug-reports/{id}/screenshot"] = ok(client.get(f"/admin/bug-reports/{bug_id}/screenshot", headers=A))
 
+    # ---- change plan and cancel (the same shapes for PayPal: tests/test_billing_paypal.py) --------------------------
+    reg.accounts[acc_id].update(
+        stripe_subscription_id="sub_fake1", status="active", plan_code="starter", billing_interval="month"
+    )
+    S.forget()
+    out["POST /billing/change-plan"] = ok(
+        client.post("/billing/change-plan", json={"plan_code": "ultimate", "interval": "month"}, headers=H)
+    )
+    out["POST /billing/cancel"] = ok(client.post("/billing/cancel", headers=H))
+
     # ---- read-only, then billing switched off ------------------------------------------------------------------------
     reg.accounts[acc_id].update(status="trial_ended", stripe_subscription_id=None, comp_until=None)
     S.forget()

@@ -85,6 +85,7 @@ def _env(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("PAYPAL_CLIENT_ID", "sandbox-client")
     monkeypatch.setenv("PAYPAL_CLIENT_SECRET", "sandbox-secret")
     monkeypatch.setenv("STRIPE_DIRECT", "1")
+    monkeypatch.setenv("STRIPE_VISIBLE", "1")  # Stripe is hidden by default; these tests cover its direct mode
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_direct")
     REQUESTS.clear()
     payment_providers._paypal_tokens.clear()

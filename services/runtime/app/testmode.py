@@ -736,6 +736,7 @@ def enable() -> None:
     from app.billing import fakes as billing_fakes
 
     billing_fakes.install()  # Stripe Billing (plans, checkout, portal) goes to the fakes, never out
+    billing_fakes.paypal_install()  # PayPal Subscriptions and the top-up order too
     install_google_fakes()
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 

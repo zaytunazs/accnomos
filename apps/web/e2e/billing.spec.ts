@@ -92,6 +92,43 @@ test.describe("signed in", () => {
     await expect(page.getByText("Free access", { exact: true })).toBeVisible();
   });
 
+  test("Plan & billing with PayPal: subscribe, change plan, cancel, manage in PayPal", async ({ page }) => {
+    // a runtime with PAYMENTS_PROVIDER=paypal
+    await page.addInitScript(() => {
+      if (!window.localStorage.getItem("accnomos.test.billing")) window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ account: { payments_provider: "paypal" } }));
+    });
+    await page.goto("/settings");
+    const panel = await settingsTab(page, "Plan & billing");
+    await expect(panel.getByText(/Payment is taken by PayPal/)).toBeVisible();
+    await expect(panel.getByLabel("Promo code (optional)")).toHaveCount(0); // discount codes: contact us
+    await expect(panel.getByText(/Stripe/)).toHaveCount(0);
+    await panel.getByRole("radio", { name: /Starter/ }).click();
+    await panel.getByRole("button", { name: "Subscribe with PayPal" }).click();
+    await expect.poll(async () => (await calls(page)).find((c) => c.path === "/billing/checkout")?.body).toEqual({ plan_code: "starter", interval: "month" });
+
+    // subscribed and paying: change plan and cancel go to their own endpoints
+    await page.evaluate(() =>
+      window.localStorage.setItem(
+        "accnomos.test.billing",
+        JSON.stringify({ account: { payments_provider: "paypal", has_payment_account: true, status: "active", plan_code: "starter", billing_interval: "month", current_period_end: "2026-12-11T10:00:00Z" } }),
+      ),
+    );
+    await page.goto("/settings#plan-billing");
+    await panel.getByRole("radio", { name: /Ultimate/ }).click();
+    await panel.getByRole("button", { name: "Change plan" }).click();
+    await expect.poll(async () => (await calls(page)).find((c) => c.path === "/billing/change-plan")?.body).toEqual({ plan_code: "ultimate", interval: "month" });
+
+    await page.goto("/settings#plan-billing");
+    await panel.getByRole("button", { name: "Cancel plan" }).click();
+    await panel.getByRole("button", { name: "Yes, cancel" }).click();
+    await expect.poll(async () => (await calls(page)).some((c) => c.path === "/billing/cancel")).toBe(true);
+    await expect(panel.getByRole("status").filter({ hasText: "Cancelled" })).toBeVisible();
+
+    await page.goto("/settings#plan-billing");
+    await panel.getByRole("button", { name: "Manage in PayPal" }).click();
+    await expect.poll(async () => (await calls(page)).some((c) => c.path === "/billing/portal")).toBe(true);
+  });
+
   test("the reminder banner shows in the last 14 days of the trial", async ({ page }) => {
     await page.addInitScript(() => window.localStorage.setItem("accnomos.test.billing", JSON.stringify({ account: { trial_ends_at: "2026-10-30T00:00:00Z" } })));
     await page.goto("/settings#plan-billing");

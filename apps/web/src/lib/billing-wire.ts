@@ -7,7 +7,7 @@
  */
 import type { AdminAccount, AdminActionResult, AdminAnalytics, AdminMetrics, AdminPlan, AdminUserDetail, AdminUserRow, AuditRow, BugReport, Paged, PromoCode, ScreenshotLink } from "./admin";
 import type { EventsResult } from "./analytics-core";
-import type { PlanLimits, RedeemResult, RtAccount, RtAccountOff, RtPlan, StripeRedirect } from "./billing";
+import type { CancelResult, PlanLimits, RedeemResult, RtAccount, RtAccountOff, RtPlan, StripeRedirect } from "./billing";
 import type { PlanLimitBody, ReadOnlyBody } from "./plan-limit";
 
 type Leaf<V> = [V] extends [readonly (infer E)[]] ? (E extends object ? [Spec<E>] : true) : [V] extends [object] ? Spec<V> : true;
@@ -27,6 +27,7 @@ const ACCOUNT: Spec<RtAccount> = {
 };
 const ACCOUNT_OFF: Spec<RtAccountOff> = { configured: true, detail: true };
 const REDEEM: Spec<RedeemResult> = { ok: true, message: true, code: true, kind: true, account: ACCOUNT };
+const CANCEL: Spec<CancelResult> = { ok: true, message: true, account: ACCOUNT };
 const REDIRECT: Spec<StripeRedirect> = { url: true };
 const EVENTS: Spec<EventsResult> = { accepted: true, dropped: true };
 const PLAN_LIMIT: Spec<PlanLimitBody> = { code: true, counter: true, limit: true, used: true, upgrade_url: true, detail: true };
@@ -90,6 +91,8 @@ export const WIRE: Record<string, unknown> = {
   "POST /billing/redeem": REDEEM,
   "POST /billing/checkout": REDIRECT,
   "POST /billing/portal": REDIRECT,
+  "POST /billing/change-plan": REDIRECT,
+  "POST /billing/cancel": CANCEL,
   "POST /billing/topup": REDIRECT,
   "POST /events (batch)": EVENTS,
   "POST /bug-reports": { id: true },

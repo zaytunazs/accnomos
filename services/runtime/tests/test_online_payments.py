@@ -62,6 +62,7 @@ def _server_env(monkeypatch: pytest.MonkeyPatch, *, stripe: bool = True, paypal:
         "STRIPE_SECRET_KEY",
         "STRIPE_CONNECT_CLIENT_ID",
         "STRIPE_REDIRECT_URI",
+        "STRIPE_VISIBLE",
         "PAYPAL_CLIENT_ID",
         "PAYPAL_CLIENT_SECRET",
         "PAYPAL_PARTNER_MERCHANT_ID",
@@ -70,7 +71,8 @@ def _server_env(monkeypatch: pytest.MonkeyPatch, *, stripe: bool = True, paypal:
     ):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("CORS_ORIGINS", WEB)
-    if stripe:
+    if stripe:  # Stripe is hidden by default (PayPal is the default): these tests opt in to exercise its code
+        monkeypatch.setenv("STRIPE_VISIBLE", "1")
         monkeypatch.setenv("STRIPE_SECRET_KEY", online_fakes.STRIPE_KEY)
         monkeypatch.setenv("STRIPE_CONNECT_CLIENT_ID", "ca_accnomos_fake")
         monkeypatch.setenv("STRIPE_REDIRECT_URI", "https://api.example/payments/online/stripe/callback")
@@ -264,6 +266,7 @@ def test_auth_assertion_is_an_unsigned_jwt_naming_the_merchant() -> None:
 
 def test_nothing_set_means_off_with_a_sentence(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
     _server_env(monkeypatch, stripe=False, paypal=False)
+    monkeypatch.setenv("STRIPE_VISIBLE", "1")  # shown, so its "not set up" sentence can be checked
     rows = {p["provider"]: p for p in _ok(client.get("/payments/online/providers", headers=H))}
     assert rows["stripe"]["available"] is False
     assert rows["stripe"]["reason"] == "Stripe payment links are not set up on this server yet."
@@ -275,6 +278,34 @@ def test_nothing_set_means_off_with_a_sentence(monkeypatch: pytest.MonkeyPatch, 
         headers=H,
     )
     assert r.status_code == 503
+
+
+def test_paypal_is_the_default_and_stripe_is_hidden(monkeypatch: pytest.MonkeyPatch, client: TestClient) -> None:
+    """Owner decision (11 Nov 2026): PayPal first; Stripe kept in code but not offered unless STRIPE_VISIBLE=1."""
+    monkeypatch.delenv("STRIPE_VISIBLE")  # the server has Stripe credentials, but Stripe is not shown
+    rows = _ok(client.get("/payments/online/providers", headers=H))
+    assert [r["provider"] for r in rows] == ["paypal", "paypalme"]
+    r = client.post(
+        "/payments/online/stripe/start",
+        json={"redirect_to": SETTINGS, "binding_hash": binding_hash(BINDING)},
+        headers=H,
+    )
+    assert r.status_code == 503 and "not offered" in r.json()["detail"]
+    monkeypatch.setenv("STRIPE_VISIBLE", "1")
+    rows = _ok(client.get("/payments/online/providers", headers=H))
+    assert [r["provider"] for r in rows] == ["paypal", "paypalme", "stripe"]  # PayPal still first
+
+
+def test_hidden_stripe_refuses_new_links_but_stays_listed_when_linked(
+    monkeypatch: pytest.MonkeyPatch, client: TestClient
+) -> None:
+    _connect_stripe(client)  # linked while it was visible
+    number = _sent_invoice(client)
+    monkeypatch.delenv("STRIPE_VISIBLE")
+    rows = {p["provider"]: p for p in _ok(client.get("/payments/online/providers", headers=H))}
+    assert rows["stripe"]["connected"] and rows["stripe"]["available"] is False  # listed only so it can be removed
+    r = client.post(f"/invoices/{number}/payment-link", json={"provider": "stripe"}, headers=H)
+    assert r.status_code == 503 and "not offered" in r.json()["detail"]
 
 
 def test_live_credentials_are_refused_unless_the_owner_says_so(monkeypatch: pytest.MonkeyPatch) -> None:

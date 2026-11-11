@@ -4,9 +4,11 @@
   status `trialing`, plan `comprehensive`, trial 90 days. The key is (auth_kind, auth_subject): the Graph `/me` id or
   Google's `sub`, falling back to `email:<address>` when the provider gives no id. `last_seen_at` is written at most
   once an hour.
-* **Status.** Stripe is the source of truth for paying accounts (webhooks, app/billing/webhooks.py). Two expiries are
-  ours: a trial with no subscription past `trial_ends_at`, and a comp past `comp_until`; both become `trial_ended`
-  (read-only) the first time the account is seen after the date.
+* **Status.** The payment provider (PayPal, or Stripe) is the source of truth for paying accounts (webhooks,
+  app/billing/webhooks.py). Three expiries are ours: a trial with no subscription past `trial_ends_at`, and a comp
+  past `comp_until`, both become `trial_ended` (read-only); and a plan cancelled with time left (PayPal cancels at
+  once, so the subscription id is gone but `cancel_at_period_end` is set) becomes `cancelled` once
+  `current_period_end` passes. Each is applied the first time the account is seen after the date.
 * **Limits.** A trial gets Comprehensive's limits; `comped` and paying accounts their `plan_code`'s. `trial_ended` and
   `cancelled` are read-only. Own-AI requests (the user's own Meta key or their own local model) do not count AI-read
   documents or Ask questions.
@@ -61,6 +63,7 @@ def topup_balance(usage: Row) -> int:
 
 
 def upgrade_url() -> str:
+    """Settings › Plan & billing (BILLING_RETURN_URL, the same for every provider)."""
     from app.billing.stripe_api import settings
 
     return settings().return_url
@@ -189,7 +192,28 @@ def effective_status(acc: Row, at: datetime) -> str:
         until = acc.get("comp_until")
         if isinstance(until, datetime) and until <= at:
             return "trial_ended"
+    if status in ("active", "past_due") and acc.get("cancel_at_period_end") and not acc.get("stripe_subscription_id"):
+        end = acc.get("current_period_end")
+        if not isinstance(end, datetime) or end <= at:
+            return "cancelled"
     return status
+
+
+def paypal_cancelled_patch(acc: Row, at: datetime) -> Row:
+    """What a PayPal cancel means here (PayPal ends the subscription at once). Paid-for time is kept: an active plan
+    with a future period end keeps going until then (`cancel_at_period_end`; effective_status
+    ends it); a subscription still waiting for its deferred start (our trial) just goes, and the trial runs on."""
+    patch: Row = {"stripe_subscription_id": None}
+    end = acc.get("current_period_end")
+    status = acc.get("status")
+    if status == "trialing":
+        patch["cancel_at_period_end"] = False
+    elif status in ("active", "past_due") and isinstance(end, datetime) and end > at:
+        patch["cancel_at_period_end"] = True
+    else:
+        patch["status"] = "cancelled"
+        patch["cancel_at_period_end"] = False
+    return patch
 
 
 async def ensure_account(reg: Registry, who: Who) -> Row:
@@ -424,7 +448,8 @@ async def account_view(reg: Registry, acc: Row, own: bool, gauges: Mapping[str, 
         "billing_interval": acc.get("billing_interval"),
         "current_period_end": acc.get("current_period_end"),
         "cancel_at_period_end": bool(acc.get("cancel_at_period_end")),
-        "has_payment_account": bool(acc.get("stripe_customer_id")),
+        # a Stripe customer, or a PayPal subscription (PayPal's payer is not kept: app/billing/paypal_api.py)
+        "has_payment_account": bool(acc.get("stripe_customer_id") or acc.get("stripe_subscription_id")),
         "analytics_opt_out": bool(acc.get("analytics_opt_out")),
         "usage": {
             "docs": int(usage.get("docs") or 0),

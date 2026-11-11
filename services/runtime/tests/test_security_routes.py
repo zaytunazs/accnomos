@@ -237,6 +237,7 @@ TALKS_HTTP = {
     "ebay_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
     "billing/registry.py": "Supabase (PostgREST and Storage) at SUPABASE_URL: server env only",
     "billing/stripe_api.py": "Stripe Billing at the API constant (api.stripe.com); key from server env only",
+    "billing/paypal_api.py": "PayPal Subscriptions at PAYPAL_BASE (sandbox by default; live only with PAYMENTS_LIVE=1)",
     "billing/fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
 }
 
@@ -522,11 +523,14 @@ NO_USER_NEEDED = {
     "POST /ebay/account-deletion": "eBay's account deletion notice: acknowledged; reads and writes no books",
     # app/billing: the account registry, not the books; each verifies the Graph/Google identity itself
     "PATCH /account": "the caller's own analytics opt-out in the registry (verified identity); no books",
-    "POST /billing/checkout": "starts a Stripe Checkout for the verified caller's own account; no books",
-    "POST /billing/portal": "a Stripe Customer Portal link for the verified caller's own account; no books",
+    "POST /billing/checkout": "a PayPal subscription (or Stripe Checkout) for the caller's own account; no books",
+    "POST /billing/portal": "a PayPal/Stripe billing-management link for the caller's own account; no books",
+    "POST /billing/change-plan": "a PayPal plan revision (or Stripe portal) for the caller's own account; no books",
+    "POST /billing/cancel": "stops the verified caller's own subscription renewing; no books",
     "POST /billing/redeem": "a promo code on the verified caller's own account; no books",
     "POST /billing/topup": "a Stripe Checkout for a document top-up on the caller's own account; no books",
     "POST /billing/stripe/webhook": "Stripe's signed webhook (STRIPE_WEBHOOK_SECRET); no user, no books",
+    "POST /billing/paypal/webhook": "PayPal's webhook, verified with PayPal (PAYPAL_WEBHOOK_ID); no user, no books",
     "PATCH /admin/users/{account_id}": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
     "POST /admin/users/{account_id}/actions": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
     "POST /admin/codes": "admin (ADMIN_EMAILS, verified identity); written to admin_audit",
@@ -660,6 +664,7 @@ PUBLIC_ROUTES = {
     "GET /support/articles": "the public help centre's articles; no user data",
     "GET /support/articles/{article_id}": "one public help article; no user data",
     "POST /billing/stripe/webhook": "Stripe's webhook: authenticated by its Stripe-Signature, not a user token",
+    "POST /billing/paypal/webhook": "PayPal's webhook: checked with PayPal (verify-webhook-signature), no user token",
 }
 
 

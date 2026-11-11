@@ -150,6 +150,12 @@ class Registry(ABC):
     async def get_account(self, account_id: str) -> Row | None: ...
     @abstractmethod
     async def get_account_by_customer(self, customer_id: str) -> Row | None: ...
+
+    @abstractmethod
+    async def get_account_by_subscription(self, subscription_id: str) -> Row | None:
+        """The account whose current subscription is `subscription_id` (`stripe_subscription_id` holds the provider's
+        subscription id: Stripe `sub_…` or PayPal `I-…`; see app/billing/paypal_api.py)."""
+
     @abstractmethod
     async def create_account(self, row: Row) -> Row:
         """Insert; when (auth_kind, auth_subject) already exists (two first calls at once), return that one."""
@@ -392,6 +398,11 @@ class MemoryRegistry(Registry):
 
     async def get_account_by_customer(self, customer_id: str) -> Row | None:
         return self._copy(next((a for a in self.accounts.values() if a.get("stripe_customer_id") == customer_id), None))
+
+    async def get_account_by_subscription(self, subscription_id: str) -> Row | None:
+        return self._copy(
+            next((a for a in self.accounts.values() if a.get("stripe_subscription_id") == subscription_id), None)
+        )
 
     async def create_account(self, row: Row) -> Row:
         existing = await self.find_account(row["auth_kind"], row["auth_subject"])
@@ -738,6 +749,9 @@ class SupabaseRegistry(Registry):
 
     async def get_account_by_customer(self, customer_id: str) -> Row | None:
         return await self._one("accounts", [("stripe_customer_id", f"eq.{customer_id}")])
+
+    async def get_account_by_subscription(self, subscription_id: str) -> Row | None:
+        return await self._one("accounts", [("stripe_subscription_id", f"eq.{subscription_id}")])
 
     async def create_account(self, row: Row) -> Row:
         data, _ = await self._req(

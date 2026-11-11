@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMsAccount } from "@/lib/invoices";
 import { runtime, type RtPayProvider, type RtProviderStatus } from "@/lib/runtime";
 import { RuntimeErrorNote } from "@/components/States";
+import { STRIPE_VISIBLE, payLinkAccounts, payLinkOrder } from "@/lib/payments";
 
 /** Between "Connect" and the provider sending the browser back: a secret only this tab knows (its hash is in the
  *  signed state), so a sign-in started in another browser cannot link an account to these books. */
@@ -38,7 +39,8 @@ export function TestModeBadge() {
   );
 }
 
-/** Settings › Business › Online payments: link the user's own Stripe or PayPal, or a PayPal.me name. */
+/** Settings › Business › Online payments: link the user's own PayPal (the default), or a PayPal.me name. Stripe shows
+ *  only when the runtime lists it (STRIPE_VISIBLE=1 on the server, or a Stripe account already linked). */
 export default function OnlinePayments({ card, heading }: { card: string; heading: string }) {
   const { account, ready } = useMsAccount();
   const [rows, setRows] = useState<RtProviderStatus[] | null>(null);
@@ -52,7 +54,7 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
   const load = useCallback(async () => {
     if (!account) return;
     try {
-      const got = await runtime.payProviders(account);
+      const got = payLinkOrder(await runtime.payProviders(account));
       setRows(got);
       setUsername((u) => u || (got.find((r) => r.provider === "paypalme")?.account ?? ""));
       setError(null);
@@ -89,7 +91,7 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
           provider === "stripe"
             ? await runtime.payConnectStripe(account, { code: p.get("code") ?? "", state, binding: pending.binding })
             : await runtime.payConnectPaypal(account, { merchant_id: p.get("merchant_id") ?? "", state, binding: pending.binding });
-        setRows(next);
+        setRows(payLinkOrder(next));
         setNote(`${label} connected. You can add a payment link to an invoice now.`);
         setError(null);
       } catch (e) {
@@ -122,7 +124,7 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
     setBusy(provider);
     try {
       const out = await runtime.payDisconnect(account, provider);
-      setRows(out.providers);
+      setRows(payLinkOrder(out.providers));
       setNote(out.warning ?? "Disconnected.");
       setConfirming(null);
       if (provider === "paypalme") setUsername("");
@@ -137,7 +139,7 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
     if (!account) return;
     setBusy("paypalme");
     try {
-      setRows(await runtime.paySetPaypalMe(account, username));
+      setRows(payLinkOrder(await runtime.paySetPaypalMe(account, username)));
       setNote("PayPal.me name saved.");
       setError(null);
     } catch (e) {
@@ -196,13 +198,14 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
   }
 
   const me = row("paypalme");
+  const stripeShown = STRIPE_VISIBLE || Boolean(row("stripe"));
   return (
     <section id="settings-payments" aria-labelledby="settings-payments-title" className={`${card} scroll-mt-4`}>
       <h2 id="settings-payments-title" className={heading}>
         Online payments
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Put a &ldquo;Pay online&rdquo; link on your invoices, paid into your own Stripe or PayPal account. Accnomos keeps
+        Put a &ldquo;Pay online&rdquo; link on your invoices, paid into your own {payLinkAccounts(stripeShown)} account. Accnomos keeps
         only the account id in your OneDrive, never a password or key. A payment that comes in is shown for you to
         approve; the provider&apos;s fee goes in as its own expense.
       </p>
@@ -219,7 +222,6 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
       )}
       {account && rows && (
         <div className="mt-2 divide-y divide-border">
-          {providerRow("stripe")}
           {providerRow("paypal")}
           {me && (
             <div className="py-3">
@@ -258,6 +260,7 @@ export default function OnlinePayments({ card, heading }: { card: string; headin
               </div>
             </div>
           )}
+          {providerRow("stripe")}
         </div>
       )}
     </section>

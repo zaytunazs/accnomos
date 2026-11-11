@@ -4,8 +4,12 @@ Decision log
 - Account registry in **Supabase Postgres** (UK/EU region). It holds account metadata only: email, sign-in kind,
   plan, billing status, trial dates, promo redemptions, monthly usage counts, admin notes and an admin audit log.
   Never books, documents, receipts or tokens for other services.
-- Payments by **Stripe** (Checkout, Billing, Customer Portal, webhooks). Stripe is the source of truth for payment
-  state; Supabase mirrors it from webhooks.
+- Payments by **PayPal** (owner decision, 11 Nov 2026: PayPal Subscriptions, sandbox first; `PAYMENTS_PROVIDER=paypal`).
+  Stripe (Checkout, Billing, Customer Portal) stays in code, on hold. The provider is the source of truth for payment
+  state; Supabase mirrors it from verified webhooks. With PayPal: the trial stays ours (the subscription's `start_time`
+  is the trial or comp end), UK VAT 20% is added by PayPal (`taxes.percentage` on each plan, ex-VAT prices), the
+  subscription id is kept in `stripe_subscription_id` (no schema change), percent/fixed codes are applied by hand
+  (contact us), and a cancel keeps the plan until the period paid for ends. Details: `app/billing/paypal_api.py`.
 - **3-month free trial, no card.** Card asked before the trial ends (Stripe trial with
   `payment_method_collection=if_required`; reminder email 7 days before the end; if no card, the account drops to
   read-only "Trial ended", never deleted).
@@ -72,10 +76,16 @@ Customer
 - `GET /account` → `{id, email, plan_code, status, trial_ends_at, comp_until, billing_interval,
   usage: {docs, ask, invoices, bank_feeds, users, marketplaces, topup_docs_remaining}, limits: {...}, own_ai: bool}`.
   First call registers the account (status `trialing`, trial 90 days, plan `comprehensive` during the trial).
-- `POST /billing/checkout` `{plan_code, interval: "month"|"year", promo_code?}` → `{url}` (Stripe Checkout)
-- `POST /billing/portal` → `{url}` (Stripe Customer Portal: card, invoices, cancel)
+- `POST /billing/checkout` `{plan_code, interval: "month"|"year", promo_code?}` → `{url}` (PayPal's approval page, or
+  Stripe Checkout)
+- `POST /billing/portal` → `{url}` (PayPal's automatic payments page, or the Stripe Customer Portal)
+- `POST /billing/change-plan` `{plan_code, interval}` → `{url}` (PayPal: the buyer approves the revision; Stripe: the
+  portal)
+- `POST /billing/cancel` → `{ok, message, account}` (stops renewing; the plan runs to the end of the time paid for)
 - `POST /billing/redeem` `{code}` → `{ok, message, account}` (free-months codes apply without Stripe)
-- `POST /billing/topup` → `{url}` (Checkout for 100 documents)
+- `POST /billing/topup` → `{url}` (100 documents: a PayPal order, or Stripe Checkout)
+- `POST /billing/paypal/webhook` (verified with PayPal's verify-webhook-signature and `PAYPAL_WEBHOOK_ID`; idempotent by
+  event id)
 - `POST /billing/stripe/webhook` (Stripe signature verified; idempotent by event id)
 
 Admin (allow-list `ADMIN_EMAILS`, identity verified server-side; every write goes to `admin_audit`)
