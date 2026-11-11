@@ -1,1 +1,0 @@
-Snap a receipt, and the AI reads it. Code checks the totals and the VAT, then you approve.

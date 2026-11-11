@@ -1,1 +1,0 @@
-Paying a supplier works the other way. When a bill falls due, Accnomos offers a PayPal payout. You approve it, PayPal processes it, and it posts only when PayPal confirms. A retry never pays twice.

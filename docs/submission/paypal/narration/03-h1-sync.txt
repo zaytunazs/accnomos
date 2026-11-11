@@ -1,1 +1,0 @@
-Press Sync PayPal, and Accnomos fetches every payment from PayPal itself: the gross, PayPal's fee and the net. A sale with no invoice in your books waits for you to choose its VAT, and nothing posts until you approve.

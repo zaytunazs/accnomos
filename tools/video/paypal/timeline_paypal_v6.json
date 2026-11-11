@@ -1,0 +1,669 @@
+{
+ "media_root": ".",
+ "width": 1920,
+ "height": 1080,
+ "fps": 30,
+ "xfade": 0.25,
+ "vo_lead": 0.3,
+ "pip_until": 15.0,
+ "segments": [
+  {
+   "id": "i0",
+   "type": "group",
+   "dur": 10.4,
+   "vo": "i0",
+   "pip": "presenter_intro.mp4",
+   "pip_lead": 0.0,
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/m-home.webm",
+     "in": 0.3,
+     "dur": 3.4,
+     "phone": {
+      "src": "android/a-home.mp4",
+      "name": "a-home"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-sync.webm",
+     "in": 11.0,
+     "dur": 3.5
+    },
+    {
+     "type": "video",
+     "src": "raw/m-review.webm",
+     "in": 1.4,
+     "dur": 3.5,
+     "phone": {
+      "src": "android/a-review.mp4",
+      "name": "a-review"
+     }
+    }
+   ]
+  },
+  {
+   "id": "pr",
+   "type": "still",
+   "src": "cards/problem.png",
+   "dur": 6.0,
+   "vo": "pr",
+   "pip_lead": 0.2,
+   "vo_lead": 0.2
+  },
+  {
+   "id": "w1",
+   "type": "group",
+   "dur": 6.6,
+   "vo": "w1",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw6/f-receipt.webm",
+     "in": 0.5,
+     "dur": 1.6,
+     "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
+     "speed": 2.0,
+     "phone": {
+      "src": "android/a-capture.mp4",
+      "name": "a-capture"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw6/f-receipt.webm",
+     "in": 9.9,
+     "dur": 1.4,
+     "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
+     "tag": "Reading sped up",
+     "phone": {
+      "src": "android/a-capture.mp4",
+      "name": "a-capture",
+      "in": 3
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw6/f-receipt.webm",
+     "in": 43.0,
+     "dur": 2.0,
+     "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
+     "phone": {
+      "src": "android/a-review.mp4",
+      "name": "a-review"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw6/f-receipt.webm",
+     "in": 52.6,
+     "dur": 1.6,
+     "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
+     "phone": {
+      "src": "android/a-review.mp4",
+      "name": "a-review",
+      "in": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "w2",
+   "type": "group",
+   "dur": 7.6,
+   "vo": "w2",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/f-bank.webm",
+     "in": 0.2,
+     "dur": 1.6,
+     "caption": "Bank feed by Open Banking (TrueLayer's test bank) · matches suggested · you confirm",
+     "tag": "TrueLayer sandbox · test data",
+     "blur": [
+      {
+       "x": 420,
+       "y": 440,
+       "w": 1430,
+       "h": 270
+      },
+      {
+       "x": 420,
+       "y": 845,
+       "w": 1430,
+       "h": 60
+      }
+     ],
+     "phone": {
+      "src": "android/a-bank.mp4",
+      "name": "a-bank"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-bank.webm",
+     "in": 25.685000038146974,
+     "dur": 2.0,
+     "caption": "Bank feed by Open Banking (TrueLayer's test bank) · matches suggested · you confirm",
+     "tag": "TrueLayer sandbox · test data",
+     "phone": {
+      "src": "android/a-bank.mp4",
+      "name": "a-bank",
+      "in": 3
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-bankmatch.webm",
+     "in": 3.0,
+     "dur": 4.0,
+     "caption": "Bank feed by Open Banking (TrueLayer's test bank) · matches suggested · you confirm",
+     "tag": "Exact match confirmed",
+     "phone": {
+      "src": "android/a-bank.mp4",
+      "name": "a-bank",
+      "in": 6
+     }
+    }
+   ]
+  },
+  {
+   "id": "w3",
+   "type": "group",
+   "dur": 6.6,
+   "vo": "w3",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/f-invoice.webm",
+     "in": 2.0,
+     "dur": 2.0,
+     "caption": "Invoice from plain words · PayPal Invoicing API: pay link",
+     "speed": 2.2,
+     "tag": "Typing sped up"
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-invoice.webm",
+     "in": 62.4,
+     "dur": 1.4,
+     "caption": "Invoice from plain words · PayPal Invoicing API: pay link"
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-invoice.webm",
+     "in": 66.2,
+     "dur": 1.4,
+     "caption": "Invoice from plain words · PayPal Invoicing API: pay link",
+     "tag": "Demo: email not really sent"
+    },
+    {
+     "type": "video",
+     "src": "raw5/pp-invoice.webm",
+     "in": 6.3,
+     "dur": 1.8,
+     "caption": "Invoice from plain words · PayPal Invoicing API: pay link",
+     "tag": "PayPal sandbox"
+    }
+   ]
+  },
+  {
+   "id": "w4",
+   "type": "group",
+   "dur": 12.0,
+   "vo": "w4",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-sync.webm",
+     "in": 0.0,
+     "dur": 2.8,
+     "caption": "PayPal Transaction Search API · gross / fee / net · a sale with no invoice waits for your VAT choice",
+     "tag": "PayPal sandbox",
+     "phone": {
+      "src": "android/a-sync.mp4",
+      "name": "a-sync"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-sync.webm",
+     "in": 10.4,
+     "dur": 9.2,
+     "caption": "PayPal Transaction Search API · gross / fee / net · a sale with no invoice waits for your VAT choice",
+     "speed": 1.5,
+     "tag": "PayPal sandbox",
+     "phone": {
+      "src": "android/a-sync.mp4",
+      "name": "a-sync",
+      "in": 3
+     }
+    }
+   ]
+  },
+  {
+   "id": "w5",
+   "type": "video",
+   "src": "raw/pp-tieout.webm",
+   "in": 0.8,
+   "dur": 4.8,
+   "vo": "w5",
+   "crop": [
+    380,
+    300,
+    1520,
+    855
+   ],
+   "caption": "PayPal Balances API · PayPal's figure as of its last refresh",
+   "tag": "PayPal sandbox"
+  },
+  {
+   "id": "w6",
+   "type": "group",
+   "dur": 8.2,
+   "vo": "w6",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 2.0,
+     "dur": 3.4,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters",
+     "speed": 1.5,
+     "tag": "Demo sample history"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 12.8,
+     "dur": 1.2,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters",
+     "tag": "Demo sample history"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 21.2,
+     "dur": 1.8,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters",
+     "speed": 2.8,
+     "tag": "Typing sped up"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-grid.webm",
+     "in": 34.1,
+     "dur": 1.8,
+     "caption": "AG Grid Community · Power grid: bulk approve, totals, plain-English filters",
+     "tag": "Demo sample history"
+    }
+   ]
+  },
+  {
+   "id": "w7",
+   "type": "group",
+   "dur": 11.0,
+   "vo": "w7",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/pp-billpay.webm",
+     "in": 0.5,
+     "dur": 3.6,
+     "caption": "PayPal Payouts API · you approve each payout · posts only when PayPal confirms",
+     "speed": 2.0,
+     "tag": "PayPal sandbox",
+     "phone": {
+      "src": "android/a-billpay.mp4",
+      "name": "a-billpay"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/pp-billpay.webm",
+     "in": 8.0,
+     "dur": 2.4,
+     "caption": "PayPal Payouts API · you approve each payout · posts only when PayPal confirms",
+     "tag": "PayPal sandbox",
+     "phone": {
+      "src": "android/a-billpay.mp4",
+      "name": "a-billpay",
+      "in": 5
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/pp-billpay.webm",
+     "in": 102.5,
+     "dur": 2.6,
+     "caption": "PayPal Payouts API · you approve each payout · posts only when PayPal confirms",
+     "tag": "About 90 s later · the sandbox payee has not claimed it",
+     "phone": {
+      "src": "android/a-billpay.mp4",
+      "name": "a-billpay",
+      "in": 10
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/m-home.webm",
+     "in": 3.6,
+     "dur": 2.4,
+     "caption": "PayPal Payouts API · you approve each payout · posts only when PayPal confirms",
+     "tag": "Home: upcoming PayPal payments",
+     "phone": {
+      "src": "android/a-home.mp4",
+      "name": "a-home",
+      "in": 4
+     }
+    }
+   ]
+  },
+  {
+   "id": "w8",
+   "type": "group",
+   "dur": 6.6,
+   "vo": "w8",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-disputes.webm",
+     "in": 1.0,
+     "dur": 2.0,
+     "caption": "PayPal Disputes API · SAMPLE dispute in the demo: nothing sent to PayPal"
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-disputes.webm",
+     "in": 24.6,
+     "dur": 4.6,
+     "caption": "PayPal Disputes API · SAMPLE dispute in the demo: nothing sent to PayPal",
+     "speed": 1.8
+    }
+   ]
+  },
+  {
+   "id": "w9",
+   "type": "group",
+   "dur": 13.6,
+   "vo": "w9",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 0.0,
+     "dur": 3.2,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "speed": 3.5,
+     "tag": "Typing sped up",
+     "phone": {
+      "src": "android/a-ask-arrears.mp4",
+      "name": "a-ask-arrears",
+      "speed": 1.5
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 16.4,
+     "dur": 3.6,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "tag": "Demo sample history",
+     "crop": [
+      380,
+      225,
+      1520,
+      855
+     ]
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 20.5,
+     "dur": 3.4,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "speed": 4.0,
+     "tag": "Typing sped up",
+     "phone": {
+      "src": "android/a-ask-search.mp4",
+      "name": "a-ask-search",
+      "speed": 2.5
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw/pp-ask.webm",
+     "in": 40.4,
+     "dur": 3.4,
+     "caption": "AI search: the AI reads the question · code searches your books and PayPal · exact figures",
+     "tag": "Demo sample history",
+     "crop": [
+      380,
+      225,
+      1520,
+      855
+     ]
+    }
+   ]
+  },
+  {
+   "id": "w10",
+   "type": "group",
+   "dur": 5.6,
+   "vo": "w10",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw7/f-talkq.webm",
+     "in": 2.6,
+     "dur": 1.9,
+     "caption": "Talk to Accnomos: type or speak · every figure checked by code",
+     "speed": 4.4,
+     "tag": "Typed here · spoken on the phone",
+     "phone": {
+      "src": "android/a-talk.mp4",
+      "name": "a-talk",
+      "in": 2.5
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw7/f-talkq.webm",
+     "in": 16.958000040054323,
+     "dur": 3.7,
+     "caption": "Talk to Accnomos: type or speak · every figure checked by code",
+     "phone": {
+      "src": "android/a-talk.mp4",
+      "name": "a-talk",
+      "in": 5
+     }
+    }
+   ]
+  },
+  {
+   "id": "w11",
+   "type": "group",
+   "dur": 9.0,
+   "vo": "w11",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/f-vat.webm",
+     "in": 0.5,
+     "dur": 2.2,
+     "caption": "VAT: nine boxes by code · filed to HMRC's sandbox · HMRC's receipt",
+     "speed": 1.5,
+     "phone": {
+      "src": "android/a-vat.mp4",
+      "name": "a-vat"
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-vat.webm",
+     "in": 38.355000019073486,
+     "dur": 1.6,
+     "caption": "VAT: nine boxes by code · filed to HMRC's sandbox · HMRC's receipt",
+     "tag": "HMRC sandbox test user",
+     "phone": {
+      "src": "android/a-vat.mp4",
+      "name": "a-vat",
+      "in": 3
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-vat.webm",
+     "in": 50.57999987602234,
+     "dur": 1.3,
+     "caption": "VAT: nine boxes by code · filed to HMRC's sandbox · HMRC's receipt",
+     "phone": {
+      "src": "android/a-vat.mp4",
+      "name": "a-vat",
+      "in": 5
+     }
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-vat.webm",
+     "in": 53.07499985694885,
+     "dur": 3.9,
+     "caption": "VAT: nine boxes by code · filed to HMRC's sandbox · HMRC's receipt",
+     "tag": "HMRC sandbox receipt",
+     "phone": {
+      "src": "android/a-vat.mp4",
+      "name": "a-vat",
+      "in": 7
+     }
+    }
+   ]
+  },
+  {
+   "id": "w12",
+   "type": "group",
+   "dur": 5.0,
+   "vo": "w12",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/f-reports.webm",
+     "in": 2.8,
+     "dur": 3.4,
+     "caption": "Reports: profit and loss, who owes you · export to your drive"
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-reports.webm",
+     "in": 10.5,
+     "dur": 1.6,
+     "caption": "Reports: profit and loss, who owes you · export to your drive",
+     "blur": [
+      {
+       "x": 390,
+       "y": 370,
+       "w": 1440,
+       "h": 60
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "w13",
+   "type": "group",
+   "dur": 4.2,
+   "vo": "w13",
+   "children": [
+    {
+     "type": "video",
+     "src": "raw5/f-files.webm",
+     "in": 0.5,
+     "dur": 1.8,
+     "caption": "Your books: plain files in your own OneDrive or Google Drive"
+    },
+    {
+     "type": "video",
+     "src": "raw5/f-files.webm",
+     "in": 5.5,
+     "dur": 2.4,
+     "caption": "Your books: plain files in your own OneDrive or Google Drive"
+    }
+   ]
+  },
+  {
+   "id": "d1",
+   "type": "stills",
+   "srcs": [
+    "cards/different-0.png",
+    "cards/different-1.png",
+    "cards/different-2.png",
+    "cards/different-3.png",
+    "cards/different-4.png",
+    "cards/different-5.png",
+    "cards/different-6.png",
+    "cards/different-7.png"
+   ],
+   "weights": [
+    1.3,
+    4.7,
+    4.3,
+    1.9,
+    0.7,
+    0.7,
+    0.7,
+    3.2
+   ],
+   "dur": 17.5,
+   "vo": "d1"
+  },
+  {
+   "id": "d2",
+   "type": "stills",
+   "srcs": [
+    "cards/features-1.png",
+    "cards/features-2.png",
+    "cards/features-3.png",
+    "cards/features-4.png",
+    "cards/features-5.png"
+   ],
+   "weights": [
+    1.8,
+    1.2,
+    1.2,
+    1.2,
+    2.4
+   ],
+   "dur": 7.8,
+   "vo": "d2"
+  },
+  {
+   "id": "d3",
+   "type": "stills",
+   "srcs": [
+    "cards/built-1.png",
+    "cards/built-2.png",
+    "cards/built-3.png",
+    "cards/built-4.png",
+    "cards/built-5.png"
+   ],
+   "weights": [
+    3.4,
+    1.2,
+    1.0,
+    1.0,
+    2.2
+   ],
+   "dur": 8.8,
+   "vo": "d3"
+  },
+  {
+   "id": "o0",
+   "type": "slate",
+   "dur": 7.6,
+   "vo": "o0",
+   "color": "0x2c1c10",
+   "text": "accnomos.com\nTry the demo, no sign-in\ngithub.com/zaytunazs/accnomos\nPayPal sandbox · no real money moved"
+  }
+ ]
+}

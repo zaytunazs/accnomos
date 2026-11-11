@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- Scene "d1" (v6): what makes Accnomos different, seven points on one slide. Add #n to the URL to show only the
+     first n points (the edit reveals them one by one). Every point is a README / docs/HONESTY.md fact; no claim about
+     other products. App colours, no logos. Render: cards/README.md. -->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
+  body { background: #2c1c10; font-family: Inter, "Segoe UI", Arial, sans-serif; color: #fff; }
+  .kicker { position: absolute; left: 80px; top: 54px; font-size: 24px; letter-spacing: 3px; color: #ebc77a; font-weight: 700; }
+  h1 { margin: 0; position: absolute; left: 80px; top: 88px; font-size: 64px; font-weight: 800; letter-spacing: -0.5px; }
+  .grid { position: absolute; left: 80px; right: 80px; top: 208px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px 28px; }
+  .it { background: #3a2a1e; border: 2px solid #5a4636; border-radius: 14px; padding: 20px 26px 20px 96px; position: relative; min-height: 112px; box-sizing: border-box; }
+  .it.wide { grid-column: 1 / span 2; background: #5a2d00; border-color: #b45309; }
+  .n { position: absolute; left: 24px; top: 24px; width: 52px; height: 52px; border-radius: 50%; background: #ebc77a; color: #2c1c10; font-size: 30px; font-weight: 800; text-align: center; line-height: 52px; }
+  .t { font-size: 33px; font-weight: 800; line-height: 1.15; }
+  .d { font-size: 24px; line-height: 1.3; color: #e9dccb; margin-top: 8px; }
+  .hide { visibility: hidden; }
+  footer { position: absolute; left: 80px; right: 80px; bottom: 34px; font-size: 22px; color: #cbb9a4; }
+</style>
+</head>
+<body>
+  <div class="kicker">SEVEN THINGS WE'RE PROUD OF</div>
+  <h1>What makes Accnomos different</h1>
+  <div class="grid">
+    <div class="it wide"><div class="n">1</div><div class="t">Your books stay yours</div><div class="d">Plain files in your own OneDrive or Google Drive. There is no Accnomos database.</div></div>
+    <div class="it"><div class="n">2</div><div class="t">AI proposes · code calculates · you approve</div><div class="d">Sums in pence by code, your yes on every posting, a full audit trail.</div></div>
+    <div class="it"><div class="n">3</div><div class="t">AI search across your books and PayPal</div><div class="d">Ask in your own words. The exact figure comes back, found by code.</div></div>
+    <div class="it"><div class="n">4</div><div class="t">Supplier bills paid by PayPal payout</div><div class="d">You approve each one. A retry never pays twice.</div></div>
+    <div class="it"><div class="n">5</div><div class="t">Dispute evidence from your books</div><div class="d">Built for you. Nothing goes to PayPal until you send it.</div></div>
+    <div class="it"><div class="n">6</div><div class="t">Hands-free voice</div><div class="d">Ask out loud, hear the answer, say yes to approve.</div></div>
+    <div class="it"><div class="n">7</div><div class="t">The AI can run on your own machine</div><div class="d">Local mode: a local model only, on the machine that runs Accnomos.</div></div>
+  </div>
+  <footer>Each point is documented in the public repo · fictional demo data · PayPal sandbox</footer>
+<script>
+  const n = parseInt(location.hash.slice(1) || "99", 10);
+  document.querySelectorAll(".it").forEach((e, i) => { if (i >= n) e.classList.add("hide"); });
+</script>
+</body>
+</html>

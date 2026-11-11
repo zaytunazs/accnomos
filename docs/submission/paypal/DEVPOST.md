@@ -139,7 +139,7 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
 ## Sponsor tools (Devpost form)
 
 - [x] **AG Grid**: tick it on the submission form. It is used in the Power grid add-on (Settings › Business › Power grid)
-  and shown in the video at 0:44 with the caption "AG Grid Community".
+  and shown in the video at 0:54 with the caption "AG Grid Community".
 
 ## Built with
 

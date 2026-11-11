@@ -6,7 +6,7 @@
  *
  *   PW_FROM=apps/web node tools/video/paypal/capture_paypal.ts OUTDIR [shot,shot,...]
  * Hero shots: pp-sync, pp-grid (Power grid; GRID_APPROVE=1 really approves the ticked rows), pp-ask, pp-billpay,
- * pp-disputes (pp-invoice, pp-vat as inserts). Montage: m-review, m-bank, m-quotes, m-vat, m-reports, m-jobs, m-payroll,
+ * pp-disputes (pp-invoice, pp-vat as inserts). f-talkq (v6): Talk answers a typed question. Montage: m-review, m-bank, m-quotes, m-vat, m-reports, m-jobs, m-payroll,
  * m-upcoming, m-support (files, voice, day plan and Android are filmed by hand). Blur model bylines in the edit (docs/submission/paypal/SHOT_LIST.md).
  * Env: PW_FROM (a folder whose node_modules has playwright or @playwright/test), SITE (default https://accnomos.com),
  * PAYPAL_CONNECT=1 (connect PayPal in test mode in the demo copy first: needs PAYPAL_DIRECT=1 on the server),
@@ -640,6 +640,22 @@ const SHOTS: Record<string, Shot> = {
       await vis(dlg.getByText(/Added|added to your calendar|Done/i)).waitFor({ timeout: 60_000 }).catch(() => undefined);
       c.mark("ready2");
       await h.hold(2200);
+    },
+  },
+  // v6: Talk to Accnomos answers a typed question (the same box takes speech: caption "type or speak")
+  "f-talkq": {
+    setup: async ({ page }) => { await go(page, "/"); await homeReady(page); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(1000, 400);
+      await h.click(vis(page.getByRole("button", { name: "Talk to Accnomos" })), 900);
+      const dlg = page.getByRole("dialog");
+      await h.type(vis(dlg.getByLabel("Your question")), process.env.TALK_Q ?? "Who owes me the most?", 300);
+      await h.click(vis(dlg.getByRole("button", { name: "Send" })), 200);
+      c.mark("wait");
+      await dlg.getByText(ANSWERED).first().waitFor({ timeout: 180_000 });
+      c.mark("ready");
+      await h.hold(4000);
     },
   },
   ...montage(),

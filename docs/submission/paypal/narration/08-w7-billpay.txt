@@ -1,0 +1,1 @@
+Bills go the other way. When one falls due, you approve it, and PayPal sends the payout. It posts only when PayPal confirms, and a retry never pays twice.

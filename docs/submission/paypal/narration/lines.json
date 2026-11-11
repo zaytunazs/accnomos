@@ -8,69 +8,70 @@
   "text": "Small businesses paid through PayPal still match the fees and the VAT by hand."
  },
  {
-  "id": "hw",
-  "text": "PayPal's data comes in, the AI proposes, code calculates to the penny, and you approve."
+  "id": "w1",
+  "text": "Monday. A receipt. Snap it, the AI reads it, code checks the VAT, and you approve."
  },
  {
-  "id": "h1",
-  "text": "Press Sync PayPal, and Accnomos fetches every payment from PayPal itself: the gross, PayPal's fee and the net. A sale with no invoice in your books waits for you to choose its VAT, and nothing posts until you approve."
+  "id": "w2",
+  "text": "The bank feed lands, and the matches are suggested. Bank, PayPal and everything else, reconciled in one place."
  },
  {
-  "id": "ag",
-  "text": "Turn on the Power grid to tick several PayPal rows and approve them together. Or just type: PayPal fees over five pounds."
+  "id": "w3",
+  "text": "Time to get paid. Ask for an invoice in plain words, and add a PayPal pay link."
  },
  {
-  "id": "h2",
-  "text": "Or just ask, in your own words. Did that client pay the arrears? Accnomos checks your books and PayPal itself. A stationery order last month, around £100? Exactly £97.79.",
-  "say": "Or just ask, in your own words. Did that client pay the arrears? Accnomos checks your books and PayPal itself. A stationery order last month, around a hundred pounds? Exactly ninety-seven pounds seventy-nine."
+  "id": "w4",
+  "text": "The customer pays. Press Sync PayPal, and in come the gross, PayPal's fee and the net. A sale with no invoice waits for your VAT choice, and nothing posts until you approve."
  },
  {
-  "id": "h3",
-  "text": "The tie-out checks your books against PayPal's own balance, as of PayPal's last refresh."
+  "id": "w5",
+  "text": "Then the tie-out checks your books against PayPal's own balance."
  },
  {
-  "id": "h4",
-  "text": "Paying a supplier works the other way. When a bill falls due, Accnomos offers a PayPal payout. You approve it, PayPal processes it, and it posts only when PayPal confirms. A retry never pays twice."
+  "id": "w6",
+  "text": "Busy week? The Power grid approves rows in bulk. Or filter in plain English: PayPal fees over £5.",
+  "say": "Busy week? The Power grid approves rows in bulk. Or filter in plain English: PayPal fees over five pounds."
  },
  {
-  "id": "h5",
-  "text": "If a customer disputes a payment, Accnomos builds the evidence from your books, and nothing goes to PayPal until you send it."
+  "id": "w7",
+  "text": "Bills go the other way. When one falls due, you approve it, and PayPal sends the payout. It posts only when PayPal confirms, and a retry never pays twice."
  },
  {
-  "id": "ai",
-  "text": "Everywhere in Accnomos, the AI proposes, code checks the figures, and you approve."
+  "id": "w8",
+  "text": "A customer disputes a payment? The evidence is built from your books, and you choose when to send it."
  },
  {
-  "id": "ea",
-  "text": "Snap a receipt, and the AI reads it. Code checks the totals and the VAT, then you approve."
+  "id": "w9",
+  "text": "Can't remember something? Just ask. Did that client pay their arrears? Yes: £492, through PayPal. That stationery order, around £100? Exactly £97.79.",
+  "say": "Can't remember something? Just ask. Did that client pay their arrears? Yes: four hundred and ninety-two pounds, through PayPal. That stationery order, around a hundred pounds? Exactly ninety-seven pounds, seventy-nine."
  },
  {
-  "id": "eb",
-  "text": "Bank statements, PayPal, and all your other income and expenses are reconciled against your books, in one place."
+  "id": "w10",
+  "text": "Hands full? Type it, or just say it."
  },
  {
-  "id": "ec",
-  "text": "Ask for an invoice in plain words, and add a PayPal pay link."
+  "id": "w11",
+  "text": "Quarter end. The nine VAT boxes are worked out by code and filed to HMRC's sandbox, with HMRC's own receipt."
  },
  {
-  "id": "ed",
-  "text": "The nine VAT boxes are worked out by code and filed to HMRC's sandbox, with HMRC's own receipt."
+  "id": "w12",
+  "text": "Plus HMRC-ready reports, from VAT to profit and loss."
  },
  {
-  "id": "ee",
-  "text": "With HMRC-ready reports, from VAT to profit and loss."
+  "id": "w13",
+  "text": "And all of it is saved as plain files in your own drive."
  },
  {
-  "id": "ef",
-  "text": "Or talk to it, and approve what it proposes."
+  "id": "d1",
+  "text": "So what makes Accnomos different? Your books live in your own OneDrive or Google Drive, not in our database. The AI proposes, code does the sums in pence, and you approve every posting. One search covers your books and PayPal. And the AI can run on your own machine."
  },
  {
-  "id": "eg",
-  "text": "Jobs, with their costs and margins."
+  "id": "d2",
+  "text": "And it's all one app: PayPal, books and tax, an assistant, and the rest of the business, on the web and on Android."
  },
  {
-  "id": "eh",
-  "text": "And the books stay in your own OneDrive or Google Drive."
+  "id": "d3",
+  "text": "Built on five PayPal APIs, four of them run against PayPal's real sandbox, and about four thousand automated tests."
  },
  {
   "id": "o0",

@@ -1,1 +1,0 @@
-If a customer disputes a payment, Accnomos builds the evidence from your books, and nothing goes to PayPal until you send it.

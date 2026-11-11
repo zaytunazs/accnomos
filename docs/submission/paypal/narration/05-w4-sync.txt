@@ -1,0 +1,1 @@
+The customer pays. Press Sync PayPal, and in come the gross, PayPal's fee and the net. A sale with no invoice waits for your VAT choice, and nothing posts until you approve.

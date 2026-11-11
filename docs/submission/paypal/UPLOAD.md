@@ -12,7 +12,7 @@ Once the deadline passes, the video, the README and the commits must not change.
 | Audience | No, it's not made for kids |
 | Altered or synthetic content (Details › *Altered content* / AI use) | **Yes**: a realistic AI presenter and a synthetic voice-over |
 | Category | Science & Technology |
-| Language / captions | English (United Kingdom); upload the caption file made from `narration/lines.json` (`text` fields, in scene order) |
+| Language / captions | English (United Kingdom); upload the `.srt` the assembler writes next to the cut (`accnomos_paypal_draft6.srt`: the `text` fields of `narration/lines.json`, timed to the voice) |
 | Comments | On |
 | Thumbnail | See below |
 | Licence | Standard YouTube Licence |
@@ -20,30 +20,30 @@ Once the deadline passes, the video, the README and the commits must not change.
 ## Description
 
 ```text
-Accnomos keeps a UK small business's books in its own OneDrive or Google Drive and files VAT to HMRC. PayPal is where it gets paid and pays its bills: Sync PayPal turns each payment into gross, PayPal fee and net, matched to its invoice; a tie-out checks the books against PayPal's own balance; supplier bills are paid by PayPal Payouts after the owner approves; dispute evidence is built from the books. The AI proposes, code calculates in pence, and the owner approves every posting.
+Accnomos keeps a UK small business's books in its own OneDrive or Google Drive and files VAT to HMRC. PayPal is where it gets paid and pays its bills: invoices carry a PayPal pay link; Sync PayPal turns each payment into gross, PayPal fee and net, matched to its invoice; a tie-out checks the books against PayPal's own balance; supplier bills are paid by PayPal Payouts after the owner approves; dispute evidence is built from the books. The AI proposes, code calculates in pence, and the owner approves every posting.
 
 Try the demo (no sign-in): https://accnomos.com
 Code: https://github.com/zaytunazs/accnomos
 
 Recorded against PayPal's sandbox and HMRC's sandbox with fictional data. No real money moved.
-AI disclosure: the presenter (shown small, labelled "AI-generated presenter") and the voice-over in this video are AI-generated. Accnomos itself uses AI to propose entries and explain figures; every amount is calculated by code and approved by the owner.
+AI disclosure: the presenter (shown small at the start, labelled "AI-generated presenter") and the voice-over in this video are AI-generated. Accnomos itself uses AI to propose entries and explain figures; every amount is calculated by code and approved by the owner.
 Music: <<TRACK TITLE>> from the YouTube Audio Library (no attribution required).
 
 Chapters
-0:00 Intro
-0:10 The problem and how it works
-0:20 Sync PayPal: fees and the VAT choice
-0:38 Power grid (AG Grid), AI search and the balance tie-out
-1:10 Pay a supplier by PayPal Payout
-1:30 Dispute evidence, and AI in action
-1:43 Everything else: receipts, bank feed, invoices, VAT
-2:14 Reports, voice, jobs and your own drive
+0:00 Who it is for, and the problem
+0:16 A receipt and the bank feed
+0:30 Invoice with a PayPal pay link, Sync PayPal, the balance tie-out
+0:54 Power grid (AG Grid) and paying a supplier by PayPal payout
+1:13 Dispute evidence, AI search and Talk
+1:39 VAT to HMRC's sandbox, reports, your own drive
+1:57 What makes Accnomos different
+2:14 Everything in one app, built and verified, try it
 
 #PayPal #MakingTaxDigital #SmallBusiness
 ```
 
 Chapter rules YouTube applies: the first starts at 0:00, there are at least three, each is at least 10 s, and they are
-in order. The list above meets them (v5: the shortest is 1:30–1:43, 13 s). If the final cut's times move, update the
+in order. The list above meets them (v6 cut of 2:38.9: the shortest is 0:16–0:30, 14 s). If the final cut's times move, update the
 chapters to match the edit; don't reuse the planned times.
 
 ## Thumbnail
@@ -60,7 +60,7 @@ chapters to match the edit; don't reuse the planned times.
 ## Before you send the link
 
 - [ ] Plays in a private window while signed out (that is, Public).
-- [ ] Shorter than 3:00 (v5 cut: 2:46).
+- [ ] Shorter than 3:00 (v6 cut: 2:39).
 - [ ] *Altered content* set to Yes; the description has the AI disclosure line.
 - [ ] YouTube Studio › Content: no copyright claims.
 - [ ] Chapters show in the progress bar.

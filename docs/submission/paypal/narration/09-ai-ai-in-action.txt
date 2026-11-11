@@ -1,1 +1,0 @@
-Everywhere in Accnomos, the AI proposes, code checks the figures, and you approve.

@@ -1,1 +1,0 @@
-The nine VAT boxes are worked out by code and filed to HMRC's sandbox, with HMRC's own receipt.

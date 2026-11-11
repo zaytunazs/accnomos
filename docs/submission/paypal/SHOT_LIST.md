@@ -1,4 +1,40 @@
-# PayPal video: shot list and pre-recording checklist (v5, 12 Nov 2026)
+# PayPal video: shot list and pre-recording checklist (v6, 12 Nov 2026)
+
+## v6 cut (draft 6)
+
+Scene ids and times are in [`VIDEO_SCRIPT.md`](VIDEO_SCRIPT.md) (v6); the timeline is
+`tools/video/paypal/timeline_paypal_v6.json` (from `make_timeline_v6.py`). v6 reuses the v5 footage below and adds:
+
+```bash
+node tools/video/paypal/capture_paypal.ts <media>/raw7 f-talkq    # w10: Talk answers "Who owes me the most?" (TALK_Q changes it)
+```
+
+| v6 scene | Footage (v5 id in brackets) | Notes |
+|---|---|---|
+| i0 | `m-home`, `pp-sync`, `m-review` + phone `a-home`, `a-review` | presenter picture-in-picture (`presenter_intro.mp4`) |
+| pr | `cards/problem.png` | presenter picture-in-picture (`pr.mp4`); none after this (`"pip_until": 15.0`) |
+| w1 (ea) | `raw6/f-receipt` + `a-capture`, `a-review` | |
+| w2 (eb) | `f-bank`, `f-bankmatch` + `a-bank` | blur the bank names in the drop zone and the CSV line |
+| w3 (ec) | `f-invoice`, `pp-invoice` | |
+| w4 (h1), w5 (h3) | `pp-sync` + `a-sync`; `pp-tieout` | real sandbox |
+| w6 (ag) | `pp-grid` | caption "AG Grid Community", 8.2 s |
+| w7 (h4) | `raw5/pp-billpay`, `m-home` + `a-billpay`, `a-home` | ends *Waiting for the supplier to claim it* |
+| w8 (h5) | `pp-disputes` | SAMPLE dispute |
+| w9 (h2) | `pp-ask` + `a-ask-arrears`, `a-ask-search` | the phone shows only the typing: its answers show a link as raw text (`[Sync PayPal](/invoices…)`, fixed in Android 0.3.22), so the answers are the web, enlarged |
+| w10 | `raw7/f-talkq` + `a-talk` | a typed question answered; caption "type or speak" |
+| w11 (ed), w12 (ee), w13 (eh) | `f-vat` + `a-vat`; `f-reports` (blur the line naming other accounting products); `f-files` | |
+| d1, d2, d3 | `cards/different-0…7.png`, `features-1…5.png`, `built-1…5.png` | built up point by point (`cards/README.md`) |
+| o0 | end card | voice only |
+
+Not used in v6: `m-jobs` (a plain look at the page: nothing happens in it), `f-talk` (the calendar card), the
+"how it works" card and the "AI in action" slide.
+
+In split scenes the small tag sits inside the web capture's top-right corner, so it no longer overlaps the phone.
+
+Frame check for v6 (12 Nov): every scene looked at for model names, real email addresses and real bank, retailer or
+accounting-product names. Seen and accepted: "the local open-weights model" (a description, not a name),
+`demo@accnomos.example` and `example.com` payees (reserved example domains), PayPal's sandbox test payer name, and
+fictional businesses only. Blurred: the bank-name list on Bank, the product-name line on Reports.
 
 ## v5 capture (what draft 3 was cut from)
 
@@ -42,7 +78,7 @@ Companion to [`VIDEO_SCRIPT.md`](VIDEO_SCRIPT.md). Footage comes from three plac
 - **"Try the demo"** (h4, h5, most of the montage; `ag` can also be filmed here on the sample history): a fresh copy of the fictional demo books with no sign-in. The demo has
   one SAMPLE dispute built by code; with the server in direct mode it can connect PayPal and send sandbox payouts.
 - **AI presenter** (i0, o0): a realistic AI presenter, labelled "AI presenter" on screen. It must never claim to be
-  the founder; the words are fixed in `narration/00-i0-presenter-intro.txt` and `narration/12-o0-presenter-outro.txt`.
+  the founder; the words are fixed in `narration/00-i0-presenter-intro.txt` and `narration/18-o0-outro.txt` (v6: i0 and pr are the presenter; o0 is voice only).
 - **Cards and slides** (pr, hw, ai, fl): `cards/problem.svg`, `cards/how-it-works.svg`, `cards/ai-in-action.png`,
   `cards/features.png` (sources and rendering: `cards/README.md`).
 
@@ -206,6 +242,6 @@ invoices) is recorded by hand, following the click paths above.
 
 ```bash
 bash docs/submission/paypal/narration/render.sh                                  # all lines, on the GPU server
-bash docs/submission/paypal/narration/render.sh ai,m1,fl                          # only the lines new or changed in v4
-bash docs/submission/paypal/narration/render.sh pr,hw,h1,ag,h2,h3,h4,h5,ai,m1,fl # if the presenter tool voices i0/o0
+bash docs/submission/paypal/narration/render.sh w1,w2,w3,w4,w5,w6,w7,w8,w9,w10,w11,w12,w13,d1,d2,d3 # the lines new in v6
+# i0 and pr are spoken by the presenter clips (their own sound); o0 is voice only in v6
 ```

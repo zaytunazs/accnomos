@@ -1,1 +1,0 @@
-The tie-out checks your books against PayPal's own balance, as of PayPal's last refresh.

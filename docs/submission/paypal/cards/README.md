@@ -3,9 +3,11 @@
 | File | Scene | Length |
 |---|---|---|
 | `problem.svg` | pr: the problem and who it is for, straight after the presenter | 6 s |
-| `how-it-works.svg` | hw: PayPal APIs → AI proposes → code calculates in pence → you approve → books in your own drive → VAT to HMRC | 7 s |
-| `ai-in-action.html` → `ai-in-action.png` | ai: six real screenshots (crops in `ai/`) with what the AI did and what code or the owner did | 6 s |
-| `features.html` → `features.png` | fl: every feature, grouped (only features with a screen or a README section) | 5 s |
+| `how-it-works.svg` | (not in v6) hw: PayPal APIs → AI proposes → code calculates in pence → you approve → books in your own drive → VAT to HMRC | 7 s |
+| `ai-in-action.html` → `ai-in-action.png` | (not in v6) ai: six real screenshots (crops in `ai/`) with what the AI did and what code or the owner did | 6 s |
+| `different.html` → `different.png` | d1 (v6): what makes Accnomos different, seven points (each a README / HONESTY fact; nothing about other products) | 17.5 s |
+| `features.html` → `features.png` | d2 (v6; was fl): everything in one app, grouped (only features with a screen or a README section) | 7.8 s |
+| `built.html` → `built.png` | d3 (v6): the five PayPal APIs (four run on PayPal's sandbox, Disputes marked "Sample in the demo"), the test run, HMRC's sandbox, web + Android, the repo | 8.8 s |
 
 All are 1920 × 1080, use the app's own colours, and carry no logos (PayPal is named as text only). Render to PNG
 with any SVG renderer, for example:
@@ -23,10 +25,19 @@ The two HTML slides are rendered with headless Chromium (the PNGs in this folder
 ```bash
 cd docs/submission/paypal/cards
 CHROME=/opt/pw-browsers/chromium-1243/chrome-linux64/chrome   # or any Chromium / Chrome
-for n in ai-in-action features; do
+for n in ai-in-action features different built; do
   "$CHROME" --headless --no-sandbox --hide-scrollbars --force-device-scale-factor=1 --window-size=1920,1080 \
     --screenshot="$PWD/$n.png" "file://$PWD/$n.html"
 done
+```
+
+The three v6 slides build up: `#n` on the URL shows only the first n points (`different.html#0` is the title alone,
+up to `#7`; `features.html#1`–`#5`; `built.html#1`–`#5`). The edit uses one PNG per step, in the media folder's
+`cards/` as `different-0.png` … `different-7.png`, `features-1.png` …, `built-1.png` …:
+
+```bash
+for n in 0 1 2 3 4 5 6 7; do "$CHROME" --headless --no-sandbox --hide-scrollbars --force-device-scale-factor=1 \
+  --window-size=1920,1080 --screenshot="<media>/cards/different-$n.png" "file://$PWD/different.html#$n"; done
 ```
 
 ## The AI-in-action crops (`ai/`)

@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- Scene "fl" (5 s, just before the outro): everything in Accnomos, grouped. Only features with a screen in
+<!-- Scene "d2" (v6; was "fl"): everything in Accnomos, grouped. Add #n to the URL to show only the first n groups. Only features with a screen in
      apps/web/src/app or a section in README.md. App colours, no logos. Render: cards/README.md. -->
 <html lang="en-GB">
 <head>
@@ -18,12 +18,13 @@
   li { font-size: 23px; line-height: 1.32; padding: 3px 0 3px 22px; position: relative; }
   li::before { content: ""; position: absolute; left: 0; top: 14px; width: 9px; height: 9px; border-radius: 50%; background: #b45309; }
   .pp li::before { background: #ebc77a; }
+  .hide { visibility: hidden; }
   footer { position: absolute; left: 80px; right: 80px; bottom: 36px; font-size: 22px; color: #5c534b; }
 </style>
 </head>
 <body>
-  <h1>Everything in Accnomos</h1>
-  <div class="sub">One app for a UK small business's books, with PayPal at the centre</div>
+  <h1>Everything in one app</h1>
+  <div class="sub">Accnomos: a UK business's books and tax, with PayPal at the centre</div>
   <div class="cols">
     <div>
       <div class="group pp">
@@ -86,5 +87,9 @@
     </div>
   </div>
   <footer>Recorded against PayPal's and HMRC's sandboxes with fictional data · accnomos.com</footer>
+<script>
+  const n = parseInt(location.hash.slice(1) || "99", 10);
+  document.querySelectorAll(".group").forEach((e, i) => { if (i >= n) e.classList.add("hide"); });
+</script>
 </body>
 </html>

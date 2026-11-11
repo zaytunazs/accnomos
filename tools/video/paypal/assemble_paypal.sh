@@ -17,6 +17,8 @@
 #   --presenter DIR  presenter clips. A segment gets a small picture-in-picture (320x180, bottom right, labelled
 #                    "AI-generated presenter") when DIR has its "pip" file (e.g. presenter_intro.mp4) or <vo id>.mp4;
 #                    the clip's own sound then replaces that line's WAV. No clip: no PiP, the WAV plays.
+#                    Switches: a segment with "pip": false never gets one; the timeline's "pip_until": SECONDS turns it
+#                    off for every segment that starts at or after that time (v6: presenter at the start only).
 #   --keep           keep the per-segment intermediates (OUT dir/.segments).
 #
 # Writes OUT.mp4 (H.264 veryfast CRF 20, AAC 192k, 30 fps, 1920x1080), OUT.srt (the narration, from
@@ -87,7 +89,7 @@ def wav_len(f):
 def ass_escape(t):
     return t.replace("\\", "\\\\").replace("{", "(").replace("}", ")").replace("\n", "\\N")
 
-def write_ass(path, dur, caption=None, tag=None, label=None, centre=None, timed=None):
+def write_ass(path, dur, caption=None, tag=None, label=None, centre=None, timed=None, split=False):
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
@@ -117,7 +119,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         txt = "\\N".join(ass_escape(p.strip()) for p in c.split(" · "))
         ev.append(f"Dialogue: 0,{ts(a)},{ts(b)},Cap,,0,0,0,,{txt}")
     if tag:
-        ev.append(f"Dialogue: 0,{ts(0)},{end},Tag,,0,0,0,,{ass_escape(tag)}")
+        # split scenes: the tag sits inside the web capture's top-right corner, clear of the phone frame
+        ev.append(f"Dialogue: 0,{ts(0)},{end},Tag,,0,{W - 1480 + 24 if split else 0},{58 if split else 0},,{ass_escape(tag)}")
     if label:
         ev.append(f"Dialogue: 0,{ts(0)},{end},Label,,0,0,0,,{ass_escape(label)}")
     if centre:
@@ -136,6 +139,7 @@ PHONE = (1530, 30, 350, 778)         # x, y, w, h of the device frame
 BEZEL = 10                           # screen inset inside the frame
 PIP = (1560, 856, 320, 180)          # x, y, w, h of the presenter picture-in-picture (label under it)
 PIP_LABEL = T.get("pip_label", "AI-generated presenter")
+PIP_UNTIL = float(T["pip_until"]) if T.get("pip_until") is not None else None  # seconds: no PiP for segments starting at or after this
 
 def _hex(c):
     c = c.replace("0x", "").replace("#", "")
@@ -172,8 +176,10 @@ def phone_placeholder_png(name):
 
 def pip_clip_for(seg, presenter_dir):
     """The presenter clip for a segment: its own "pip" file, else presenter/<vo id>.mp4 (None if there is none)."""
-    if not presenter_dir:
+    if not presenter_dir or seg.get("pip") is False:
         return None
+    if PIP_UNTIL is not None and float(seg.get("start", 0)) >= PIP_UNTIL:
+        return None  # v6: the presenter is on screen only at the start; later lines are voice only
     for name in [seg.get("pip"), f"{seg.get('vo')}.mp4" if seg.get("vo") else None]:
         if name and os.path.exists(os.path.join(presenter_dir, name)):
             return os.path.join(presenter_dir, name)
@@ -207,7 +213,7 @@ def render(seg, dur, dst, presenter_dir):
         else:
             kind = "slate"
             seg = dict(seg, text=seg.get("slate_text"))
-    write_ass(ass, dur, cap, tag, label, None, seg.get("timed_captions"))
+    write_ass(ass, dur, cap, tag, label, None, seg.get("timed_captions"), split="phone" in seg)
     if kind == "slate":
         write_ass(ass, dur, cap, tag, label, seg.get("text"), seg.get("timed_captions"))
         run(["ffmpeg", "-y", "-hide_banner", "-f", "lavfi", "-i", f"color=c={seg.get('color', 'black')}:s={W}x{H}:r={FPS}:d={dur}",
@@ -215,10 +221,10 @@ def render(seg, dur, dst, presenter_dir):
         return
     if kind in ("still", "stills"):
         srcs = [P(s) for s in (seg["srcs"] if kind == "stills" else [seg["src"]])]
-        each = dur / len(srcs)
+        wts = seg.get("weights") or [1] * len(srcs)  # optional: relative time per image (a build-up that follows the voice)
         inputs, fl = [], []
         for k, s in enumerate(srcs):
-            d = each if k < len(srcs) - 1 else dur - each * (len(srcs) - 1)
+            d = dur * wts[k] / sum(wts)
             inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{d:.3f}", "-i", s]
             fl.append(f"[{k}:v]scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2,setsar=1,format=yuv420p[s{k}]")
         fl.append("".join(f"[s{k}]" for k in range(len(srcs))) + f"concat=n={len(srcs)}:v=1:a=0[v0]")
