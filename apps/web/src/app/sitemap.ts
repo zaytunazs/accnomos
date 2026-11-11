@@ -16,7 +16,7 @@ const PUBLIC_PAGES = [
   "/privacy",
   "/terms",
   "/models",
-  "/meta-models",
+  "/ai-models",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

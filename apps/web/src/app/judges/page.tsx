@@ -47,8 +47,8 @@ export default function JudgesPage() {
           <li>
             <strong>Real:</strong> the app, the checks, the ledger and VAT arithmetic, and the AI (the model this server is
             set up with). Scanning the documents still in <em>00 Inbox</em> sends them to that AI.{" "}
-            <Link href="/meta-models" className={link}>
-              Which Meta model does what
+            <Link href="/ai-models" className={link}>
+              Which AI model does what
             </Link>
             .
           </li>
@@ -78,17 +78,17 @@ export default function JudgesPage() {
         </h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7">
           <li>
-            <strong>Criteria → evidence</strong>, each claim with a file path, and how to run the whole thing in test mode
-            with no accounts in about ten minutes:{" "}
-            <a href={`${REPO}/blob/main/docs/submission/JUDGING.md`} className={link}>
-              docs/submission/JUDGING.md
+            <strong>What it does and how to try it</strong>, including how to run the whole thing in test mode with no
+            accounts:{" "}
+            <a href={`${REPO}#try-it`} className={link}>
+              README › Try it
             </a>
             .
           </li>
           <li>
-            <strong>Meta models</strong>, where each runs and what is measured against what is unit-tested:{" "}
-            <a href={`${REPO}/blob/main/docs/submission/META_MODELS.md`} className={link}>
-              docs/submission/META_MODELS.md
+            <strong>AI models</strong>, where each runs and what is measured against what is unit-tested:{" "}
+            <a href={`${REPO}/blob/main/docs/AI_MODELS.md`} className={link}>
+              docs/AI_MODELS.md
             </a>
             . Every accuracy figure is on synthetic documents.
           </li>

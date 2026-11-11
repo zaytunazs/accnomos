@@ -154,7 +154,7 @@ export const test = base.extend<{ runtime: Runtime; localOnly: void }>({
     },
     { auto: true },
   ],
-  // Every test: anything not on 127.0.0.1 (Microsoft, Graph, HMRC, Meta…) is blocked and fails the test.
+  // Every test: anything not on 127.0.0.1 (Microsoft, Graph, HMRC, model APIs…) is blocked and fails the test.
   localOnly: [
     async ({ context }, use) => {
       const escaped: string[] = [];

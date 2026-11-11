@@ -10,7 +10,7 @@ import 'loading.dart';
 /// Home › Goals & progress, as on the web (components/home/HomeGoals.tsx):
 /// up to three goals, most urgent first, then the checked note. Code's note
 /// comes first (no model call, so it is quick); the AI's note is swapped in
-/// when it arrives, with "Muse Spark is writing…" while it is on its way.
+/// when it arrives, with "The AI is writing…" while it is on its way.
 /// Its own GET /books/goals, so a failure here blanks only this card.
 class HomeGoalsCard extends StatefulWidget {
   const HomeGoalsCard({
@@ -153,7 +153,7 @@ class _HomeGoalsCardState extends State<HomeGoalsCard> {
                       _writing
                           ? const AiWritingBar(
                               key: Key('goals-writing'),
-                              label: 'Muse Spark is writing your goals note…')
+                              label: 'The AI is writing your goals note…')
                           : Text(data.note.byLine,
                               style: const TextStyle(
                                   color: AccnomosColors.muted, fontSize: 12)),

@@ -21,7 +21,7 @@ import 'theme.dart';
 import 'widgets/brand.dart';
 
 /// Accnomos — bookkeeping and VAT for UK small businesses.
-/// Your books stay in your own cloud. Meta AI does the work.
+/// Your books stay in your own cloud. AI does the work.
 ///
 /// v0.1.0: app shell (Home · Review · Ask · VAT return). Bank and Files stay
 /// web-only; Jobs, Contacts, Vehicles (under More) and Invoices are thin

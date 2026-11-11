@@ -75,7 +75,7 @@ export const activity: ActivityItem[] = [
   {
     time: "17:42",
     text: "Imported Screwfix invoice £184.20 from Outlook, filed to 01 Receipts/2026-10, proposed entry",
-    actor: "Glimmer · local",
+    actor: "AI · local",
     dot: "teal",
   },
   {

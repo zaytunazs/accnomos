@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { warmServerAi } from "@/lib/meta-models";
+import { warmServerAi } from "@/lib/ai-models";
 import type { AccountInfo } from "@azure/msal-browser";
 import { deadlinesQuery, loadBusiness } from "@/lib/business";
 import { getMsal, msalConfigured } from "@/lib/msal";

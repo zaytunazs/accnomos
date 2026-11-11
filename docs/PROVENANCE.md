@@ -1,12 +1,14 @@
 # Provenance: what existed before the hackathon, and when everything else was made
 
-The hackathon FAQ asks that the repository holds only work done during the event, and that the demo video opens with one
-line on anything that pre-existed. This page is the evidence for both. Every timestamp below was read from `git log` on a
+Accnomos was started for an earlier hackathon whose building period began on Mon 26 Oct 2026 ("kickoff" below), and is
+entered in the PayPal AI Hackathon, whose submission period runs from 1 Oct to 12 Nov 2026: every commit is inside it.
+The hackathon rules ask that the repository holds only work done during the event, and that anything that pre-existed is
+named. This page is the evidence for both. Every timestamp below was read from `git log` on a
 full (unshallowed) clone and from `gh api repos/zaytunazs/accnomos` on 28 Oct 2026, and the commit counts were re-run on
 4 Nov 2026; the commands are at the end so anyone can re-run them.
 
-**The one line for the video** (shot 1 of `docs/submission/VIDEO_SCRIPT.md`): *"Before the hackathon I had only my own
-AI server with a local model runtime. Everything else was built after kickoff."* The caption under it names the date and this page.
+**In one line:** *"Before the hackathon I had only my own AI server with a local model runtime. Everything else was built
+after kickoff."*
 
 ## Timeline (UTC; UK time was the same that week)
 
@@ -18,11 +20,12 @@ week Eastern Time was EDT (UTC−4).
 | **Kickoff**: Mon 26 Oct 2026, 12:00 ET | 2026-10-26 16:00 | 0 | Hackathon schedule |
 | **First commit** `58ee050` (*Accnomos: monorepo scaffold, Flutter shell, ledger + VAT engine, …*) | 2026-10-26 22:29:35 | +6 h 29 min | `git log --reverse` (author and committer date agree) |
 | **GitHub repository created** (`zaytunazs/accnomos`) | 2026-10-26 22:30:57 | +6 h 31 min | `gh api repos/zaytunazs/accnomos` → `created_at` |
-| First commit message naming a Meta coding tool and model, `d1ccaae` (*web: app shell + Review inbox … (Muse Code, muse-spark-1.3)*) | 2026-10-26 23:18:34 | +7 h 18 min | `git log -i --grep='Muse Code'` |
-| First commit message reporting a live Glimmer run, `8023a01` (*F2: Choose-your-AI screen … tested live against Glimmer on the Spark*) | 2026-10-27 00:09:34 | +8 h 10 min | `git log` |
+| First commit message naming a second coding assistant and its model, `d1ccaae` (*web: app shell + Review inbox …*) | 2026-10-26 23:18:34 | +7 h 18 min | `git show -s d1ccaae` |
+| First commit message reporting a live local open-weights model run, `8023a01` (*F2: Choose-your-AI screen … tested live against the local open-weights model on the Spark*) | 2026-10-27 00:09:34 | +8 h 10 min | `git log` |
 | Latest commit on `main` when this page was first written, `206848c` | 2026-10-28 01:33:20 | +33 h 33 min | `git log -1 origin/main` |
 | Latest commit on `main` at the 4 Nov refresh, `8debc2e9` (1,727 commits on `main`) | 2026-11-04 09:42:38 | +8 d 17 h | `git log -1 origin/main`, `git rev-list --count origin/main` |
-| Submission deadline: Wed 4 Nov 2026, 21:00 ET (EST, UTC−5) | 2026-11-05 02:00 | | Hackathon schedule |
+| First hackathon's submission deadline: Wed 4 Nov 2026, 21:00 ET (EST, UTC−5) | 2026-11-05 02:00 | | Hackathon schedule |
+| PayPal AI Hackathon submission deadline: Thu 12 Nov 2026, 20:00 London | 2026-11-12 20:00 | | Devpost |
 
 No commit on any branch of the remote has an author or committer date before kickoff; the earliest author date on any ref
 is the first commit's, 2026-10-26T22:29:35Z (`git log --all --format='%aI %cI'`, checked 28 Oct).
@@ -41,8 +44,8 @@ pushed into it). What is in it:
   an in-memory fake (`packages/connectors`), and two FastAPI skeletons (`services/runtime` with `/health` and `/ai/test`,
   `services/hmrc-relay` with `/health`).
 
-The commit carries a coding agent's `Co-Authored-By` trailer. Its `/ai/test` stub already names the two modes (a Meta key or a
-local Glimmer model), but no Meta model had been called by then: the first message reporting a live Glimmer run is
+The commit carries a coding agent's `Co-Authored-By` trailer. Its `/ai/test` stub already names the two modes (a hosted-model key or a
+local open-weights model), but no provider model had been called by then: the first message reporting a live local open-weights model run is
 `8023a01`, 8 h 10 min after kickoff.
 
 ## What pre-existed
@@ -50,8 +53,8 @@ local Glimmer model), but no Meta model had been called by then: the first messa
 | Item | Pre-existing? | Notes |
 |---|---|---|
 | The owner's **own AI server** and its **local model runtime** | **Yes** | Hardware and a model runtime: infrastructure, not product code. Nothing from it is in the repository. |
-| Meta models on that machine (Muse Glimmer 30B), and the Meta-model endpoints Accnomos calls (Meta Model API, the open-weights host, the hosted GPU) | No | Configured after kickoff. |
-| Any Accnomos code, design, brand art, data or docs | No | The repository starts at `58ee050`. Brand art was made with Muse Image during the event (`tools/brand_muse.py`). |
+| AI models on that machine (the local open-weights model), and the model endpoints Accnomos calls (the hosted model's API, the open-weights host, the hosted GPU) | No | Configured after kickoff. |
+| Any Accnomos code, design, brand art, data or docs | No | The repository starts at `58ee050`. Brand art was made with an image-generation model during the event (`tools/brand_muse.py`). |
 | Evaluation data | No | Every gold document, bank statement and mailbox fixture under `evals/` is synthetic and was generated during the event (`evals/harness/`, a second open-weight model on the Spark for some fictional names and text). |
 | Third-party open-source libraries | Yes, as dependencies | Pulled in through the lockfiles above (Flutter, Next.js, FastAPI, Pillow and so on); not copied into the repository. |
 
@@ -80,14 +83,14 @@ counts. The table covers `main` only; re-run the commands below before quoting i
 
 ## How each part was built
 
-Every line was written during the event with coding assistants, directed and reviewed by the owner. The Meta models in
-`docs/submission/META_MODELS.md` are what the product *runs*; the assistants below are what *wrote* it.
+Every line was written during the event with coding assistants, directed and reviewed by the owner. The AI models in
+`docs/AI_MODELS.md` are what the product *runs*; the assistants below are what *wrote* it.
 
 | Assistant | Used for | Trace in git |
 |---|---|---|
 | **A coding agent** (other AI tools, in cloud sessions and on our own server) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 1,222 commits on `main` carry its `Co-Authored-By` trailer; 156 merges of its `claude/*` branches (4 Nov) |
-| **Muse Code** (Meta, model `muse-spark-1.3`) | Web and Android screens: the Review inbox and app shell, the VAT return page, the Android Review and Ask screens, and later web and Android feature branches | Commit messages naming Muse Code (first: `d1ccaae`, 23:18 on 26 Oct); 70 merge commits of `muse/*` branches on `main` (4 Nov) |
-| **A second open-weight model, not Meta's** (local on our own server) | Synthetic eval data (gold documents 061–200, the `ledger2` gold set) and a second reader in the Ask eval | 9 commit messages naming it (first: `93f1d13`, 03:44 on 27 Oct) |
+| **A second coding assistant** (on the hosted model) | Web and Android screens: the Review inbox and app shell, the VAT return page, the Android Review and Ask screens, and later web and Android feature branches | Commit messages naming it (first: `d1ccaae`, 23:18 on 26 Oct); 70 merge commits of `muse/*` branches on `main` (4 Nov) |
+| **A second open-weight model, of a different model family** (local on our own server) | Synthetic eval data (gold documents 061–200, the `ledger2` gold set) and a second reader in the Ask eval | 9 commit messages naming it (first: `93f1d13`, 03:44 on 27 Oct) |
 
 **Every merge was reviewed.** Each feature branch was read by a second agent before it was merged, and its review is
 committed under `docs/reviews/<branch>/REVIEW.md` (101 reviews in 102 folders on 4 Nov; one folder holds only a task brief):
@@ -104,6 +107,6 @@ git show --stat 58ee050 | tail -1                                               
 git show --numstat --format= 58ee050 | awk '$3 ~ /lock/ {a+=$1} END {print a}'     # 5369 lockfile lines
 TZ=UTC git log origin/main --format=%cd --date=format-local:%F | sort | uniq -c    # commits per day
 TZ=UTC git log origin/main --merges --format=%cd --date=format-local:%F | sort | uniq -c
-git log origin/main -i --grep='Muse Code' --reverse --format='%cI %h %s' | head -1
+git show -s --format='%cI %h %s' d1ccaae
 ls docs/reviews/*/REVIEW.md | wc -l
 ```

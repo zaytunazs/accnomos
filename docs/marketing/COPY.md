@@ -38,7 +38,7 @@ Secondary: Sign in with Microsoft
 Four steps.
 
 1. Send it in. Photograph a receipt in the Android app, upload it on the web, or let receipts arrive from your email inbox.
-2. The AI proposes. A Meta model reads the document and suggests supplier, category, VAT and totals. Code checks the arithmetic.
+2. The AI proposes. A AI model reads the document and suggests supplier, category, VAT and totals. Code checks the arithmetic.
 3. You approve. Each proposal waits in Review. Approve, edit or reject. Nothing posts on its own.
 4. VAT and records, ready. Approved entries build your ledger, your VAT boxes and a spreadsheet copy of your books.
 

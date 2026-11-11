@@ -1,4 +1,4 @@
-"""The server's AI providers, for the "Meta models at work" page (/models in the web app).
+"""The server's AI providers, for the "AI models at work" page (/models in the web app).
 
 GET  /ai/health  the chain (AI_PROVIDERS) and each provider's live health: cheap probes, cached HEALTH_TTL_S.
 GET  /ai/calls   the last 50 AI calls (provider, model, task, latency, fell back?), kept in memory only.
@@ -183,7 +183,9 @@ async def ai_warm() -> WarmResult:
     task = asyncio.create_task(_ping(modal))
     _warming.add(task)
     task.add_done_callback(_warming.discard)
-    return WarmResult(ok=True, warming=True, detail="Warming Muse Glimmer 30B on the hosted GPU (60-120 s from cold).")
+    return WarmResult(
+        ok=True, warming=True, detail="Warming the local open-weights model on the hosted GPU (60-120 s from cold)."
+    )
 
 
 def reset() -> None:

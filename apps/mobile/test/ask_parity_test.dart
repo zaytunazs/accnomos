@@ -9,7 +9,7 @@ AskAnswer answerJson(Map<String, dynamic> extra) => AskAnswer.fromJson({
       'citations': [],
       'suggested_actions': [],
       'confidence': 'high',
-      'model': 'Muse Spark',
+      'model': 'muse-spark-1.3',
       'period': {'start': '2026-07-01', 'end': '2026-09-30'},
       'fallback_reason': null,
       ...extra,
@@ -158,7 +158,7 @@ void main() {
         'rationale_md': 'Visit first, then lunch.',
         'warnings': ['Rain expected.'],
         'plan_hash': 'abc',
-        'model': 'Muse Spark',
+        'model': 'muse-spark-1.3',
         'fallback_reason': null,
       });
       expect(plan.items.length, 2);

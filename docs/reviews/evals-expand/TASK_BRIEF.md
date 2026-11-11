@@ -1,9 +1,9 @@
-# Task: Expand the evaluation set with a second open-weight model (a local model server) and re-run the Glimmer extraction eval
+# Task: Expand the evaluation set with a second open-weight model (a local model server) and re-run the local open-weights model extraction eval
 
 Accnomos monorepo (public; UK English). Read first: `evals/gold/receipts/{README.md,manifest.json}`, `evals/gold/receipts/gen_gold.py`
 (or `~/spark/accnomos/jobs/gen_gold.py` — same generator), `evals/harness/{render.py,run_extraction.py,judge.py}`, `evals/REPORT_*.md`.
-A local standard-API server is running at `http://127.0.0.1:8000/v1` (a second open-weight model, not Meta's; no key) — use it for **bulk
-synthetic data only**; it is not a product model. Glimmer runs on the local model server at `http://127.0.0.1:11434` (`muse-glimmer:30b`).
+A local standard-API server is running at `http://127.0.0.1:8000/v1` (a second open-weight model, not the model provider's; no key) — use it for **bulk
+synthetic data only**; it is not a product model. The local open-weights model runs on the local model server at `http://127.0.0.1:11434` (`muse-glimmer:30b`).
 
 ## Deliverables
 1. Generate **140 more gold documents** with a second open-weight model (seeded, deterministic manifest): 40 purchase receipts (fuel, trade counters, cafés,
@@ -17,7 +17,7 @@ synthetic data only**; it is not a product model. Glimmer runs on the local mode
    new documents, with realistic noise (card refs, rounding, split payments). Store under `evals/gold/bank/`.
 3. Generate **20 mailbox fixtures** (`evals/gold/mail/*.json`): message metadata + attachment list referencing gold PDFs/PNGs, including
    decoys (newsletters with images, calendar invites, signatures) for the Outlook intake tests.
-4. Re-run the extraction eval on the **full 200-doc** set with Glimmer (`run_extraction.py`), then the AI judge if
+4. Re-run the extraction eval on the **full 200-doc** set with the local open-weights model (`run_extraction.py`), then the AI judge if
    the judge's API key is present in the environment (it is: `a key file` + workspace header, see `judge.py`), and commit
    `evals/REPORT_glimmer_messy_200_<date>.md` with per-field accuracy, side accuracy, check-status distribution and the 10 worst cases
    with a one-line diagnosis each. Do not change the extraction code in this task; file findings in the report's "Suggested fixes".

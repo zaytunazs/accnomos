@@ -12,7 +12,7 @@ import { routeSandboxRelay } from "./sandbox-relay";
  *
  * Each picture is `docs/howto/img/<guide>-<n>.png`; the control a step names gets a brass outline. Test mode answers with
  * a stub instead of a model, so its "test stub" labels are taken out of the frame before the picture is taken (the live
- * app names the Meta model there). A shot that cannot reach its state fails the test rather than saving the wrong screen.
+ * app names the model there). A shot that cannot reach its state fails the test rather than saving the wrong screen.
  */
 
 test.skip(process.env.HOWTO_SHOTS !== "1", "how-to shots run only with HOWTO_SHOTS=1");

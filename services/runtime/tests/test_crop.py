@@ -187,7 +187,7 @@ async def test_sam_used_only_with_key_mode_and_flag(monkeypatch):
 
     monkeypatch.setenv("SAM_CROP", "1")
     r = await crop_document(_photo(), KEY_CFG)
-    assert r.method == "sam" and r.note == "Cropped with SAM 3.1"
+    assert r.method == "sam" and r.note == "Cropped by the image model"
     assert r.box == pad_box((190, 140, 660, 1060), (900, 1200))
     assert calls == ["receipt"]
 

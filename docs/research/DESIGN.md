@@ -122,7 +122,7 @@ pounds" in the label, accept "£1,234.50" as typed, and give specific errors ("m
 
 ### 1.6 What makes a 3-minute hackathon demo read well on screen
 
-- **Record at 1280 × 720 with 125 % zoom for close-ups** (as `docs/submission/VIDEO_SCRIPT.md` already says), and watch a test
+- **Record at 1280 × 720 with 125 % zoom for close-ups** (as the first video script said), and watch a test
   clip *on a phone* before publishing ([SSW rules](https://www.ssw.com.au/rules/easy-to-view-screen-recordings),
   [Honeycutt](https://www.honeycutt.com/posts/recording-guidelines-to-make-your-demos-sparkle)).
 - **Use the light theme with high-contrast text.** Dark mode suffers most from video compression (Honeycutt).
@@ -183,7 +183,7 @@ appear before any figure (screenshot `home-signed-in-390-before.png`: the checkl
 
 1. **Who are these books for?** Limited company · Sole trader · Personal. This sets the menu profile (section 2.1).
 2. **Connect your OneDrive.** One button, plus one sentence: "Your books are files in your folder. We keep no copy."
-3. **Choose your AI.** *On my own machine (Muse Glimmer)* or *My Meta API key*, then **Test connection**, with a
+3. **Choose your AI.** *On my own machine (the local open-weights model)* or *My an API key for the hosted model*, then **Test connection**, with a
    friendly result.
 4. **Your business:** name and VAT number. The number is checked by code, and HMRC lookup comes later. Prefill
    wherever we can (3.3.7).
@@ -259,7 +259,7 @@ At ≥1280 px, use a 3-column grid over about 1,000 px of content width. Today t
 - **Clear space:** at least half the mark's width on every side. **Minimum size:** 24 px for the mark, 96 px wide for
   the lockup.
 - **On dark** (the sample banner, video end cards) use the reversed version: a teal-tint square with a teal-dark tick.
-- **Don't** recolour it to Meta blue, add gradients, or place it on the hero illustration. Brand art from Muse Image
+- **Don't** recolour it to a provider's brand blue, add gradients, or place it on the hero illustration. Brand art from an image-generation model
   (`tools/brand_muse.py`) stays illustration and is never the logo.
 
 ### 6.2 Colour palette, with measured contrast

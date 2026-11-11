@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * Which AI answers first (model routing): the Meta Model API (Muse Spark) or the local model (Muse Glimmer 30B, on
+ * Which AI answers first (model routing): the hosted model's API or the local open-weights model (on
  * the user's own computer when one is set up in Settings › AI, otherwise on Accnomos's own server). Lives only on
  * this device (localStorage) and goes to the runtime as `X-AI-Route` on every request once the user has chosen;
- * with nothing saved the header is left out and the runtime uses its default (Meta Model API first).
+ * with nothing saved the header is left out and the runtime uses its default.
  * The Android app offers the same three options in the same words (apps/mobile/lib/services/ai_route.dart).
  */
 export type AiRoute = "meta_first" | "local_first" | "local_only";
@@ -23,32 +23,32 @@ export interface AiRouteOption {
 export const AI_ROUTE_OPTIONS: readonly AiRouteOption[] = [
   {
     value: "meta_first",
-    label: "Meta Model API first",
+    label: "Hosted model first",
     badge: "RECOMMENDED",
-    description: "Best accuracy and voice. The local model takes over only if the Meta Model API is down.",
+    description: "Best accuracy and voice. The local model takes over only if the hosted model is down.",
   },
   {
     value: "local_first",
-    label: "Local model first, Meta API when unsure",
+    label: "Local model first, hosted model when unsure",
     description:
-      "Saves Meta credits and keeps most of your data off the Meta Model API. When the local model's answer does not come back in a usable form, or the local model is down, the same request goes to the Meta Model API.",
+      "Saves hosted-model credits and keeps most of your data off the hosted model. When the local model's answer does not come back in a usable form, or the local model is down, the same request goes to the hosted model.",
   },
   {
     value: "local_only",
     label: "Local model only",
-    description: "Nothing is sent to the Meta Model API.",
+    description: "Nothing is sent to the hosted model.",
   },
 ];
 
 export const AI_ROUTE_INTRO =
-  "Muse Spark runs on the Meta Model API. The local model, Muse Glimmer 30B, runs on your own computer if you set one up above, otherwise on Accnomos's own server.";
+  "The hosted model runs on its provider's API. The local model, an open-weights model, runs on your own computer if you set one up above, otherwise on Accnomos's own server.";
 
 export const LOCAL_ONLY_WARNING_TITLE = "What local only means";
 
 export const LOCAL_ONLY_WARNINGS: readonly string[] = [
   "Slower: reading a receipt or invoice can take a minute or more.",
   "Less accurate on messy photos, handwriting and long PDFs, so more items are left for you to check.",
-  "No voice input: speech-to-text (Muse Voice Transcribe) runs on the Meta Model API. You can still type, and replies can still be read out by your device.",
+  "No voice input: speech-to-text runs on the hosted model's API. You can still type, and replies can still be read out by your device.",
   "If the local model is offline, AI features wait; nothing falls back.",
   "Every number is still checked by code before anything is saved, whichever you pick.",
 ];

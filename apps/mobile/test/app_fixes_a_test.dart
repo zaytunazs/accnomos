@@ -104,14 +104,14 @@ void main() {
   group('Ask', () {
     test('names the model that answers, and a household asks about its money',
         () {
-      expect(askModelLabel(AppSettings(), health, demo: true), 'Muse Spark');
-      expect(askModelLabel(AppSettings(), health, demo: false), 'Muse Spark');
+      expect(askModelLabel(AppSettings(), health, demo: true), 'the hosted model');
+      expect(askModelLabel(AppSettings(), health, demo: false), 'the hosted model');
       expect(
           askModelLabel(
               AppSettings(aiMode: 'local', aiBaseUrl: 'http://10.0.0.5:11434'),
               health,
               demo: false),
-          'Glimmer 30B');
+          'the local open-weights model');
       final home = askIntro(household: true, model: 'm');
       expect(home, isNot(contains('VAT')));
       expect(home, contains('your own money'));

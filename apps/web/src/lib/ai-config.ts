@@ -8,7 +8,7 @@ export type AiMode = "local" | "key";
 
 export interface AiConfig {
   mode: AiMode;
-  baseUrl: string; // local: the user's agent (local model server/runtime) URL · key: Meta Model API base
+  baseUrl: string; // local: the user's agent (local model server/runtime) URL · key: the hosted model API's base
   model: string;
   apiKey?: string; // key mode only; never leaves the device except to the runtime over HTTPS
 }
@@ -45,37 +45,38 @@ export function saveAiConfig(cfg: AiConfig): void {
 export const AI_CONFIG_EVENT = "accnomos:ai-config";
 
 /**
- * Short human name for a model id the UI shows: "muse-spark-1.3-contributor" -> "Muse Spark". A provider prefix the
- * runtime records ("meta:", the local server's or a host's) is dropped. The Android app mirrors this
+ * Short neutral name for a model id the UI shows: "muse-spark-1.3-contributor" -> "the hosted model". A provider prefix
+ * the runtime records (the hosted API's, the local server's or a host's) is dropped, and no raw model id or vendor
+ * name reaches the screen; the test stub keeps its id. The Android app mirrors this
  * (apps/mobile/lib/models/model_names.dart).
  */
 export function shortModelName(model: string): string {
   const m = model
     .trim()
-    .replace(/^(meta|ollama|baseten|modal|spark|local|key|test):/i, "")
+    .replace(/^(meta|ollama|baseten|modal|spark|local|key|test|anthropic):/i, "")
     .replace(/^meta-models\//i, "");
-  if (/^muse-glimmer:30b$/i.test(m)) return "Glimmer 30B";
-  if (/^muse-glimmer/i.test(m)) return "Muse Glimmer";
-  if (/^muse-spark-open/i.test(m)) return "Muse Spark Open";
-  if (/^muse-spark/i.test(m)) return "Muse Spark";
-  return m || "a model";
+  if (/stub/i.test(m)) return m;
+  if (/^(muse-)?glimmer/i.test(m)) return "the local open-weights model";
+  if (/^muse-spark-open/i.test(m)) return "the open-weights verifier model";
+  if (/^muse-spark/i.test(m)) return "the hosted model";
+  if (/^claude/i.test(m)) return "the backup model";
+  return m ? "the AI model" : "a model";
 }
 
 /**
  * The app's AI line (account menu, signed-out sidebar), in plain words and with no model or third-party names: the
- * hosted app reads with Meta's Muse models through the server's provider chain (/meta-models says which and how).
- * A user who chose their own key or their own computer in Settings › AI is told so; the test build says "stub".
- * The model names stay on Review cards ("Read by …"), where the reading itself is described.
+ * hosted app reads with the server's provider chain (/ai-models says which and how). A user who chose their own key
+ * or their own computer in Settings › AI is told so; the test build says "stub".
  */
 export function aiLabel(cfg: AiConfig | null): string {
   if (cfg !== null && /stub/i.test(cfg.model)) return "AI: stub answers (test mode)";
-  if (cfg?.mode === "key") return "AI: Meta Muse models, your own key";
-  if (cfg?.mode === "local") return "AI: Meta Muse models on your own computer";
-  return "AI: Meta Muse models";
+  if (cfg?.mode === "key") return "AI: hosted model, your own key";
+  if (cfg?.mode === "local") return "AI: open-weights model on your own computer";
+  return "AI: Accnomos's AI models";
 }
 
-/** Where the AI line links: what the Meta models do in Accnomos (app/meta-models, the same page as /models). */
-export const AI_INFO_HREF = "/meta-models";
+/** Where the AI line links: what the AI models do in Accnomos (app/ai-models, the same page as /models). */
+export const AI_INFO_HREF = "/ai-models";
 
 /** The last passing connection test, so Home's setup checklist can tell "chosen" from "tested". */
 export interface AiTestRecord {

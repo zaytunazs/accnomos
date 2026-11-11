@@ -8,6 +8,7 @@ import SignInCta from "@/components/SignInCta";
 import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
 import { runtime, type RtSpendRow, type RtSpending } from "@/lib/runtime";
 import { change, money, spanFor, ukDay, type PeriodChoice, type Span } from "@/lib/spending";
+import { shortModelName } from "@/lib/ai-config";
 
 const CHOICES: { id: PeriodChoice; label: string }[] = [
   { id: "month", label: "This month" },
@@ -159,7 +160,7 @@ export default function LiveSpending() {
             </div>
             <p className="mt-2 text-[12px] font-semibold text-muted">
               {data.summary_by === "model"
-                ? `Numbers by code · summary by ${data.model}, every figure checked against your books`
+                ? `Numbers by code · summary by ${shortModelName(data.model)}, every figure checked against your books`
                 : `Numbers and summary by code${data.fallback_reason ? `: ${data.fallback_reason}` : ""}`}
             </p>
           </section>

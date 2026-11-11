@@ -115,7 +115,7 @@ test("/demo: a short guide that starts a demo in one click; /judges keeps the ju
   await expect(page.getByRole("heading", { name: "Try Accnomos in one click" })).toBeVisible();
   await expect(page.getByRole("main")).toContainText("This sandbox is specially for testing");
   await expect(page.getByRole("main").getByRole("link", { name: "the demo guide" })).toHaveAttribute("href", "/demo");
-  await expect(page.getByRole("main").getByRole("link", { name: "docs/submission/JUDGING.md" })).toHaveAttribute("href", /JUDGING\.md$/);
+  await expect(page.getByRole("main").getByRole("link", { name: "README › Try it" })).toHaveAttribute("href", /#try-it$/);
 
   await page.goto("/demo");
   await page.getByRole("button", { name: "Start the demo" }).click();

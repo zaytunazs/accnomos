@@ -1,11 +1,11 @@
 # Synthetic gold set
 
-200 fictional UK receipts and invoices used to grade the extraction pipeline (Glimmer / Spark 1.3) in `evals/harness`, plus
+200 fictional UK receipts and invoices used to grade the extraction pipeline (the local open-weights model / the hosted model) in `evals/harness`, plus
 bank statements and mailbox fixtures built from the 140 newest. Every supplier, customer, address and person is invented and
 every document carries the label `SAMPLE — FICTIONAL COMPANY` (in the `label` field for 001-060, and also printed on the
 document for 061-200).
 
-- Generated during the hackathon by gen_gold.py (a second open-weight model, not Meta's, on our own server as a *test-data generator*; it is not part of the product runtime). Arithmetic is validated in code; invalid outputs were dropped.
+- Generated during the hackathon by gen_gold.py (a second open-weight model, a different model family, on our own server as a *test-data generator*; it is not part of the product runtime). Arithmetic is validated in code; invalid outputs were dropped.
 - Cases: standard, mixed-rate, reduced (5%), zero-rated, exempt, cash/no VAT, no VAT number over GBP 250, full VAT invoice, sales invoice, deliberate arithmetic error, EUR reverse-charge.
 - Every supplier and company is fictional. label = "SAMPLE - FICTIONAL COMPANY". Day 2 renders printed_text to receipt images (clean + messy photos) for the vision tests.
 

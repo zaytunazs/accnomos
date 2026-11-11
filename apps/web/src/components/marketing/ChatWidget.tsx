@@ -10,7 +10,7 @@ export const MESSAGE_MAX = 500;
 const STARTERS = [
   "Where are my books stored?",
   "Can it file my VAT return to HMRC?",
-  "Which Meta models does it use?",
+  "Which AI models does it use?",
 ];
 
 type Cited = { id: string; title: string };

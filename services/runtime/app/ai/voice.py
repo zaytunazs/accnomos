@@ -181,7 +181,7 @@ async def transcribe(
 
     Error messages name the status, never the key or the request headers."""
     if cfg.mode != "key" or not cfg.api_key:
-        raise VoiceError(400, "voice needs a Meta API key")
+        raise VoiceError(400, "voice needs an API key for the hosted speech-to-text model")
     files = {
         "request": (None, json.dumps(muse_request(keywords)), "application/json"),
         "audio": ("question.wav", wav, "audio/wav"),
@@ -193,26 +193,26 @@ async def transcribe(
             f"{cfg.base_url}/asr/transcribe", files=files, headers={"Authorization": f"Bearer {cfg.api_key}"}
         )
     except httpx.TimeoutException as exc:
-        raise VoiceError(504, f"Muse Voice took longer than {timeout_s:g} s") from exc
+        raise VoiceError(504, f"The speech-to-text service took longer than {timeout_s:g} s") from exc
     except httpx.HTTPError as exc:
-        raise VoiceError(502, f"Muse Voice could not be reached ({type(exc).__name__})") from exc
+        raise VoiceError(502, f"The speech-to-text service could not be reached ({type(exc).__name__})") from exc
     finally:
         if own:
             await http.aclose()
     if r.status_code in (401, 403):
-        raise VoiceError(401, "Meta rejected the API key for Muse Voice")
+        raise VoiceError(401, "The speech-to-text service rejected the API key")
     if r.status_code == 413:
-        raise VoiceError(413, "Muse Voice says the recording is too large")
+        raise VoiceError(413, "The speech-to-text service says the recording is too large")
     if r.status_code == 400:
-        raise VoiceError(422, "Muse Voice refused the recording (longer than 10 minutes, or malformed)")
+        raise VoiceError(422, "The speech-to-text service refused the recording (longer than 10 minutes, or malformed)")
     if r.status_code == 429:
-        raise VoiceError(429, "Muse Voice is rate-limiting this key; try again in a moment")
+        raise VoiceError(429, "The speech-to-text service is rate-limiting this key; try again in a moment")
     if r.status_code >= 400:
-        raise VoiceError(502, f"Muse Voice returned HTTP {r.status_code}")
+        raise VoiceError(502, f"The speech-to-text service returned HTTP {r.status_code}")
     try:
         text = _transcript(r.json()).strip()
     except ValueError:
-        raise VoiceError(502, "Muse Voice returned something that isn't JSON") from None
+        raise VoiceError(502, "The speech-to-text service returned something that isn't JSON") from None
     if not text:
         raise VoiceError(422, "Didn't catch any words in that recording")
     return text

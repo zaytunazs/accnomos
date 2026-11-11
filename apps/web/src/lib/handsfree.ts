@@ -2,7 +2,7 @@
  * The hands-free conversation's rules, kept apart from the UI so they can be read and tested on their own
  * (components/assistant/Assistant.tsx uses them).
  *
- * One turn: listen → (the recording is sent to POST /books/ask/voice: Muse Voice Transcribe hears it, the Ask
+ * One turn: listen → (the recording is sent to POST /books/ask/voice: the speech-to-text model hears it, the Ask
  * pipeline answers with every figure checked) → speak the answer → listen again. The loop ends when the user taps
  * Stop, says a stop phrase ("stop", "that's all", …) or two turns in a row hear nothing. A card is read back and the
  * user asked "Shall I go ahead?" (lib/voiceApproval.ts): a clear yes approves it as the button does and the loop goes

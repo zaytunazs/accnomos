@@ -26,8 +26,8 @@ and again at the end. known-fixes carries `claude/marketing`, `claude/exports`, 
 | # | Problem | Where |
 |---|---------|-------|
 | 1 | **Signed out, `/` is the app, not a website.** The h1 is "Good evening, Priya". You see cash in bank £12,480, "Needs attention 3", To-dos, Inbox, Deadlines, Month-end, Plan today, Spending and "What the agents did on 26 October". A visitor reads it as someone's live books. | `before/home-1440.webp`, `home-390.webp` |
-| 2 | **In-app chrome with nobody signed in.** The full app sidebar (Books, Money, Buying, Work, Settings), a **"Review 1"** badge, the "Your books live in OneDrive" box and "AI: the server's Meta models". At 390 px there is the app's tab bar (Home, Review, Ask, VAT, Files) and a Settings link. | every before shot |
-| 3 | **No public navigation.** There is no Features, How it works, Pricing or Sign in in the top bar. The only "menu" is the app's. The footer is the app's ("How it works · Privacy · For judges · Meta models at work · Settings"), with no terms, no contact and no honesty link. | `before/home-1440.webp` (bottom) |
+| 2 | **In-app chrome with nobody signed in.** The full app sidebar (Books, Money, Buying, Work, Settings), a **"Review 1"** badge, the "Your books live in OneDrive" box and "AI: the server's AI models". At 390 px there is the app's tab bar (Home, Review, Ask, VAT, Files) and a Settings link. | every before shot |
+| 3 | **No public navigation.** There is no Features, How it works, Pricing or Sign in in the top bar. The only "menu" is the app's. The footer is the app's ("How it works · Privacy · For judges · AI models at work · Settings"), with no terms, no contact and no honesty link. | `before/home-1440.webp` (bottom) |
 | 4 | **The promise is buried.** The pitch card ("Books read by AI…") shares the page with a dozen sample tiles. "Connect your OneDrive" appears three times, and there is no "Try the demo" or "Sign in with Microsoft" pair. | `before/home-*.webp` |
 | 5 | **Dead ends.** `/try` is a **404** on the live site; it is the sample Home that the marketing branch links to. Signed out, To-dos, Month-end, Plan today and Spending each say "Sign in to …", which is four tiles of nothing for a visitor. | `before/try-1440.webp`, `home-1440.webp` |
 | 6 | **`/judges` (the demo entry) is inside the app shell**, with the sidebar, review badge and the SAMPLE strip. | `before/judges-1440.webp` |
@@ -91,7 +91,7 @@ The words now come from the copy deck (§7). The layout is unchanged from the fi
 6. **Voice and chat that wait**, with the Ask and action-card screens.
 7. Android ("Made for the phone in your pocket"). The iPhone chip shows only when submission mode is off.
 8. **For accountants:** the deck's paragraph (invite, the same files, queries, reversing entries).
-9. **Your books live in OneDrive**, with "AI proposes, you approve" (the deck's trust text); then the six Meta
+9. **Your books live in OneDrive**, with "AI proposes, you approve" (the deck's trust text); then the six the model provider
    models, and what is tested, which links to HONESTY.md.
 10. **Pricing.** Submission build: "There is no published pricing: Accnomos is a hackathon build, and nothing in it
     asks you to pay…". Pre-launch build only: "Free while we launch".
@@ -214,7 +214,7 @@ Updated:
 
 ## 7. Homepage copy from `docs/marketing/COPY.md` (merged from `origin/muse/marketing-copy`)
 
-The deck was written by Muse Spark. Every line was checked against the code and `docs/HONESTY.md` before it went on
+The deck was written by the hosted model. Every line was checked against the code and `docs/HONESTY.md` before it went on
 the page. It went in as written, except where noted below.
 
 **`origin/main` merged first** (`claude/accountant`, `claude/import-history`). The deck's accountants block ("Invite
@@ -250,7 +250,7 @@ replaces the hero's old sandbox sentence.
 - **Accountants:** the deck's paragraph. **Trust:** a "AI proposes, you approve" subsection under "Your books live in
   OneDrive". **FAQ:** all ten questions. **Footer microcopy** and **meta description** (on `/`): as written.
 - **Kept although not in the deck:** "One set of books, whoever you are", because the owner asked for the four
-  audiences. Also kept: Android, the six Meta models, "What is tested, and what is not" and Pricing. They come from
+  audiences. Also kept: Android, the six AI models, "What is tested, and what is not" and Pricing. They come from
   the owner's brief and HONESTY.md.
 
 **Lines changed, and why**
@@ -258,8 +258,8 @@ replaces the hero's old sandbox sentence.
 | Deck | Page | Why |
 |------|------|-----|
 | FAQ 1 "Pricing is shown in the app before you pay for anything." | "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo with sample books costs nothing to try." | Wrong. The app has no pricing and no payment step (Stripe/PayPal is only for your own invoices). |
-| FAQ 10 "No. Your documents are read to keep your books, and nothing else." | "We do not use your documents to train models: they are read to keep your books, and nothing else. When your server uses an API key, the document goes to that model provider under its own terms." | Too absolute. In key mode a document goes to Meta's Model API or the open-weights host, whose terms we do not control. |
-| Trust "a second independent reading checks the first" | "a second reading checks the first on key documents" | It is only independent with a hosted-verifier key (Muse Spark Open). In local mode Glimmer checks Glimmer (HONESTY.md, "Models"). |
+| FAQ 10 "No. Your documents are read to keep your books, and nothing else." | "We do not use your documents to train models: they are read to keep your books, and nothing else. When your server uses an API key, the document goes to that model provider under its own terms." | Too absolute. In key mode a document goes to the hosted model's API or the open-weights host, whose terms we do not control. |
+| Trust "a second independent reading checks the first" | "a second reading checks the first on key documents" | It is only independent with a hosted-verifier key (the open-weights verifier model). In local mode the local open-weights model checks the local open-weights model (HONESTY.md, "Models"). |
 | Voice example "Andy did 2 hours overtime at double time on the Hendon job" | "Andy did 2 hours on the Hendon job" | The timesheet card (`actions.py` `LogTimesheetIntent`) takes staff, job, hours, date and a note. It has no rate or multiplier, so "double time" would not be recorded as such. |
 | FAQ questions end in "." | "?" | Punctuation. |
 

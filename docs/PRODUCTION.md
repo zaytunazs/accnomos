@@ -103,7 +103,7 @@ sign-in and answers only from `services/runtime/app/public_kb.md`. All variables
 | `PUBLIC_CONTACT_EMAIL` | `zohaibsharif@gmail.com` | Where off-topic or unanswerable questions are referred (also returned to the page). An invalid value falls back to the default |
 | `PUBLIC_CHAT_PER_MIN` | `6` | Questions per minute per visitor IP, on top of `RATE_LIMIT_PER_MIN`. `0` turns this limit off (the e2e suite does) |
 | `PUBLIC_CHAT` | `on` | `off` makes the route answer 503 with the contact address |
-| `PUBLIC_CHAT_AI_MODE` | `local` | The chat's model: the server's own local model (`OLLAMA_BASE`, `OLLAMA_MODEL`, Glimmer on our own server). `key` spends the operator's `META_API_KEY`, so set it only on purpose. Visitors' `X-AI-*` headers are always ignored |
+| `PUBLIC_CHAT_AI_MODE` | `local` | The chat's model: the server's own local model (`OLLAMA_BASE`, `OLLAMA_MODEL`, the local open-weights model on our own server). `key` spends the operator's `META_API_KEY`, so set it only on purpose. Visitors' `X-AI-*` headers are always ignored |
 | `PUBLIC_CHAT_MODEL` | (`OLLAMA_MODEL`) | A different model name for the chat only |
 | `PUBLIC_SITE_HOSTS` | `accnomos.com` | Hosts an answer may link to (comma-separated, subdomains included); any other link is removed |
 | `PUBLIC_SUBMISSION_MODE` | `1` | Which notes the chat uses: `1` the judged build (no launch date, nothing "coming soon"); `0` the pre-launch notes (public launch November 2026, iPhone app and more mailboxes coming soon). Keep it equal to the web build's `NEXT_PUBLIC_SUBMISSION_MODE` |
@@ -266,14 +266,14 @@ The form gives the same answer for new and repeat addresses, so it cannot be use
 ## 7. The AI provider chain (runtime)
 
 **Production setting since 11 Nov 2026: `AI_PROVIDERS=spark,anthropic`.** Owner's decision: customer documents no
-longer go to Meta's Model API (the live server's `muse-spark-1.3-contributor` model is one Meta may train on). Every AI
-call that names no backend of its own (no `X-AI-*` headers, or `X-AI-Mode: auto`) is read by Muse Glimmer 30B on our own
+longer go to the hosted model's API (the live server's Contributor-tier hosted model is one its provider may train on). Every AI
+call that names no backend of its own (no `X-AI-*` headers, or `X-AI-Mode: auto`) is read by the local open-weights model on our own
 server first; only when it is down, times out or refuses does the same request go to Anthropic's Messages API
 (`app/ai/anthropic.py`), under Anthropic's Commercial Terms (no training on customer content). Zero data retention is
 not on by default for an Anthropic organisation (it is arranged with Anthropic's sales team); without it Anthropic
 deletes API inputs and outputs within 30 days unless its usage policy or the law needs them longer. The X-AI-Route
 choices keep the Anthropic backup last; local only never reaches it. A user who chose their own backend in Settings
-(their local agent, or their own Meta key via `X-Meta-Api-Key`) gets exactly that backend, with no failover, as before.
+(their local agent, or their own API key for the hosted model via `X-Meta-Api-Key`) gets exactly that backend, with no failover, as before.
 The older `modal,meta,spark` order still works.
 Code: `services/runtime/app/ai/providers.py` (the chain), `app/ai/chain.py` (failover, circuit breaker, call record),
 `app/routes_ai.py` (`GET /ai/health`, `GET /ai/calls`, `POST /ai/warm`).
@@ -286,24 +286,24 @@ Code: `services/runtime/app/ai/providers.py` (the chain), `app/ai/chain.py` (fai
 | `ANTHROPIC_VERIFY_MODEL` | the Verifier's model when it reads on Anthropic; default `ANTHROPIC_MODEL` |
 | `ANTHROPIC_BASE`, `ANTHROPIC_VERSION`, `ANTHROPIC_MAX_TOKENS` | defaults `https://api.anthropic.com/v1`, `2026-10-21` (the `anthropic-version` header), `4096` |
 | `VERIFIER_PROVIDER` | who reads second: `chain` (default, the chain's order: documents stay on our server while it is up, but the reader and the Verifier are usually the same model), `anthropic` (a different model, but every document goes to Anthropic and costs a call: update the privacy page first), `spark` |
-| `STT_PROVIDER`, `STT_BASE` | voice: `local` (default) = the Spark's spark-voice service, `POST {STT_BASE}/v1/audio/transcriptions`, `STT_BASE` default `http://host.docker.internal:8890`, model from `GET {STT_BASE}/v1/models`; `meta` = Muse Voice Transcribe first (sends recordings to Meta). `STT_BASE=off` = no voice |
-| `SAM_CROP` | keep `0`: SAM 3.1 runs on Meta's Model API, so every photo would go to Meta |
+| `STT_PROVIDER`, `STT_BASE` | voice: `local` (default) = the Spark's spark-voice service, `POST {STT_BASE}/v1/audio/transcriptions`, `STT_BASE` default `http://host.docker.internal:8890`, model from `GET {STT_BASE}/v1/models`; `meta` = the speech-to-text model first (sends recordings to the hosted model's provider). `STT_BASE=off` = no voice |
+| `SAM_CROP` | keep `0`: the receipt-crop image model runs on the hosted model's API, so every photo would go to the hosted model's provider |
 | `MODAL_GLIMMER_URL` | the URL `modal deploy tools/modal_glimmer.py` prints, `https://<workspace>--accnomos-glimmer-serve.<region>.modal.run`. Unset = the hosted GPU left out of the chain |
 | `MODAL_MODEL` | default `muse-glimmer:30b` |
 | `MODAL_PROXY_TOKEN_ID`, `MODAL_PROXY_TOKEN_SECRET` | A hosted GPU proxy-auth token, sent as `Modal-Key` / `Modal-Secret`; needed when the endpoint was deployed with `MODAL_PROXY_AUTH=1` (recommended). Secrets: server environment only |
-| `META_API_KEY`, `MODEL_API_BASE`, `MODEL_API_MODEL` | the Meta Model API provider (defaults `https://api.meta.ai/v1`, `muse-spark-1.3`). No key = Meta left out |
+| `META_API_KEY`, `MODEL_API_BASE`, `MODEL_API_MODEL` | the hosted model's API provider (defaults `https://api.meta.ai/v1`, `muse-spark-1.3`). No key = the hosted model left out |
 | `OLLAMA_BASE`, `OLLAMA_MODEL` | our own server (defaults `http://localhost:11434`, `muse-glimmer:30b`) |
-| `<NAME>_CONNECT_S`, `<NAME>_FIRST_TOKEN_S`, `<NAME>_REQUEST_S` | per provider (`MODAL`, `META`, `SPARK`, `ANTHROPIC`), seconds: connect; the longest wait for a reply to start; the longest one attempt may take. Defaults hosted GPU 10 / 150 / 240 (a cold start is 60-120 s), Meta 10 / 90 / 120, Spark 5 / 180 / 200, Anthropic 10 / 90 / 120 |
+| `<NAME>_CONNECT_S`, `<NAME>_FIRST_TOKEN_S`, `<NAME>_REQUEST_S` | per provider (`MODAL`, `META`, `SPARK`, `ANTHROPIC`), seconds: connect; the longest wait for a reply to start; the longest one attempt may take. Defaults hosted GPU 10 / 150 / 240 (a cold start is 60-120 s), the hosted model's API 10 / 90 / 120, Spark 5 / 180 / 200, Anthropic 10 / 90 / 120 |
 | `AI_BREAKER_FAILURES`, `AI_BREAKER_COOLDOWN_S` | circuit breaker: after this many failures in a row a provider is skipped for this long (defaults 3 and 120) |
 | `AI_HEALTH_PROBE_MODAL` | `1` = `/ai/health` probes the hosted GPU for real. Off by default: a probe would start a paid GPU container |
-| `BASETEN_API_KEY` | unchanged: with the chain, the Verifier tries Muse Spark Open (hosted open weights) first, then the chain |
+| `BASETEN_API_KEY` | unchanged: with the chain, the Verifier tries the open-weights verifier model (hosted open weights) first, then the chain |
 
 Failover happens on a timeout, a connection error, HTTP 5xx, 402 or 429 (billing, rate limit), and 401/403/404/408
 (that provider's own credentials, model or gateway); never on any other 4xx (our own bad request) or on a reply that does
 not parse (Anthropic's 529 "overloaded" is a 5xx). A streamed Ask answer fails over only before its first token.
 Voice transcription has its own chain (`app/ai/stt.py`): our own server's speech-to-text by default (`STT_PROVIDER=local`,
-`STT_BASE`, or a full `SPARK_WHISPER_URL`; `SPARK_WHISPER_MODEL`, `SPARK_WHISPER_KEY`, `WHISPER_STT_TIMEOUT_S`), Muse Voice
-Transcribe only with `STT_PROVIDER=meta` (or `STT_PROVIDERS`) or a user's own Meta key (`MUSE_STT_TIMEOUT_S`).
+`STT_BASE`, or a full `SPARK_WHISPER_URL`; `SPARK_WHISPER_MODEL`, `SPARK_WHISPER_KEY`, `WHISPER_STT_TIMEOUT_S`), the hosted speech-to-text model
+only with `STT_PROVIDER=meta` (or `STT_PROVIDERS`) or a user's own API key for the hosted model (`MUSE_STT_TIMEOUT_S`).
 
 Hosted GPU side (deploy-time options of `tools/modal_glimmer.py`): deploy with `MODAL_PROXY_AUTH=1`, so a stranger who learns
 the URL gets a 401 before any GPU starts. `MODAL_KEEP_WARM=08:00-18:00` keeps one container up in that window (about

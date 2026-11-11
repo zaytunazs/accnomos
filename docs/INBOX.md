@@ -34,7 +34,7 @@ checks), `app/todos.py`, `app/routes_mail.py`, `app/routes_todos.py`; Graph call
 
 ## Which AI
 
-Your own, as chosen in the app (Meta Model API key or your local model). If the app sends no AI choice, **no model
+Your own, as chosen in the app (the hosted model's API key or your local model). If the app sends no AI choice, **no model
 is called** and each thread shows "sender: subject" written by code. Triage never falls back to a model configured
 on the server. Email text is passed to the model as untrusted data; the prompt tells it never to follow
 instructions inside emails, and code checks everything it returns:
@@ -233,7 +233,7 @@ Added 29 Oct 2026 after an owner report from the live demo: two uploaded PDFs, t
 ten minutes with nothing happening. **Root cause:** `POST /books/scan` read the Inbox in one request that answered only
 when every document was done, and the demo's 00 Inbox already holds 19 unread sample documents, so the "Scan 00 Inbox
 now" press after the upload read up to 10 files (the oldest first, not necessarily the two uploads). Each document could
-take up to three AI calls (read, re-read when unsure, second opinion), each with up to 120 s on the Meta Model API and
+take up to three AI calls (read, re-read when unsure, second opinion), each with up to 120 s on the hosted model's API and
 then up to 200 s on the fallback provider, and nothing bounded a document or the request as a whole. The edge proxy
 (`deploy/nginx.conf`, 300 s) gives up long before that; the runtime carries on regardless (an ASGI app is not
 cancelled when the client goes away), which is why the access log never showed the POST. The phone's scan had a 20 s

@@ -17,7 +17,7 @@ dashboard) moved to **`/try`** ("Try the sample books"). Signed in, `/` is Home 
   code checks → approve on phone or web → Box 4 fills, five real screens crossfading with a brass spotlight on the part
   that matters; plays only while on screen, never with `prefers-reduced-motion`, Pause/Play, step buttons. Then
   Android ("Made for the phone in your pocket"), features with a tabbed screen viewer, Ask and actions, your data in
-  OneDrive, the six Meta models table with each status, "What is tested, and what is not", FAQ, closing CTA.
+  OneDrive, the six AI models table with each status, "What is tested, and what is not", FAQ, closing CTA.
 - Screens: `apps/web/public/shots/*.webp` (17 files, 15–49 kB each), crops/resizes of `docs/submission/shots/` and
   `apps/mobile/screenshots/` made by `apps/web/scripts/marketing-images.py`. Nothing drawn or edited; captions say
   "test mode, fictional sample books" (some crops show `accnomos-test-stub`). Hero images eager, all others lazy.
@@ -38,7 +38,7 @@ dashboard) moved to **`/try`** ("Try the sample books"). Signed in, `/` is Home 
 **Runtime chat** `POST /public/chat` (`services/runtime/app/public_chat.py`, KB `app/public_kb.md`, 16 sections):
 keyword/title retrieval in code (top 3); role-change regex and no-match questions get a fixed reply naming
 `PUBLIC_CONTACT_EMAIL` without a model call; strict JSON `{answerable, answer, sections}` from the server's own model
-(`PUBLIC_CHAT_AI_MODE`, default local Glimmer; visitors' `X-AI-*` ignored); citations limited to retrieved sections;
+(`PUBLIC_CHAT_AI_MODE`, default the local open-weights model; visitors' `X-AI-*` ignored); citations limited to retrieved sections;
 foreign links/e-mails stripped; 700-character cap at a sentence; 500-character question cap; own per-IP limit
 (`PUBLIC_CHAT_PER_MIN`, default 6); two concurrent model calls, 60 s timeout, then the best note quoted as written;
 nothing about the question logged. Test-mode stub answers with the first note's first sentence.
@@ -76,7 +76,7 @@ for current ones.
 
 ## Risks and what a human should check
 
-1. **The chat has never run against Glimmer on the Spark.** Ask it 10–20 real questions in production (or locally with
+1. **The chat has never run against the local open-weights model on the Spark.** Ask it 10–20 real questions in production (or locally with
    `OLLAMA_BASE` pointed at the Spark) and read the answers; check latency and that the JSON schema is honoured.
 2. **Retrieval is keywords.** A sensible question in unexpected words is refused with the contact address; widen
    `Keywords:` lines in `public_kb.md` from what visitors actually ask.

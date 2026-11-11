@@ -2,7 +2,7 @@
 
 | Provider | Model | Clips | Failures | Corpus WER | Mean WER | Numbers right | Amounts right | Latency mean / p50 / p95 |
 |---|---|---|---|---|---|---|---|---|
-| Muse Voice Transcribe | `muse-voice-transcribe-1.0` | 14 | 0 | 0.1269 | 0.1669 | 50.0 % | n/a | 1.714 / 1.707 / 2.436 s |
+| The speech-to-text model | `muse-voice-transcribe-1.0` | 14 | 0 | 0.1269 | 0.1669 | 50.0 % | n/a | 1.714 / 1.707 / 2.436 s |
 
 Not configured, so not run: the local speech-to-text fallback.
 

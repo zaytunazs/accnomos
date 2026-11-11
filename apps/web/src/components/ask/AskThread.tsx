@@ -216,7 +216,7 @@ export default function AskThread() {
         health.voice === false
           ? "Voice isn't available on your reader service (ffmpeg is missing)"
           : ai?.mode !== "key" && !serverStt
-            ? "Voice needs a Meta API key — switch to key mode in Settings, or set up speech-to-text on your reader service"
+            ? "Voice needs an API key for the hosted model — switch to key mode in Settings, or set up speech-to-text on your reader service"
             : null,
       );
       setAccount(acct);
@@ -283,7 +283,7 @@ export default function AskThread() {
               <Explain title="Where answers come from">
                 <p>
                   Numbers by code, words by model. Code gathers the facts from your ledger first;
-                  your AI (Muse Glimmer on your machine, or Muse Spark with your key) only writes
+                  your AI (the open-weights model on your machine, or the hosted model with your key) only writes
                   the explanation around them. Every figure in the answer is checked against those
                   facts — an invented number is replaced by the quoted facts.
                 </p>
@@ -292,7 +292,7 @@ export default function AskThread() {
                   means the model was unavailable and code answered from the ledger alone.
                 </p>
                 <p>
-                  Spoken questions are transcribed by Muse Voice Transcribe (a local fallback model
+                  Spoken questions are transcribed by the speech-to-text model (a local fallback model
                   steps in if it fails), then go through the same grounded Ask. Each one says which
                   service heard it. Audio is not kept.
                 </p>

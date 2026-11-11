@@ -11,12 +11,12 @@ this one is written at merge time.
   the gold rate only (ce6cde2c).
 * `evals/harness/property_docs.py`: the generic extraction reader over the gold landlord statements and bills
   (category, property, amount, date). There is no property-specific reader yet; `muse/property-reader` adds one.
-* `tools/spark_queue.sh`: two new Glimmer steps (`cis_read`, `property_docs`) after the extraction steps.
+* `tools/spark_queue.sh`: two new the local open-weights model steps (`cis_read`, `property_docs`) after the extraction steps.
 * Stub-model tests for both harnesses and the queue order (`evals/tests`).
 
 ## Checks made
 
-* Only the local model server endpoint is called (`DEFAULT_OLLAMA_BASE`); no Meta or hosted-model calls, and no
+* Only the local model server endpoint is called (`DEFAULT_OLLAMA_BASE`); no provider or hosted-model calls, and no
   secrets.
 * `--stub` runs end to end offline (120 docs; the stub's canned replies deliberately include refusals, so its
   scores are not a model result).

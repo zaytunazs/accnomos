@@ -26,7 +26,7 @@ void main() {
   test('an AI summary that passed the number check says so', () {
     const s = HomeSummary(text: 'x', model: 'muse-glimmer:30b');
     expect(s.byAi, isTrue);
-    expect(s.byLine, contains('worded by your AI (Glimmer 30B), numbers checked by code'));
+    expect(s.byLine, contains('worded by your AI (the local open-weights model), numbers checked by code'));
   });
 
   test('no summary, or an empty one, is null', () {

@@ -36,7 +36,7 @@ function where(cfg: unknown): string {
   if (url.includes("modal.run")) return "hosted GPU";
   if (url.includes("baseten")) return "hosted open weights";
   if (url.includes("localhost") || url.includes("127.0.0.1")) return "our own server";
-  return "Meta Model API";
+  return "hosted model API";
 }
 
 function extraction(run: string, title: string): EvalHeadline | null {
@@ -47,7 +47,7 @@ function extraction(run: string, title: string): EvalHeadline | null {
   return {
     run,
     title,
-    model: String(cfg?.model ?? "").includes("glimmer") ? "Muse Glimmer 30B" : "Muse Spark Open",
+    model: String(cfg?.model ?? "").includes("glimmer") ? "Local open-weights model" : "Open-weights verifier model",
     where: where(cfg),
     numbers: [
       { label: "Documents", value: num(s.n) },
@@ -66,7 +66,7 @@ function ask(): EvalHeadline | null {
   return {
     run: "ask_40",
     title: "Ask: 35 questions over the seeded books",
-    model: "Muse Glimmer 30B",
+    model: "Local open-weights model",
     where: "host not recorded in the run",
     numbers: [
       { label: "Numbers exact", value: `${num(g.numbers_exact)}/${num(g.with_gold)}` },
@@ -87,7 +87,7 @@ function autopilot(): EvalHeadline | null {
   return {
     run: "autopilot_l2",
     title: "Autopilot: documents posted without a person",
-    model: "Muse Glimmer 30B",
+    model: "Local open-weights model",
     where: where((on?.meta as Json | undefined)?.config),
     numbers: [
       { label: "Documents", value: num(all.docs) },

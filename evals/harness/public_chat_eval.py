@@ -190,9 +190,9 @@ CASES: list[Case] = [
         "How accurate is the receipt reading?",
         "synthetic",
         ("85", "80", "91", "93", "88"),
-        src="docs/META_MODELS.md",
+        src="docs/AI_MODELS.md",
     ),
-    _q("feature", "How long does it take to read one receipt?", ("second", "seconds"), src="docs/META_MODELS.md"),
+    _q("feature", "How long does it take to read one receipt?", ("second", "seconds"), src="docs/AI_MODELS.md"),
     # ---- privacy (SECURITY.md, ARCHITECTURE.md, META_MODELS.md)
     _q("privacy", "Where are my books stored?", "onedrive", src="README.md"),
     _q(
@@ -209,9 +209,9 @@ CASES: list[Case] = [
         src="docs/SECURITY.md",
     ),
     _q("privacy", "How do I sign in?", "microsoft", src="README.md"),
-    _q("privacy", "Which AI models does it use?", ("glimmer", "muse"), src="docs/META_MODELS.md"),
-    _q("privacy", "Can I run the AI on my own machine?", ("glimmer", "ollama", "local"), src="docs/META_MODELS.md"),
-    _q("privacy", "Can I use my own AI key?", "key", ("muse spark", "meta", "your own"), src="docs/META_MODELS.md"),
+    _q("privacy", "Which AI models does it use?", ("glimmer", "muse"), src="docs/AI_MODELS.md"),
+    _q("privacy", "Can I run the AI on my own machine?", ("glimmer", "ollama", "local"), src="docs/AI_MODELS.md"),
+    _q("privacy", "Can I use my own AI key?", "key", ("muse spark", "meta", "your own"), src="docs/AI_MODELS.md"),
     _q(
         "privacy",
         "Are my passwords and tokens written to the logs?",

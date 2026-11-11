@@ -50,7 +50,7 @@ function SiteFooter() {
             HMRC contact is sandbox only.
           </p>
           <p className="mt-3 max-w-sm text-sm leading-relaxed">
-            Built for the Meta Global AI Developer Hackathon by Zaytuna Business Services Ltd.
+            Built for the PayPal AI Hackathon by Zaytuna Business Services Ltd.
           </p>
           <p className="mt-3 text-sm">
             Questions:{" "}
@@ -76,7 +76,7 @@ function SiteFooter() {
           links={[
             { href: "/privacy", text: "Privacy policy" },
             { href: "/terms", text: "Terms of use" },
-            { href: "/meta-models", text: "The Meta models we use" },
+            { href: "/ai-models", text: "The AI models we use" },
           ]}
         />
         <FooterLinks
@@ -84,7 +84,7 @@ function SiteFooter() {
           links={[
             { href: "/#faq", text: "FAQ" },
             { href: "/how-it-works", text: "How each feature works" },
-            { href: "/meta-models", text: "Meta models used" },
+            { href: "/ai-models", text: "AI models used" },
             { href: `mailto:${CONTACT_EMAIL}`, text: "Contact us" },
             { href: JUDGES_PAGE, text: "For judges" },
           ]}

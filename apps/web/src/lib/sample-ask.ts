@@ -23,7 +23,7 @@ export const sampleAnswer: RtAskAnswer = {
     { label: "Show Box 4 entries", kind: "open_vat", arg: null },
   ],
   confidence: "high",
-  model: "Muse Spark",
+  model: "muse-spark",
   period: { start: "2026-07-01", end: "2026-09-30" },
   fallback_reason: null,
 };

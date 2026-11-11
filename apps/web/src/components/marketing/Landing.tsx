@@ -10,7 +10,7 @@ import ProcessDemo from "./ProcessDemo";
 import ScreenTabs from "./ScreenTabs";
 
 /*
- * The public landing page (signed out on `/`). The words come from docs/marketing/COPY.md (Muse Spark's copy deck,
+ * The public landing page (signed out on `/`). The words come from docs/marketing/COPY.md (the copy deck,
  * hero option B), checked line by line against the code and docs/HONESTY.md; where a line changed, the reason is in
  * docs/reviews/site-layout/REVIEW.md. Every screen is a real screenshot (sample books). When a claim changes, change
  * it here, in COPY.md and in services/runtime/app/public_kb.md (the chat's notes).
@@ -44,7 +44,7 @@ const STEPS = [
   },
   {
     title: "The AI proposes",
-    body: "A Meta model reads the document and suggests supplier, category, VAT and totals. Code checks the arithmetic.",
+    body: "An AI model reads the document and suggests supplier, category, VAT and totals. Code checks the arithmetic.",
   },
   {
     title: "You approve",
@@ -475,7 +475,7 @@ function AskAndActions() {
           <SectionHead id="ask-title" title={BLOCK.voice.title} lead={BLOCK.voice.body} />
           <p className="mt-4 text-[15px] leading-relaxed text-muted">Example: {BLOCK.voice.example}</p>
           <p className="mt-4 text-sm text-muted">
-            Spoken questions use Muse Voice Transcribe when the server has a Meta API key; it is used live, and measured on synthetic recordings only.
+            Spoken questions are turned into text by a speech-to-text model; it is used live, and measured on synthetic recordings only.
           </p>
         </div>
       </div>
@@ -613,7 +613,7 @@ function Android() {
                 src="/shots/android-review.webp"
                 width={360}
                 height={800}
-                alt="Android app, Review 1 of 6: Fictional Plastics Ltd, £126.00, 97 % sure, read by Muse Spark, with the net, the VAT to reclaim, the supplier VAT number and Approve, Edit and Reject."
+                alt="Android app, Review 1 of 6: Fictional Plastics Ltd, £126.00, 97 % sure, read by the hosted model, with the net, the VAT to reclaim, the supplier VAT number and Approve, Edit and Reject."
               />
             </PhoneFrame>
             <PhoneFrame className="w-[46%] max-w-[210px]">

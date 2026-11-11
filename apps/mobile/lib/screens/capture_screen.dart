@@ -721,7 +721,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                                 _settings == null)
                             ? null
                             : _readAll,
-                        child: const Text('Read with Meta AI',
+                        child: const Text('Read with AI',
                             style: TextStyle(
                                 fontWeight: FontWeight.w800, fontSize: 16)),
                       ),

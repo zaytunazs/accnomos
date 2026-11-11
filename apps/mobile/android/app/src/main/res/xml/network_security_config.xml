@@ -2,7 +2,7 @@
 <!-- Release and profile builds (SEC-05): HTTPS everywhere, except plain HTTP to the owner's own machines on a LAN or
      this device, where a local reader (the local model server on our own server) or a development runtime has no certificate.
      Android cannot list an IP range here, so the known hosts are named; any other http:// address is refused, so a
-     Graph token or Meta key is never sent unencrypted across the internet. Debug builds allow any host
+     Graph token or AI API key is never sent unencrypted across the internet. Debug builds allow any host
      (src/debug/res/xml/network_security_config.xml). -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />

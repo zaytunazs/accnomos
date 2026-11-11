@@ -24,7 +24,7 @@ const features: Feature[] = [
     does: "Photograph or upload a receipt, or drop it in 00 Inbox. It is read, checked against plain rules, and held on the Review page until you tap Approve or Reject. Approval writes one balanced ledger event that is never edited or deleted; Undo adds a reversing event.",
     ai: "The AI reads the document into a strict list: supplier, VAT number, date, lines, net, VAT and total. It also guesses the category.",
     code: "Code checks the reading: lines and totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. A purchase over £250 with no VAT and no VAT number from a supplier the books do not know yet also waits, asking “Is <supplier> VAT-registered?” — the tick teaches “not registered”, a VAT number seen on an approved receipt teaches “registered”, undoing the approval takes the tick back, and Contacts can change the stored answer. Anything that fails waits in Needs a look.",
-    gap: "Not verified yet: reading by Muse Spark 1.3 is measured on made-up documents only (every field right on 95 % clean and 96 % messy); a HEIC photo is converted and read, but only files made by the tests have been tried; evals use made-up receipts, so real phone photos will score lower.",
+    gap: "Not verified yet: reading by the hosted model is measured on made-up documents only (every field right on 95 % clean and 96 % messy); a HEIC photo is converted and read, but only files made by the tests have been tried; evals use made-up receipts, so real phone photos will score lower.",
   },
   {
     id: "books",
@@ -56,7 +56,7 @@ const features: Feature[] = [
     does: "Ask answers questions about your books (“how much did I spend with Screwfix?”) and can plan a day (“plan my Thursday”). The web streams the answer: key figures first, then the wording. On the mic button you can speak the question instead of typing it.",
     ai: "The model only writes the words. Key figures and quotes come from a facts pack that code builds from your ledger, and code checks every figure the model writes.",
     code: "Code routes the question to the right books and period, checks each figure against the facts, and replaces any invented or wrong-period figure with the quoted facts.",
-    gap: "Not verified yet: voice (Muse Voice Transcribe, with a local fallback model if it fails) has been used live from the Android app on one phone and in our live checks with synthetic speech (4 Nov 2026), not from a browser microphone in our checks; CI fakes it. Bank, payroll, jobs and deadlines are not in the facts pack.",
+    gap: "Not verified yet: voice (the speech-to-text model, with a local fallback model if it fails) has been used live from the Android app on one phone and in our live checks with synthetic speech (4 Nov 2026), not from a browser microphone in our checks; CI fakes it. Bank, payroll, jobs and deadlines are not in the facts pack.",
   },
   {
     id: "actions",
@@ -80,7 +80,7 @@ const features: Feature[] = [
     does: "When the first reading passes every code check, a second model reads the same image again with a different prompt, without seeing the first answer. Code compares six fields (supplier, VAT number, date, net, VAT, total). If all six agree the card says so; any disagreement sends the proposal to Needs a look with both readings side by side.",
     ai: "The second model only reads the image again. It never sees the first answer and it never decides.",
     code: "Code compares the six fields (names ignoring case and Ltd/Limited, dates by value, money to the penny, VAT numbers by digits). Nobody picks or merges values: you approve the first reading or reject.",
-    gap: "Not verified yet: local mode verifies with Glimmer and key mode with Muse Spark unless the server owner sets up Muse Spark Open (off on the live server since 2 Nov 2026, so the second reading there is Muse Spark checking itself: less independent). Measured on 400 synthetic documents, Muse Spark Open caught 1 wrong reading, missed 6 and raised 11 false alarms (see Meta models used).",
+    gap: "Not verified yet: local mode verifies with the local open-weights model and key mode with the hosted model unless the server owner sets up the open-weights verifier model (off on the live server since 2 Nov 2026, so the second reading there is the first model checking itself: less independent). Measured on 400 synthetic documents, the open-weights verifier model caught 1 wrong reading, missed 6 and raised 11 false alarms (see AI models used).",
   },
   {
     id: "outlook",
@@ -168,7 +168,7 @@ const features: Feature[] = [
     does: "The phone app signs in, captures receipts, and covers Review (approve, edit, reject, Autopilot undo), Ask with mic and action cards, Home, VAT with a period picker, and Files, Contacts, Invoices, Jobs, Vehicles, Bank and read-only Payroll under More. There is no HMRC filing on the phone.",
     ai: "Same split as the web: the AI reads documents and writes words; code checks and posts.",
     code: "The phone calls the same runtime routes as the web.",
-    gap: "Not verified yet: the app has run on one real phone (the owner's, 4 Nov 2026) and on the emulator, not on other phones; sign-in from a Google Play install is untried (the Play signing hash is registered); the Meta key is not in secure storage.",
+    gap: "Not verified yet: the app has run on one real phone (the owner's, 4 Nov 2026) and on the emulator, not on other phones; sign-in from a Google Play install is untried (the Play signing hash is registered); the API key is not in secure storage.",
   },
 ];
 
@@ -194,8 +194,8 @@ const faqs: { q: string; a: string }[] = [
     a: "It reads the same photo again with a different prompt, without seeing the first answer. Code compares supplier, VAT number, date, net, VAT and total. All six must agree or the proposal waits for you with both readings side by side. It never picks or merges values.",
   },
   {
-    q: "Why do I need a Meta key or a local model?",
-    a: "The reading and answering models run either on a machine you control (Muse Glimmer, local mode) or through a Meta API key you paste in (key mode). In local mode documents go only to that machine. In key mode with no key header, the server’s own key is used as a fallback.",
+    q: "Why do I need an API key or a local model?",
+    a: "The reading and answering models run on our own server by default, on a machine you control (an open-weights model, local mode) or through an API key for the hosted model that you paste in (key mode). In local mode documents go only to that machine. In key mode with no key header, the server’s own key is used as a fallback.",
   },
   {
     q: "Can I delete everything?",
@@ -219,7 +219,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "What has not been tested on real services?",
-    a: "Most features beyond the Meta paths: the live server's models, voice, the SAM crop, the demo's HMRC sandbox return and TrueLayer sandbox bank feed have run for real (4 Nov 2026, with records in the repo); a real OneDrive, mailbox and calendar, and phones other than the owner's, are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
+    a: "Most features beyond the AI paths: the live server's models, voice, the image model's receipt crop, the demo's HMRC sandbox return and TrueLayer sandbox bank feed have run for real (4 Nov 2026, with records in the repo); a real OneDrive, mailbox and calendar, and phones other than the owner's, are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
   },
   {
     q: "How do I check this page against the code?",
@@ -253,27 +253,27 @@ const tree: { name: string; note: string; children?: { name: string; note: strin
 
 const models = [
   {
-    name: "Muse Glimmer 30B",
-    job: "Reads receipts and invoices, categorises them, and answers Ask in local mode. Also does the second reading (Verifier) in local mode, so the document never leaves your machine.",
+    name: "Local open-weights model",
+    job: "Reads receipts and invoices, categorises them, and answers Ask: on our own server, or in local mode on your machine. Also does the second reading (Verifier) in local mode, so the document never leaves your machine.",
   },
   {
-    name: "Muse Spark",
-    job: "Same reading and answering jobs when you bring your own Meta API key (key mode). Stands in as the Verifier when Muse Spark Open is not set up.",
+    name: "Hosted model",
+    job: "Same reading and answering jobs when you bring your own API key for it (key mode). Stands in as the Verifier when the open-weights verifier model is not set up.",
   },
   {
-    name: "Muse Spark Open (optional)",
+    name: "Open-weights verifier model (optional)",
     job: "Independent second reading in key mode, only if the server owner set it up (hosted open weights). Measured on 400 synthetic documents: every field right 91 % clean and 93 % messy.",
   },
   {
-    name: "Muse Voice Transcribe",
-    job: "Turns a spoken Ask question or instruction into text, which then goes through the normal grounded Ask. Uses your Meta key or the server's; a local fallback model takes over if it fails, and each answer says which one heard it. Audio is not kept.",
+    name: "Speech-to-text model",
+    job: "Turns a spoken Ask question or instruction into text, which then goes through the normal grounded Ask. Runs on our own server, or on the hosted speech-to-text model with your own key; a local fallback model takes over if it fails, and each answer says which one heard it. Audio is not kept.",
   },
   {
-    name: "SAM 3.1",
+    name: "Receipt-crop image model",
     job: "Finds and crops the receipt inside a messy phone photo — only when switched on. Off by default; plain code crop is the default.",
   },
   {
-    name: "Muse Image",
+    name: "Image-generation model",
     job: "Made the brand artwork at build time. It is not part of the running product.",
   },
 ];

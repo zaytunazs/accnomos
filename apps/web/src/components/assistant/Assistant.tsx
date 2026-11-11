@@ -77,8 +77,8 @@ function TalkIcon() {
 
 /**
  * "Talk to Accnomos": a button on every signed-in and demo page that opens a conversation drawer. Type, tap the mic
- * for one spoken question, or turn on Hands-free (lib/handsfree.ts): it listens, sends what it heard to Ask (Muse
- * Voice Transcribe, then the same checked answer as the Ask page), reads the answer aloud and listens again. A card
+ * for one spoken question, or turn on Hands-free (lib/handsfree.ts): it listens, sends what it heard to Ask (the
+ * speech-to-text model, then the same checked answer as the Ask page), reads the answer aloud and listens again. A card
  * that changes something is shown and read back in words, then "Shall I go ahead? Say yes or no.": a clear yes sends
  * the same signed approval as the Approve button, marked as spoken (lib/voiceApproval.ts); no, silence or two unclear
  * replies leave the card for tapping. Cards that send or move money (`tap_only`) always need the tap.

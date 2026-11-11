@@ -12,7 +12,7 @@ import {
   type AiCall,
   type AiHealth,
   type ProviderHealth,
-} from "@/lib/meta-models";
+} from "@/lib/ai-models";
 
 const card = "rounded-2xl border border-border bg-white p-4 sm:p-6";
 const heading = "text-lg font-extrabold tracking-tight";
@@ -72,7 +72,7 @@ function Chain({ health }: { health: AiHealth }) {
             </p>
             <p className="mt-1 text-[13px] text-muted">
               Reads images: {p.vision ? "yes" : "no"} · Strict JSON: {p.json_mode ? "yes" : "no"} · Voice:{" "}
-              {p.voice ? "yes (Muse Voice Transcribe)" : "no"}
+              {p.voice ? "yes (speech-to-text model)" : "no"}
             </p>
           </li>
         );
@@ -179,7 +179,7 @@ export default function ModelsAtWork({ evals }: { evals: EvalHeadline[] }) {
         </h2>
         <p className="mt-1 text-sm text-muted">
           Each AI call goes to the first provider that is up; if it times out, errors or is out of credit, the next
-          one takes the call. All three serve Meta models. If you chose your own AI in Settings, your calls go only
+          one takes the call. Each serves one of the models on the AI models page. If you chose your own AI in Settings, your calls go only
           there.
         </p>
         {error && (

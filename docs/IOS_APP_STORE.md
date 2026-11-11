@@ -188,7 +188,7 @@ last declares UserDefaults). The app's own manifest declares:
 longer than needed to serve the request. The runtime keeps nothing, but (per accnomos.com/privacy, updated 11 Nov 2026)
 documents and questions are read on our own server and, only when it cannot answer, by our backup AI provider
 Anthropic, which deletes API inputs and outputs within 30 days (longer only for its usage policy or the law) and may
-not train on them under its Commercial Terms; Meta no longer receives documents from our server. HMRC's
+not train on them under its Commercial Terms; the hosted model's provider no longer receives documents from our server. HMRC's
 fraud-prevention headers carry a device id and a hashed user id. The answers stay the same (the backup's 30-day
 retention is still "kept longer than needed to serve the request"):
 
@@ -201,7 +201,7 @@ retention is still "kept longer than needed to serve the request"):
 | Identifiers › User ID, Device ID (HMRC headers) | Yes | Yes | No | App Functionality |
 | Contact Info, Contacts, Audio, Location, Usage, Diagnostics | No | | | |
 
-Owner check: if the live server's AI is switched out of Meta's Contributor mode, or HMRC is not offered, revisit
+Owner check: if the live server's AI is switched out of the hosted model's Contributor mode, or HMRC is not offered, revisit
 the rows above and the manifest. Contacts and audio are processed but not kept (contacts go to the user's own books;
 spoken questions are "converted then discarded"), so they are not "collected" in Apple's sense.
 

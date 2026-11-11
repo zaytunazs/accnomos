@@ -172,8 +172,8 @@ export function SummaryCard() {
       ) : null}
       {s ? (
         <p className="mt-1 text-[12px] leading-5">
-          <Link href="/meta-models" className="font-semibold text-teal-dark underline underline-offset-2 hover:text-teal">
-            Which Meta model does what
+          <Link href="/ai-models" className="font-semibold text-teal-dark underline underline-offset-2 hover:text-teal">
+            Which AI model does what
           </Link>
         </p>
       ) : null}

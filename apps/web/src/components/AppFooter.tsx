@@ -28,7 +28,7 @@ function useBuild(): string | null {
 }
 
 /**
- * The footer on every app page (AppShell): how it works, help, privacy, the Meta models, the demo guide, contact,
+ * The footer on every app page (AppShell): how it works, help, privacy, the AI models, the demo guide, contact,
  * Settings
  * (the last link on every page, where keyboard users leave it) and the version. The public site has its own footer (MarketingShell).
  */
@@ -50,10 +50,10 @@ export default function AppFooter() {
           Privacy
         </Link>
         <Link href="/models" className={linkClass}>
-          Meta models at work
+          AI models at work
         </Link>
-        <Link href="/meta-models" className={linkClass}>
-          Meta models used
+        <Link href="/ai-models" className={linkClass}>
+          AI models used
         </Link>
         <Link href={DEMO_GUIDE} className={linkClass}>
           Demo guide

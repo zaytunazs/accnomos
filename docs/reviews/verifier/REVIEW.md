@@ -13,7 +13,7 @@ Reviewed 27 Oct 2026 by the second agent on the branch.
 - Checked the committed report against the run artefact `evals/runs/verifier-20/summary.json` (git-ignored). The
   numbers match: 94% all-field agreement, 16/1/0/1 doc outcomes, 95% → 90% decision accuracy.
 - Product rules: the model never merges values (the code compares, and the extracted document is untouched); local mode
-  never leaves the machine even when a hosted-verifier key is set; the user's Meta key is never sent to the open-weights host; `.env.example`
+  never leaves the machine even when a hosted-verifier key is set; the user's API key for the hosted model is never sent to the open-weights host; `.env.example`
   has empty values only; nothing is written server-side; the sample chip is labelled "(sample)".
 
 ## What I fixed
@@ -26,7 +26,7 @@ Reviewed 27 Oct 2026 by the second agent on the branch.
   "Fuels". Legal suffixes are now dropped only at the end. Added fake-transport tests: the open-weights host request goes to the
   right URL with the owner's key, the user's key is never in it, the first reading is never in the prompt, and
   malformed or 401 responses give an error rather than a crash.
-- `8e915c5`: the web label claimed "Glimmer 30B" for any local verifier model; it now shows the real model. The README
+- `8e915c5`: the web label claimed "the local open-weights model" for any local verifier model; it now shows the real model. The README
   and the card said "you choose" between readings, but the card only offers Approve or Reject. Reworded so it does not
   promise more than that.
 - `aaf4012`: the privacy page's third-party list left out the open-weights host, which receives document images in key mode when the
@@ -34,9 +34,9 @@ Reviewed 27 Oct 2026 by the second agent on the branch.
 
 ## What remains
 
-- The hosted model slug `meta-models/muse-spark-open` is still unconfirmed against the host's docs (the code says so).
-  No real hosted or Meta API verifier call has been made; both paths are unit-tested with fakes only.
-- The eval covers 20 messy synthetic receipts with Glimmer verifying Glimmer: 0 extra catches and 1 false alarm on a
+- The hosted model slug the default `VERIFIER_MODEL` id is still unconfirmed against the host's docs (the code says so).
+  No real hosted or the hosted model's API verifier call has been made; both paths are unit-tested with fakes only.
+- The eval covers 20 messy synthetic receipts with the local open-weights model verifying the local open-weights model: 0 extra catches and 1 false alarm on a
   mixed-rate receipt (the verifier reads the standard-rated subtotal as net). The catch rate is not yet measured; run
   the full 60 and real photos. The verifier prompt needs a mixed-rate hint.
 - The card cannot adopt the second reading. On disagreement the user can only approve the first reading or reject the

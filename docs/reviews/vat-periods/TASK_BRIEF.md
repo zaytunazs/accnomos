@@ -3,7 +3,7 @@
 Accnomos monorepo (public; UK English; no secrets; stateless runtime). Read first: `services/runtime/app/{routes_vat.py,pipeline.py,
 checks.py,facts.py}`, `packages/ledger/src/accnomos_ledger/vat.py`, `services/hmrc-relay/relay/*` (obligations endpoint, if present),
 `apps/web/src/components/settings/VatPeriodSettings.tsx` (saved stagger / start month), `apps/web/src/app/vat/*`, `apps/web/src/lib/runtime.ts`,
-`docs/reviews/judges-docs/REVIEW.md` ("What remains": the demo receipt is dated outside the judging quarter and the date-in-period warning never fires).
+an earlier docs review ("What remains": the demo receipt is dated outside the judging quarter and the date-in-period warning never fires).
 
 ## Deliverables
 1. Runtime `GET /books/vat` takes `?period_start=&period_end=` (ISO dates) or `?period=<yyyy-Qn>` and defaults to the **current period

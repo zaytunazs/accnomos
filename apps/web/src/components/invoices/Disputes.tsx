@@ -7,6 +7,7 @@ import { RuntimeErrorNote } from "@/components/States";
 import { disputes, type RtDispute, type RtEvidenceProposal } from "@/lib/disputes";
 import { money } from "@/lib/invoices";
 import { ukDate } from "@/lib/runtime";
+import { shortModelName } from "@/lib/ai-config";
 
 const STATUS: Record<string, string> = {
   OPEN: "Open",
@@ -128,7 +129,7 @@ function DisputeRow({ account, d, onChanged }: { account: AccountInfo; d: RtDisp
           <p className="mt-1 text-[13px] text-muted">
             {proposal.fallback_reason
               ? `Written by code from your books. ${proposal.fallback_reason}`
-              : `Drafted by ${proposal.model}; every figure and date checked against your books.`}
+              : `Drafted by ${shortModelName(proposal.model)}; every figure and date checked against your books.`}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button

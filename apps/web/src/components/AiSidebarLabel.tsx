@@ -21,9 +21,9 @@ export function useAiLabel(): string {
 }
 
 /**
- * The sidebar's AI line, a link to /meta-models. Reads the same store `ChooseAi` writes
+ * The sidebar's AI line, a link to /ai-models. Reads the same store `ChooseAi` writes
  * (`accnomos.ai`), so it names the real setup instead of always saying
- * Glimmer. Follows changes made in Settings in this tab (a custom event —
+ * one model. Follows changes made in Settings in this tab (a custom event —
  * same-tab writes get no `storage` event) and in other tabs.
  */
 export default function AiSidebarLabel() {

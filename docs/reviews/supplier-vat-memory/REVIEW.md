@@ -35,7 +35,7 @@ Second-agent review of the supplier-aware VAT-number check (brief: `TASK_BRIEF.m
 - **Undo does not forget a tick.** Undoing an approval reopens the card, but the supplier stays `not_registered` in
   contacts.json, so later receipts from them pass without asking. The user has to reset it on Contacts. The same applies to `registered`
   learnt from a VRN.
-- **Stored Glimmer replay not re-run.** The per-document records of `evals/runs/glimmer_messy_200` are git-ignored and are not
+- **Stored the local open-weights model replay not re-run.** The per-document records of `evals/runs/glimmer_messy_200` are git-ignored and are not
   in this checkout either. The report's expected 11 → 8 false passes is unconfirmed: run `python -m harness.replay
   runs/glimmer_messy_200` where the records are.
 - **Gold 176/184 were changed** from `proposed` to `needs_a_look` to fit the new rule (overseas SaaS, over £250, no VAT). This is

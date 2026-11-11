@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { warmServerAi } from "@/lib/meta-models";
+import { warmServerAi } from "@/lib/ai-models";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";

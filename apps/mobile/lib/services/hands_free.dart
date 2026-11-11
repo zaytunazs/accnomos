@@ -2,7 +2,7 @@
 /// rules as the web's `apps/web/src/lib/handsfree.ts`.
 ///
 /// One turn records until the speaker stops ([decide]), sends the recording
-/// to `POST /books/ask/voice` (Muse Voice Transcribe hears it; the Ask
+/// to `POST /books/ask/voice` (the speech-to-text model hears it; the Ask
 /// pipeline answers with every figure checked), reads the answer aloud, and
 /// listens again. The loop ends on Stop, a stop phrase ("stop", "that's
 /// all"…) or two quiet turns in a row. A card is read back and the user is

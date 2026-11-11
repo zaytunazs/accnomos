@@ -64,7 +64,7 @@ def test_kb_parses_into_named_sections_with_unique_ids():
     sections = pc.knowledge()
     ids = [s.id for s in sections]
     assert len(ids) == len(set(ids)) >= 10
-    for must in ("what-it-is", "your-data", "vat-hmrc", "status", "pricing", "meta-models", "contact"):
+    for must in ("what-it-is", "your-data", "vat-hmrc", "status", "pricing", "ai-models", "contact"):
         assert must in ids
     for s in sections:
         assert s.body and "Keywords:" not in s.body
@@ -76,7 +76,7 @@ def test_kb_states_the_honest_limits():
     assert "sandbox only" in text
     assert "no published pricing" in text
     assert "tested with automated tests against fakes" in text
-    assert "run live on synthetic photos only" in text  # SAM 3.1
+    assert "run live on synthetic photos only" in text  # the receipt-crop image model
 
 
 def test_kb_heading_without_an_id_is_an_error():
@@ -91,7 +91,8 @@ def test_kb_heading_without_an_id_is_an_error():
         ("How much does it cost?", "pricing"),
         ("Can I file my VAT return to HMRC?", "vat-hmrc"),
         ("Is there an Android app?", "android"),
-        ("Which Meta models does it use?", "meta-models"),
+        ("Which AI models does it use?", "ai-models"),
+        ("Which Meta models does it use?", "ai-models"),
         ("How accurate is it?", "accuracy"),
         ("Can it post receipts automatically?", "autopilot"),
         ("How do I sign in?", "getting-started"),

@@ -30,12 +30,12 @@ const STEPS: Step[] = [
     mark: { left: 17, top: 52, width: 54, height: 22 },
   },
   {
-    title: "A Meta model reads it",
-    body: "Muse Glimmer 30B reads the supplier, date, VAT number, lines and totals into strict fields, and says how sure it is.",
+    title: "An AI model reads it",
+    body: "An open-weights model reads the supplier, date, VAT number, lines and totals into strict fields, and says how sure it is.",
     src: "/shots/step-2-read.webp",
     width: 816,
     height: 510,
-    alt: "The Review card for Novex Office Supplies Ltd, £51.90: confidence 97 %, read by Glimmer 30B, date 2 Nov 2026, VAT number GB 882431902, net £43.25, VAT £8.65, paid by card ending 4821, and the proposed entry.",
+    alt: "The Review card for Novex Office Supplies Ltd, £51.90: confidence 97 %, read by the local open-weights model, date 2 Nov 2026, VAT number GB 882431902, net £43.25, VAT £8.65, paid by card ending 4821, and the proposed entry.",
     mark: { left: 22, top: 6.5, width: 43, height: 12 },
   },
   {

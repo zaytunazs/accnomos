@@ -3,7 +3,7 @@
 Branch `claude/app-shell` from `origin/main` (55349d5). The owner's report (live site, signed in, `/accountant`): only a
 left sidebar with every link, no top bar, no footer, no name, account or profile; an "Accountant portal" link for a
 normal user; `Couldn't finish that: timed_out (MSAL)`; no way to read files left in OneDrive earlier; no "Back up now"
-to a separate folder; and "AI: Glimmer 30B on your machine" on the hosted app.
+to a separate folder; and "AI: The local open-weights model on your machine" on the hosted app.
 
 ## 1. Why the top bar was missing (root cause)
 
@@ -55,13 +55,13 @@ no bar there to duplicate it.
 | Signed-in name and Microsoft email | on the bar from 1024 px (initials below), and in the account menu |
 | Current profile, its kind, profile switcher | `ProfileSwitcher` (far left): name, kind; menu lists every linked profile, *Add another account / business* |
 | Sign out | account menu › *Sign out of this one* |
-| Footer on every app page | `AppFooter.tsx`: How it works, Help and guides (`/help`, new), Privacy, Meta models at work, For judges, Contact (mailto), "Accnomos version 0.1.0 · build <sha>" (from the deploy's `/version.json` when present) |
+| Footer on every app page | `AppFooter.tsx`: How it works, Help and guides (`/help`, new), Privacy, AI models at work, For judges, Contact (mailto), "Accnomos version 0.1.0 · build <sha>" (from the deploy's `/version.json` when present) |
 | Accountant portal only for accountants | account menu item only when this account's portal has listed ≥ 1 client on this device (`lib/accountant.ts` `hasSharedClients`); removed from the sidebar; reachable from the public Accountants page |
 | Accountant's own shell | `/accountant` with no client open: logo, "Accountant portal", name/email, *Your own books*, Settings, sign out; no business menu, no tab bar |
 | MSAL silent timeout | `lib/msal.ts` `getToken`: `timed_out` / `monitor_window_timeout` → one interactive redirect per scope set per 5 minutes (Microsoft's documented remedy, [MSAL.js errors](https://learn.microsoft.com/entra/msal/javascript/browser/errors#browserautherrors), checked 29 Oct 2026); after that a plain sentence. `States.tsx` `SignInSlowNote`: "Microsoft didn't answer in time", Try again, Sign in again. `errorText` never passes MSAL's words through |
 | Earlier files | `app/previous_files.py`, `GET /files/previous`, `POST /files/previous/queue`, `/leave`; Home notice with the count; list on Files and Settings › Files & backups |
 | Back up now | `app/full_backup.py`, `GET/POST /backups/full` (`?stream=1` progress events); `FullBackupPanel.tsx` on Files and Settings › Files & backups |
-| AI line | `aiLabel`: "AI: Meta Muse models" (", your own key" / " on your own computer"), linking to `/meta-models` (new route, the `/models` page); no model or third-party names |
+| AI line | `aiLabel`: "AI: AI models" (", your own key" / " on your own computer"), linking to `/meta-models` (new route, the `/models` page); no model or third-party names |
 
 ## 4. Back up now
 

@@ -1,4 +1,4 @@
-# Review: `claude/batch-tax` (pre-merge batch of the tax, payroll and small Muse branches)
+# Review: `claude/batch-tax` (pre-merge batch of the tax, payroll and small the model branches)
 
 A pre-merge helper branch so the integrator gets one merge instead of twelve. Made from `origin/main` at `10dd43f`
 (28 Oct 2026), each branch merged in the order below with `--no-ff`, conflicts resolved keeping both features and every

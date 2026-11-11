@@ -123,7 +123,7 @@ class RuntimeClient {
     return const {};
   }
 
-  // Glimmer on a home machine takes 20–60 s per receipt; the runtime itself is fast.
+  // An open-weights model on a home machine takes 20–60 s per receipt; the runtime itself is fast.
   static const _timeout = Duration(seconds: 120);
 
   Map<String, String> get _headers {
@@ -132,7 +132,7 @@ class RuntimeClient {
     final route = clampAiRoute(settings.aiRoute);
     if (demo != null && books != null) {
       // A demo: the session id instead of a Graph token, and no X-AI-*
-      // headers, so the runtime reads with its own Meta model chain, as the
+      // headers, so the runtime reads with its own model chain, as the
       // website's demo does (this phone's own AI settings may point at a
       // machine on someone else's network).
       return {
@@ -143,7 +143,7 @@ class RuntimeClient {
         kAiRouteHeader: ?route,
       };
     }
-    // 'auto': no AI choice is sent, so the runtime reads with its own Meta
+    // 'auto': no AI choice is sent, so the runtime reads with its own
     // model chain (the website's default). A local choice without an
     // address falls back to the same chain rather than a blank URL.
     final ownAi = settings.aiMode == 'key' ||
@@ -291,7 +291,7 @@ class RuntimeClient {
   }
 
   /// Ask the runtime whether the configured AI answers. For 'auto' (the
-  /// reader's own chain) `GET /health` says which Meta models are set up.
+  /// reader's own chain) `GET /health` says which models are set up.
   Future<Map<String, dynamic>> aiTest() async {
     if (settings.aiMode != 'key' &&
         !(settings.aiMode == 'local' && settings.aiBaseUrl.trim().isNotEmpty)) {
@@ -307,7 +307,7 @@ class RuntimeClient {
         'mode': 'auto',
         'model': model ?? '',
         'detail': model != null
-            ? 'The reader service\'s Meta models answer'
+            ? 'The reader service\'s AI models answer'
             : 'The reader service has no AI set up',
       };
     }
@@ -2426,7 +2426,7 @@ class VoiceAnswer {
   final AskAnswer? answer;
 
   /// Which speech-to-text service heard it (`transcribed_by.label`), e.g.
-  /// "Muse Voice Transcribe" or "a local fallback model"; null if unsaid.
+  /// The runtime's neutral label for the speech-to-text service; null if unsaid.
   final String? transcribedBy;
 
   factory VoiceAnswer.fromJson(Map<String, dynamic> json) {

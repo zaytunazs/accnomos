@@ -144,7 +144,7 @@ task text only and was never merged.
 | 23 | Fix: Ask's number check read digits in file names, so `test_ask` failed 1 run in N (below) | this pass | see row 24 | no web change |
 | 24 | `claude/sales-exports-fix` (on top of row 22, which already had both features) and *Reports & exports* in the menu | `176b96b0` | 40781660107; on `main` 40783592918 | 40783592935 ✓ |
 | 25 | `claude/dashboard-ui` (Home as one dashboard with a checked AI summary, `GET /books/home`, lower-looking sub-menus, the header without stray lines, the Android summary card) | `c353bd44` | 40792468435; on `main` 40794211149 | 40794211389 ✓ |
-| 26 | `claude/muse-transcribe` (voice questions: Muse Voice Transcribe first, a local speech-to-text model on our own server as fallback; who transcribed shown and audited) | this commit | see below | ✓ on push |
+| 26 | `claude/muse-transcribe` (voice questions: The speech-to-text model first, a local speech-to-text model on our own server as fallback; who transcribed shown and audited) | this commit | see below | ✓ on push |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -274,7 +274,7 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
   over 5 MB). Its own first e2e run had 8 failures. It put them down to its sandbox's full Chromium (the PDF viewer's
   `chrome-extension://` stylesheet tripping the "nothing leaves 127.0.0.1" guard), and all 8 passed on re-run. Here,
   on the pinned headless shell, the full run is 477 passed, 0 failed, 0 flaky, which bears that out. No e2e covers
-  voice: test mode has no speech-to-text and CI has no microphone. The live Muse request shape comes from Meta's
+  voice: test mode has no speech-to-text and CI has no microphone. The live the model request shape comes from the model provider's
   cookbook, not a live call, and the local speech-to-text model server on the Spark is the owner's to set up (its `HONESTY.md` entries
   say so). Its Dart tests (`voice_provider_test.dart`) were not run on the branch; CI's `flutter` job runs them.
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card

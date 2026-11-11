@@ -48,7 +48,7 @@ class WelcomeScreen extends StatefulWidget {
     ),
     (
       'The AI proposes',
-      'A Meta model reads the document and suggests supplier, category, VAT and '
+      'An AI model reads the document and suggests supplier, category, VAT and '
           'totals. Code checks the arithmetic.'
     ),
     (

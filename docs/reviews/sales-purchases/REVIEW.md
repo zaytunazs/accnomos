@@ -52,4 +52,4 @@ No existing nav entry was changed. The pages link to each other and to `/invoice
 - Repeating with approve automatically sends real email on a page visit. If the mailbox token lacks `Mail.Send` the invoice stays a draft. The web only asks for mail consent on a visit when a due invoice is set to approve automatically.
 - Matching a received bill to an order is by the user's choice, with no automatic suggestion in Review.
 - Overview "money in/out" depends on payments being recorded or matched.
-- Not run against real Outlook, Graph or a real Xero CSV; fake storage and fake mailbox only. Meta and the open-weights host were not called.
+- Not run against real Outlook, Graph or a real Xero CSV; fake storage and fake mailbox only. The model provider and the open-weights host were not called.

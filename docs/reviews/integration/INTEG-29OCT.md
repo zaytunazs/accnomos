@@ -83,7 +83,7 @@ Merged cleanly (`d27f2b6f`), no conflicts.
   by `sys.platform != "win32"` (Windows has no Unix permission bits; the files
   stay `0o666` there). They still run on Linux CI.
 - `app-shell.spec.ts`: the AI-line test now expects the merged `/meta-models`
-  heading ("Meta models in Accnomos", was "Meta models at work").
+  heading ("AI models in Accnomos", was "AI models at work").
 - `menu-pages.spec.ts`: wait for the first Main-menu button before collecting
   items — `.all()` does not wait, so under parallel load it read the menu
   before hydration and found zero buttons.

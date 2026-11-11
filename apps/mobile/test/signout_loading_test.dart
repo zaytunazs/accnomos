@@ -20,7 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Sign-out and the logo go where the website's do (Welcome, Home), and the
 /// slow AI words never hold the page up: code's summary and goals note show
-/// first, with a thin "Muse Spark is writing…" bar until the AI's arrive.
+/// first, with a thin "The AI is writing…" bar until the AI's arrive.
 void main() {
   const channel = MethodChannel('msal_auth');
 
@@ -98,7 +98,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(
         home: Scaffold(body: SummaryCard(summary: code, pending: true))));
     expect(find.byKey(const Key('summary-progress')), findsOneWidget);
-    expect(find.text('Muse Spark is writing your summary…'), findsOneWidget);
+    expect(find.text('The AI is writing your summary…'), findsOneWidget);
     expect(find.text('You had £18,166.11 in the bank.'), findsOneWidget);
 
     const ai = HomeSummary(
@@ -128,12 +128,12 @@ void main() {
     expect(fake.calls, [false, true]);
     expect(find.text('Rainy-day fund'), findsOneWidget);
     expect(find.text('Code: your goals are mostly on track.'), findsOneWidget);
-    expect(find.text('Muse Spark is reading your goals…'), findsOneWidget);
+    expect(find.text('The AI is reading your goals…'), findsOneWidget);
 
-    fake.ai.complete(_goals('Muse: put £20 more aside this month.', 'muse-spark-1.3'));
+    fake.ai.complete(_goals('AI: put £20 more aside this month.', 'muse-spark-1.3'));
     await tester.pumpAndSettle();
-    expect(find.text('Muse: put £20 more aside this month.'), findsOneWidget);
-    expect(find.text('Muse Spark is reading your goals…'), findsNothing);
+    expect(find.text('AI: put £20 more aside this month.'), findsOneWidget);
+    expect(find.text('The AI is reading your goals…'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

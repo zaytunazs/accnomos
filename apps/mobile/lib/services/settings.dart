@@ -8,7 +8,7 @@ import 'ai_route.dart';
 const String kDefaultRuntimeUrl =
     kReleaseMode ? 'https://api.accnomos.com' : 'http://10.0.2.2:8780';
 
-/// The reader service's own Meta model chain (no X-AI-* choice sent), like
+/// The reader service's own model chain (no X-AI-* choice sent), like
 /// the website when no AI has been chosen.
 const String kDefaultAiMode = 'auto';
 
@@ -42,8 +42,8 @@ class AppSettings {
   final String runtimeUrl;
 
   /// 'auto' (the default, as on the website) reads with the reader service's
-  /// own Meta model chain; 'local' reads on your machine; 'key' reads with
-  /// Muse Spark via your own API key.
+  /// own model chain; 'local' reads on your machine; 'key' reads with
+  /// the hosted model via your own API key.
   final String aiMode;
 
   /// Address of the on-machine model server. Empty until the user types
@@ -53,7 +53,7 @@ class AppSettings {
   /// On-machine model name.
   final String aiModel;
 
-  /// Muse API key, only used when [aiMode] is 'key'.
+  /// API key for the hosted model, only used when [aiMode] is 'key'.
   /// TODO: move to flutter_secure_storage.
   final String? apiKey;
 

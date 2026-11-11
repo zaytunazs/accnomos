@@ -41,9 +41,9 @@ const householdAskQuestions = [
 ];
 
 /// The model that writes Ask's words. A demo, or no AI of your own (the
-/// default), uses the reader service's Meta model chain: its first set-up
+/// default), uses the reader service's model chain: its first set-up
 /// model from `GET /health`. Your own local machine or key: that model.
-/// Shown by name ("Muse Spark"), never as a raw id.
+/// Shown by a neutral name ("the hosted model"), never as a raw id.
 String askModelLabel(AppSettings? settings, Map<String, dynamic>? health,
     {required bool demo}) {
   final own = settings != null &&
@@ -54,7 +54,7 @@ String askModelLabel(AppSettings? settings, Map<String, dynamic>? health,
     return friendlyModelName(settings.aiModel);
   }
   final server = RuntimeClient.serverModel(health);
-  return server == null ? 'a Meta model' : friendlyModelName(server);
+  return server == null ? 'an AI model' : friendlyModelName(server);
 }
 
 /// The empty-thread note above the starter questions.
@@ -75,7 +75,7 @@ String? voiceOffReason(String aiMode, Map<String, dynamic>? health) {
   final serverStt =
       stt is List && stt.any((p) => p is Map && p['configured'] == true);
   if (aiMode != 'key' && !serverStt) {
-    return 'Voice needs a Meta API key — switch to key mode in Settings, '
+    return 'Voice needs an API key for the hosted model — switch to key mode in Settings, '
         'or set up speech-to-text on your reader service';
   }
   return null;
@@ -231,7 +231,7 @@ class _AskScreenState extends State<AskScreen> {
     });
     if (account == null) return;
     // Voice needs a reader whose `/health` reports voice (ffmpeg), and a
-    // speech-to-text service: the user's own Meta key (key mode) or one the
+    // speech-to-text service: the user's own API key (key mode) or one the
     // server has set up (`stt` in /health). Otherwise the mic stays off.
     try {
       final client = await _client(settings);
@@ -1666,7 +1666,7 @@ class _AskScreenState extends State<AskScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             const Text(
-              'Spoken · Muse Voice',
+              'Spoken · speech-to-text',
               style: TextStyle(fontSize: 11, color: AccnomosColors.muted),
             ),
             const SizedBox(height: 4),
@@ -1839,7 +1839,7 @@ class _AskScreenState extends State<AskScreen> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'numbers by code · explanation by Muse Spark · 1.2 s',
+            'numbers by code · explanation by the hosted model · 1.2 s',
             style: TextStyle(fontSize: 12, color: AccnomosColors.muted),
           ),
           const SizedBox(height: 10),

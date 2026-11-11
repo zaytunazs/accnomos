@@ -39,7 +39,7 @@ void main() {
         find.text('05 VAT returns/2026-Q3/return.json'), findsOneWidget);
     expect(find.text('Books.xlsx · VAT sheet'), findsOneWidget);
     expect(
-        find.text('numbers by code · explanation by Muse Spark · 1.2 s'),
+        find.text('numbers by code · explanation by the hosted model · 1.2 s'),
         findsOneWidget);
     expect(find.text('Chase Howdens for the invoice'), findsOneWidget);
     expect(find.text('Sign in to ask your own books'), findsOneWidget);
@@ -56,7 +56,7 @@ void main() {
     expect(find.text('Net VAT (Box 5), Q3'), findsOneWidget);
     expect(find.text('Books.xlsx · VAT sheet'), findsOneWidget);
     expect(
-        find.text('numbers by code · explanation by Muse Spark · 1.2 s'),
+        find.text('numbers by code · explanation by the hosted model · 1.2 s'),
         findsOneWidget);
     expect(tester.takeException(), isNull);
   });

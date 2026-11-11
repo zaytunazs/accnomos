@@ -113,8 +113,8 @@ export default function DemoPage() {
           <li>
             <strong>Real:</strong> the app, the checks, the ledger and VAT arithmetic, and the AI that reads your
             documents. Scanning anything still in <em>00 Inbox</em>, or a receipt you add, sends it to that AI.{" "}
-            <Link href="/meta-models" className="font-bold text-teal-dark underline underline-offset-2">
-              Which Meta model does what
+            <Link href="/ai-models" className="font-bold text-teal-dark underline underline-offset-2">
+              Which AI model does what
             </Link>
             .
           </li>

@@ -69,7 +69,7 @@ test("hands-free: listens, sends what it heard, reads the answer aloud, stops on
       contentType: "application/json",
       body: JSON.stringify({
         transcript: "Who owes me the most?",
-        transcribed_by: { name: "muse", label: "Muse Voice Transcribe", model: "muse-voice-transcribe-1.0" },
+        transcribed_by: { name: "muse", label: "the speech-to-text model", model: "muse-voice-transcribe-1.0" },
         answer_md: "**Sterling & Co.** owes you the most: £7,479.60.",
         confidence: "high",
         fallback_reason: null,
@@ -89,7 +89,7 @@ test("hands-free: listens, sends what it heard, reads the answer aloud, stops on
   await expect(drawer.getByRole("button", { name: "Stop hands-free" })).toBeVisible();
 
   await expect(drawer).toContainText("Who owes me the most?", { timeout: 15_000 });
-  await expect(drawer).toContainText("Transcribed by Muse Voice Transcribe");
+  await expect(drawer).toContainText("Transcribed by the speech-to-text model");
   await expect
     .poll(() => page.evaluate(() => (window as unknown as { __spoken: string[] }).__spoken.join(" | ")))
     .toContain("Sterling & Co. owes you the most: £7,479.60."); // markdown stripped before speaking

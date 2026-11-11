@@ -172,7 +172,7 @@ async def test_muse_first_and_whisper_not_called():
     assert heard.text == "Andy did 2 hours overtime."
     assert heard.by.model_dump() == {
         "provider": "muse",
-        "label": "Muse Voice Transcribe",
+        "label": "the hosted speech-to-text model",
         "model": "muse-voice-transcribe-1.0",
         "fallback_reason": None,
     }
@@ -183,7 +183,7 @@ async def test_muse_first_and_whisper_not_called():
 @pytest.mark.parametrize(
     "failure,why",
     [
-        (httpx.Response(500), "Muse Voice returned HTTP 500"),
+        (httpx.Response(500), "The speech-to-text service returned HTTP 500"),
         (httpx.Response(429), "rate-limiting"),
         (httpx.Response(413), "too large"),
         (httpx.Response(400), "longer than 10 minutes"),
@@ -199,7 +199,7 @@ async def test_whisper_takes_over_when_muse_fails(failure: Any, why: str):
         heard = await stt.transcribe(b"RIFFwav", stt.chain(USER_CFG, ENV), client=c)
     assert heard.text == "Remember to order 2-inch bolts for the Hendon job."
     assert (heard.by.provider, heard.by.label) == ("whisper", "our own server")
-    assert heard.by.fallback_reason and heard.by.fallback_reason.startswith("Muse Voice Transcribe: ")
+    assert heard.by.fallback_reason and heard.by.fallback_reason.startswith("the hosted speech-to-text model: ")
     assert why in heard.by.fallback_reason
     assert fake.paths() == ["/v1/asr/transcribe", "/v1/audio/transcriptions"]
 
@@ -239,7 +239,7 @@ async def test_only_one_provider_raises_its_own_error():
     async with fake.client() as c:
         with pytest.raises(voice.VoiceError) as exc:
             await stt.transcribe(b"wav", stt.chain(USER_CFG, {"STT_BASE": "off"}), client=c)
-    assert (exc.value.status, str(exc.value)) == (401, "Meta rejected the API key for Muse Voice")
+    assert (exc.value.status, str(exc.value)) == (401, "The speech-to-text service rejected the API key")
 
 
 async def test_no_providers_is_a_400():
@@ -263,7 +263,7 @@ async def test_no_key_in_logs_errors_or_results(caplog: pytest.LogCaptureFixture
             except voice.VoiceError as exc:
                 shown = str(exc)
         assert not any(s in shown for s in SECRETS), shown
-    assert "speech-to-text: Muse Voice Transcribe failed" in caplog.text
+    assert "speech-to-text: the hosted speech-to-text model failed" in caplog.text
     assert not any(s in caplog.text for s in SECRETS)
 
 
@@ -385,7 +385,7 @@ def test_spoken_overtime_by_muse_is_signed_and_audited(route):
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["transcript"] == OVERTIME
-    assert body["transcribed_by"]["label"] == "Muse Voice Transcribe"
+    assert body["transcribed_by"]["label"] == "the hosted speech-to-text model"
     card = body["proposed_action"]
     assert card["kind"] == "pay_overtime" and card["transcribed_by"] == body["transcribed_by"]
     assert card["preview"]["hours"] == "2"  # code found Andy's 2 hours on the Hendon job last week
@@ -409,7 +409,7 @@ def test_spoken_overtime_falls_back_to_whisper_and_says_so(route):
     body = r.json()
     by = body["transcribed_by"]
     assert (by["provider"], by["label"]) == ("whisper", "our own server")
-    assert "Muse Voice returned HTTP 503" in by["fallback_reason"]
+    assert "The speech-to-text service returned HTTP 503" in by["fallback_reason"]
     assert state["fake"].seen[0].headers["Authorization"] == f"Bearer {SERVER_KEY}"
     card = body["proposed_action"]
     assert card["transcribed_by"]["provider"] == "whisper"
