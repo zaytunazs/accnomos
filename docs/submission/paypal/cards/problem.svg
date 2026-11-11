@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" font-family="Inter, 'Segoe UI', Arial, sans-serif">
+  <!-- Scene pr (about 5 s), straight after the presenter: the problem and who it is for. No logos. -->
+  <rect width="1920" height="1080" fill="#2a1a0d"/>
+  <text x="160" y="300" font-size="34" font-weight="700" fill="#ebc77a" letter-spacing="4">THE PROBLEM</text>
+  <text x="160" y="420" font-size="76" font-weight="800" fill="#ffffff">UK small businesses paid through PayPal</text>
+  <text x="160" y="520" font-size="76" font-weight="800" fill="#ffffff">still reconcile PayPal fees and VAT by hand.</text>
+  <g font-size="38" fill="#f4ede5">
+    <text x="160" y="680">Which invoice did this payment settle?  What was PayPal's fee?</text>
+    <text x="160" y="745">Is the VAT right before it goes to HMRC?</text>
+  </g>
+  <text x="160" y="900" font-size="34" font-weight="700" fill="#ebc77a">For sole traders and small companies that file VAT under Making Tax Digital.</text>
+</svg>

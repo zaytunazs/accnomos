@@ -40,6 +40,11 @@ it gets paid and pays its bills.
   approves.
 - **Ask about PayPal.** "What did PayPal cost me this quarter?" and "How much is in PayPal?" are answered with a
   figure worked out by code from the PayPal entries in the books, and explained in plain English.
+- **Power grid (AG Grid Community).** An optional add-on (Settings › Business › Power grid): the synced PayPal
+  transactions in one sortable, filterable grid with totals, where the owner ticks several waiting rows and approves
+  them together (each goes through the same checked approval), plus a ledger explorer where plain words such as "PayPal
+  fees over £5 in October" become a grid filter. The AI only proposes the filter; code checks it against the allowed
+  columns, and filters never change the books.
 - **Tie-out.** PayPal's own balance (with the time PayPal last refreshed it) against the PayPal account in the books,
   with the difference explained: waiting for approval, never posted (withdrawals, refunds, the opening balance), or
   unexplained.
@@ -59,6 +64,10 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
 - **Web app:** Next.js and TypeScript (`apps/web`), the PayPal screens on Invoices (Sync PayPal, tie-out, disputes)
   and Purchases (Pay bills with PayPal). **Android app:** Flutter (`apps/mobile`), the same runtime API (it has no
   PayPal screens yet: the PayPal features are on the web).
+- **Power grid:** AG Grid Community 36.3 (`ag-grid-community`, `ag-grid-react`; Community modules only, no licence key),
+  loaded only when the owner turns the add-on on: `apps/web/src/components/grid/PayPalReviewGrid.tsx` (bulk approve
+  with totals) and `apps/web/src/components/grid/LedgerExplorer.tsx` (plain-English filters, checked by
+  `apps/web/src/lib/grid-core.ts` and `services/runtime/app/ai/grid_filter.py`).
 - **Runtime:** a stateless FastAPI service (`services/runtime`). It holds no customer database: each request carries
   the user's own drive token, and the books are files in the user's OneDrive or Google Drive, with an append-only
   ledger and a VAT engine that works in integer pence.
@@ -121,11 +130,16 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
 - PayPal webhooks, so payments are proposed without opening the app.
 - PayPal screens in the Android app.
 
+## Sponsor tools (Devpost form)
+
+- [x] **AG Grid**: tick it on the submission form. It is used in the Power grid add-on (Settings › Business › Power grid)
+  and shown in the video at 0:44 with the caption "AG Grid Community".
+
 ## Built with
 
 `python` · `fastapi` · `pydantic` · `httpx` · `typescript` · `next.js` · `react` · `tailwindcss` · `flutter` · `dart` ·
 `paypal` · `paypal-invoicing-api` · `paypal-transaction-search-api` · `paypal-payouts-api` · `paypal-disputes-api` ·
-`microsoft-graph` · `onedrive` · `google-drive` · `hmrc-mtd-vat-api` · `pytest` · `playwright` · `docker` · `nginx` ·
+`ag-grid` · `microsoft-graph` · `onedrive` · `google-drive` · `hmrc-mtd-vat-api` · `pytest` · `playwright` · `docker` · `nginx` ·
 `anthropic`
 
 ## AI tools used to build it
