@@ -131,10 +131,16 @@ def _totals(events: list[LedgerEvent]) -> dict[str, Any]:
             bucket["vat"] += sign * (ev.vat or 0)
             bucket["count"] += 1
     fmt = lambda b: {"net": pounds(b["net"]), "vat": pounds(b["vat"]), "count": b["count"]}  # noqa: E731
-    return {
+    out: dict[str, Any] = {
         **{name: fmt(b) for name, b in sides.items()},
         "by_vat_code": {k: fmt(b) for k, b in sorted(codes.items())},
     }
+    from app.paypal_reports import period_totals  # PayPal's fees (7900) and money received through it, if any
+
+    pp = period_totals(events)
+    if pp.fees_pence or pp.received_pence:
+        out["paypal"] = {"fees": pounds(pp.fees_pence), "received": pounds(pp.received_pence)}
+    return out
 
 
 def _top(events: list[LedgerEvent], which: str) -> list[dict[str, Any]]:

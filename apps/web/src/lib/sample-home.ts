@@ -4,6 +4,7 @@ export type Tile = {
   sub: string;
   tone?: "default" | "amber" | "warn";
   href?: string; // the sub line links here
+  extra?: { label: string; value: string }; // a second line under the figure (PayPal (books) beside the bank)
 };
 
 export const tiles: Tile[] = [

@@ -41,6 +41,7 @@ from app.contacts import BUCKETS, AgedBalances, AgedTable
 from app.deadlines import add_months, period_id
 from app.deadlines import period_label as vat_period_label
 from app.facts import period_label
+from app.paypal_reports import period_totals, touches_paypal
 from app.projection import SAMPLE_LABEL, WHOLE_GBP, _table, pounds
 from app.schemas import AskPeriod
 
@@ -120,6 +121,10 @@ class ProfitAndLoss(BaseModel):
     net_profit_pence: int  # gross profit − overheads; negative is a loss
     entries: int  # approved entries dated in the period that touch a P&L account
     sample: bool = False
+    #: PayPal's fees (inside 7900 Bank charges) and the money received through PayPal in the period, by code from the
+    #: entries that touch 1240 PayPal clearing; None when none did. Memo lines: they change no total.
+    paypal_fees_pence: int | None = None
+    paypal_received_pence: int | None = None
 
 
 def _amounts(events: Iterable[LedgerEvent]) -> dict[str, int]:
@@ -153,6 +158,8 @@ def profit_and_loss(
     amounts = _amounts(inside)
     sales, cos, over = (_section(amounts, s) for s in ("sales", "cost_of_sales", "overheads"))
     gross = sales.total_pence - cos.total_pence
+    # The cash basis reads derived events (a part payment as its share), so PayPal's figures are left out of it.
+    paypal = period_totals(inside) if basis == "traditional" and any(touches_paypal(e) for e in inside) else None
     return ProfitAndLoss(
         start=start,
         end=end,
@@ -166,6 +173,8 @@ def profit_and_loss(
         net_profit_pence=gross - over.total_pence,
         entries=sum(any(section_of(ln.account) for ln in e.lines) for e in inside),
         sample=is_sample(events),
+        paypal_fees_pence=paypal.fees_pence if paypal else None,
+        paypal_received_pence=paypal.received_pence if paypal else None,
     )
 
 
@@ -370,6 +379,12 @@ def pl_sheet(ws: Worksheet, pl: ProfitAndLoss) -> None:
     for i in bold:
         ws.cell(row=i + 2, column=1).font = Font(bold=True)
         ws.cell(row=i + 2, column=2).font = Font(bold=True)
+    if pl.paypal_fees_pence is not None:  # memo lines: already inside the figures above, so nothing is added twice
+        ws.append([])
+        ws.append(["Of which, through PayPal (memo; included above)"])
+        ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
+        ws.append(["  PayPal fees (in 7900 Bank charges)", pounds(pl.paypal_fees_pence)])
+        ws.append(["  Money received through PayPal (via 1240 PayPal clearing)", pounds(pl.paypal_received_pence)])
     ws.append([])
     ws.append([pl.basis])
     entries = f"{pl.entries} approved {'entry' if pl.entries == 1 else 'entries'}"
@@ -406,6 +421,13 @@ def bs_sheet(ws: Worksheet, bs: BalanceSheet) -> None:
         ws.cell(row=i + 2, column=1).font = Font(bold=True)
         ws.cell(row=i + 2, column=2).font = Font(bold=True)
     ws.append([])
+    if any(r.account.startswith("1240") for r in bs.assets.rows):
+        ws.append(
+            [
+                "1240 PayPal clearing is what PayPal holds for you by your books, until it pays out; "
+                "it is not your bank balance."
+            ]
+        )
     ws.append([f"From {bs.entries} approved entries dated on or before {bs.as_of:%d/%m/%Y}. Worked out by code."])
     if bs.difference_pence:
         ws.append([f"Does not balance by {pounds(bs.difference_pence)}: check the Accounts sheet of Books.xlsx."])

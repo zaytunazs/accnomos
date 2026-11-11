@@ -28,7 +28,11 @@ SYSTEM_PROMPT = (
     "1) Quote figures, counts and dates exactly as they appear in FACTS; never calculate anything. "
     "2) Say first how many things need the owner and how many of them stop the close (FACTS.needs_you, "
     "FACTS.blocking). 3) If FACTS.can_close is false, never say the month is ready to close. "
-    "4) Mention the most important step reasons by name. Return JSON with `summary_md`."
+    "4) Mention the most important step reasons by name. 5) If FACTS.paypal is there, say in one sentence what PayPal "
+    "charged in fees and what came in through PayPal that month (fees, received), and, if "
+    "FACTS.paypal.waiting_in_sync_paypal is above zero, that payments wait in Sync PayPal for the owner's approval "
+    "(they do not block the close); the PayPal balance is by the books and separate from the bank. "
+    "Return JSON with `summary_md`."
 )
 
 LINK = re.compile(r"https?://|www\.", re.IGNORECASE)
@@ -67,7 +71,20 @@ def fallback_summary(facts: dict[str, Any]) -> str:
         if facts["can_close"]
         else (" The close is not offered until the blocking items are cleared." if blocking else "")
     )
-    return " ".join(x for x in (head, detail, tail.strip()) if x)
+    return " ".join(x for x in (head, detail, paypal_sentence(facts.get("paypal")), tail.strip()) if x)
+
+
+def paypal_sentence(p: dict[str, Any] | None) -> str:
+    """One sentence of PayPal's month by code: fees and money received, and what waits in Sync PayPal."""
+    if not p:
+        return ""
+    parts = []
+    if "fees" in p:
+        parts.append(f"PayPal charged {p['fees']} in fees and {p['received']} came in through it")
+    if p.get("waiting_in_sync_paypal"):
+        n = p["waiting_in_sync_paypal"]
+        parts.append(f"{n} PayPal payment{'s are' if n != 1 else ' is'} waiting in Sync PayPal for your approval")
+    return ("; ".join(parts) + ".") if parts else ""
 
 
 def ground(text: str, facts: dict[str, Any]) -> str | None:

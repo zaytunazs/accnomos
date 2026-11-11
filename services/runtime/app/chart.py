@@ -146,6 +146,8 @@ def default_chart() -> list[Account]:
     for a in expenses:
         if a.label in ("7310 Motor — mileage allowance", "7700 Insurance", "7900 Bank charges"):
             a.vat_default = "E"  # mileage allowance is not a supply; insurance and bank charges are exempt
+        if a.label == "7900 Bank charges":
+            a.description = "Bank charges and PayPal's fees (VAT exempt)"
     rows = [
         _a("0020 Plant and machinery", "fixed_asset", "S"),
         _a("0021 Plant and machinery depreciation", "fixed_asset"),
@@ -159,7 +161,12 @@ def default_chart() -> list[Account]:
         _a(BANK, "bank"),
         _a(CASH, "bank"),
         _a(STRIPE_CLEARING, "current_asset", None, "Card payments taken through Stripe links, until Stripe pays out"),
-        _a(PAYPAL_CLEARING, "current_asset", None, "Payments taken through PayPal links, until PayPal pays out"),
+        _a(
+            PAYPAL_CLEARING,
+            "current_asset",
+            None,
+            "PayPal payments less PayPal's fees, until PayPal pays out (shown as PayPal (books))",
+        ),
         _a(EBAY_CLEARING, "current_asset", None, "eBay sales less refunds and fees, until eBay pays out to the bank"),
         _a("1300 Prepayments", "current_asset"),
         _a(CREDITORS, "current_liability", None, "Suppliers you owe (bills)"),

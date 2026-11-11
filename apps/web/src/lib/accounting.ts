@@ -267,6 +267,8 @@ export interface RtCashFlow {
   not_included: string;
   lowest_balance_pence: number;
   lowest_on: string;
+  /** 1240 PayPal clearing by the books ("PayPal (books)"): beside the bank balance, not in the forecast. */
+  paypal_books_pence?: number | null;
 }
 
 /* ---------------------------------------------------------------------------------------------------------------- */

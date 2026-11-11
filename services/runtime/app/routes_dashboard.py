@@ -8,7 +8,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from accnomos_connectors.base import CalendarProvider
-from app import dashboard, home_overview
+from app import dashboard, demo, home_overview
 from app.ai.config import AiConfig
 from app.books import Books
 from app.books import today as london_today
@@ -66,6 +66,7 @@ async def get_dashboard(
 
 @router.get("/home", response_model=home_overview.Overview)
 async def get_home(
+    request: Request,
     cycle: VatCycle = Depends(vat_cycle),
     today: date | None = Query(None, description="the user's date (Europe/London); defaults to today in UTC"),
     summary_ai: bool = Query(True, description="false: code writes the summary even when an AI is set up"),
@@ -84,4 +85,5 @@ async def get_home(
         vat_assumed=cycle.assumed,
         cfg=cfg if summary_ai else None,
         calendar_provider=calendar,
+        demo=demo.is_demo_request(request),
     )

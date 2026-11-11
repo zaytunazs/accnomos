@@ -37,7 +37,8 @@ _KEYWORDS: dict[str, re.Pattern[str]] = {
     ),
     "totals": re.compile(
         r"\bsales?\b|\bsold\b|\bturnover\b|\brevenue\b|\bincome\b|\btakings\b|\bpurchases?\b|\bspen[dt]\b|\bbought\b|"
-        r"\bcosts?\b|\bexpenses?\b|\bentr(?:y|ies)\b|\breduced\b|\bzero\b|\bexempt\b|\bcode [srzne]\b|\binvoices?\b",
+        r"\bcosts?\b|\bexpenses?\b|\bentr(?:y|ies)\b|\breduced\b|\bzero\b|\bexempt\b|\bcode [srzne]\b|\binvoices?\b|"
+        r"\bpay\s?pal\b",
         _I,
     ),
     "suppliers": re.compile(
