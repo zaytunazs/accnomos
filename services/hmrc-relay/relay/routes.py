@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .fraud_headers import ClientFacts, Method, build_headers, missing, request_meta
 from .hmrc_client import HmrcClient, HmrcError
-from .oauth import ALLOWED_SCOPES, SCOPES, OAuth
+from .oauth import ALLOWED_SCOPES, SCOPES, OAuth, StateError
 from .settings import Settings
 
 router = APIRouter()
@@ -34,9 +34,26 @@ class Relay:
     hmrc: HmrcClient
     oauth: OAuth
 
+    @property
+    def environment(self) -> str:
+        return "sandbox" if self.settings.sandbox else "production"
+
+
+#: Request header a client sends to be served by the sandbox application whatever HMRC_ENV says: the demo always
+#: files to HMRC's sandbox, with a test user made for it. Anything else is served by HMRC_ENV's environment.
+ENV_HEADER = "X-HMRC-Environment"
+
 
 def relay(request: Request) -> Relay:
-    return request.app.state.relay
+    want = request.headers.get(ENV_HEADER, "").strip().lower()
+    live: Relay = request.app.state.relay
+    if not want or want == live.environment:
+        return live
+    if want == "sandbox":
+        return request.app.state.sandbox_relay
+    if want == "production":
+        raise HTTPException(409, "This relay files to HMRC's sandbox (HMRC_ENV=sandbox), not to HMRC production")
+    raise HTTPException(400, f"{ENV_HEADER} must be sandbox or production")
 
 
 def configured(r: Annotated[Relay, Depends(relay)]) -> Relay:
@@ -192,11 +209,34 @@ async def authorize(
     return {"url": url, "state": state}
 
 
+def _relay_for_state(request: Request, state: str) -> Relay:
+    """HMRC's redirect carries no header, so the state says which application started the sign-in: each signs its
+    states with a key from its own secret. The live one first, then the sandbox one (the demo's)."""
+    live: Relay = request.app.state.relay
+    sandbox: Relay = request.app.state.sandbox_relay
+    if sandbox is live or not sandbox.settings.configured:
+        return live
+    try:
+        live.oauth.read_state(state)
+        return live
+    except StateError:
+        try:
+            sandbox.oauth.read_state(state)
+            return sandbox
+        except StateError:
+            return live  # read again below, where the error is reported
+
+
 @router.get("/hmrc/callback")
 async def callback(
-    r: Configured, state: str, code: str | None = None, error: str | None = None, error_description: str | None = None
+    request: Request,
+    state: str,
+    code: str | None = None,
+    error: str | None = None,
+    error_description: str | None = None,
 ) -> RedirectResponse:
     """HMRC redirects here. Tokens go back in the URL fragment so they never reach any server's logs."""
+    r = configured(_relay_for_state(request, state))
     st = r.oauth.read_state(state, use="callback")
     if not r.settings.redirect_allowed(st.redirect_to):
         raise HTTPException(400, "redirect_to is no longer allowed")
@@ -387,3 +427,39 @@ async def validation_feedback(r: Sandbox, method: Annotated[Method, Query()]) ->
         params={"connectionMethod": method},
     )
     return resp.json()
+
+
+# --- status ------------------------------------------------------------------------------------------------------
+
+#: The one sentence the app shows wherever filing from Accnomos is off. The web page uses the same words.
+PLANNED = "Filing to HMRC from Accnomos is planned."
+
+
+@router.get("/hmrc/status")
+async def status(request: Request) -> dict:
+    """Which HMRC environment real users' calls go to, and what can be filed from the app there. The web app reads
+    this to word the VAT and Income Tax pages and to choose between Submit and the "File it yourself" files.
+
+    * VAT live filing: HMRC_ENV=production with the production credentials set.
+    * Income Tax live filing: never. HMRC is not issuing production credentials for new 2026-27 quarterly-update
+      products (Developer Hub notice, 15 Sep 2026), so relay/itsa.py stays sandbox only whatever HMRC_ENV says.
+    * The demo always uses the sandbox application (X-HMRC-Environment: sandbox), when its credentials are set."""
+    live: Relay = request.app.state.relay
+    sandbox: Relay = request.app.state.sandbox_relay
+    production = live.environment == "production"
+    vat_live = production and live.settings.configured
+    return {
+        "environment": live.environment,
+        "configured": live.settings.configured,
+        "vat": {
+            "live_filing": vat_live,
+            "submit_available": live.settings.configured,  # to HMRC_ENV's environment (the sandbox, by default)
+            "note": None if vat_live else PLANNED,
+        },
+        "itsa": {
+            "live_filing": False,
+            "submit_available": not production and live.settings.configured,  # sandbox practice only
+            "note": PLANNED,
+        },
+        "demo_sandbox": sandbox.settings.sandbox and sandbox.settings.configured,
+    }

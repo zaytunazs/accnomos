@@ -3,19 +3,32 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+Environment = Literal["sandbox", "production"]
+SANDBOX_BASE = "https://test-api.service.hmrc.gov.uk"
+SANDBOX_AUTH_BASE = "https://test-www.tax.service.gov.uk"
+PRODUCTION_BASE = "https://api.service.hmrc.gov.uk"
+PRODUCTION_AUTH_BASE = "https://www.tax.service.gov.uk"
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
-    hmrc_client_id: str = ""
+    # HMRC_ENV picks where real users' VAT calls go: "sandbox" (the default) or "production". Production uses its
+    # own credentials (HMRC_PROD_CLIENT_ID / HMRC_PROD_CLIENT_SECRET) and HMRC's live hosts; the sandbox ones below
+    # stay in use for the demo (requests marked X-HMRC-Environment: sandbox) and for the sandbox-only tools.
+    hmrc_env: Environment = "sandbox"
+    hmrc_client_id: str = ""  # the sandbox application's
     hmrc_client_secret: SecretStr = SecretStr("")
-    hmrc_base: str = "https://test-api.service.hmrc.gov.uk"
-    hmrc_auth_base: str = "https://test-www.tax.service.gov.uk"
+    hmrc_prod_client_id: str = ""
+    hmrc_prod_client_secret: SecretStr = SecretStr("")
+    hmrc_base: str = SANDBOX_BASE  # sandbox API host (overridable for tests); production is always PRODUCTION_BASE
+    hmrc_auth_base: str = SANDBOX_AUTH_BASE
     hmrc_redirect_uri: str = ""
     hmrc_vendor_product_name: str = "Accnomos"
     hmrc_vendor_version: str = "0.1.0"
@@ -26,13 +39,33 @@ class Settings(BaseSettings):
     relay_allowed_redirects: str = ""
     # Requests per minute per client IP (in memory, per process); 0 turns the limit off.
     rate_limit_per_min: int = 60
-    # MTD Income Tax routes (relay/itsa.py) are sandbox only. Against a production HMRC_BASE they answer 403 unless
-    # this is set too (RELAY_ITSA_PRODUCTION=1). Never set by default or by anything in this repository.
+    # Kept so an old .env still parses; no longer honoured. MTD Income Tax (relay/itsa.py, relay/itsa_property.py) is
+    # sandbox only whatever this says: HMRC is not issuing production credentials for new 2026-27 quarterly-update
+    # products (Developer Hub notice, 15 Sep 2026).
     relay_itsa_production: bool = False
 
     @property
     def sandbox(self) -> bool:
         return self.hmrc_base.startswith("https://test-")
+
+    @property
+    def production(self) -> bool:
+        return self.hmrc_env == "production"
+
+    def for_environment(self, env: Environment) -> Settings:
+        """The settings one HMRC environment is called with: production gets HMRC's live hosts and the production
+        credentials; sandbox the sandbox ones (HMRC_BASE / HMRC_AUTH_BASE, which must then be test hosts)."""
+        if env == "production":
+            return self.model_copy(
+                update={
+                    "hmrc_env": "production",
+                    "hmrc_base": PRODUCTION_BASE,
+                    "hmrc_auth_base": PRODUCTION_AUTH_BASE,
+                    "hmrc_client_id": self.hmrc_prod_client_id,
+                    "hmrc_client_secret": self.hmrc_prod_client_secret,
+                }
+            )
+        return self.model_copy(update={"hmrc_env": "sandbox"})
 
     @property
     def configured(self) -> bool:

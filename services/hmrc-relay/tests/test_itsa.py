@@ -336,17 +336,22 @@ async def test_production_refused_without_the_switch(client_for, path, body):
     assert r.status_code == 403
 
 
-async def test_production_switch_opens_itsa_routes_only(client_for):
-    fake = Fake(
-        "GET",
-        f"/individuals/business/details/{NINO}/list",
-        "2.0",
-        body={"listOfBusinesses": []},
-        base="https://api.service.hmrc.gov.uk",
-    )
-    c = client_for(fake, hmrc_base="https://api.service.hmrc.gov.uk", relay_itsa_production=True)
-    assert (await c.post(f"/itsa/{NINO}/businesses", json=env(), headers=H)).status_code == 200
-    assert (await c.post("/hmrc/test-user/individual")).status_code == 403  # test tools stay sandbox only
+async def test_old_production_switch_no_longer_opens_itsa_routes(client_for):
+    """RELAY_ITSA_PRODUCTION is ignored now: HMRC issues no production credentials for new 2026-27 quarterly-update
+    products, so Income Tax stays sandbox only whatever the settings say."""
+
+    def never(_: httpx.Request) -> httpx.Response:
+        raise AssertionError("HMRC must not be called")
+
+    for kw in (
+        {"hmrc_base": "https://api.service.hmrc.gov.uk", "relay_itsa_production": True},
+        {"hmrc_env": "production", "hmrc_prod_client_id": "p", "hmrc_prod_client_secret": "ps",
+         "relay_itsa_production": True},
+    ):  # fmt: skip
+        c = client_for(never, **kw)
+        r = await c.post(f"/itsa/{NINO}/businesses", json=env(), headers=H)
+        assert r.status_code == 403 and "planned" in r.text
+        assert (await c.post("/hmrc/test-user/individual")).status_code == 403  # test tools stay sandbox only
 
 
 # --- sandbox setup -----------------------------------------------------------------------------------------------

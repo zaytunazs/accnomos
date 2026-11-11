@@ -9,6 +9,7 @@ import { usePickedPeriod } from "@/lib/vat-period";
 import { FOLDER } from "@/lib/folders";
 import { ensureFolder, listChildren, putSmallFile } from "@/lib/graph";
 import { isDemo } from "@/lib/demo";
+import { useHmrcStatus } from "@/lib/hmrc-status";
 import {
   clientFacts,
   DEMO_SUBMISSION,
@@ -103,7 +104,7 @@ const btn = "h-11 whitespace-nowrap rounded-xl px-5 text-[15px] font-bold disabl
 const primary = `${btn} bg-teal text-white hover:bg-teal-dark`;
 const secondary = `${btn} border border-border bg-white hover:bg-ground`;
 
-/** "Connect to HMRC (sandbox)": OAuth via the relay, open obligations, and submission of the live return. */
+/** "Connect to HMRC" (sandbox, or live when the relay's HMRC_ENV is production): OAuth via the relay, open obligations, and submission of the live return. */
 export default function ConnectHmrc() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -131,6 +132,11 @@ export default function ConnectHmrc() {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const sandboxUser = demo && demoHmrc?.mode === "sandbox" ? demoHmrc.user : null;
   const simulated = demo && demoHmrc?.mode === "simulated";
+  // HMRC_ENV=production on the relay: real users file to HMRC's live service, so no "sandbox" wording (the demo
+  // always stays on the sandbox).
+  const status = useHmrcStatus();
+  const liveMode = !demo && status?.environment === "production";
+  const envName = liveMode ? "HMRC" : "HMRC sandbox";
 
   // Previous submissions, from the receipt files saved in OneDrive (`06 VAT returns/`).
   useEffect(() => {
@@ -352,7 +358,7 @@ export default function ConnectHmrc() {
               warnings: live.warnings,
               declaration: DECLARATION,
               declared_at: submittedAt,
-              environment: simulated ? DEMO_SUBMISSION : sandboxUser ? `HMRC sandbox (demo, test user ${sandboxUser.userId})` : "HMRC sandbox",
+              environment: simulated ? DEMO_SUBMISSION : sandboxUser ? `HMRC sandbox (demo, test user ${sandboxUser.userId})` : envName,
             },
             null,
             2,
@@ -371,7 +377,7 @@ export default function ConnectHmrc() {
                 ? `${DEMO_SUBMISSION}: HMRC was not contacted`
                 : sandboxUser
                   ? `HMRC sandbox (demo, test user ${sandboxUser.userId}): HMRC's test service, no real tax filed`
-                  : "HMRC sandbox",
+                  : envName,
               hmrc: res.hmrc,
               correlation_id: res.correlation_id,
               receipt_id: res.receipt_id,
@@ -405,14 +411,21 @@ export default function ConnectHmrc() {
         </h2>
         <span className="flex items-center gap-2">
           <span className="rounded-full border border-warn-border bg-warn-bg px-3 py-1 text-[13px] font-bold text-warn-ink">
-            {simulated ? "Demo · HMRC simulated" : demo ? SANDBOX_BADGE : "Sandbox · test data only"}
+            {simulated ? "Demo · HMRC simulated" : demo ? SANDBOX_BADGE : liveMode ? "HMRC · live service" : "Sandbox · test data only"}
           </span>
-          <Explain title="What sandbox means">
-            <p>
-              This talks to HMRC&apos;s test service, not the live tax system. You sign in with a
-              sandbox Government Gateway test user, and nothing here files a real return — there
-              are no production HMRC credentials anywhere in Accnomos.
-            </p>
+          <Explain title={liveMode ? "About filing to HMRC" : "What sandbox means"}>
+            {liveMode ? (
+              <p>
+                This files your VAT return to HMRC&apos;s live service. You sign in with your own HMRC online
+                services (Government Gateway) account.
+              </p>
+            ) : (
+              <p>
+                This talks to HMRC&apos;s test service, not the live tax system. You sign in with a
+                sandbox Government Gateway test user, and nothing here files a real return. To file a real
+                return now, use <strong>File it yourself</strong> below. Filing to HMRC from Accnomos is planned.
+              </p>
+            )}
             <p>
               You sign in on HMRC&apos;s own site; we never see your HMRC password. The access
               token stays in this browser tab only and is gone when you close it. Our relay holds
@@ -487,7 +500,9 @@ export default function ConnectHmrc() {
             </div>
           ) : (
             <p className="text-[15px] leading-7">
-              Sign in with your HMRC (sandbox) Government Gateway test user to see your VAT obligations and submit the return above.
+              {liveMode
+                ? "Sign in with your HMRC online services (Government Gateway) account to see your VAT obligations and submit the return above."
+                : "Sign in with your HMRC (sandbox) Government Gateway test user to see your VAT obligations and submit the return above."}
             </p>
           )}
           <ul className={`mt-2 list-disc pl-5 text-sm leading-6 text-muted ${simulated ? "hidden" : ""}`}>
@@ -510,7 +525,9 @@ export default function ConnectHmrc() {
                   ? "Connect to HMRC (simulated)"
                   : demo
                     ? "Connect to HMRC sandbox"
-                    : "Connect to HMRC (sandbox)"}
+                    : liveMode
+                      ? "Connect to HMRC"
+                      : "Connect to HMRC (sandbox)"}
             </button>
           )}
           {sandboxUser && error && (
@@ -549,7 +566,7 @@ export default function ConnectHmrc() {
             </button>
           </div>
 
-          <details className="text-sm">
+          <details className={`text-sm ${liveMode ? "hidden" : ""}`}>
             <summary className="cursor-pointer font-semibold text-muted">Advanced: sandbox test scenario</summary>
             <label className="mt-2 flex flex-col gap-1">
               <span className="text-muted">Gov-Test-Scenario (leave empty for HMRC&apos;s default)</span>
@@ -563,7 +580,7 @@ export default function ConnectHmrc() {
           </details>
 
           {obligations && obligations.length === 0 && (
-            <p className="text-sm text-muted">HMRC returned no obligations for the last 12 months. Try a test scenario such as QUARTERLY_NONE_MET.</p>
+            <p className="text-sm text-muted">HMRC returned no obligations for the last 12 months.{liveMode ? "" : " Try a test scenario such as QUARTERLY_NONE_MET."}</p>
           )}
 
           {obligations && obligations.length > 0 && step === "list" && (
@@ -687,7 +704,7 @@ export default function ConnectHmrc() {
               {(obligation.start !== live.start || obligation.end !== live.end) && (
                 <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">
                   These figures were calculated for {uk(live.start)} – {uk(live.end)}, which isn&apos;t the period of this obligation.
-                  That&apos;s expected with sandbox test data; for a real return the dates must match.
+                  {liveMode ? "For a real return the dates must match: pick the matching period above." : "That's expected with sandbox test data; for a real return the dates must match."}
                 </p>
               )}
               <div className="mt-3 overflow-x-auto">
@@ -712,7 +729,7 @@ export default function ConnectHmrc() {
               </label>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={submit} disabled={!declared || step === "submitting"} className={primary}>
-                  {step === "submitting" ? "Submitting…" : simulated ? "Submit (demo — simulated)" : demo ? "Submit to HMRC sandbox" : "Submit to HMRC (sandbox)"}
+                  {step === "submitting" ? "Submitting…" : simulated ? "Submit (demo — simulated)" : demo ? "Submit to HMRC sandbox" : liveMode ? "Submit to HMRC" : "Submit to HMRC (sandbox)"}
                 </button>
                 <button type="button" onClick={() => setStep("list")} disabled={step === "submitting"} className={secondary}>
                   Back
@@ -727,7 +744,7 @@ export default function ConnectHmrc() {
                 <StepStrip step={step} />
               </div>
               <h3 className="text-[17px] font-extrabold text-teal-dark">
-                {simulated ? DEMO_SUBMISSION : demo ? "Submitted to HMRC sandbox" : "Submitted to HMRC (sandbox)"} · key {obligation.periodKey}
+                {simulated ? DEMO_SUBMISSION : demo ? "Submitted to HMRC sandbox" : liveMode ? "Submitted to HMRC" : "Submitted to HMRC (sandbox)"} · key {obligation.periodKey}
               </h3>
               {sandboxUser && (
                 <p className="mt-2 text-sm leading-6">
@@ -814,7 +831,7 @@ export default function ConnectHmrc() {
 
           {missing.length > 0 && (
             <p className="text-[13px] text-muted">
-              Note: some fraud-prevention headers couldn&apos;t be sent ({missing.join(", ")}). HMRC accepts this in the sandbox; it needs fixing before going live.
+              Note: some fraud-prevention headers couldn&apos;t be sent ({missing.join(", ")}). {liveMode ? "Tell us so we can fix it." : "HMRC accepts this in the sandbox; it needs fixing before HMRC's live service."}
             </p>
           )}
         </div>

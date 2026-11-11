@@ -18,9 +18,11 @@ unknown body fields → 422, unexpected errors → 500 `{detail, correlation_id}
 
 | Variable | Purpose | Default |
 |---|---|---|
-| `HMRC_CLIENT_ID` | HMRC application client ID | — |
-| `HMRC_CLIENT_SECRET` | HMRC client secret (code exchange, refresh, client_credentials) | — |
-| `HMRC_BASE` | API base. `https://test-…` means sandbox | `https://test-api.service.hmrc.gov.uk` |
+| `HMRC_ENV` | `sandbox` or `production`: where real users' calls go. Production uses `https://api.service.hmrc.gov.uk`, `https://www.tax.service.gov.uk` and the `HMRC_PROD_*` credentials; MTD Income Tax stays sandbox only either way. A request with `X-HMRC-Environment: sandbox` (the demo) always uses the sandbox application | `sandbox` |
+| `HMRC_CLIENT_ID` | The **sandbox** application's client ID | — |
+| `HMRC_CLIENT_SECRET` | The sandbox client secret (code exchange, refresh, client_credentials) | — |
+| `HMRC_PROD_CLIENT_ID` / `HMRC_PROD_CLIENT_SECRET` | The production application's credentials, used only with `HMRC_ENV=production` | — |
+| `HMRC_BASE` | Sandbox API base (tests may point it elsewhere). `https://test-…` means sandbox | `https://test-api.service.hmrc.gov.uk` |
 | `HMRC_AUTH_BASE` | Consent UI base (`/oauth/authorize`) | `https://test-www.tax.service.gov.uk` |
 | `HMRC_REDIRECT_URI` | Must be the relay's `/hmrc/callback`, registered with HMRC | — |
 | `HMRC_VENDOR_PRODUCT_NAME` | `Gov-Vendor-Product-Name` (percent-encoded on send) | `Accnomos` |
@@ -28,7 +30,7 @@ unknown body fields → 422, unexpected errors → 500 `{detail, correlation_id}
 | `RELAY_PUBLIC_IP` | Relay's public IP (`Gov-Vendor-Public-IP`, `Gov-Vendor-Forwarded by=`) | — |
 | `RELAY_LICENCE_HASH` | Optional. Sent as `Gov-Vendor-License-IDs` | — |
 | `RELAY_ALLOWED_REDIRECTS` | Comma-separated origins `/hmrc/callback` may redirect tokens to, e.g. `https://app.accnomos.co.uk,accnomos://hmrc`. `http://localhost` and `http://127.0.0.1` are always allowed. The same `http(s)` origins get CORS, since the PWA calls the relay straight from the browser | — |
-| `RELAY_ITSA_PRODUCTION` | `1` lets the MTD Income Tax routes run against a production `HMRC_BASE`. Off by default; nothing here sets it | off |
+| `RELAY_ITSA_PRODUCTION` | No longer honoured (kept so an old `.env` parses): MTD Income Tax is sandbox only, as HMRC issues no production credentials for new 2026-27 quarterly-update products | off |
 | `RATE_LIMIT_PER_MIN` | Requests per minute per client IP (in memory); `0` turns the limit off | `60` |
 
 The relay reads the process environment only. It never reads a `.env` file.
@@ -37,7 +39,8 @@ The relay reads the process environment only. It never reads a `.env` file.
 
 | Method & path | Notes |
 |---|---|
-| `GET /health` | `{ok, service, version, sandbox, configured, uptime_s}` |
+| `GET /health` | `{ok, service, version, sandbox, environment, configured, uptime_s}` |
+| `GET /hmrc/status` | `{environment, configured, vat: {live_filing, submit_available, note}, itsa: {live_filing: false, submit_available, note}, demo_sandbox}`: what the web app reads to word its pages and to offer Submit or "File it yourself". `note` is "Filing to HMRC from Accnomos is planned." where live filing is off |
 | `GET /hmrc/authorize?redirect_to=&code_challenge=&scope=` | `scope` from `read:vat write:vat read:self-assessment write:self-assessment`, VAT's two by default. → `{url, state}`. `state` is HMAC-signed, expires after 10 min, and is accepted once by the callback and once by the exchange |
 | `GET /hmrc/callback?code&state` | HMRC redirects here. 303 to `redirect_to#access_token=…&refresh_token=…&expires_in=…&scope=…&token_type=…&state=…` |
 | `POST /hmrc/exchange {code, state, code_verifier}` | PKCE only (see below) → token JSON |

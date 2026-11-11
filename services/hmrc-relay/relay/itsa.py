@@ -17,10 +17,12 @@ Versions and paths are HMRC's live documentation, checked 28 Oct 2026 (docs/HMRC
 Scopes: read:self-assessment / write:self-assessment. Individual Calculations 8.0 rather than 9.0: 9.0 is listed
 "[test only]", Sandbox only, while 8.0 is "Sandbox and Production" with the same four endpoints we use.
 
-Sandbox only. Every route here refuses (403) when HMRC_BASE is production, unless RELAY_ITSA_PRODUCTION=1 is set
-as well; nothing in this repository sets it. Writes (the cumulative update and the final declaration) also need
-`confirmed: true` in the body, which the page sends only after the user ticks its confirmation, and the final
-declaration needs HMRC's declaration text word for word.
+Sandbox only. Every route here refuses (403) against HMRC production, whatever HMRC_ENV says (RELAY_ITSA_PRODUCTION
+is no longer honoured): HMRC is not issuing production credentials for new 2026-27 quarterly-update products, so
+users take the "File it yourself" figures (services/runtime /books/file-it-yourself/itsa-quarterly) to MTD or
+bridging software instead. A request marked X-HMRC-Environment: sandbox still reaches the sandbox. Writes (the
+cumulative update and the final declaration) also need `confirmed: true` in the body, which the page sends only after
+the user ticks its confirmation, and the final declaration needs HMRC's declaration text word for word.
 """
 
 from __future__ import annotations
@@ -67,8 +69,10 @@ Income = Annotated[Decimal, Field(max_digits=13, decimal_places=2, ge=0, le=Deci
 
 
 def itsa_allowed(r: Annotated[Relay, Depends(configured)]) -> Relay:
-    if not r.settings.sandbox and not r.settings.relay_itsa_production:
-        raise HTTPException(403, "MTD Income Tax is sandbox only (set RELAY_ITSA_PRODUCTION=1 to use production)")
+    if not r.settings.sandbox:
+        # Whatever HMRC_ENV or RELAY_ITSA_PRODUCTION say: HMRC is not issuing production credentials for new
+        # 2026-27 quarterly-update products (Developer Hub notice, 15 Sep 2026). Users file with "File it yourself".
+        raise HTTPException(403, "MTD Income Tax is sandbox only: filing to HMRC from Accnomos is planned")
     return r
 
 

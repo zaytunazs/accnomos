@@ -29,28 +29,37 @@ Done by the owner on the HMRC Developer Hub (developer.service.hmrc.gov.uk), not
 
 ## 2. The environment change (relay only)
 
-In the server's `.env` (never committed), on the **relay** service:
+One switch, `HMRC_ENV`, on the **relay** (since 11 Nov 2026; before that the switch was `HMRC_BASE`). In the server's
+`.env` (never committed):
 
-| Variable | Sandbox (today) | Production |
+| Variable | Sandbox (today, the default) | Production (VAT) |
 |---|---|---|
-| `HMRC_CLIENT_ID` | sandbox client id | production client id |
-| `HMRC_CLIENT_SECRET` | sandbox secret | production secret |
-| `HMRC_BASE` | `https://test-api.service.hmrc.gov.uk` | `https://api.service.hmrc.gov.uk` |
-| `HMRC_AUTH_BASE` | `https://test-www.tax.service.gov.uk` | `https://www.tax.service.gov.uk` |
-| `HMRC_REDIRECT_URI` | the sandbox app's registered callback | the production app's registered callback |
+| `HMRC_ENV` | `sandbox` | `production` |
+| `HMRC_CLIENT_ID` / `HMRC_CLIENT_SECRET` | sandbox application | **keep them**: the demo still files to the sandbox with them |
+| `HMRC_PROD_CLIENT_ID` / `HMRC_PROD_CLIENT_SECRET` | empty | the production application's credentials |
+| `HMRC_REDIRECT_URI` | the relay's `/hmrc/callback` | the same URL, registered on **both** applications |
 | `RELAY_PUBLIC_IP` | the server's public IP | the same (needed for `Gov-Vendor-Public-IP`) |
 
-Then `docker compose -f deploy/docker-compose.yml --env-file .env up -d relay`. Check `GET /health` on the relay:
-`"sandbox": false`.
+`HMRC_BASE` / `HMRC_AUTH_BASE` are the sandbox hosts; with `HMRC_ENV=production` real users' calls go to
+`https://api.service.hmrc.gov.uk` and `https://www.tax.service.gov.uk` (fixed in `relay/settings.py`, not configurable).
+Then `docker compose -f deploy/docker-compose.yml --env-file .env up -d relay` and check `GET /hmrc/status`:
+`"environment": "production"`, `"vat": {"live_filing": true, …}`.
 
-What follows automatically from `HMRC_BASE` (code reads it; nothing else to set):
-- `/hmrc/test-user`, `/hmrc/validate-headers` and `/hmrc/validation-feedback` refuse with 403 (sandbox-only).
-- `Gov-Test-Scenario` is never sent.
-- The VAT check labels its answers `"source": "hmrc"` instead of `"hmrc-sandbox"`, and the app shows "(HMRC)".
+What follows from `HMRC_ENV=production` (code; nothing else to set):
+- Users sign in with their own HMRC account (OAuth, as before) and VAT returns go to HMRC's live service.
+- The web app drops every "sandbox" label on `/vat` for real users (it reads `/hmrc/status`); the demo keeps the
+  sandbox, because it sends `X-HMRC-Environment: sandbox` and the relay serves it with the sandbox application
+  (test user, validator, feedback). The OAuth callback tells the two apart by the state's signature.
+- `Gov-Test-Scenario` is never sent to production; `/hmrc/test-user`, `/hmrc/validate-headers` and
+  `/hmrc/validation-feedback` refuse with 403 unless the request asks for the sandbox.
+- **MTD Income Tax stays off**: every `/itsa/*` route answers 403 against production, whatever is set
+  (HMRC stopped accepting production-credential requests for new 2026-27 quarterly-update products on 15 Sep 2026).
+  `/self-employment` hides its Submit and offers the "File it yourself" quarterly figures and SA103S/SA103F pages.
+- Without the production credentials, production mode files nothing: `/hmrc/status` says `live_filing: false` and
+  the VAT page offers the bridging file ("Filing to HMRC from Accnomos is planned.").
 
-**Not yet done for production in the web app:** the `/vat` page and its button still say "(sandbox)" in their text
-(`apps/web/src/components/vat/ConnectHmrc.tsx`). Change that wording, from `/health`'s `sandbox` flag, before the
-first live filing; it is copy, not behaviour.
+Evidence for HMRC's questionnaire: `docs/hmrc/PRODUCTION_APPLICATION.md` (draft answers and owner steps) and
+`tools/hmrc/fph_validate.py` (Test Fraud Prevention Headers API report, saved to `docs/hmrc/`).
 
 ## 3. Companies House (runtime)
 

@@ -38,7 +38,15 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         await http.aclose()
 
     app = FastAPI(title="Accnomos HMRC relay", version="0.1.0", lifespan=lifespan)
-    app.state.relay = Relay(settings, HmrcClient(settings, http), OAuth(settings, http))
+    # Real users' calls go to HMRC_ENV's environment; the demo (X-HMRC-Environment: sandbox) always to the sandbox
+    # application. With HMRC_ENV=sandbox both are the same object.
+    live = settings.for_environment(settings.hmrc_env)
+    app.state.relay = Relay(live, HmrcClient(live, http), OAuth(live, http))
+    if live.sandbox:
+        app.state.sandbox_relay = app.state.relay
+    else:
+        sb = settings.for_environment("sandbox")
+        app.state.sandbox_relay = Relay(sb, HmrcClient(sb, http), OAuth(sb, http))
     app.state.started = time.time()
     app.include_router(router)
     app.include_router(itsa_router)  # MTD Income Tax, sandbox only
@@ -53,7 +61,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
         allow_origins=[o for o in settings.allowed_origins if o.startswith(("https://", "http://")) and "*" not in o],
         allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_methods=["GET", "POST"],
-        allow_headers=["Content-Type", "X-HMRC-Access-Token"],
+        allow_headers=["Content-Type", "X-HMRC-Access-Token", "X-HMRC-Environment"],
         expose_headers=["X-Correlation-Id", "Retry-After"],
         max_age=600,
     )
@@ -83,8 +91,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
             "ok": True,
             "service": "hmrc-relay",
             "version": app.version,
-            "sandbox": settings.sandbox,
-            "configured": settings.configured,
+            "sandbox": live.sandbox,
+            "environment": "sandbox" if live.sandbox else "production",
+            "configured": live.configured,
             "uptime_s": int(time.time() - app.state.started),
         }
 

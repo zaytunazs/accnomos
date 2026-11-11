@@ -35,6 +35,7 @@ import {
   type RtReport,
   type RtSeSummary,
 } from "@/lib/itsa";
+import { PLANNED, useHmrcStatus } from "@/lib/hmrc-status";
 
 type Phase = "loading" | "hidden" | "disconnected" | "connecting" | "connected";
 
@@ -99,7 +100,8 @@ function ReportTables({ report, label }: { report: RtReport; label: string }) {
   );
 }
 
-/** /self-employment: MTD Income Tax quarterly updates from the books, through HMRC's sandbox. */
+/** /self-employment: MTD Income Tax quarterly updates from the books, through HMRC's sandbox (practice only; off when
+ * the relay is in production mode, where the page offers the "File it yourself" files instead). */
 export default function SelfEmployment() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -120,6 +122,9 @@ export default function SelfEmployment() {
   const [finalDone, setFinalDone] = useState<string | null>(null);
   const [receipts, setReceipts] = useState<RtItsaReceipt[]>([]);
 
+  // Production mode on the relay: Income Tax is never filed live from Accnomos, so the sandbox practice flow is off
+  // and the page offers only the "File it yourself" files below it.
+  const hmrcStatus = useHmrcStatus();
   const ninoOk = NINO_RE.test(cleanNino(nino));
   const facts = () => clientFacts(account?.homeAccountId ?? "");
 
@@ -288,6 +293,18 @@ export default function SelfEmployment() {
     });
 
   if (phase === "loading") return null;
+  if (phase !== "hidden" && hmrcStatus && !hmrcStatus.itsaSubmit)
+    return (
+      <section aria-labelledby="itsa-hmrc" className={card}>
+        <h2 id="itsa-hmrc" className="text-lg font-extrabold">
+          Sending updates to HMRC
+        </h2>
+        <p className="mt-2 text-[15px] leading-7">
+          {PLANNED} HMRC has no web form for quarterly updates, so use the files below with HMRC-recognised Making Tax
+          Digital or bridging software.
+        </p>
+      </section>
+    );
   if (phase === "hidden")
     return <p className="text-[15px] text-muted">Sign in with Microsoft to connect your books, then connect HMRC here.</p>;
 

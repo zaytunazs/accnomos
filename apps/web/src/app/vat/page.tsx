@@ -9,6 +9,7 @@ import { SamplePill } from "@/components/States";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
 import ConnectHmrc from "@/components/vat/ConnectHmrc";
+import { VatFileItYourself } from "@/components/filing/FileItYourself";
 import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
 import { HomeData } from "@/components/home/HomeData";
 import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
@@ -69,6 +70,7 @@ export default function VatPage() {
       />
       <LiveVat />
       <ConnectHmrc />
+      <VatFileItYourself />
 
       {/* Signed out only: once signed in, the page is the live card (with its period picker) and nothing else. */}
       <SignedOutOnly>

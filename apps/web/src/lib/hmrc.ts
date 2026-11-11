@@ -5,7 +5,7 @@ import { isDemo } from "./demo";
 import { APP_VERSION } from "./version";
 
 /**
- * HMRC MTD VAT (sandbox) through the stateless relay (services/hmrc-relay). OAuth is PKCE: only this
+ * HMRC MTD VAT (the relay's HMRC_ENV: sandbox by default, production once set up; lib/hmrc-status.ts) through the stateless relay (services/hmrc-relay). OAuth is PKCE: only this
  * browser holds the verifier, and the tokens live only in sessionStorage (gone when the tab closes).
  * The relay holds the client secret and adds the fraud-prevention headers from the facts we send.
  */
@@ -158,6 +158,8 @@ async function relayFetch<T>(path: string, init: RequestInit & { token?: string 
   const headers: Record<string, string> = {};
   if (rest.body) headers["Content-Type"] = "application/json";
   if (token) headers["X-HMRC-Access-Token"] = token;
+  // The demo always files to HMRC's sandbox application, even when the relay's HMRC_ENV is production.
+  if (isDemo()) headers["X-HMRC-Environment"] = "sandbox";
   let res: Response;
   try {
     res = await fetch(`${RELAY_URL}${path}`, { ...rest, headers });

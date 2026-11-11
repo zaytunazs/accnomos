@@ -60,7 +60,7 @@ async def test_cors_rejects_other_origins(client_for):
 
 async def test_health(client_for):
     r = await client_for(never).get("/health")
-    assert set(r.json()) == {"ok", "service", "version", "sandbox", "configured", "uptime_s"}
+    assert set(r.json()) == {"ok", "service", "version", "sandbox", "environment", "configured", "uptime_s"}
     assert r.json()["sandbox"] is True and r.json()["configured"] is True
 
 
