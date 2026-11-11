@@ -635,6 +635,83 @@ class PayPalApi:
             body={"send_to_recipient": True, "send_to_invoicer": False},
         )
 
+    # --- Payouts v1 (paying a supplier's bill from the PayPal balance; app/billpay.py) ---------------------------
+    #
+    # Read 11 Nov 2026 from PayPal's published spec, https://developer.paypal.com/api/payments.payouts-batch/v1/
+    # schema.json (Payouts 1.9; endpoints listed on https://developer.paypal.com/docs/api/payments.payouts-batch/v1/):
+    #   * POST /v1/payments/payouts, body `create_payout_request`: `sender_batch_header` {`sender_batch_id` (up to
+    #     256), `recipient_type`, `email_subject`, `email_message`} and `items[]` {`recipient_type` EMAIL, `amount`
+    #     {`value`, `currency`} (note: `currency`, not Orders' `currency_code`), `note`, `receiver`, `sender_item_id`
+    #     (up to 63)}. Scope `https://uri.paypal.com/payments/payouts`. Optional `PayPal-Request-Id` (kept 30 days).
+    #     201 answers `batch_header` {`payout_batch_id`, `batch_status` (PENDING if the first checks pass)} + `links`.
+    #   * "PayPal does not process duplicate payouts. If you specify a sender_batch_id that was used in the last 30
+    #     days, the API rejects the request with an error message that shows the duplicate sender_batch_id and
+    #     includes a HATEOAS link to the original payout"; on a 5xx "you can safely retry the request with the same
+    #     sender_batch_id". The error's `name` is not given in the spec, so a refusal is recognised by that link.
+    #   * GET /v1/payments/payouts/{payout_batch_id}: `batch_header` + `items[]` {`payout_item_id`, `transaction_id`,
+    #     `transaction_status` (SUCCESS, FAILED, PENDING, UNCLAIMED, RETURNED, ONHOLD, BLOCKED, REFUNDED, REVERSED),
+    #     `payout_item_fee` {`currency`, `value`}, `payout_item` (what was sent), `errors` {`name`, `message`}}.
+    #     `batch_status`: DENIED, PENDING, PROCESSING, SUCCESS, CANCELED.
+    #   * GET /v1/payments/payouts-item/{payout_item_id}: one item, same fields.
+    # Direct mode sends no PayPal-Auth-Assertion (the server's own sandbox account pays). In partner mode the
+    # assertion names the merchant, as for invoices: UNVERIFIED that PayPal lets a partner send payouts for a merchant.
+
+    async def create_payout(
+        self,
+        merchant: str,
+        *,
+        sender_batch_id: str,
+        receiver: str,
+        amount_pence: int,
+        note: str,
+        sender_item_id: str,
+        email_subject: str,
+    ) -> dict[str, Any]:
+        """One payout to one email address. Returns PayPal's answer (`batch_header.payout_batch_id`). A duplicate
+        `sender_batch_id` is answered with the original batch's id instead: {"batch_header": {"payout_batch_id": …,
+        "batch_status": "DUPLICATE"}} when PayPal's refusal links to it; otherwise the ProviderError is raised."""
+        body = {
+            "sender_batch_header": {
+                "sender_batch_id": sender_batch_id,
+                "recipient_type": "EMAIL",
+                "email_subject": email_subject[:255],
+                "email_message": note[:1000],
+            },
+            "items": [
+                {
+                    "recipient_type": "EMAIL",
+                    "amount": {"value": paypal_value(amount_pence), "currency": "GBP"},
+                    "note": note[:4000],
+                    "receiver": receiver,
+                    "sender_item_id": sender_item_id[:63],
+                }
+            ],
+        }
+        headers = {
+            "Authorization": f"Bearer {await self.token()}",
+            "Content-Type": "application/json",
+            "PayPal-Request-Id": sender_batch_id,
+        }
+        if self.cfg.attribution_id and not self.cfg.direct:
+            headers["PayPal-Partner-Attribution-Id"] = self.cfg.attribution_id
+        if merchant and not self.cfg.direct:
+            headers["PayPal-Auth-Assertion"] = auth_assertion(self.cfg.client_id, merchant)
+        try:
+            resp = await self.http.post(f"{self.cfg.base}/v1/payments/payouts", json=body, headers=headers)
+        except httpx.HTTPError as exc:
+            raise ProviderError("PayPal", 0, f"could not be reached ({type(exc).__name__})") from exc
+        if resp.status_code >= 400:
+            if resp.status_code < 500 and (batch := _linked_batch(resp)):
+                return {"batch_header": {"payout_batch_id": batch, "batch_status": "DUPLICATE"}}
+            raise ProviderError("PayPal", resp.status_code, _error_text(resp))
+        return resp.json() if resp.content else {}
+
+    async def payout_batch(self, merchant: str, batch_id: str) -> dict[str, Any]:
+        return await self._call("GET", f"/v1/payments/payouts/{batch_id}", merchant=merchant)
+
+    async def payout_item(self, merchant: str, item_id: str) -> dict[str, Any]:
+        return await self._call("GET", f"/v1/payments/payouts-item/{item_id}", merchant=merchant)
+
 
 @dataclass(frozen=True)
 class PayPalInvoiceDetails:
@@ -668,6 +745,27 @@ def paypal_parse_time(raw: Any) -> datetime | None:
 
 
 PAYPAL_INVOICE_ID = re.compile(r"INV2(?:-[A-Z0-9]{1,8}){1,6}")  # "INV2-Z56S-5LLA-Q52L-CPZ5"
+
+
+def _linked_batch(resp: httpx.Response) -> str | None:
+    """The original payout's batch id from the link in PayPal's refusal of a duplicate `sender_batch_id`."""
+    try:
+        body = resp.json()
+    except ValueError:
+        return None
+    links = body.get("links") if isinstance(body, dict) else None
+    for link in links if isinstance(links, list) else []:
+        href = str(link.get("href") or "") if isinstance(link, dict) else ""
+        if "/v1/payments/payouts/" in href:
+            return href.rstrip("/").rsplit("/", 1)[-1] or None
+    return None
+
+
+def pence_from_payout(money: dict[str, Any] | None) -> int | None:
+    """A Payouts `currency` object ({"currency": "GBP", "value": "1.23"}) as pence; None for anything else."""
+    if not isinstance(money, dict):
+        return None
+    return pence_from_paypal({"currency_code": money.get("currency"), "value": money.get("value")})
 
 
 def recipient_view_url(invoice: dict[str, Any]) -> str | None:

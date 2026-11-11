@@ -320,6 +320,9 @@ app.include_router(paypal_sync_router)
 from app.routes_paypal_disputes import router as paypal_disputes_router  # noqa: E402  /payments/online/paypal/disputes*
 
 app.include_router(paypal_disputes_router)
+from app.routes_billpay import router as billpay_router  # noqa: E402  /billpay/* (bills paid through PayPal)
+
+app.include_router(billpay_router)
 from app.routes_cis import router as cis_router  # noqa: E402  /cis/* (CIS and the VAT reverse charge)
 
 app.include_router(cis_router)
