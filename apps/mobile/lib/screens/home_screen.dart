@@ -16,7 +16,9 @@ import '../theme.dart';
 import '../widgets/calendar_sync.dart';
 import '../widgets/loading.dart';
 import '../widgets/tile_grid.dart';
+import '../widgets/upcoming_payments.dart';
 import 'bank_screen.dart';
+import 'bill_pay_screen.dart';
 import 'calendar_screen.dart';
 import 'home_cards.dart';
 import 'invoices_screen.dart';
@@ -299,6 +301,13 @@ class _HomeScreenState extends State<HomeScreen> {
           if (signedIn && _client != null) ...[
             const SizedBox(height: 14),
             HomeGoalsCard(client: _client!, today: _today(), refresh: _refresh),
+            UpcomingPaymentsHomeCard(
+              client: _client!,
+              refresh: _refresh,
+              onOpen: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const BillPayScreen()),
+              ),
+            ),
           ],
           if (_error != null) ...[
             const SizedBox(height: 10),

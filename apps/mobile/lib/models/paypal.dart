@@ -639,10 +639,12 @@ class BillPayBill {
     this.warnings = const [],
     this.changedDetails = const [],
     this.payout,
+    this.approval,
   });
 
   factory BillPayBill.fromJson(Map<String, dynamic> j) {
     final payout = _map(j['payout']);
+    final approval = _map(j['approval']);
     return BillPayBill(
       eventId: _str(j['event_id']),
       contactId: _str(j['contact_id']),
@@ -659,6 +661,7 @@ class BillPayBill {
       warnings: _strings(j['warnings']),
       changedDetails: _strings(j['changed_details']),
       payout: payout == null ? null : BillPayout.fromJson(payout),
+      approval: approval == null ? null : BillPayApproval.fromJson(approval),
     );
   }
 
@@ -684,6 +687,19 @@ class BillPayBill {
   /// with the supplier before paying.
   final List<String> changedDetails;
   final BillPayout? payout;
+
+  /// "Approve now, pay on due date", unless cancelled.
+  final BillPayApproval? approval;
+
+  /// Approved in advance and not yet paid.
+  bool get approvedAhead =>
+      approval != null && (approval!.status == 'scheduled' || approval!.status == 'paying');
+
+  /// The owner may approve it now to be paid on its due date (as the web's
+  /// ApproveAhead): not due yet, a saved PayPal email, PayPal planned, nothing
+  /// blocking it, and not already approved.
+  bool get canApproveAhead =>
+      !dueNow && payeeEmail != null && plan != 'not_paypal' && blocks.isEmpty && !approvedAhead;
 
   /// Paid through PayPal on its due date: chosen, or not chosen and a
   /// PayPal email is saved (as the web's checkbox).
@@ -851,4 +867,177 @@ class BillPayRunResult {
 
   final int paid;
   final List<String> problems;
+}
+
+/// An approval in advance (`Approval`): the owner's yes to one payment,
+/// paid the next time Accnomos is open on or after the due date, only if
+/// nothing changed.
+class BillPayApproval {
+  const BillPayApproval({
+    this.amountPence = 0,
+    this.payeeEmail = '',
+    this.dueDate = '',
+    this.status = 'scheduled',
+  });
+
+  factory BillPayApproval.fromJson(Map<String, dynamic> j) => BillPayApproval(
+        amountPence: _pence(j['amount_pence']),
+        payeeEmail: _str(j['payee_email']),
+        dueDate: _str(j['due_date']),
+        status: _str(j['status']).isEmpty ? 'scheduled' : _str(j['status']),
+      );
+
+  final int amountPence;
+  final String payeeEmail;
+  final String dueDate;
+
+  /// scheduled | paying | paid | cancelled | …
+  final String status;
+}
+
+const upcomingStatusLabels = {
+  'scheduled': 'Approved, waiting for its date',
+  'planned': 'Needs your approval',
+  'due_today': 'Due today',
+  'paying': 'Paying',
+  'paid': 'Paid',
+  'needs_you': 'Needs you',
+};
+
+/// One upcoming PayPal bill payment (`UpcomingItem`).
+class UpcomingPayment {
+  const UpcomingPayment({
+    required this.eventId,
+    this.supplier = '',
+    this.reference,
+    this.date = '',
+    this.amountPence = 0,
+    this.payeeEmail,
+    this.status = 'planned',
+    this.approved = false,
+    this.reason,
+    this.inCalendar = false,
+    this.calendarOutdated = false,
+  });
+
+  factory UpcomingPayment.fromJson(Map<String, dynamic> j) => UpcomingPayment(
+        eventId: _str(j['event_id']),
+        supplier: _str(j['supplier']),
+        reference: _strOrNull(j['reference']),
+        date: _str(j['date']),
+        amountPence: _pence(j['amount_pence']),
+        payeeEmail: _strOrNull(j['payee_email']),
+        status: _str(j['status']).isEmpty ? 'planned' : _str(j['status']),
+        approved: _bool(j['approved']),
+        reason: _strOrNull(j['reason']),
+        inCalendar: _bool(j['in_calendar']),
+        calendarOutdated: _bool(j['calendar_outdated']),
+      );
+
+  final String eventId;
+  final String supplier;
+  final String? reference;
+
+  /// The due date: paid the next time Accnomos is open on or after it.
+  final String date;
+  final int amountPence;
+  final String? payeeEmail;
+
+  /// scheduled | planned | due_today | paying | paid | needs_you
+  final String status;
+
+  /// Approved in advance (else planned).
+  final bool approved;
+  final String? reason;
+  final bool inCalendar;
+  final bool calendarOutdated;
+
+  String get statusLabel => upcomingStatusLabels[status] ?? status;
+  bool get settled => status == 'paid' || status == 'paying';
+  bool get needsYou => status == 'needs_you';
+
+  /// An approval in advance the owner can still cancel.
+  bool get cancellable =>
+      approved && (status == 'scheduled' || status == 'due_today' || status == 'needs_you');
+}
+
+/// `GET /billpay/upcoming`.
+class UpcomingPayments {
+  const UpcomingPayments({
+    this.today = '',
+    this.clearingPence = 0,
+    this.clearingLabel = '1240 PayPal clearing by your books',
+    this.next7Pence = 0,
+    this.next30Pence = 0,
+    this.warning,
+    this.items = const [],
+    this.calendarStale = const [],
+    this.note = '',
+  });
+
+  factory UpcomingPayments.fromJson(Map<String, dynamic> j) => UpcomingPayments(
+        today: _str(j['today']),
+        clearingPence: _pence(j['clearing_pence']),
+        clearingLabel: _str(j['clearing_label']).isEmpty
+            ? '1240 PayPal clearing by your books'
+            : _str(j['clearing_label']),
+        next7Pence: _pence(j['next_7_pence']),
+        next30Pence: _pence(j['next_30_pence']),
+        warning: _strOrNull(j['warning']),
+        items: [for (final m in _maps(j['items'])) UpcomingPayment.fromJson(m)],
+        calendarStale: _strings(j['calendar_stale']),
+        note: _str(j['note']),
+      );
+
+  final String today;
+  final int clearingPence;
+  final String clearingLabel;
+  final int next7Pence;
+  final int next30Pence;
+
+  /// The shortfall warning against 1240 PayPal clearing.
+  final String? warning;
+  final List<UpcomingPayment> items;
+
+  /// Bills whose calendar event is for a payment cancelled, paid or no
+  /// longer planned.
+  final List<String> calendarStale;
+  final String note;
+
+  List<UpcomingPayment> get open => [for (final i in items) if (!i.settled) i];
+}
+
+/// `POST /billpay/calendar` and `/billpay/calendar/remove`.
+class CalendarSyncResult {
+  const CalendarSyncResult({
+    this.added = 0,
+    this.updated = 0,
+    this.unchanged = 0,
+    this.removed = 0,
+    this.notFound = 0,
+  });
+
+  factory CalendarSyncResult.fromJson(Map<String, dynamic> j) => CalendarSyncResult(
+        added: _pence(j['added']),
+        updated: _pence(j['updated']),
+        unchanged: _pence(j['unchanged']),
+        removed: _pence(j['removed']),
+        notFound: _pence(j['not_found']),
+      );
+
+  final int added;
+  final int updated;
+  final int unchanged;
+  final int removed;
+  final int notFound;
+
+  /// "1 added, 2 already there" or "nothing to add".
+  String get addedSummary {
+    final parts = [
+      if (added > 0) '$added added',
+      if (updated > 0) '$updated updated',
+      if (unchanged > 0) '$unchanged already there',
+    ];
+    return parts.isEmpty ? 'nothing to add' : parts.join(', ');
+  }
 }

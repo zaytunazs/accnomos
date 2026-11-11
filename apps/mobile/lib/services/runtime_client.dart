@@ -2211,6 +2211,63 @@ class RuntimeClient {
       'POST', '/billpay/notices/seen',
       body: {'ids': ids}, what: 'mark those as read');
 
+  /// `GET /billpay/upcoming`: approved-in-advance and planned payments.
+  Future<UpcomingPayments> billPayUpcoming() async => UpcomingPayments.fromJson(
+      await _map('GET', '/billpay/upcoming', what: 'load upcoming PayPal payments'));
+
+  /// `POST /billpay/bills/{id}/schedule` with `confirm: true`: "Approve now,
+  /// pay on due date", exactly the amount and email the card showed.
+  Future<Map<String, dynamic>> billPaySchedule(
+          String eventId, int amountPence, String payeeEmail,
+          {bool acknowledgeChangedDetails = false}) =>
+      _map('POST', '/billpay/bills/${_seg(eventId)}/schedule',
+          body: {
+            'amount_pence': amountPence,
+            'payee_email': payeeEmail,
+            'confirm': true,
+            'acknowledge_changed_details': acknowledgeChangedDetails,
+          },
+          what: 'approve that payment');
+
+  /// `POST /billpay/bills/{id}/schedule/cancel` with `confirm: true`.
+  Future<Map<String, dynamic>> billPayCancelSchedule(String eventId) => _map(
+      'POST', '/billpay/bills/${_seg(eventId)}/schedule/cancel',
+      body: {'confirm': true}, what: 'cancel that approval');
+
+  /// `GET /billpay/calendar.ics`: one payment, or every one still to be sent.
+  Future<String> billPayIcs({String? eventId}) async {
+    _requireBooks();
+    var uri = Uri.parse('${settings.runtimeUrl}/billpay/calendar.ics');
+    if (eventId != null) uri = uri.replace(queryParameters: {'event_id': eventId});
+    final request = http.Request('GET', uri)..headers.addAll(_headers);
+    try {
+      final streamed = await _http.send(request).timeout(_timeout);
+      final text = await streamed.stream.bytesToString();
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        _fail(streamed.statusCode, text.trim());
+      }
+      return text;
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not make the calendar file. $e');
+    }
+  }
+
+  /// `POST /billpay/calendar` with `confirm: true`: events in the connected
+  /// calendar (all payments still to be sent when [eventIds] is null).
+  Future<CalendarSyncResult> billPayAddToCalendar({List<String>? eventIds}) async =>
+      CalendarSyncResult.fromJson(await _map('POST', '/billpay/calendar',
+          body: {'confirm': true, 'event_ids': ?eventIds},
+          what: 'add that to your calendar'));
+
+  /// `POST /billpay/calendar/remove` with `confirm: true` (default: the
+  /// events for cancelled or paid payments).
+  Future<CalendarSyncResult> billPayRemoveFromCalendar({List<String>? eventIds}) async =>
+      CalendarSyncResult.fromJson(await _map('POST', '/billpay/calendar/remove',
+          body: {'confirm': true, 'event_ids': ?eventIds},
+          what: 'remove those from your calendar'));
+
   // --- end paypal ---
 
   Future<Map<String, dynamic>> _map(

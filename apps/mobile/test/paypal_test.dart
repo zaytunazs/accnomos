@@ -9,6 +9,8 @@ import 'package:accnomos_mobile/services/runtime_client.dart';
 import 'package:accnomos_mobile/services/settings.dart';
 import 'package:accnomos_mobile/services/voice_approval.dart';
 import 'package:accnomos_mobile/widgets/action_card.dart';
+import 'package:accnomos_mobile/widgets/upcoming_payments.dart';
+import 'package:accnomos_mobile/services/share.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -37,7 +39,7 @@ class FakeReader {
               headers: {'content-type': 'application/json'});
         }
         final body = handler(request);
-        return http.Response(body == null ? '' : json.encode(body), body == null ? 204 : 200,
+        return http.Response(body == null ? '' : body is String ? body : json.encode(body), body == null ? 204 : 200,
             headers: {'content-type': 'application/json'});
       });
 
@@ -93,6 +95,46 @@ Map<String, dynamic> invoicePayment() => {
       'vat_code': 'S',
       'journal': [],
       'notes': [],
+    };
+
+Map<String, dynamic> upcoming({bool empty = false}) => {
+      'today': '2026-11-11',
+      'clearing_pence': 5000,
+      'clearing_label': '1240 PayPal clearing by your books (not your live PayPal balance)',
+      'next_7_pence': 21050,
+      'next_30_pence': 31050,
+      'shortfall_7_pence': 16050,
+      'shortfall_30_pence': 26050,
+      'warning': empty ? null : 'Your books show £50.00 in PayPal; £210.50 leaves it in the next 7 days.',
+      'items': empty
+          ? []
+          : [
+              {
+                'event_id': 'cdef1234',
+                'contact_id': '0123456789abcdef',
+                'supplier': 'Glue Ltd',
+                'date': '2026-11-14',
+                'amount_pence': 10000,
+                'payee_email': 'pay@glue.example',
+                'status': 'scheduled',
+                'approved': true,
+                'calendar_uid': 'u1',
+                'in_calendar': false,
+                'title': 'Pay Glue Ltd',
+                'description': '',
+              },
+              {
+                'event_id': 'abcdef12',
+                'supplier': 'Timber Co',
+                'date': '2026-11-11',
+                'amount_pence': 21050,
+                'status': 'due_today',
+                'approved': false,
+                'in_calendar': true,
+              },
+            ],
+      'calendar_stale': empty ? [] : ['deadbeef'],
+      'note': 'Paid the next time Accnomos is open on or after each date.',
     };
 
 void usePhone(WidgetTester tester, {double height = 2400}) {
@@ -584,10 +626,11 @@ void main() {
               },
           'POST /billpay/bills/abcdef12/pay': (_) => {'id': 'acc-1', 'status': 'sending', 'amount_pence': 21050},
           'POST /billpay/autopilot/stop': (_) => {'enabled': false},
+          'GET /billpay/upcoming': (_) => upcoming(),
         });
 
     Future<void> pump(WidgetTester tester, FakeReader fake) async {
-      usePhone(tester);
+      usePhone(tester, height: 4000);
       await tester.pumpWidget(MaterialApp(
           home: BillPayScreen(clientFactory: () async => fake.runtime())));
       await tester.pumpAndSettle();
@@ -597,7 +640,7 @@ void main() {
       final fake = reader();
       await pump(tester, fake);
       expect(fake.where('POST', '/billpay/run'), hasLength(1));
-      expect(find.text('Due today'), findsOneWidget);
+      expect(find.text('Due today'), findsWidgets);
       expect(find.text('£210.50'), findsWidgets);
       await tester.tap(find.byKey(const Key('approve-pay-abcdef12')));
       await tester.pumpAndSettle();
@@ -637,6 +680,154 @@ void main() {
       await tester.pumpAndSettle();
       expect(fake.where('POST', '/billpay/autopilot/stop'), hasLength(1));
       expect(find.text('Do this on the web'), findsWidgets);
+    });
+  });
+
+  group('Upcoming PayPal payments', () {
+    test('models parse, and missing fields are safe', () {
+      final u = UpcomingPayments.fromJson(upcoming());
+      expect(u.items, hasLength(2));
+      expect(u.items.first.cancellable, isTrue);
+      expect(u.items.first.statusLabel, 'Approved, waiting for its date');
+      expect(u.items.last.cancellable, isFalse);
+      expect(u.open, hasLength(2));
+      expect(u.calendarStale, ['deadbeef']);
+      final empty = UpcomingPayments.fromJson(const {});
+      expect(empty.items, isEmpty);
+      expect(empty.clearingLabel, '1240 PayPal clearing by your books');
+      expect(UpcomingPayment.fromJson(const {}).status, 'planned');
+      expect(const CalendarSyncResult().addedSummary, 'nothing to add');
+      expect(CalendarSyncResult.fromJson(const {'added': 1, 'unchanged': 2}).addedSummary,
+          '1 added, 2 already there');
+      final bill = BillPayBill.fromJson(const {
+        'event_id': 'x', 'due_now': false, 'payee_email': 'a@b.example',
+        'approval': {'status': 'scheduled', 'amount_pence': 100, 'payee_email': 'a@b.example', 'due_date': '2026-11-20'},
+      });
+      expect(bill.approvedAhead, isTrue);
+      expect(bill.canApproveAhead, isFalse);
+      expect(BillPayBill.fromJson(const {'event_id': 'x', 'payee_email': 'a@b.example'}).canApproveAhead, isTrue);
+    });
+
+    test('client: schedule, cancel, calendar and .ics', () async {
+      final fake = FakeReader({
+        'POST /billpay/bills/cdef1234/schedule': (_) => {'status': 'scheduled'},
+        'POST /billpay/bills/cdef1234/schedule/cancel': (_) => {'status': 'cancelled'},
+        'POST /billpay/calendar': (_) => {'added': 1},
+        'POST /billpay/calendar/remove': (_) => {'removed': 1},
+        'GET /billpay/calendar.ics': (_) => 'BEGIN:VCALENDAR',
+      });
+      final c = fake.runtime();
+      await c.billPaySchedule('cdef1234', 10000, 'pay@glue.example');
+      expect(json.decode(fake.calls.last.body), {
+        'amount_pence': 10000, 'payee_email': 'pay@glue.example', 'confirm': true,
+        'acknowledge_changed_details': false,
+      });
+      await c.billPayCancelSchedule('cdef1234');
+      expect(json.decode(fake.calls.last.body), {'confirm': true});
+      expect((await c.billPayAddToCalendar(eventIds: ['cdef1234'])).added, 1);
+      expect(json.decode(fake.calls.last.body), {'confirm': true, 'event_ids': ['cdef1234']});
+      await c.billPayRemoveFromCalendar();
+      expect(json.decode(fake.calls.last.body), {'confirm': true});
+      expect(await c.billPayIcs(eventId: 'cdef1234'), contains('VCALENDAR'));
+      expect(fake.calls.last.url.queryParameters, {'event_id': 'cdef1234'});
+    });
+
+    FakeReader reader() => FakeReader({
+          'POST /billpay/run': (_) => {'problems': []},
+          'GET /billpay': (_) => {
+                'available': true,
+                'connected': true,
+                'due': [],
+                'upcoming': [
+                  {
+                    'event_id': 'cdef5678',
+                    'contact_id': '0123456789abcdef',
+                    'supplier': 'Nails Ltd',
+                    'due_date': '2026-11-25',
+                    'days_overdue': -14,
+                    'owed_pence': 4520,
+                    'payee_email': 'pay@nails.example',
+                    'due_now': false,
+                    'can_pay': false,
+                  },
+                ],
+                'autopilot': {'enabled': false},
+              },
+          'GET /billpay/upcoming': (_) => upcoming(),
+          'POST /billpay/bills/cdef5678/schedule': (_) => {'status': 'scheduled'},
+          'POST /billpay/bills/cdef1234/schedule/cancel': (_) => {'status': 'cancelled'},
+          'POST /billpay/calendar': (_) => {'added': 1},
+          'GET /billpay/calendar.ics': (_) => 'BEGIN:VCALENDAR',
+        });
+
+    testWidgets('approve ahead, cancel, add to calendar and share .ics', (tester) async {
+      usePhone(tester, height: 3200);
+      final fake = reader();
+      String? shared;
+      ShareText.testHook = (text, subject, mime) async {
+        shared = '$mime:$text';
+        return true;
+      };
+      addTearDown(() => ShareText.testHook = null);
+      await tester.pumpWidget(MaterialApp(
+          home: BillPayScreen(clientFactory: () async => fake.runtime())));
+      await tester.pumpAndSettle();
+      expect(find.text('Upcoming PayPal payments'), findsOneWidget);
+      expect(find.byKey(const Key('upcoming-warning')), findsOneWidget);
+      expect(find.text('£310.50'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('ahead-cdef5678')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ahead-approve-cdef5678')));
+      await tester.pumpAndSettle();
+      expect(json.decode(fake.where('POST', '/billpay/bills/cdef5678/schedule').single.body), {
+        'amount_pence': 4520, 'payee_email': 'pay@nails.example', 'confirm': true,
+        'acknowledge_changed_details': false,
+      });
+
+      await tester.tap(find.byKey(const Key('cancel-cdef1234')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('confirm-yes')));
+      await tester.pumpAndSettle();
+      expect(fake.where('POST', '/billpay/bills/cdef1234/schedule/cancel'), hasLength(1));
+
+      await tester.tap(find.byKey(const Key('cal-cdef1234')));
+      await tester.pumpAndSettle();
+      expect(json.decode(fake.where('POST', '/billpay/calendar').single.body),
+          {'confirm': true, 'event_ids': ['cdef1234']});
+      expect(find.text('Your calendar: 1 added.'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('ics-cdef1234')));
+      await tester.pumpAndSettle();
+      expect(shared, 'text/calendar:BEGIN:VCALENDAR');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Home card: runs bill pay first, shows the next payments, hidden when none', (tester) async {
+      usePhone(tester);
+      final fake = FakeReader({
+        'POST /billpay/run': (_) => {'problems': []},
+        'GET /billpay/upcoming': (_) => upcoming(),
+      });
+      var opened = false;
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+              body: ListView(children: [
+        UpcomingPaymentsHomeCard(client: fake.runtime(), onOpen: () => opened = true),
+      ]))));
+      await tester.pumpAndSettle();
+      expect(fake.calls.first.url.path, '/billpay/run');
+      expect(find.byKey(const Key('home-upcoming-paypal')), findsOneWidget);
+      expect(find.text('Glue Ltd · 14 Nov 2026'), findsOneWidget);
+      expect(find.text('£310.50'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('home-open-billpay')));
+      expect(opened, isTrue);
+
+      final none = FakeReader({'GET /billpay/upcoming': (_) => upcoming(empty: true)});
+      await tester.pumpWidget(MaterialApp(
+          home: Scaffold(body: UpcomingPaymentsHomeCard(client: none.runtime(), onOpen: () {}))));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('home-upcoming-paypal')), findsNothing);
     });
   });
 

@@ -4,6 +4,7 @@ import '../models/paypal.dart';
 import '../services/books.dart';
 import '../services/runtime_client.dart';
 import '../theme.dart';
+import '../widgets/upcoming_payments.dart';
 import '../widgets/web_only.dart';
 import 'paypal_common.dart';
 
@@ -35,6 +36,9 @@ class _BillPayScreenState extends State<BillPayScreen> {
   String? _error;
   BillPayOverview? _o;
   List<String> _problems = const [];
+
+  /// Bumped after every load, so the upcoming list reloads with it.
+  int _rev = 0;
 
   @override
   void initState() {
@@ -76,7 +80,12 @@ class _BillPayScreenState extends State<BillPayScreen> {
     });
     try {
       final o = await client.billPay();
-      if (mounted) setState(() => _o = o);
+      if (mounted) {
+        setState(() {
+          _o = o;
+          _rev++;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _error = friendly(e));
     } finally {
@@ -161,6 +170,11 @@ class _BillPayScreenState extends State<BillPayScreen> {
           _notices(o),
           _flags(o),
           _dueToday(o),
+          UpcomingPaymentsPanel(
+            client: _client!,
+            refresh: _rev,
+            onChanged: _reload,
+          ),
           _bills(o),
           _payees(o),
           _autopilot(o),
@@ -263,23 +277,37 @@ class _BillPayScreenState extends State<BillPayScreen> {
       const Text('Due later', style: panelTitle),
       const SizedBox(height: 4),
       for (final b in bills)
-        SwitchListTile(
-          key: ValueKey('plan-${b.eventId}'),
-          contentPadding: EdgeInsets.zero,
-          value: b.payWithPayPal,
-          onChanged: _busy != null
-              ? null
-              : (on) => _act('plan-${b.eventId}',
-                  (c) => c.billPayPlan(b.eventId, on ? 'paypal' : 'not_paypal')),
-          title: Text(
-              '${b.supplier}${b.reference != null ? ' · ${b.reference}' : ''}',
-              style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(
-            '${gbp(b.owedPence)} · ${dueLine(b)}'
-            '${b.payeeEmail == null ? ' · no PayPal email saved' : ''}\n'
-            'Pay with PayPal on due date',
-            style: panelMuted.copyWith(fontSize: 13),
-          ),
+        Column(
+          key: ValueKey('bill-${b.eventId}'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              key: ValueKey('plan-${b.eventId}'),
+              contentPadding: EdgeInsets.zero,
+              value: b.payWithPayPal,
+              onChanged: _busy != null || b.approvedAhead
+                  ? null
+                  : (on) => _act('plan-${b.eventId}',
+                      (c) => c.billPayPlan(b.eventId, on ? 'paypal' : 'not_paypal')),
+              title: Text(
+                  '${b.supplier}${b.reference != null ? ' · ${b.reference}' : ''}',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(
+                '${gbp(b.owedPence)} · ${dueLine(b)}'
+                '${b.payeeEmail == null ? ' · no PayPal email saved' : ''}\n'
+                'Pay with PayPal on due date',
+                style: panelMuted.copyWith(fontSize: 13),
+              ),
+            ),
+            ApproveAheadRow(
+              bill: b,
+              busy: _busy != null,
+              approving: _busy == 'schedule-${b.eventId}',
+              onApprove: (ack) => _act('schedule-${b.eventId}',
+                  (c) => c.billPaySchedule(b.eventId, b.owedPence, b.payeeEmail!,
+                      acknowledgeChangedDetails: ack)),
+            ),
+          ],
         ),
     ]);
   }
@@ -539,6 +567,120 @@ class _DueBillCardState extends State<DueBillCard> {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// "Approve now, pay on due date" for a bill not due yet (the web's
+/// ApproveAhead). PayPal cannot hold a payment, so the approval is kept in
+/// the books and paid the next time Accnomos is open on or after the date,
+/// only if the amount, the saved PayPal email and the bill are unchanged.
+class ApproveAheadRow extends StatefulWidget {
+  const ApproveAheadRow({
+    super.key,
+    required this.bill,
+    required this.busy,
+    required this.approving,
+    required this.onApprove,
+  });
+
+  final BillPayBill bill;
+  final bool busy;
+  final bool approving;
+  final void Function(bool acknowledgeChangedDetails) onApprove;
+
+  @override
+  State<ApproveAheadRow> createState() => _ApproveAheadRowState();
+}
+
+class _ApproveAheadRowState extends State<ApproveAheadRow> {
+  bool _asking = false;
+  bool _ack = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final b = widget.bill;
+    final a = b.approval;
+    if (b.dueNow) return const SizedBox.shrink();
+    if (b.approvedAhead && a != null) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          'Approved in advance for ${gbp(a.amountPence)} to ${a.payeeEmail}. '
+          '${paysLine(a.dueDate.isEmpty ? b.dueDate : a.dueDate)} Cancel it in '
+          'Upcoming PayPal payments.',
+          style: const TextStyle(color: AccnomosColors.tealDark, fontSize: 13),
+        ),
+      );
+    }
+    if (!b.canApproveAhead) return const SizedBox.shrink();
+    final email = b.payeeEmail!;
+    final changed = b.changedDetails.isNotEmpty;
+    if (!_asking) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: OutlinedButton(
+          key: Key('ahead-${b.eventId}'),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+          onPressed: widget.busy ? null : () => setState(() => _asking = true),
+          child: const Text('Approve now, pay on due date'),
+        ),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+          border: Border.all(color: AccnomosColors.border),
+          borderRadius: BorderRadius.circular(10)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Approve paying ${gbp(b.owedPence)} to $email on ${ukDate(b.dueDate)}? '
+            '${paysLine(b.dueDate)} It is paid only if the amount owed, '
+            '${b.supplier}\'s saved PayPal email and the bill are still exactly '
+            'these; otherwise it waits for you in Due today. You can cancel it '
+            'until it is sent.',
+          ),
+          if (changed)
+            CheckboxListTile(
+              key: Key('ahead-ack-${b.eventId}'),
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _ack,
+              onChanged: (v) => setState(() => _ack = v ?? false),
+              title: Text(
+                '${b.changedDetails.join('. ')}. I checked with the supplier, by '
+                'phone on a number I already had, that $email is right.',
+                style: panelWarn,
+              ),
+            ),
+          const SizedBox(height: 6),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton(
+              key: Key('ahead-approve-${b.eventId}'),
+              style: FilledButton.styleFrom(
+                  backgroundColor: AccnomosColors.teal,
+                  minimumSize: const Size(48, 48)),
+              onPressed: widget.busy || (changed && !_ack)
+                  ? null
+                  : () {
+                      widget.onApprove(_ack);
+                      setState(() => _asking = false);
+                    },
+              child: Text(widget.approving
+                  ? 'Approving…'
+                  : 'Approve ${gbp(b.owedPence)} for ${ukDate(b.dueDate)}'),
+            ),
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(minimumSize: const Size(48, 48)),
+              onPressed: () => setState(() => _asking = false),
+              child: const Text('Not now'),
+            ),
+          ]),
         ],
       ),
     );

@@ -2,13 +2,14 @@
 
 ## PayPal on the phone (next release after 0.3.19+24)
 
-Play "What's new" (about 330 characters):
+Play "What's new" (about 390 characters):
 
 PayPal comes to the phone. Invoices › Sync PayPal brings in your PayPal
 sales, fees and purchases for you to approve one by one, and shows
 PayPal's balance against your books. Invoices › Disputes builds the
 evidence from your books for you to send. More › Bill pay pays
-suppliers' bills from PayPal on their due date, each one approved by you.
+suppliers' bills from PayPal on their due date, each one approved by you,
+and Home shows upcoming PayPal payments with a calendar button.
 
 Rules kept: nothing posts or pays without your tap; a sale with no
 invoice in VAT-registered books needs its VAT chosen first; every figure
@@ -16,9 +17,10 @@ is worked out by the runtime in pence. Connecting PayPal, the evidence
 PDF, suppliers' PayPal emails and Autopilot limits stay on the web
 (each screen links there); stopping Autopilot works on the phone.
 
-Not yet run on a phone: the three screens against a real runtime and
-PayPal sandbox, the tie-out card (its route lands with the PayPal trust
-fixes), and the screens at 360 dp on a real device, need a human check.
+Not yet run on a phone: the three screens and the Home card against a
+real runtime and the PayPal sandbox, adding bill payments to a real
+Outlook or Google calendar, sharing the .ics file to a calendar app, and
+the screens at 360 dp on a real device, need a human check.
 
 ## 0.3.7 (version code 12)
 
