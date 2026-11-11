@@ -424,7 +424,11 @@ def cash_book(events: Sequence[LedgerEvent], start: date, end: date, refs: dict[
         title="Cash book",
         columns=CASH_COLUMNS,
         rows=rows,
-        note="Bank and cash accounts (codes 1200-1299) as the ledger records them. Reconcile against your statements.",
+        note=(
+            "Bank, cash and payment-provider accounts (codes 1200-1299) as the ledger records them. 1240 PayPal "
+            "clearing is what PayPal holds for you by your books, until it pays out to 1200 Bank. Reconcile 1200 "
+            "against your bank statements and 1240 against PayPal (Invoices › Sync PayPal)."
+        ),
     )
 
 

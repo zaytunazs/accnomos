@@ -16,10 +16,13 @@ Two cards:
   The model may word it (checked like a reminder: invoice number and amount exactly, no other figures, no links);
   the link itself is added by code at approval, from the invoice (and made then, on PayPal, if it has none yet).
 
-Three questions, answered by code with the figures (the model only words them, checked as app/ask_more.py does):
+PayPal questions, answered by code with the figures (the model only words them, checked as app/ask_more.py does):
 "who owes me money?" gains each customer's PayPal link status (app/ask_more.py owed_answer calls ``add_link_status``),
-"what did PayPal cost me this quarter?" (PayPal fee entries: 7900 Bank charges against 1240 PayPal clearing) and
-"how much is sitting in PayPal?" (the 1240 PayPal clearing balance by the books, online_payments.clearing_balance).
+"what did PayPal cost me this quarter?" (PayPal fee entries: 7900 Bank charges against 1240 PayPal clearing),
+"how much is sitting in PayPal?" and "when was my last PayPal payout?" (the 1240 PayPal clearing balance by the books,
+online_payments.clearing_balance, and the last payout to the bank), "do I have any PayPal disputes?"
+(app/paypal_disputes.py), "what is waiting in Sync PayPal?" (app/paypal_sync.py) and "which bills are due through
+PayPal?" (app/billpay.py, by app/paypal_reports.py). The same figures reach Home and the month-end summary.
 
 The calls to PayPal are the REST endpoints in app/payment_providers.py, not the PayPal Agent Toolkit: see
 docs/ACTIONS.md for why (checked against paypal-agent-toolkit 1.11.0).
@@ -42,6 +45,7 @@ from app.ai import ask as ask_ai
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
 from app.books import Books
+from app.books import today as london_today
 from app.schemas import AskAnswer, AskPeriod, Clarification, KeyNumber, strict_json_schema
 
 MAX_REMINDERS = 10  # one card; more than this and the user is told how many were left for the next one
@@ -617,13 +621,36 @@ _HELD = re.compile(
 )
 
 
-def question_kind(question: str) -> Literal["fees", "held"] | None:
-    """A question about PayPal's fees or the money it holds; None for anything else (and for instructions)."""
+_DISPUTES = re.compile(r"\bdisputes?\b|\bchargebacks?\b|\bclaims?\b|\bcase opened\b", _I)
+_BILLS = re.compile(
+    r"\bbills?\b|\bsuppliers?\b|\bpay(?:ing)? out\b.*\b(?:due|upcoming|next)\b|\bupcoming (?:payments?|payouts?)\b|"
+    r"\bpayouts? (?:to|for) (?:my |our |the )?(?:suppliers?|bills?)\b",
+    _I,
+)
+_WAITING = re.compile(
+    r"\bsync(?:ed|ing)?\b|\bto approve\b|\bawaiting\b|\bwaiting (?:for )?(?:me|my approval|approval)\b|"
+    r"\bnot (?:yet )?(?:approved|posted|in (?:my|the|our) books)\b|\bunapproved\b",
+    _I,
+)
+_PAYOUT = re.compile(r"\bpayouts?\b|\bpaid out\b|\btransfer(?:red)? to (?:my |our |the )?bank\b", _I)
+
+Kind = Literal["fees", "held", "disputes", "waiting", "bills"]
+
+
+def question_kind(question: str) -> Kind | None:
+    """A question about PayPal's fees, the money it holds or pays out, its disputes, the payments waiting in Sync
+    PayPal or the bills due through it; None for anything else (and for instructions)."""
     if not _PAYPAL.search(question) or act.looks_like_action(question):
         return None
+    if _DISPUTES.search(question):
+        return "disputes"
+    if _BILLS.search(question):
+        return "bills"
+    if _WAITING.search(question):
+        return "waiting"
     if _FEES.search(question):
         return "fees"
-    if _HELD.search(question):
+    if _HELD.search(question) or _PAYOUT.search(question):
         return "held"
     return None
 
@@ -649,21 +676,13 @@ async def fee_facts(books: Books, question: str, today: date) -> dict[str, Any]:
     from app.ask_pnl import span_words
     from app.ask_router import pnl_span
     from app.journal import CATEGORY_ACCOUNTS, PAYPAL_CLEARING
+    from app.paypal_reports import period_totals
 
     fees_account = CATEGORY_ACCOUNTS["Bank charges"]
     q = question if _SPAN_SAID.search(question) else f"{question} this quarter"  # PayPal's cost: the quarter
     s = pnl_span(q, today)
-    fees = entries = received = 0
-    for ev in await books.list_events(s.start, s.end):
-        paypal = ev.counterparty == "PayPal" or any(ln.account == PAYPAL_CLEARING for ln in ev.lines)
-        if not paypal:
-            continue
-        fee = sum(ln.debit - ln.credit for ln in ev.lines if ln.account == fees_account)
-        if fee:
-            fees += fee
-            entries += 1 if fee > 0 else 0
-        elif ev.kind != "reversal":
-            received += sum(ln.debit for ln in ev.lines if ln.account == PAYPAL_CLEARING)
+    t = period_totals(await books.list_events(s.start, s.end))
+    fees, entries, received = t.fees_pence, t.fee_entries, t.received_pence
     return {
         "span": span_words(s),
         "paypal_fees": gbp(fees),
@@ -736,12 +755,148 @@ def held_code_text(f: dict[str, Any]) -> str:
     return out
 
 
-_PAYPAL_RULES = (
+def _uk(d: date | None) -> str | None:
+    return None if d is None else act.uk_date(d)
+
+
+async def disputes_facts(books: Books, demo: bool) -> dict[str, Any]:
+    """PayPal's disputes not yet resolved, from app/paypal_disputes.py (read only), with the soonest reply date."""
+    from app import paypal_disputes as pd
+    from app.ai.home_summary import gbp
+
+    try:
+        got = await asyncio.wait_for(pd.list_disputes(books, sample=demo), 8.0)
+    except Exception:  # noqa: BLE001 - PayPal slow or unreachable: say so, never guess
+        return {"asked_paypal": False, "_open": 0}
+    live = [d for d in got.disputes if d.status != "RESOLVED"]
+    mine = [d for d in live if d.status == "WAITING_FOR_SELLER_RESPONSE"]
+    dates = [d.respond_by for d in mine if d.respond_by]
+    f: dict[str, Any] = {
+        "asked_paypal": True,
+        "paypal_connected": got.connected,
+        "open_disputes": len(live),
+        "waiting_for_your_reply": len(mine),
+        "amount_in_open_disputes": gbp(sum(d.amount_pence or 0 for d in live)),
+        "disputes": [
+            {
+                "customer": d.customer or "not one of your invoices",
+                "invoice": d.invoice,
+                "amount": gbp(d.amount_pence or 0),
+                "reason": d.reason_text,
+                "status": d.status.replace("_", " ").lower(),
+                "reply_by": _uk(d.respond_by),
+                "sample": d.sample,
+            }
+            for d in live[:5]
+        ],
+        "_open": len(live),
+    }
+    if dates:
+        f["reply_by"] = _uk(min(dates))
+    if got.problem:
+        f["problem"] = got.problem
+    return f
+
+
+def disputes_code_text(f: dict[str, Any]) -> str:
+    if not f.get("asked_paypal"):
+        return "PayPal did not answer just now, so I cannot say whether you have disputes open. Try again shortly."
+    if not f["paypal_connected"] and not f["_open"]:
+        return (
+            "PayPal is not connected to these books, so there are no PayPal disputes to show. Connect it in Settings."
+        )
+    if not f["_open"]:
+        return "You have no open PayPal disputes."
+    n, mine = f["open_disputes"], f["waiting_for_your_reply"]
+    out = f"You have {n} open PayPal dispute{'s' if n != 1 else ''}, {f['amount_in_open_disputes']} in all"
+    out += f"; {mine} {'is' if mine == 1 else 'are'} waiting for your reply" if mine else ""
+    out += f", the soonest by {f['reply_by']}." if f.get("reply_by") else "."
+    return (
+        out
+        + " Open Invoices to see each one and the evidence Accnomos has drafted; nothing is sent until you approve it."
+    )
+
+
+async def waiting_facts(books: Books, demo: bool) -> dict[str, Any]:
+    """What Sync PayPal is holding for approval: payments PayPal listed that are not in the books yet."""
+    from app import paypal_sync as ps
+    from app.ai.home_summary import gbp
+
+    v = await ps.view(books, demo)
+    todo = [i for i in v.items if i.status == "proposed"]
+    return {
+        "payments_waiting_for_approval": len(todo),
+        "net_of_fees_in_them": gbp(sum(i.net_pence for i in todo)),
+        "paypal_fees_in_them": gbp(sum(i.fee_pence for i in todo)),
+        "oldest": _uk(min((i.date for i in todo), default=None)),
+        "last_synced": _uk(v.last_synced_at.date()) if v.last_synced_at else None,
+        "sample_history": v.sample,
+        "_waiting": len(todo),
+        "_available": v.available,
+    }
+
+
+def waiting_code_text(f: dict[str, Any]) -> str:
+    if not f["_available"]:
+        return "PayPal is not connected to these books yet, so there is nothing to sync. Connect it in Settings."
+    if not f["last_synced"] and not f["_waiting"]:
+        return "You have not synced PayPal yet. Open Invoices and choose Sync PayPal to bring in its transactions."
+    if not f["_waiting"]:
+        return f"Nothing is waiting in Sync PayPal (last synced {f['last_synced']}): every payment it found is decided."
+    n = f["payments_waiting_for_approval"]
+    return (
+        f"{n} PayPal payment{'s are' if n != 1 else ' is'} waiting in Sync PayPal for your approval, "
+        f"{f['net_of_fees_in_them']} after PayPal's fees; the oldest is from {f['oldest']}. "
+        "Nothing is posted until you approve each one."
+    )
+
+
+async def bills_facts(books: Books) -> dict[str, Any]:
+    """Bills you approved and planned to pay through PayPal, by when they fall due (app/billpay.py), none paid yet."""
+    from app.ai.home_summary import gbp
+    from app.paypal_reports import bill_payments
+
+    b = await bill_payments(books, london_today())
+    if b is None:
+        return {"bills_planned_through_paypal": 0, "_n": 0}
+    return {
+        "bills_planned_through_paypal": b.due_now_count + b.within_30_days_count,
+        "due_now_or_overdue": {"bills": b.due_now_count, "amount": gbp(b.due_now_pence)},
+        "due_within_7_days": {"bills": b.within_7_days_count, "amount": gbp(b.within_7_days_pence)},
+        "due_within_30_days": {"bills": b.within_30_days_count, "amount": gbp(b.within_30_days_pence)},
+        "_n": b.due_now_count + b.within_30_days_count,
+        "_pence": {"now": b.due_now_pence, "d7": b.within_7_days_pence, "d30": b.within_30_days_pence},
+    }
+
+
+def bills_code_text(f: dict[str, Any]) -> str:
+    if not f["_n"]:
+        return (
+            "No approved bills are planned for PayPal and falling due in the next 30 days. Choose PayPal as the way to "
+            "pay a bill, and save the supplier's PayPal email, on Purchases."
+        )
+    now, d7, d30 = f["due_now_or_overdue"], f["due_within_7_days"], f["due_within_30_days"]
+    parts = []
+    if now["bills"]:
+        parts.append(f"{now['bills']} bill{'s' if now['bills'] != 1 else ''} ({now['amount']}) due now or overdue")
+    if d7["bills"]:
+        parts.append(f"{d7['bills']} ({d7['amount']}) due in the next 7 days")
+    if d30["bills"] and d30["bills"] != d7["bills"]:
+        parts.append(f"{d30['bills']} ({d30['amount']}) due within 30 days")
+    return (
+        "Through PayPal you have " + ", ".join(parts) + ". Nothing is paid until you approve each payout on Purchases."
+    )
+
+
+_BASE_RULES = (
     " Rules: 1) Quote figures exactly as they appear in FACTS (they carry £ and commas); never add, subtract or "
     "estimate. 2) Two or three short sentences of plain UK English markdown, no headings, no tables, no links. "
-    "3) Say these are by the books (what was approved), not PayPal's own live balance. Return JSON with answer_md and "
-    "confidence."
 )
+_PAYPAL_RULES = (
+    _BASE_RULES + "3) Say these are by the books (what was approved), not PayPal's own live balance. Return JSON with "
+    "answer_md and confidence."
+)
+_ANSWER_RULES = _BASE_RULES + "3) Return JSON with answer_md and confidence."
 FEES_PROMPT = (
     "You answer a UK small business owner's question about what PayPal cost them, from FACTS worked out by code from "
     "their own ledger (PayPal fee entries). If paypal_fees is £0.00 say there are no PayPal fees in the books for "
@@ -754,38 +909,84 @@ HELD_PROMPT = (
 )
 
 
+DISPUTES_PROMPT = (
+    "You answer a UK small business owner's question about their PayPal disputes from FACTS read from PayPal and "
+    "matched to their invoices by code. Say how many are open, how many wait for their reply and by when, and the "
+    "amount; never say a dispute is won or lost unless FACTS says so; never promise an outcome." + _ANSWER_RULES
+)
+WAITING_PROMPT = (
+    "You answer a UK small business owner's question about the PayPal payments waiting in Sync PayPal for their "
+    "approval, from FACTS worked out by code. Say how many wait and their figure after fees; remind them nothing is "
+    "posted until they approve it." + _ANSWER_RULES
+)
+BILLS_PROMPT = (
+    "You answer a UK small business owner's question about the supplier bills they have planned to pay through "
+    "PayPal, from FACTS worked out by code (approved bills only, by due date). Nothing is paid until they approve "
+    "each payout." + _ANSWER_RULES
+)
+
+
 async def question_answer(
-    question: str, books: Books, cfg: AiConfig | None, period: AskPeriod, today: date
+    question: str, books: Books, cfg: AiConfig | None, period: AskPeriod, today: date, demo: bool = False
 ) -> AskAnswer | None:
-    """The answer to a PayPal fees or balance question, or None when it is neither."""
+    """The answer to a PayPal question (fees, money held or paid out, disputes, payments waiting in Sync PayPal,
+    bills due through PayPal), or None when it is none of them."""
     from app import ask_more
     from app.books import EVENTS
 
     which = question_kind(question)
     if which is None:
         return None
+    src = f"{EVENTS}/"
     if which == "fees":
         f = await fee_facts(books, question, today)
         code_text, prompt, name = fee_code_text(f), FEES_PROMPT, "ask_paypal_fees"
         keys = [
-            KeyNumber(label=f"PayPal fees, {f['span']}", value=f["paypal_fees"], source=f"{EVENTS}/"),
-            KeyNumber(label="Received through PayPal", value=f["received_through_paypal"], source=f"{EVENTS}/"),
+            KeyNumber(label=f"PayPal fees, {f['span']}", value=f["paypal_fees"], source=src),
+            KeyNumber(label="Received through PayPal", value=f["received_through_paypal"], source=src),
         ]
         if f["fees_as_percent_of_received"]:
             keys.append(KeyNumber(label="Fees as % of received", value=f"{f['fees_as_percent_of_received']}%",
-                                  source=f"{EVENTS}/"))  # fmt: skip
+                                  source=src))  # fmt: skip
         nothing = not f["_pence"]["fees"]
-    else:
+    elif which == "held":
         f = await held_facts(books)
         code_text, prompt, name = held_code_text(f), HELD_PROMPT, "ask_paypal_held"
         keys = [
-            KeyNumber(label="Held in PayPal (by your books)", value=f["held_in_paypal_by_your_books"],
-                      source=f"{EVENTS}/"),
+            KeyNumber(label="PayPal (books)", value=f["held_in_paypal_by_your_books"], source=src),
         ]  # fmt: skip
         if f["unpaid_invoices_with_a_paypal_link"]:
             keys.append(KeyNumber(label="Owed on invoices with a PayPal link", value=f["owed_on_those_invoices"],
-                                  source=f"{EVENTS}/"))  # fmt: skip
+                                  source=src))  # fmt: skip
         nothing = False
+    elif which == "disputes":
+        f = await disputes_facts(books, demo)
+        code_text, prompt, name = disputes_code_text(f), DISPUTES_PROMPT, "ask_paypal_disputes"
+        keys = []
+        if f.get("asked_paypal"):
+            keys.append(KeyNumber(label="Open PayPal disputes", value=str(f["open_disputes"]), source=src))
+            if f["_open"]:
+                keys.append(KeyNumber(label="In open disputes", value=f["amount_in_open_disputes"], source=src))
+        nothing = not f["_open"]
+    elif which == "waiting":
+        f = await waiting_facts(books, demo)
+        code_text, prompt, name = waiting_code_text(f), WAITING_PROMPT, "ask_paypal_waiting"
+        keys = [KeyNumber(label="Waiting in Sync PayPal", value=str(f["_waiting"]), source=src)]
+        if f["_waiting"]:
+            keys.append(KeyNumber(label="After PayPal's fees", value=f["net_of_fees_in_them"], source=src))
+        nothing = not f["_waiting"]
+    else:
+        f = await bills_facts(books)
+        code_text, prompt, name = bills_code_text(f), BILLS_PROMPT, "ask_paypal_bills"
+        keys = (
+            [
+                KeyNumber(label="Bills due within 7 days", value=f["due_within_7_days"]["amount"], source=src),
+                KeyNumber(label="Bills due within 30 days", value=f["due_within_30_days"]["amount"], source=src),
+            ]
+            if f["_n"]
+            else []
+        )
+        nothing = not f["_n"]
     shown = {k: v for k, v in f.items() if not k.startswith("_")}
     if nothing:
         text, by, why = code_text, "code", None
@@ -794,7 +995,7 @@ async def question_answer(
     return AskAnswer(
         answer_md=text,
         key_numbers=keys,
-        citations=[f"{EVENTS}/"],
+        citations=[src],
         suggested_actions=[],
         confidence="high" if by == "model" or nothing else "medium",
         model=cfg.model if (cfg and by == "model") else "code",

@@ -28,9 +28,13 @@ SYSTEM_PROMPT = (
     "home page, in plain UK English: no headings, no lists, no links, no advice about tax law. You are given FACTS as "
     "JSON, worked out by code. Rules: 1) Quote figures, counts, percentages and dates exactly as they appear in FACTS; "
     "never add, subtract, work out a percentage or calculate anything. 2) Cover, in this order and only where FACTS "
-    "has them: the cash position; how the business is doing (FACTS.year_to_date against last year, using its "
-    "`_vs_last_year` wording, and FACTS.monthly_trend's direction or best and weakest month; else this month against "
-    "last month); what needs doing; and the next deadline. If FACTS.cash_forecast.goes_below_zero is true, say when. "
+    'has them: the cash position (the bank balance and, when FACTS.paypal.balance_by_your_books is there, "PayPal '
+    '(books)" as its own figure, never added to the bank balance); how the business is doing '
+    "(FACTS.year_to_date against last year, using its `_vs_last_year` wording, and FACTS.monthly_trend's direction "
+    "or best and weakest month; else this month against last month; and, only if FACTS.paypal has them, PayPal's "
+    "fees and the money received through PayPal for the month); what needs doing (including "
+    "FACTS.paypal.waiting_in_sync_paypal and open_disputes); and the next "
+    "deadline. If FACTS.cash_forecast.goes_below_zero is true, say when. "
     "3) If FACTS.needs_doing has any count above zero, never say that nothing needs doing. 4) Leave out anything FACTS "
     'does not have. 5) A household (FACTS.kind is "personal") is not a business: cover, in this order, money in, '
     "money out and what was left this month against last month (FACTS.household), any budgets over or near their "
@@ -118,7 +122,11 @@ def gbp(pence: int) -> str:
 
 def _waiting(facts: dict[str, Any]) -> int:
     n = facts.get("needs_doing") or {}
-    return sum(int(v) for v in n.values() if isinstance(v, int))
+    pp = facts.get("paypal") or {}
+    paypal = int((pp.get("waiting_in_sync_paypal") or {}).get("payments", 0)) + int(
+        (pp.get("open_disputes") or {}).get("count", 0)
+    )
+    return sum(int(v) for v in n.values() if isinstance(v, int)) + paypal
 
 
 def _count(n: int, one: str, many: str | None = None) -> str:
@@ -179,6 +187,8 @@ def fallback_summary(facts: dict[str, Any]) -> str:
         out.append(f"You had {cash['balance']} in the bank on {cash['as_of']}{dip}.")
     else:
         out.append("There is no bank balance yet: import a bank statement and match a line to see one.")
+    if held := (facts.get("paypal") or {}).get("balance_by_your_books"):
+        out[0] += f" PayPal (books) holds {held}, counted separately."
     money = facts.get("money")
     ytd = facts.get("year_to_date")
     if ytd:  # the year so far says more than one month against another; the Money card still shows the months

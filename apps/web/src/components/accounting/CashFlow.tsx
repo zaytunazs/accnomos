@@ -18,6 +18,12 @@ export default function CashFlow() {
               <h2 id="cash-now" className="text-[17px] font-extrabold">Bank today · {ukDay(data.as_of)}</h2>
               <p className="mt-1 text-3xl font-extrabold tabular-nums">{money(data.opening_balance_pence)}</p>
               <p className="mt-1 text-sm text-muted">The ledger balance of {data.bank_accounts.join(" and ")}, worked out by code.</p>
+              {data.paypal_books_pence != null && (
+                <p className="mt-2 text-sm">
+                  PayPal (books): <strong className="tabular-nums">{money(data.paypal_books_pence)}</strong>
+                  <span className="text-muted"> · what PayPal holds for you until it pays out; counted separately, not in the figures below.</span>
+                </p>
+              )}
               <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {data.points.map((p) => (
                   <li key={p.days} className="rounded-xl border border-border p-3">

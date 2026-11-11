@@ -58,6 +58,11 @@ class Mapped(Target):
     note: str = ""
 
 
+PAYPAL_NOTE = (
+    "This is money PayPal holds for you until it pays out to your bank (the books' 1240 PayPal clearing), not a bank "
+    "balance. Choose or create a PayPal account in {pkg}; PayPal's fees are in 7900 Bank charges."
+)
+
 # Exact-code defaults: package -> books' code -> (code, name, quality, note)
 _D = tuple[str, str, Quality, str]
 XERO: dict[int, _D] = {
@@ -70,6 +75,7 @@ XERO: dict[int, _D] = {
         "accounts on manual journals: bring bank lines in with the bank statement file instead.",
     ),
     1210: ("", "", "check", "Choose the Xero account you keep cash in (create one if needed)."),
+    1240: ("", "", "check", PAYPAL_NOTE.format(pkg="Xero")),
     2100: ("800", "Accounts Payable", "default", ""),
     2200: ("820", "VAT", "default", ""),
     2210: ("825", "PAYE Payable", "suggested", "Split NI to 826 NIC Payable if your payroll does."),
@@ -107,6 +113,7 @@ SAGE50: dict[int, _D] = {
     1100: ("1100", "Debtors Control Account", "default", ""),
     1200: ("1200", "Bank Current Account", "default", ""),
     1210: ("1230", "Petty Cash", "default", "Sage's 1210 is the Bank Deposit Account, not cash."),
+    1240: ("", "", "check", PAYPAL_NOTE.format(pkg="Sage 50")),
     2100: ("2100", "Creditors Control Account", "default", ""),
     2200: (
         "2202",
@@ -174,6 +181,7 @@ QBO: dict[int, _D] = {
     1100: ("", "Debtors", "default", "QuickBooks creates its own Debtors account."),
     2100: ("", "Creditors", "default", "QuickBooks creates its own Creditors account."),
     1200: ("", "", "check", "Choose the bank account you set up in QuickBooks."),
+    1240: ("", "", "check", PAYPAL_NOTE.format(pkg="QuickBooks")),
 }
 DEFAULTS: dict[str, tuple[dict[int, _D], tuple[tuple[range, _D], ...]]] = {
     "xero": (XERO, XERO_RANGES),

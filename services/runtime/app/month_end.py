@@ -53,7 +53,7 @@ from pydantic import BaseModel, Field
 from accnomos_connectors.base import MailProvider
 from accnomos_ledger import LedgerEvent, compute_vat_return
 from accnomos_ledger.bank import BankLine
-from app import actions
+from app import actions, paypal_reports
 from app import contacts as cb
 from app import reports as rp
 from app.ai import close_summary
@@ -1520,9 +1520,11 @@ def _failed(step_id: StepId, n: int, title: str, exc: Exception) -> Step:
     )
 
 
-def _summary_facts(ctx: Ctx, steps: list[Step], snap: Snapshot, closed: bool, can_close: bool) -> dict[str, Any]:
+def _summary_facts(
+    ctx: Ctx, steps: list[Step], snap: Snapshot, closed: bool, can_close: bool, paypal: dict[str, Any] | None = None
+) -> dict[str, Any]:
     f = snap.figures
-    return {
+    out: dict[str, Any] = {
         "month": ctx.label,
         "needs_you": sum(s.needs_you for s in steps),
         "blocking": sum(s.blocking for s in steps),
@@ -1536,6 +1538,9 @@ def _summary_facts(ctx: Ctx, steps: list[Step], snap: Snapshot, closed: bool, ca
             "bank_lines": len(snap.bank),
         },
     }
+    if paypal:  # PayPal's fees and money received for the month, the 1240 balance, what waits in Sync PayPal
+        out["paypal"] = paypal
+    return out
 
 
 async def run(ctx: Ctx) -> AsyncIterator[tuple[str, Any]]:
@@ -1576,7 +1581,11 @@ async def run(ctx: Ctx) -> AsyncIterator[tuple[str, Any]]:
     blocking = sum(s.blocking for s in steps)
     can_close = lock.status == "needs_you" and bool(lock.proposes)
     closed = bool(record.closes) and changes is None
-    summary = await close_summary.summarise(_summary_facts(ctx, steps, snap, closed, can_close), ctx.cfg)
+    try:
+        paypal = await paypal_reports.close_facts(ctx.books, ctx.start, ctx.end, money)
+    except Exception:  # noqa: BLE001  PayPal figures are extra: a failure leaves them out of the summary
+        paypal = {}
+    summary = await close_summary.summarise(_summary_facts(ctx, steps, snap, closed, can_close, paypal), ctx.cfg)
     yield "summary", summary
     stored = StoredRun(
         id=run_id,

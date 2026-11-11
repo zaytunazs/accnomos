@@ -22,7 +22,7 @@ from pydantic import BaseModel
 
 from accnomos_connectors.msgraph import GraphError
 from accnomos_ledger.bank import BankLine, reconciled_to
-from app import bank_status, invoicing
+from app import bank_status, invoicing, paypal_reports
 from app import contacts as cb
 from app import profile as profile_mod
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
@@ -115,6 +115,9 @@ SECTIONS = (
 class Dashboard(BaseModel):
     today: date
     cash: Cash | TileError | None
+    #: What 1240 PayPal clearing holds by the books ("PayPal (books)"), shown beside the bank balance; None when no
+    #: entry has touched PayPal (books that do not use it show no PayPal line) or the ledger could not be read.
+    paypal_books_pence: int | None = None
     owed_to_you: OwedToYou | TileError | None
     owed_by_you: Owed | TileError | None
     vat: Deadlines | TileError | None
@@ -428,6 +431,7 @@ async def build(
     return Dashboard(
         today=today,
         cash=reads.tile(cash_tile, "bank"),
+        paypal_books_pence=paypal_reports.clearing_balance(events) if events is not None else None,
         owed_to_you=reads.tile(owed_pair[0] if owed_pair else None, "ledger", "bank"),
         owed_by_you=reads.tile(owed_pair[1] if owed_pair else None, "ledger", "bank"),
         vat=reads.tile(vat_tile, "ledger") if vat_applies else None,

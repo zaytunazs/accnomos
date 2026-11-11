@@ -33,6 +33,7 @@ from pydantic import BaseModel, TypeAdapter, ValidationError
 from app import actions, ask_more, ask_pnl, jobs, paypal_assistant, spending
 from app import assistant_tasks as tasks
 from app import dashboard as dash
+from app import demo as demo_mod
 from app.ai import ask as ask_ai
 from app.ai import spending as spending_ai
 from app.ai import stt, voice
@@ -164,6 +165,7 @@ async def _prepare(
     cycle: VatCycle,
     calendar: tasks.CalendarFactory | None = None,
     request: Request | None = None,
+    demo: bool = False,
 ) -> AskAnswer | dict[str, Any]:
     """Day-plan intent (code, no model) → instruction (proposed action) → the facts pack for a question about the books.
 
@@ -196,8 +198,8 @@ async def _prepare(
     prof = await dash._profile_or_default(books)  # noqa: SLF001 - the same lenient profile read Home uses
     if prof.kind == "personal":  # a household has no VAT return: its questions are about its bank lines
         return await ask_more.household_answer(req.question, books, cfg, period, today(TZ))
-    if (paid := await paypal_assistant.question_answer(req.question, books, cfg, period, today(TZ))) is not None:
-        return paid  # "what did PayPal cost me this quarter?", "how much is sitting in PayPal?"
+    if (paid := await paypal_assistant.question_answer(req.question, books, cfg, period, today(TZ), demo)) is not None:
+        return paid  # PayPal's fees, balance, payouts, disputes, payments waiting in Sync PayPal, bills due through it
     if (side := ask_more.owed_intent(req.question)) is not None:  # the aged balances Home shows
         if actions.looks_like_action(req.question):  # "send a PayPal reminder to everyone who owes me"
             found = await actions.propose(req.question, books, cfg, token, today(TZ))
@@ -228,8 +230,9 @@ async def _answer(
     cycle: VatCycle,
     calendar: tasks.CalendarFactory | None = None,
     request: Request | None = None,
+    demo: bool = False,
 ) -> AskAnswer:
-    ready = await _prepare(req, books, cfg, business, token, cycle, calendar, request)
+    ready = await _prepare(req, books, cfg, business, token, cycle, calendar, request, demo)
     if isinstance(ready, AskAnswer):
         return ready
     return await ask_ai.answer(req.question, ready, req.history, cfg)
@@ -263,7 +266,15 @@ async def ask(
 ) -> Any:
     """An answer about the books, or, for an instruction ("send a £100 invoice to …"), a proposed action to approve."""
     ready = await _prepare(
-        body, books, cfg, business, token, cycle, calendar_factory(request), request
+        body,
+        books,
+        cfg,
+        business,
+        token,
+        cycle,
+        calendar_factory(request),
+        request,
+        demo_mod.is_demo_request(request),
     )  # before streaming, so its errors keep their status
     if stream:
         return StreamingResponse(
@@ -314,7 +325,9 @@ async def ask_voice(
         raise HTTPException(
             422, f"That question is too long ({len(heard.text)} characters; keep it under 500)"
         ) from exc
-    answer = await _answer(req, books, cfg, business, token, cycle, calendar_factory(request), request)
+    answer = await _answer(
+        req, books, cfg, business, token, cycle, calendar_factory(request), request, demo_mod.is_demo_request(request)
+    )
     if answer.proposed_action is not None:  # re-signed: the provenance is part of what the user approves
         spoken = answer.proposed_action.model_copy(update={"transcribed_by": heard.by})
         answer = answer.model_copy(update={"proposed_action": actions.sign(spoken, token)})

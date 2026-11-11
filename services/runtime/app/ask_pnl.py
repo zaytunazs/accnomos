@@ -23,6 +23,7 @@ from app.ai.home_summary import gbp
 from app.ask_more import _RULES, worded
 from app.ask_router import Span, pnl_span
 from app.books import EVENTS, Books
+from app.paypal_reports import period_totals
 from app.schemas import AskAnswer, AskPeriod, KeyNumber
 
 # --------------------------------------------------------------------------- #
@@ -33,7 +34,8 @@ PNL_PROMPT = (
     "You answer a UK small business owner's question about their profit, income or costs from FACTS worked out by "
     "code from their approved ledger entries (the same profit and loss as their Reports page). Say which span the "
     "figures are for (FACTS.span), then income, costs and profit (and the margin when there was income). If "
-    "FACTS.entries is 0, say nothing was recorded for that span. " + _RULES
+    "FACTS.entries is 0, say nothing was recorded for that span. If FACTS.paypal is there, add one sentence: the "
+    "PayPal fees in those costs and the money received through PayPal. " + _RULES
 )
 
 
@@ -71,6 +73,12 @@ def pnl_facts(events: list[Any], s: Span) -> dict[str, Any]:
     }
     if (m := margin_pct(pl.net_profit_pence, pl.sales.total_pence)) is not None:
         facts["margin_percent"] = m
+    pp = period_totals(e for e in events if s.start <= e.date <= s.end)
+    if pp.fees_pence or pp.received_pence:  # only what the books hold: 7900 PayPal fees, money in through 1240
+        facts["paypal"] = {
+            "fees_in_those_costs": gbp(pp.fees_pence),
+            "received_through_paypal": gbp(pp.received_pence),
+        }
     return facts
 
 
@@ -83,6 +91,11 @@ def pnl_code_text(f: dict[str, Any]) -> str:
     if f["biggest_costs"]:
         c = f["biggest_costs"][0]
         out += f" The biggest cost was {c['account']} ({c['amount']})."
+    if pp := f.get("paypal"):
+        out += (
+            f" PayPal fees in those costs were {pp['fees_in_those_costs']}; {pp['received_through_paypal']} came in "
+            "through PayPal."
+        )
     return out + " Figures are before VAT."
 
 

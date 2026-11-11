@@ -249,6 +249,12 @@ function ProfitAndLoss({ pl, prev, year }: { pl: RtProfitAndLoss; prev: RtProfit
           </tbody>
         </table>
       </Scroll>
+      {pl.paypal_fees_pence != null && (
+        <p className="mt-3 text-sm text-muted">
+          Of which, through PayPal (already inside the figures above): fees <span className="font-semibold tabular-nums text-ink">{money(pl.paypal_fees_pence)}</span>{" "}
+          in 7900 Bank charges; <span className="font-semibold tabular-nums text-ink">{money(pl.paypal_received_pence ?? 0)}</span> received through 1240 PayPal clearing.
+        </p>
+      )}
     </section>
   );
 }

@@ -23,6 +23,11 @@ function cashTile(cash: RtDashboard["cash"]): Tile {
   return { label, value: pounds(cash.balance_pence), sub: `Balance on ${shortDate(cash.as_of)}${reconciled}` };
 }
 
+/** PayPal's own line under the bank figure: what 1240 PayPal clearing holds by the books, never added to the bank balance. */
+function withPayPal(tile: Tile, d: RtDashboard): Tile {
+  return d.paypal_books_pence == null ? tile : { ...tile, extra: { label: "PayPal (books)", value: pounds(d.paypal_books_pence) } };
+}
+
 function owedToYouTile(owed: RtDashboard["owed_to_you"]): Tile {
   const label = "Owed to you";
   if (isTileError(owed)) return { label, value: UNKNOWN, sub: COULDNT_LOAD };
@@ -57,7 +62,7 @@ function vatTile(vat: RtDashboard["vat"], annual: boolean): Tile {
 
 /** The key figures; VAT only when the profile has it (personal books and non-VAT businesses have no VAT tile). */
 function liveTiles(d: RtDashboard, annualVat: boolean, vat: boolean): Tile[] {
-  return [cashTile(d.cash), owedToYouTile(d.owed_to_you), owedByYouTile(d.owed_by_you),
+  return [withPayPal(cashTile(d.cash), d), owedToYouTile(d.owed_to_you), owedByYouTile(d.owed_by_you),
     ...(vat ? [vatTile(d.vat, annualVat)] : [])];
 }
 
@@ -82,6 +87,11 @@ function NumberBlock({ tile }: { tile: Tile }) {
         </Link>
       ) : (
         <p className={`mt-1 min-h-5 ${subClass}`}>{tile.sub}</p>
+      )}
+      {tile.extra && (
+        <p className="mt-1 text-[13px] font-semibold text-muted">
+          {tile.extra.label} <span className="tabular-nums text-ink">{tile.extra.value}</span>
+        </p>
       )}
     </div>
   );

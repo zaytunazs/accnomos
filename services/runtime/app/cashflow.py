@@ -78,6 +78,9 @@ class CashFlow(BaseModel):
     not_included: str = NOT_INCLUDED
     lowest_balance_pence: int
     lowest_on: date
+    #: 1240 PayPal clearing by the books ("PayPal (books)"), its own line beside the bank balance. Not part of the
+    #: opening balance or the forecast: it is money PayPal has yet to pay out. None when PayPal is not used.
+    paypal_books_pence: int | None = None
 
 
 def bank_balance(events: Iterable[LedgerEvent], chart: Sequence[Account], as_of: date) -> tuple[int, list[str]]:
@@ -212,7 +215,11 @@ async def build(books: Any, today: date) -> CashFlow:
     opening, banks = bank_balance(ledger.events, chart, today)
     terms = {c.id: c.terms_days for c in contacts if c.terms_days is not None}
     repeating = repeating_items(await rp_.list_templates(books), today, (await load_profile(books)).terms_days, terms)
-    return forecast(cb.aged(contacts, ledger, today), opening, banks, today, repeating)
+    from app.paypal_reports import clearing_balance
+
+    out = forecast(cb.aged(contacts, ledger, today), opening, banks, today, repeating)
+    out.paypal_books_pence = clearing_balance(ledger.events, today)
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -283,7 +290,9 @@ def series(cf: CashFlow, step: int = SERIES_STEP_DAYS) -> CashSeries:
 SYSTEM_PROMPT = (
     "You write ONE short plain-English sentence (under 40 words) for a UK small business owner about their cash "
     "over the next 90 days. You are given FACTS as JSON, worked out by code. Quote amounts and dates exactly as "
-    "they appear in FACTS; never calculate, never advise on borrowing or tax. Return JSON with `line`."
+    "they appear in FACTS; if FACTS has paypal_books_today it is money PayPal holds for them by the books, shown "
+    "beside the bank balance (call it PayPal (books)), never added to it or to the forecast; never calculate, "
+    "never advise on borrowing or tax. Return JSON with `line`."
 )
 
 
@@ -301,6 +310,7 @@ def facts(cf: CashFlow) -> dict[str, Any]:
     return {
         "today": f"{cf.as_of:%d %B %Y}",
         "bank_balance_today": money(cf.opening_balance_pence),
+        **({"paypal_books_today": money(cf.paypal_books_pence)} if cf.paypal_books_pence is not None else {}),
         **{f"balance_in_{p.days}_days": money(p.balance_pence) for p in cf.points},
         **{f"money_in_within_{p.days}_days": money(p.money_in_pence) for p in cf.points},
         **{f"money_out_within_{p.days}_days": money(p.money_out_pence) for p in cf.points},

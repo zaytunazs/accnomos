@@ -191,9 +191,11 @@ def business_items(
     goals: Sequence[Any],
     ytd: dict[str, Any] | None,
     cash: tuple[int, date] | None,
+    paypal: Any = None,
 ) -> list[Draft]:
     """`deadlines`: home_overview.Due items; `unclosed_month`: (YYYY-MM, "October 2026") when last month is not closed;
-    `ytd`: {"turnover": pence, "change_pct": int | None, "period": "1 Jan – 3 Nov 2026"}; `cash`: (balance, as_of)."""
+    `ytd`: {"turnover": pence, "change_pct": int | None, "period": "1 Jan – 3 Nov 2026"}; `cash`: (balance, as_of);
+    `paypal`: app/paypal_reports.PayPalHome or None (what waits in Sync PayPal, open disputes, bill payments)."""
     out: list[Draft] = []
     for due in deadlines:
         if due.days_left > DEADLINE_WINDOW_DAYS:
@@ -294,6 +296,7 @@ def business_items(
                 {"month": unclosed_month[1]},
             )
         )
+    out.extend(paypal_items(paypal, today))
     out.extend(goal_items(goals))
     if ytd is not None:
         pct = ytd.get("change_pct")
@@ -322,6 +325,69 @@ def business_items(
             )
         )
     return order(out)
+
+
+def paypal_items(paypal: Any, today: date) -> list[Draft]:
+    """What PayPal leaves for the owner: payments waiting in Sync PayPal, open disputes and bills planned to be paid
+    through PayPal. Only what the books and PayPal show; a count of zero makes no item."""
+    if paypal is None:
+        return []
+    out: list[Draft] = []
+    if (w := paypal.waiting) is not None and w.count > 0:
+        out.append(
+            _item(
+                "paypal_sync",
+                2,
+                "warning",
+                f"{plural(w.count, 'PayPal payment')} waiting in Sync PayPal",
+                f"{gbp(w.net_pence)} after PayPal's fees; none of it is in your books until you approve it.",
+                ("Open Sync PayPal", "/invoices"),
+                {"payments": w.count, "net": gbp(w.net_pence)},
+                money=abs(w.net_pence),
+            )
+        )
+    if (d := paypal.disputes) is not None and d.count > 0:
+        soon = d.respond_by is not None and (d.respond_by - today).days <= DEADLINE_WINDOW_DAYS
+        reply = (
+            (f"Reply by {day(d.respond_by)}." if d.respond_by is not None else "PayPal is waiting for your reply.")
+            if d.needs_reply
+            else "PayPal is dealing with it; nothing is needed from you yet."
+        )
+        out.append(
+            _item(
+                "paypal_disputes",
+                1 if d.needs_reply and soon else 2,
+                "negative" if d.needs_reply and soon else "warning",
+                f"{plural(d.count, 'open PayPal dispute')}: {gbp(d.amount_pence)}",
+                reply,
+                ("Open disputes", "/invoices"),
+                {
+                    "disputes": d.count,
+                    "amount": gbp(d.amount_pence),
+                    **({"reply_by": day(d.respond_by)} if d.respond_by is not None else {}),
+                },
+                when=d.respond_by,
+                money=d.amount_pence,
+            )
+        )
+    if (b := paypal.bills) is not None and (b.due_now_count > 0 or b.within_7_days_count > 0):
+        now = b.due_now_count > 0
+        n, amount = (b.due_now_count, b.due_now_pence) if now else (b.within_7_days_count, b.within_7_days_pence)
+        out.append(
+            _item(
+                "paypal_bills",
+                2 if now else 3,
+                "warning" if now else "neutral",
+                f"{plural(n, 'bill')} to pay through PayPal: {gbp(amount)}",
+                "Due now or overdue; you approve each payout."
+                if now
+                else "Due in the next 7 days; you approve each payout.",
+                ("Open Purchases", "/purchases"),
+                {"bills": n, "amount": gbp(amount), "when": "due now" if now else "due within 7 days"},
+                money=amount,
+            )
+        )
+    return out
 
 
 # --------------------------------------------------------------------------- #

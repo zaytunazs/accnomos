@@ -54,8 +54,8 @@ from app import cis_readings as cr
 from app import contacts as cb
 from app import dashboard as dash
 from app import home_items as hi
+from app import paypal_reports, payrun
 from app import payroll as payroll_mod
-from app import payrun
 from app import personal as pf
 from app import profile as profile_mod
 from app import property as pr
@@ -203,6 +203,7 @@ class Overview(BaseModel):
     snapshot: Snapshot | None = None  # None: personal books, or the ledger could not be read
     trend: rp.Trend | None = None
     cash_points: cf_mod.CashSeries | None = None  # None: no bank statement imported yet
+    paypal: paypal_reports.PayPalHome | None = None  # None: PayPal has nothing to say (books that do not use it)
     money: Money | None
     week: Week | None
     aged: Aged | None
@@ -569,6 +570,9 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     if cash and cash.balance_pence is not None:
         facts["cash"] = {"balance": gbp(cash.balance_pence), "as_of": day(cash.as_of)}
     personal = o["kind"] == "personal"
+    pp: paypal_reports.PayPalHome | None = None if personal else o.get("paypal")
+    if pp and (pf_ := paypal_reports.home_facts(pp, home_summary.gbp)):
+        facts["paypal"] = pf_  # "PayPal (books)" is its own line beside the bank balance: never added to it
     hh: Household | None = o.get("household")
     if personal and hh:
         facts["household"] = household_facts(hh, d.today)
@@ -722,6 +726,7 @@ def summary_items(
             else None
         ),
         cash=(cash.balance_pence, cash.as_of) if cash and cash.balance_pence is not None and cash.as_of else None,
+        paypal=o.get("paypal"),
     )
 
 
@@ -758,6 +763,7 @@ async def build(
     vat_assumed: bool = False,
     cfg: AiConfig | None = None,
     calendar_provider: CalendarProvider | None = None,
+    demo: bool = False,
 ) -> Overview:
     reads = _Reads()
     d = await dash.build(books, today, first_vat_month, vat_months, vat_assumed=vat_assumed)
@@ -850,6 +856,9 @@ async def build(
     snapshot_v = await reads.run("snapshot", snap) if business else None
     trend_v = await reads.run("trend", trend) if business else None
     cash_v = await reads.run("cash forecast", cash_points) if business else None
+    paypal_v = (
+        await reads.run("paypal", lambda: paypal_reports.home_figures(books, today, demo=demo)) if business else None
+    )
     aged_v = await reads.run("aged", aged) if "invoices" in features or business else None
     uk = prof.region.uk  # books kept in another country have none of HMRC's deadlines
     property_v = await reads.run("property", props) if uk else None
@@ -867,6 +876,7 @@ async def build(
         "trend": trend_v,
         "cash_points": cash_v,
         "household": household_v,
+        "paypal": paypal_v,
     }
 
     async def goals_now() -> list[Any]:
@@ -897,6 +907,7 @@ async def build(
         snapshot=snapshot_v,
         trend=trend_v,
         cash_points=cash_v,
+        paypal=paypal_v,
         money=o["money"],
         week=o["week"],
         aged=aged_v,

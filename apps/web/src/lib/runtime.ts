@@ -1545,6 +1545,9 @@ export interface RtProfitAndLoss {
   net_profit_pence: number; // negative = a loss
   entries: number;
   sample: boolean;
+  /** PayPal's fees (inside 7900 Bank charges) and the money received through PayPal in the period; null when none. */
+  paypal_fees_pence?: number | null;
+  paypal_received_pence?: number | null;
 }
 export interface RtAgedReport extends RtAged {
   sample: boolean;
@@ -3184,6 +3187,8 @@ export interface RtDashboard {
     statement: string | null;
     reconciled_to: string | null;
   } | RtTileError) | null;
+  /** 1240 PayPal clearing by the books ("PayPal (books)"), beside the bank balance; null when PayPal is not used. */
+  paypal_books_pence?: number | null;
   owed_to_you: (RtOwed & { overdue: number | null; overdue_pence: number | null; most_overdue_days: number | null }) | RtTileError | null;
   owed_by_you: RtOwed | RtTileError | null;
   vat: RtDeadlines | RtTileError | null;
@@ -4702,6 +4707,22 @@ export interface RtCashSeries {
   lowest_on: string;
   below_zero_on: string | null;
 }
+/** GET /books/home `paypal` (services/runtime/app/paypal_reports.py): null when the books have nothing to say about PayPal. */
+export interface RtPayPalHome {
+  balance_pence: number | null; // 1240 PayPal clearing by the books
+  this_month: { label: string; fees_pence: number; received_pence: number };
+  last_month: { label: string; fees_pence: number; received_pence: number };
+  waiting: { count: number; net_pence: number } | null; // in Sync PayPal, not yet approved
+  disputes: { count: number; needs_reply: number; amount_pence: number; respond_by: string | null; sample: boolean } | null;
+  bills: {
+    due_now_count: number;
+    due_now_pence: number;
+    within_7_days_count: number;
+    within_7_days_pence: number;
+    within_30_days_count: number;
+    within_30_days_pence: number;
+  } | null;
+}
 export interface RtHome {
   today: string;
   kind: RtProfileKind;
@@ -4709,6 +4730,7 @@ export interface RtHome {
   snapshot: RtHomeSnapshot | null; // null: personal books, or the ledger could not be read
   trend: RtTrend | null;
   cash_points: RtCashSeries | null; // null: no bank statement imported yet
+  paypal?: RtPayPalHome | null; // null: PayPal has nothing to say for these books
   money: { this_month: RtMoneyMonth; last_month: RtMoneyMonth } | null;
   week: { start: string; end: string; money_in_pence: number; money_out_pence: number; approved: number; proposed: number } | null;
   aged: { debtors: RtAgedSide; creditors: RtAgedSide } | null;

@@ -111,7 +111,10 @@ def bank_summary(events: Sequence[LedgerEvent], start: date, end: date) -> Secti
         title="Bank summary",
         columns=BANK_SUMMARY_COLUMNS,
         rows=rows,
-        note="Transfers between your own accounts count on both.",
+        note=(
+            "Transfers between your own accounts count on both. 1240 PayPal clearing is what PayPal holds for you by "
+            "your books; a PayPal payout to your bank moves it into 1200 Bank."
+        ),
     )
 
 
