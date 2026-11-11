@@ -1,6 +1,6 @@
-# PayPal AI Hackathon: demo video script (v3, 12 Nov 2026)
+# PayPal AI Hackathon: demo video script (v4, 12 Nov 2026)
 
-Planned length **2:42** (hard limit 2:50; the rules allow under 3:00). The judging criteria (Technological
+Planned length **2:47** (hard limit 2:50; the rules allow under 3:00). The judging criteria (Technological
 Implementation, Design, Potential Impact, Innovation, Presentation) carry equal weight, and Devpost's advice is to open
 with the problem and who it is for, show PayPal and AI end to end, and cut loading and set-up. The video follows that:
 
@@ -8,12 +8,16 @@ with the problem and who it is for, show PayPal and AI end to end, and cut loadi
 2. **Problem card** (6 s): the problem and who it is for, on screen and spoken.
 3. **PayPal hero** (1:41): how it works (card), Sync PayPal, the Power grid (AG Grid), Ask about PayPal, the tie-out,
    paying a bill by payout, dispute evidence.
-4. **Montage** (36 s): 12 shots of 3 s each, captions burned in.
-5. **PRESENTER outro** (8 s).
+4. **AI in action** slide (6 s): six real screenshots of the AI at work, each saying what the AI did and what code or
+   the owner did.
+5. **Montage** (30 s): 10 shots of 3 s each, captions burned in.
+6. **Everything in Accnomos** slide (5 s): every feature, grouped.
+7. **PRESENTER outro** (8 s).
 
-Narration is 328 words, about 2:11 of speech at 150 words a minute. The voice is female and British (`bf_emma`, through
+Narration is 346 words, about 2:18 of speech at 150 words a minute. The voice is female and British (`bf_emma`, through
 `docs/submission/paypal/narration/render.sh`). The voice-over says "you" and "the owner", never "I", so no line sounds
-like the founder speaking. Cards are in [`cards/`](cards/); click paths, the checklist and the blur list are in
+like the founder speaking. Cards and slides are in [`cards/`](cards/) (`problem.svg`, `how-it-works.svg`, `ai-in-action.png`,
+`features.png`); click paths, the checklist and the blur list are in
 [`SHOT_LIST.md`](SHOT_LIST.md); upload settings are in [`UPLOAD.md`](UPLOAD.md).
 
 **Pitch:** Accnomos keeps a UK small business's books in its own OneDrive or Google Drive and files VAT to HMRC; PayPal
@@ -46,29 +50,38 @@ is where it gets paid and pays its bills.
 | h3 | 1:10–1:20 | `/invoices`, top of the PayPal panel: *"PayPal says £… (as of …) · your books (1240 PayPal clearing) £…"* and the *Difference …* line | Zoom (edit); cursor under the "as of" time | The tie-out checks the books against PayPal's own balance, shows when PayPal last refreshed it, and explains any difference. | PayPal Balances API · PayPal's figure as of its last refresh (it can lag up to 3 h) |
 | h4 | 1:20–1:44 | `/purchases` → **Pay bills with PayPal** → **Due today** → **Approve payment** → **Pay £…** → *PayPal is processing it* → *Paid and posted* | Approve and pay; the wait is sped up and captioned "sped up" | Paying a supplier works the other way. When a bill falls due, Accnomos offers a PayPal payout. You approve, PayPal confirms in about half a minute, and only then does it post. A retry never pays twice. PayPal can't date a payout ahead, so it goes on the due date, when the app is open. | PayPal Payouts API · posts only on SUCCESS · same batch id on a retry, so never paid twice |
 | h5 | 1:44–1:58 | `/invoices` → **PayPal disputes** (demo SAMPLE dispute) → **Build evidence** → preview → **Send to PayPal (demo)** | Build; scroll the preview; blur the byline; Send (demo) | If a customer opens a dispute, Accnomos builds the evidence pack from the books, checks every figure by code, and waits for you to read it before anything goes to PayPal. | PayPal Disputes API · SAMPLE dispute in the demo: nothing sent to PayPal |
-| m1 | 1:58–2:34 | Montage, 12 shots of 3 s (below) | Cut on the narration's beats | And PayPal sits inside a full set of books, kept in your own OneDrive or Google Drive. Scan receipts, match the bank, send quotes, and file VAT to HMRC's sandbox. Reports, voice, jobs, payroll, your day planned, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it. | One caption per shot, burned in |
-| o0 **PRESENTER** | 2:34–2:42 | AI presenter (labelled); end card behind: `accnomos.com` · github.com/zaytunazs/accnomos | Speaks; end card holds | Everything you saw runs on PayPal's sandbox. Try it yourself at accnomos.com, no sign-in needed. | **accnomos.com** · Try the demo, no sign-in · github.com/zaytunazs/accnomos · PayPal sandbox; no real money moved |
+| ai | 1:58–2:04 | Slide `cards/ai-in-action.png` | Static; slow 3 % zoom | Everywhere in Accnomos, the AI proposes, code checks the figures, and you approve. | (the slide: six screenshots with captions; footer "The AI proposes · code calculates in pence · you approve") |
+| m1 | 2:04–2:34 | Montage, 10 shots of 3 s (below) | Cut on the narration's beats | And PayPal sits inside a full set of books, kept in your own OneDrive or Google Drive. Scan receipts, match the bank, and file VAT to HMRC's sandbox. Reports, voice, jobs and payroll, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it. | One caption per shot, burned in |
+| fl | 2:34–2:39 | Slide `cards/features.png` | Static | And that's everything Accnomos does today, in one app. | (the slide) |
+| o0 **PRESENTER** | 2:39–2:47 | AI presenter (labelled); end card behind: `accnomos.com` · github.com/zaytunazs/accnomos | Speaks; end card holds | Everything you saw runs on PayPal's sandbox. Try it yourself at accnomos.com, no sign-in needed. | **accnomos.com** · Try the demo, no sign-in · github.com/zaytunazs/accnomos · PayPal sandbox; no real money moved |
 
-### Montage shots (m1): 12 × 3 s, captions burned in
+### Why the AI slide sits before the montage
+
+The AI slide goes after the PayPal hero, just before the montage, not after the how-it-works card. Devpost's advice is to
+show PayPal working early, and the hero scenes already start late at 0:24. Another 6 s there would push the first
+PayPal screen past 0:30. Placed here, the slide sums up the AI the judges have just watched in the PayPal scenes, then
+opens onto the rest of the app: three of its six tiles (receipts, the calendar card, the support assistant) belong to
+features the montage goes on to show.
+
+### Montage shots (m1): 10 × 3 s, captions burned in
 
 | # | Time | Route | Shot | Caption |
 |---|---|---|---|---|
-| 1 | 1:58 | `/files` (signed-in) | The books folder and `Books.xlsx` | Your books, in your own OneDrive or Google Drive |
-| 2 | 2:01 | `/review` | Receipt proposal card → **Approve** | Receipts read by AI, checked by code |
-| 3 | 2:04 | `/bank` | Bank feed card and matched lines | Bank feed and matching |
-| 4 | 2:07 | `/sales/quotes` | A quote | Quotes and invoices |
-| 5 | 2:10 | `/vat` → HMRC sandbox receipt | Nine boxes, then HMRC's sandbox receipt (password blurred) | VAT filed to HMRC (sandbox) |
-| 6 | 2:13 | `/reports/profit-and-loss` | Profit and loss | Reports |
-| 7 | 2:16 | **Talk to Accnomos** | The voice button and a spoken question's card | Ask by voice |
-| 8 | 2:19 | `/jobs` | A job with its costs | Jobs |
-| 9 | 2:22 | `/payroll` | Pay run estimate | Payroll estimates |
-| 10 | 2:25 | Home **Plan today** (signed-in) | The proposed day | Your day, planned from your calendar |
-| 11 | 2:28 | Android phone (APK, **Try the company demo**) | Home, then Review | Android app |
-| 12 | 2:31 | `/purchases` **Upcoming PayPal payments** → **Calendar**; last second: `/support` | The schedule and the calendar button; the help centre | Upcoming PayPal payments in your calendar · Help centre |
+| 1 | 2:04 | `/files` (signed-in) | The books folder and `Books.xlsx` | Your books, in your own OneDrive or Google Drive |
+| 2 | 2:07 | `/review` | Receipt proposal card → **Approve** | Receipts read by AI, checked by code |
+| 3 | 2:10 | `/bank` | Bank feed card and matched lines | Bank feed and matching |
+| 4 | 2:13 | `/vat` → HMRC sandbox receipt | Nine boxes, then HMRC's sandbox receipt (password blurred) | VAT filed to HMRC (sandbox) |
+| 5 | 2:16 | `/reports/profit-and-loss` | Profit and loss | Reports |
+| 6 | 2:19 | **Talk to Accnomos** | The voice button and a spoken question's card | Ask by voice |
+| 7 | 2:22 | `/jobs` | A job with its costs | Jobs |
+| 8 | 2:25 | `/payroll` | Pay run estimate | Payroll estimates |
+| 9 | 2:28 | Android phone (APK, **Try the company demo**) | Home, then Review | Android app |
+| 10 | 2:31 | `/purchases` **Upcoming PayPal payments** → **Calendar**; last second: `/support` | The schedule and the calendar button; the help centre | Upcoming PayPal payments in your calendar · Help centre |
 
-Dropped from v2 for time: invoices list (the hero shows it), mileage, contacts, Ask typed (the hero shows it), the
-separate `/help` shot. Captions: white text on a dark band, bottom left, at least 44 px at 1080p, on screen for the
-whole 3 s.
+Dropped in v4: quotes (invoices are already in the hero, and the features slide lists quotes) and Plan today (it needs
+the signed-in calendar, and the AI slide already shows a calendar card). Dropped in v3: invoices list, mileage,
+contacts, typed Ask, `/help`. Captions: white text on a dark band, bottom left, at least 44 px at 1080p, on screen for
+the whole 3 s.
 
 ## Music
 
@@ -85,9 +98,11 @@ music from anywhere else. After uploading, check YouTube Studio shows no copyrig
 | PRESENTER intro | i0 | 27 | 10.8 s | 11 s |
 | Problem and how it works | pr, hw | 30 | 12.0 s | 13 s |
 | PayPal hero | h1, ag, h2, h3, h4, h5 | 201 | 1:20 | 1:34 |
-| Montage | m1 | 55 | 22 s | 36 s |
+| AI in action | ai | 13 | 5.2 s | 6 s |
+| Montage | m1 | 51 | 20.4 s | 30 s |
+| Everything in Accnomos | fl | 9 | 3.6 s | 5 s |
 | PRESENTER outro | o0 | 15 | 6.0 s | 8 s |
-| **Total** | | **328** | **2:11** | **2:42** |
+| **Total** | | **346** | **2:18** | **2:47** |
 
-There are 8 s of headroom under 2:50. If the cut runs long, trim in this order: montage shot 12's help-centre second,
+There are 3 s of headroom under 2:50. If the cut runs long, trim in this order: montage shot 10's help-centre second,
 the ledger-explorer half of `ag`, montage shot 1.

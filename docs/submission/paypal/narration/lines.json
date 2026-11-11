@@ -36,9 +36,17 @@
   "text": "If a customer opens a dispute, Accnomos builds the evidence pack from the books, checks every figure by code, and waits for you to read it before anything goes to PayPal."
  },
  {
+  "id": "ai",
+  "text": "Everywhere in Accnomos, the AI proposes, code checks the figures, and you approve."
+ },
+ {
   "id": "m1",
-  "text": "And PayPal sits inside a full set of books, kept in your own OneDrive or Google Drive. Scan receipts, match the bank, send quotes, and file VAT to HMRC's sandbox. Reports, voice, jobs, payroll, your day planned, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it.",
-  "say": "And PayPal sits inside a full set of books, kept in your own One Drive or Google Drive. Scan receipts, match the bank, send quotes, and file VAT to H M R C's sandbox. Reports, voice, jobs, payroll, your day planned, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it."
+  "text": "And PayPal sits inside a full set of books, kept in your own OneDrive or Google Drive. Scan receipts, match the bank, and file VAT to HMRC's sandbox. Reports, voice, jobs and payroll, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it.",
+  "say": "And PayPal sits inside a full set of books, kept in your own One Drive or Google Drive. Scan receipts, match the bank, and file VAT to H M R C's sandbox. Reports, voice, jobs and payroll, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it."
+ },
+ {
+  "id": "fl",
+  "text": "And that's everything Accnomos does today, in one app."
  },
  {
   "id": "o0",

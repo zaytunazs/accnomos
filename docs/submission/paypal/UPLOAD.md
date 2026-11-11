@@ -37,7 +37,7 @@ Chapters
 0:56 Ask about PayPal and the balance tie-out
 1:20 Pay a supplier by PayPal Payout
 1:44 Dispute evidence from the books
-1:58 Everything else in Accnomos, and how to try it
+1:58 AI in action, and everything else in Accnomos
 
 #PayPal #MakingTaxDigital #SmallBusiness
 ```
@@ -60,7 +60,7 @@ chapters to match the edit; don't reuse the planned times.
 ## Before you send the link
 
 - [ ] Plays in a private window while signed out (that is, Public).
-- [ ] Shorter than 3:00 (target 2:42).
+- [ ] Shorter than 3:00 (target 2:47).
 - [ ] *Altered content* set to Yes; the description has the AI disclosure line.
 - [ ] YouTube Studio › Content: no copyright claims.
 - [ ] Chapters show in the progress bar.

@@ -1,8 +1,8 @@
-# PayPal video: shot list and pre-recording checklist (v3, 12 Nov 2026)
+# PayPal video: shot list and pre-recording checklist (v4, 12 Nov 2026)
 
 Companion to [`VIDEO_SCRIPT.md`](VIDEO_SCRIPT.md). Footage comes from three places:
 
-- **Signed-in sandbox books** (h1, ag, h2, h3, montage 1 and 10): the owner's test sign-in on `https://accnomos.com` with
+- **Signed-in sandbox books** (h1, ag, h2, h3, montage 1): the owner's test sign-in on `https://accnomos.com` with
   **Load sample books** (a fictional company), PayPal connected in direct mode, and the seed invoices below. These
   scenes need real sandbox payments from hours earlier: PayPal's Transaction Search lists a payment up to 3 hours
   late, and a fresh demo copy cannot see them. The tie-out (h3) appears only when PayPal is really connected; it is
@@ -10,8 +10,9 @@ Companion to [`VIDEO_SCRIPT.md`](VIDEO_SCRIPT.md). Footage comes from three plac
 - **"Try the demo"** (h4, h5, most of the montage; `ag` can also be filmed here on the sample history): a fresh copy of the fictional demo books with no sign-in. The demo has
   one SAMPLE dispute built by code; with the server in direct mode it can connect PayPal and send sandbox payouts.
 - **AI presenter** (i0, o0): a realistic AI presenter, labelled "AI presenter" on screen. It must never claim to be
-  the founder; the words are fixed in `narration/00-i0-presenter-intro.txt` and `narration/10-o0-presenter-outro.txt`.
-- **Cards** (pr, hw): `cards/problem.svg` and `cards/how-it-works.svg`, rendered to PNG (`cards/README.md`).
+  the founder; the words are fixed in `narration/00-i0-presenter-intro.txt` and `narration/12-o0-presenter-outro.txt`.
+- **Cards and slides** (pr, hw, ai, fl): `cards/problem.svg`, `cards/how-it-works.svg`, `cards/ai-in-action.png`,
+  `cards/features.png` (sources and rendering: `cards/README.md`).
 
 Automated capture of the demo-mode shots: `tools/video/paypal/capture_paypal.ts` (below). The Android shot and the
 presenter are made by hand. Cut every loading spinner and set-up step: judges should see results, not waiting.
@@ -127,20 +128,22 @@ Film with the Power grid **off** (the card list); turn it on for `ag` afterwards
 3. Cut to **Reports › Ledger explorer** (`/reports/ledger-grid`). In **Show me…** type *PayPal fees over £5* →
    **Filter**. Hold on the filtered grid (about 5 s). Caption: "AG Grid Community". Blur any model byline.
 
-## Click paths: montage (12 × 3 s, demo unless marked)
+### ai, fl Slides
+`cards/ai-in-action.png` (6 s, before the montage) and `cards/features.png` (5 s, before the outro): stills, made by
+the edit, with no screen recording.
+
+## Click paths: montage (10 × 3 s, demo unless marked)
 
 1. `/files` (signed-in): the books folder and `Books.xlsx`.
 2. `/review`: a receipt proposal card → **Approve** (cut the reading time).
 3. `/bank`: the Bank feed card and matched lines.
-4. `/sales/quotes`: one quote.
-5. `/vat`: the nine boxes, then HMRC's sandbox receipt (reuse earlier sandbox-filing footage if it still matches).
-6. `/reports/profit-and-loss`.
-7. **Talk to Accnomos** → the voice button → the card for a spoken question. Blur bylines.
-8. `/jobs` → one job.
-9. `/payroll`: the pay run estimate.
-10. Home **Plan today** (signed-in: it needs a calendar).
-11. Android phone or emulator: APK from GitHub Releases → **Try the company demo** → Home, then Review.
-12. `/purchases` → **Upcoming PayPal payments** → **Calendar**; the last second on `/support` (the help centre).
+4. `/vat`: the nine boxes, then HMRC's sandbox receipt (reuse earlier sandbox-filing footage if it still matches).
+5. `/reports/profit-and-loss`.
+6. **Talk to Accnomos** → the voice button → the card for a spoken question. Blur bylines.
+7. `/jobs` → one job.
+8. `/payroll`: the pay run estimate.
+9. Android phone or emulator: APK from GitHub Releases → **Try the company demo** → Home, then Review.
+10. `/purchases` → **Upcoming PayPal payments** → **Calendar**; the last second on `/support` (the help centre).
 
 ## Automated capture (demo mode)
 
@@ -159,7 +162,8 @@ PW_FROM=apps/web node tools/video/paypal/capture_paypal.ts docs/video/raw-paypal
 
 Hero shots: `pp-sync`, `pp-grid` (needs the Power grid on: the script turns it on in the demo copy's browser),
 `pp-ask`, `pp-billpay`, `pp-disputes` (plus `pp-invoice` for a payment-link insert). Montage shots: `m-review`,
-`m-bank`, `m-quotes`, `m-vat`, `m-reports`, `m-jobs`, `m-payroll`, `m-upcoming`, `m-support` (the rest are by hand). In the demo, `pp-sync` reads the labelled sample history
+`m-bank`, `m-vat`, `m-reports`, `m-jobs`, `m-payroll`, `m-upcoming`, `m-support` (files, voice and Android are by hand;
+`m-quotes` is kept for a spare shot). In the demo, `pp-sync` reads the labelled sample history
 unless `PAYPAL_CONNECT=1`; the tie-out shows only when connected. The signed-in hero footage (h1–h3 with the seed
 invoices) is recorded by hand, following the click paths above.
 
@@ -167,5 +171,6 @@ invoices) is recorded by hand, following the click paths above.
 
 ```bash
 bash docs/submission/paypal/narration/render.sh                                  # all lines, on the GPU server
-bash docs/submission/paypal/narration/render.sh pr,hw,h1,ag,h2,h3,h4,h5,m1       # if the presenter tool voices i0/o0
+bash docs/submission/paypal/narration/render.sh ai,m1,fl                          # only the lines new or changed in v4
+bash docs/submission/paypal/narration/render.sh pr,hw,h1,ag,h2,h3,h4,h5,ai,m1,fl # if the presenter tool voices i0/o0
 ```

@@ -1,0 +1,90 @@
+<!doctype html>
+<!-- Scene "fl" (5 s, just before the outro): everything in Accnomos, grouped. Only features with a screen in
+     apps/web/src/app or a section in README.md. App colours, no logos. Render: cards/README.md. -->
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
+  body { background: #f8f6f3; font-family: Inter, "Segoe UI", Arial, sans-serif; color: #1f1a16; }
+  h1 { margin: 0; position: absolute; left: 80px; top: 52px; font-size: 56px; font-weight: 800; letter-spacing: -0.5px; }
+  .sub { position: absolute; left: 80px; top: 126px; font-size: 26px; color: #5c534b; }
+  .cols { position: absolute; left: 80px; right: 80px; top: 200px; display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 28px; }
+  .group { background: #fff; border: 2px solid #e6ded4; border-radius: 12px; padding: 22px 26px 18px; margin-bottom: 26px; }
+  .group.pp { background: #5a2d00; border-color: #5a2d00; color: #fff; }
+  h2 { margin: 0 0 12px; font-size: 28px; font-weight: 800; color: #5a2d00; }
+  .pp h2 { color: #ebc77a; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  li { font-size: 23px; line-height: 1.32; padding: 3px 0 3px 22px; position: relative; }
+  li::before { content: ""; position: absolute; left: 0; top: 14px; width: 9px; height: 9px; border-radius: 50%; background: #b45309; }
+  .pp li::before { background: #ebc77a; }
+  footer { position: absolute; left: 80px; right: 80px; bottom: 36px; font-size: 22px; color: #5c534b; }
+</style>
+</head>
+<body>
+  <h1>Everything in Accnomos</h1>
+  <div class="sub">One app for a UK small business's books, with PayPal at the centre</div>
+  <div class="cols">
+    <div>
+      <div class="group pp">
+        <h2>Paid and paying through PayPal</h2>
+        <ul>
+          <li>PayPal invoices and pay links, PayPal reminders</li>
+          <li>Sync PayPal: gross, fee and net matched to invoices</li>
+          <li>VAT chosen by you on sales with no invoice</li>
+          <li>Balance tie-out against PayPal</li>
+          <li>Bills paid by PayPal Payouts, with your approval</li>
+          <li>Upcoming PayPal payments in your calendar</li>
+          <li>Dispute evidence from the books</li>
+          <li>Ask what PayPal cost you and what it holds</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="group">
+        <h2>Books and tax</h2>
+        <ul>
+          <li>Receipts and bills read for you</li>
+          <li>Bank feeds, matching and rules</li>
+          <li>Invoices, quotes and repeating invoices</li>
+          <li>VAT nine boxes, filed to HMRC (sandbox)</li>
+          <li>MTD Income Tax for sole traders and landlords</li>
+          <li>CIS, month-end, reports and exports</li>
+        </ul>
+      </div>
+      <div class="group">
+        <h2>Assistant</h2>
+        <ul>
+          <li>Ask by typing or by voice</li>
+          <li>Plan today from your calendar and jobs</li>
+          <li>Calendar, notes and to-dos</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="group">
+        <h2>Business</h2>
+        <ul>
+          <li>Jobs and timesheets</li>
+          <li>Vehicles and mileage</li>
+          <li>Payroll estimates</li>
+          <li>Contacts with Companies House and VAT checks</li>
+          <li>Goals and household budgets</li>
+        </ul>
+      </div>
+      <div class="group">
+        <h2>Platform</h2>
+        <ul>
+          <li>Books in your own OneDrive or Google Drive</li>
+          <li>Web app and Android app</li>
+          <li>Help centre and support tickets</li>
+          <li>Power grid (AG Grid Community)</li>
+          <li>Accountant access</li>
+          <li>Marketplace sales add-on</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <footer>Recorded against PayPal's and HMRC's sandboxes with fictional data · accnomos.com</footer>
+</body>
+</html>
