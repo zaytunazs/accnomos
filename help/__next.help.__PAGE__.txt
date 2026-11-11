@@ -1,0 +1,57 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/0rzo3pshtmi8i.js"
+3:"/_next/static/chunks/0yktw3zz44h0n.js"
+4:"/_next/static/chunks/18dt8t6e6mex6.js"
+5:"/_next/static/chunks/34m3zn69l9xq6.js"
+6:"/_next/static/chunks/07fysu0iar369.js"
+7:"/_next/static/chunks/1lkdayofvr43o.js"
+8:"/_next/static/chunks/2sb9n86jpgyk2.js"
+9:I[99214,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+a:I[59368,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+b:"/_next/static/chunks/1-i0azrln680m.js"
+c:I[58298,["$2","$3","$4","$5","$6","$7","$8","$b"],"default"]
+d:I[5736,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+e:"/_next/static/chunks/30p2doclbap4b.js"
+f:I[36981,["$2","$3","$4","$5","$6","$7","$8","$e"],"ProblemCard"]
+1d:"ViewportBoundary"
+1e:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$1d"]
+1f:"MetadataBoundary"
+20:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$1f"]
+21:"$Sreact.suspense"
+:HL["/_next/static/chunks/1wgtnz9chdllb.css","style"]
+11:X
+14:X
+14:C
+16:T653,{"@context":"https://schema.org","@type":"CollectionPage","name":"Accnomos help centre","url":"https://accnomos.com/help","hasPart":[{"@type":"HowTo","name":"Sign up and connect your storage","url":"https://accnomos.com/help/sign-up-connect-storage"},{"@type":"HowTo","name":"Upload receipts, or drop a whole folder at once","url":"https://accnomos.com/help/upload-receipts"},{"@type":"HowTo","name":"Review and approve","url":"https://accnomos.com/help/review-approve"},{"@type":"HowTo","name":"Connect a bank feed and reconcile","url":"https://accnomos.com/help/bank-feeds"},{"@type":"HowTo","name":"Send an invoice with a PayPal pay link","url":"https://accnomos.com/help/invoices-paypal-links"},{"@type":"HowTo","name":"Sync PayPal","url":"https://accnomos.com/help/sync-paypal"},{"@type":"HowTo","name":"Respond to a PayPal dispute","url":"https://accnomos.com/help/paypal-disputes"},{"@type":"HowTo","name":"Pay supplier bills with PayPal","url":"https://accnomos.com/help/bill-pay-paypal"},{"@type":"HowTo","name":"Do a VAT return and send it to HMRC","url":"https://accnomos.com/help/vat-return"},{"@type":"HowTo","name":"Close the month","url":"https://accnomos.com/help/month-end"},{"@type":"HowTo","name":"Use the assistant by voice or chat","url":"https://accnomos.com/help/voice-assistant"},{"@type":"HowTo","name":"Use the Android app","url":"https://accnomos.com/help/android-app"},{"@type":"HowTo","name":"Get help and raise a support ticket","url":"https://accnomos.com/help/contact-support"},{"@type":"HowTo","name":"PayPal problems: where to get help","url":"https://accnomos.com/help/paypal-help"}]}15:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"flex flex-col","children":[["$","div",null,{"className":"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between","children":[["$","div",null,{"className":"min-w-0","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Help centre"}],["$","p",null,{"className":"mt-1 text-[15px] leading-7 text-muted","children":"Step-by-step guides for the web and the Android app, and how to reach us when a guide doesn't help."}]]}],null]}],["$","script",null,{"type":"application/ld+json","dangerouslySetInnerHTML":{"__html":"$16"}}],"$L17","$L18","$L19"]}],["$L1a"],"$L1b"]}],"p":"$@1c","v":null,"s":"$11"}}]]
+12:[["children",{"s":"help","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$La",null,{"parallelRouterKey":"children","template":["$","$Ld",null,{}]}]]}],"p":"$@13","v":"$14","s":"$11"},"c":"$Q15"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/1wgtnz9chdllb.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/0rzo3pshtmi8i.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/0yktw3zz44h0n.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/18dt8t6e6mex6.js","async":true}],["$","script","script-3",{"src":"/_next/static/chunks/34m3zn69l9xq6.js","async":true}],["$","script","script-4",{"src":"/_next/static/chunks/07fysu0iar369.js","async":true}],["$","script","script-5",{"src":"/_next/static/chunks/1lkdayofvr43o.js","async":true}],["$","script","script-6",{"src":"/_next/static/chunks/2sb9n86jpgyk2.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L9",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/admin","/admin/analytics","/admin/audit","/admin/bugs","/admin/codes","/admin/plans","/admin/support","/admin/user","/admin/users","/ai-models","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/calendar","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/demo","/files","/goals","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/models","/month-end","/notes","/payroll","/personal","/prices","/pricing","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/ledger-grid","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/billing","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/support","/terms","/try","/vat","/vehicles"],"children":["$","$La",null,{"parallelRouterKey":"children","error":"$c","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/1-i0azrln680m.js","async":true}]],"template":["$","$Ld",null,{}],"notFound":[["$","$Lf",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@10","v":null,"s":"$11"},"c":"$Q12"},"h":{"r":["$","$1","h",{"children":[null,["$","$L1e",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#5A2D00"}]]}],["$","$L20",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$21",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Help centre · Accnomos"}],["$","meta","1",{"name":"description","content":"Step-by-step guides for Accnomos on the web and Android: receipts, bank feeds, invoices and PayPal, VAT returns to HMRC, month-end and the assistant."}],["$","link","2",{"rel":"canonical","href":"https://accnomos.com/help"}],["$","meta","3",{"property":"og:title","content":"Help centre · Accnomos"}],["$","meta","4",{"property":"og:description","content":"Step-by-step guides for Accnomos on the web and Android: receipts, bank feeds, invoices and PayPal, VAT returns to HMRC, month-end and the assistant."}],["$","meta","5",{"property":"og:site_name","content":"Accnomos"}],"$L22","$L23","$L24","$L25","$L26","$L27","$L28","$L29","$L2a"]}]}],null]}],"$L2b"]}],"p":"$@2c","v":null,"s":"$11"}},"a":"$@2d","u":"$@2e","b":"mHld_jG3BQwZo1vToftMo"}
+2f:"/_next/static/chunks/3qsmvhv2acj4h.js"
+30:I[84733,["$2","$3","$4","$5","$6","$7","$8","$2f"],"default"]
+31:I[74174,["$2","$3","$4","$5","$6","$7","$8","$2f"],""]
+32:I[65062,["$2","$3","$4","$5","$6","$7","$8","$2f"],"default"]
+33:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"OutletBoundary"]
+35:I[14762,["$2","$3","$4","$5","$6","$7","$8"],"IconMark"]
+17:["$","$L30",null,{}]
+18:["$","section",null,{"aria-labelledby":"help-more","className":"mt-8 rounded-2xl border border-border bg-white p-4","children":[["$","h2",null,{"id":"help-more","className":"text-[15px] font-extrabold","children":"More guides"}],["$","ul",null,{"aria-label":"Guides","className":"mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2","children":[["$","li","/how-it-works",{"children":["$","$L31",null,{"href":"/how-it-works","className":"block rounded-xl border border-border p-3 hover:bg-ground","children":[["$","span",null,{"className":"block font-extrabold text-teal-dark","children":"How it works"}],["$","span",null,{"className":"mt-0.5 block text-ink","children":"What the AI does, what code checks, and guides for payroll, goals, the calendar, contacts and more."}]]}]}],["$","li","/demo",{"children":["$","$L31",null,{"href":"/demo","className":"block rounded-xl border border-border p-3 hover:bg-ground","children":[["$","span",null,{"className":"block font-extrabold text-teal-dark","children":"Demo guide"}],["$","span",null,{"className":"mt-0.5 block text-ink","children":"A tour of the fictional sample books, with nothing to sign in to."}]]}]}]]}]]}]
+19:["$","section",null,{"aria-labelledby":"help-contact","className":"mt-4 rounded-2xl border border-border bg-white p-4","children":[["$","h2",null,{"id":"help-contact","className":"text-[15px] font-extrabold","children":"Still stuck?"}],["$","p",null,{"className":"mt-1 text-sm text-ink","children":["Signed in, open"," ",["$","$L31",null,{"href":"/support","className":"font-bold text-teal-dark underline underline-offset-2","children":"Support"}]," ","to ask the support assistant or raise a ticket. Or email"," ",["$","a",null,{"href":"mailto:zohaibsharif@gmail.com","className":"font-bold text-teal-dark underline underline-offset-2","children":"zohaibsharif@gmail.com"}],"."]}],["$","$L32",null,{}]]}]
+1a:["$","script","script-0",{"src":"/_next/static/chunks/3qsmvhv2acj4h.js","async":true}]
+1b:["$","$L33",null,{"children":["$","$21",null,{"name":"Next.MetadataOutlet","children":"$@34"}]}]
+22:["$","meta","6",{"property":"og:locale","content":"en_GB"}]
+23:["$","meta","7",{"property":"og:type","content":"website"}]
+24:["$","meta","8",{"name":"twitter:card","content":"summary_large_image"}]
+25:["$","meta","9",{"name":"twitter:title","content":"Help centre · Accnomos"}]
+26:["$","meta","10",{"name":"twitter:description","content":"Step-by-step guides for Accnomos on the web and Android: receipts, bank feeds, invoices and PayPal, VAT returns to HMRC, month-end and the assistant."}]
+27:["$","link","11",{"rel":"icon","href":"/favicon.ico?favicon.2ag0ip0e0qwn3.ico","sizes":"48x48","type":"image/x-icon"}]
+28:["$","link","12",{"rel":"icon","href":"/icon.svg?icon.3zlmpjsua-z-_.svg","sizes":"any","type":"image/svg+xml"}]
+29:["$","link","13",{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.3azmh-23npcmw.png","sizes":"180x180","type":"image/png"}]
+2a:["$","$L35","14",{}]
+2b:["$","meta",null,{"name":"next-size-adjust","content":""}]
+11:300
+34:null
+2e:true
+11:C
+2d:0
+13:"$undefined"
+10:"$undefined"
+2c:"$undefined"
+1c:"$undefined"

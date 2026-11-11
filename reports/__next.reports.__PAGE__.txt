@@ -1,0 +1,61 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/0rzo3pshtmi8i.js"
+3:"/_next/static/chunks/0yktw3zz44h0n.js"
+4:"/_next/static/chunks/18dt8t6e6mex6.js"
+5:"/_next/static/chunks/34m3zn69l9xq6.js"
+6:"/_next/static/chunks/07fysu0iar369.js"
+7:"/_next/static/chunks/1lkdayofvr43o.js"
+8:"/_next/static/chunks/2sb9n86jpgyk2.js"
+9:I[99214,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+a:I[59368,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+b:"/_next/static/chunks/1-i0azrln680m.js"
+c:I[58298,["$2","$3","$4","$5","$6","$7","$8","$b"],"default"]
+d:I[5736,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+e:"/_next/static/chunks/30p2doclbap4b.js"
+f:I[36981,["$2","$3","$4","$5","$6","$7","$8","$e"],"ProblemCard"]
+16:"/_next/static/chunks/2vadc-5f2grip.js"
+17:"/_next/static/chunks/2g4x75ilvad2e.js"
+18:I[77677,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+22:"ViewportBoundary"
+23:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$22"]
+24:"MetadataBoundary"
+25:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$24"]
+26:"$Sreact.suspense"
+:HL["/_next/static/chunks/1wgtnz9chdllb.css","style"]
+11:X
+14:X
+14:C
+15:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"data-print-page":true,"className":"flex flex-col gap-6","children":[["$","div",null,{"className":"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between","children":[["$","div",null,{"className":"min-w-0","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Reports"}],["$","p",null,{"className":"mt-1 text-[15px] leading-7 text-muted","children":"Profit and loss, who owes what, VAT by period and the last 12 months, worked out by code from the entries you approved."}]]}],["$","div",null,{"className":"shrink-0 sm:pt-1","children":["$","$L18",null,{"title":"How the reports are worked out","children":[["$","p",null,{"children":"Every figure is calculated by code from your approved ledger entries — no model is involved, and looking at a report changes nothing in your books."}],"$L19","$L1a"]}]}]]}],"$L1b","$L1c","$L1d"]}],["$L1e","$L1f"],"$L20"]}],"p":"$@21","v":null,"s":"$11"}}]]
+12:[["children",{"s":"reports","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$La",null,{"parallelRouterKey":"children","template":["$","$Ld",null,{}]}]]}],"p":"$@13","v":"$14","s":"$11"},"c":"$Q15"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/1wgtnz9chdllb.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/0rzo3pshtmi8i.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/0yktw3zz44h0n.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/18dt8t6e6mex6.js","async":true}],["$","script","script-3",{"src":"/_next/static/chunks/34m3zn69l9xq6.js","async":true}],["$","script","script-4",{"src":"/_next/static/chunks/07fysu0iar369.js","async":true}],["$","script","script-5",{"src":"/_next/static/chunks/1lkdayofvr43o.js","async":true}],["$","script","script-6",{"src":"/_next/static/chunks/2sb9n86jpgyk2.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L9",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/admin","/admin/analytics","/admin/audit","/admin/bugs","/admin/codes","/admin/plans","/admin/support","/admin/user","/admin/users","/ai-models","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/calendar","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/demo","/files","/goals","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/models","/month-end","/notes","/payroll","/personal","/prices","/pricing","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/ledger-grid","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/billing","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/support","/terms","/try","/vat","/vehicles"],"children":["$","$La",null,{"parallelRouterKey":"children","error":"$c","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/1-i0azrln680m.js","async":true}]],"template":["$","$Ld",null,{}],"notFound":[["$","$Lf",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@10","v":null,"s":"$11"},"c":"$Q12"},"h":{"r":["$","$1","h",{"children":[null,["$","$L23",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#5A2D00"}]]}],["$","$L25",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$26",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Reports · Accnomos"}],["$","meta","1",{"name":"description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","meta","2",{"name":"robots","content":"noindex, nofollow"}],["$","link","3",{"rel":"canonical","href":"https://accnomos.com/reports"}],["$","meta","4",{"property":"og:title","content":"Reports · Accnomos"}],["$","meta","5",{"property":"og:description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","meta","6",{"property":"og:site_name","content":"Accnomos"}],["$","meta","7",{"property":"og:locale","content":"en_GB"}],"$L27","$L28","$L29","$L2a","$L2b","$L2c","$L2d","$L2e"]}]}],null]}],"$L2f"]}],"p":"$@30","v":null,"s":"$11"}},"a":"$@31","u":"$@32","b":"mHld_jG3BQwZo1vToftMo"}
+33:I[74174,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],""]
+34:I[46723,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+35:I[13503,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+36:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"OutletBoundary"]
+38:I[14762,["$2","$3","$4","$5","$6","$7","$8"],"IconMark"]
+19:["$","ul",null,{"className":"list-disc space-y-1 pl-5","children":[["$","li",null,{"children":[["$","strong",null,{"children":"Profit and loss"}]," — as approved: an invoice counts when it was raised, a receipt when it was bought. Sales are the 4000 accounts, cost of sales the 5000s, overheads 6000 to 8999. VAT and the bank never appear."]}],["$","li",null,{"children":[["$","strong",null,{"children":"Aged balances"}]," — unpaid invoices and bills by age, the same figures as on Contacts."]}],["$","li",null,{"children":[["$","strong",null,{"children":"VAT by period"}]," — the 9-box calculation for each of the last four periods."]}],["$","li",null,{"children":[["$","strong",null,{"children":"Last 12 months"}]," — sales, purchases (cost of sales plus overheads) and the net each month."]}]]}]
+1a:["$","p",null,{"children":[["$","em",null,{"children":"Export to OneDrive"}]," saves a spreadsheet in 07 Reports; it never posts anything."]}]
+1b:["$","p",null,{"className":"text-[15px] print:hidden","children":[["$","$L33",null,{"href":"/reports/exports","className":"font-bold text-teal-dark underline underline-offset-2 hover:text-teal","children":"Reports & exports"}],["$","span",null,{"className":"text-muted","children":" · trial balance, ledger, balance sheet, HMRC VAT return, the Accountant pack and files for Xero, QuickBooks, Sage and FreeAgent"}]]}]
+1c:["$","$L34",null,{}]
+1d:["$","$L35",null,{}]
+1e:["$","script","script-0",{"src":"/_next/static/chunks/2vadc-5f2grip.js","async":true}]
+1f:["$","script","script-1",{"src":"/_next/static/chunks/2g4x75ilvad2e.js","async":true}]
+20:["$","$L36",null,{"children":["$","$26",null,{"name":"Next.MetadataOutlet","children":"$@37"}]}]
+27:["$","meta","8",{"property":"og:type","content":"website"}]
+28:["$","meta","9",{"name":"twitter:card","content":"summary_large_image"}]
+29:["$","meta","10",{"name":"twitter:title","content":"Reports · Accnomos"}]
+2a:["$","meta","11",{"name":"twitter:description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}]
+2b:["$","link","12",{"rel":"icon","href":"/favicon.ico?favicon.2ag0ip0e0qwn3.ico","sizes":"48x48","type":"image/x-icon"}]
+2c:["$","link","13",{"rel":"icon","href":"/icon.svg?icon.3zlmpjsua-z-_.svg","sizes":"any","type":"image/svg+xml"}]
+2d:["$","link","14",{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.3azmh-23npcmw.png","sizes":"180x180","type":"image/png"}]
+2e:["$","$L38","15",{}]
+2f:["$","meta",null,{"name":"next-size-adjust","content":""}]
+11:300
+37:null
+32:true
+11:C
+31:0
+13:"$undefined"
+10:"$undefined"
+30:"$undefined"
+21:"$undefined"

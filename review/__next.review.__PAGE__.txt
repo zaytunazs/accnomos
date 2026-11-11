@@ -1,0 +1,61 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/0rzo3pshtmi8i.js"
+3:"/_next/static/chunks/0yktw3zz44h0n.js"
+4:"/_next/static/chunks/18dt8t6e6mex6.js"
+5:"/_next/static/chunks/34m3zn69l9xq6.js"
+6:"/_next/static/chunks/07fysu0iar369.js"
+7:"/_next/static/chunks/1lkdayofvr43o.js"
+8:"/_next/static/chunks/2sb9n86jpgyk2.js"
+9:I[99214,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+a:I[59368,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+b:"/_next/static/chunks/1-i0azrln680m.js"
+c:I[58298,["$2","$3","$4","$5","$6","$7","$8","$b"],"default"]
+d:I[5736,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+e:"/_next/static/chunks/30p2doclbap4b.js"
+f:I[36981,["$2","$3","$4","$5","$6","$7","$8","$e"],"ProblemCard"]
+16:"/_next/static/chunks/0_ldk_kqh3_ua.js"
+17:"/_next/static/chunks/3bnr2d2t7ga6o.js"
+18:"/_next/static/chunks/1bp55fn2im5qr.js"
+19:I[77677,["$2","$3","$4","$5","$6","$7","$8","$16","$17","$18"],"default"]
+24:"ViewportBoundary"
+25:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$24"]
+26:"MetadataBoundary"
+27:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$26"]
+28:"$Sreact.suspense"
+:HL["/_next/static/chunks/1wgtnz9chdllb.css","style"]
+11:X
+14:X
+14:C
+15:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"flex flex-col gap-6","children":[["$","div",null,{"className":"flex flex-col gap-4","children":["$","div",null,{"className":"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between","children":[["$","div",null,{"className":"min-w-0","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Review"}],["$","p",null,{"className":"mt-1 text-[15px] leading-7 text-muted","children":"AI proposes · you approve · code posts. Nothing reaches your books until you tap Approve."}]]}],["$","div",null,{"className":"shrink-0 sm:pt-1","children":["$","$L19",null,{"title":"What the checks mean","children":[["$","p",null,{"children":"Every proposal is read by AI, then checked by plain code — never by the model. The checks are: the receipt lines add up; net plus VAT equals the total; the VAT maths matches the rate (S 20%, R 5%, Z 0%); the VAT number has the right shape; it is not a duplicate of something already filed; it is in pounds sterling; the date is valid; and the reading is confident enough."}],"$L1a","$L1b","$L1c","$L1d"]}]}]]}]}],"$L1e"]}],["$L1f","$L20","$L21"],"$L22"]}],"p":"$@23","v":null,"s":"$11"}}]]
+12:[["children",{"s":"review","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$La",null,{"parallelRouterKey":"children","template":["$","$Ld",null,{}]}]]}],"p":"$@13","v":"$14","s":"$11"},"c":"$Q15"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/1wgtnz9chdllb.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/0rzo3pshtmi8i.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/0yktw3zz44h0n.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/18dt8t6e6mex6.js","async":true}],["$","script","script-3",{"src":"/_next/static/chunks/34m3zn69l9xq6.js","async":true}],["$","script","script-4",{"src":"/_next/static/chunks/07fysu0iar369.js","async":true}],["$","script","script-5",{"src":"/_next/static/chunks/1lkdayofvr43o.js","async":true}],["$","script","script-6",{"src":"/_next/static/chunks/2sb9n86jpgyk2.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L9",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/admin","/admin/analytics","/admin/audit","/admin/bugs","/admin/codes","/admin/plans","/admin/support","/admin/user","/admin/users","/ai-models","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/calendar","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/demo","/files","/goals","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/models","/month-end","/notes","/payroll","/personal","/prices","/pricing","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/ledger-grid","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/billing","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/support","/terms","/try","/vat","/vehicles"],"children":["$","$La",null,{"parallelRouterKey":"children","error":"$c","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/1-i0azrln680m.js","async":true}]],"template":["$","$Ld",null,{}],"notFound":[["$","$Lf",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@10","v":null,"s":"$11"},"c":"$Q12"},"h":{"r":["$","$1","h",{"children":[null,["$","$L25",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#5A2D00"}]]}],["$","$L27",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$28",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Review · Accnomos"}],["$","meta","1",{"name":"description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","meta","2",{"name":"robots","content":"noindex, nofollow"}],["$","link","3",{"rel":"canonical","href":"https://accnomos.com/review"}],["$","meta","4",{"property":"og:title","content":"Review · Accnomos"}],["$","meta","5",{"property":"og:description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","meta","6",{"property":"og:site_name","content":"Accnomos"}],["$","meta","7",{"property":"og:locale","content":"en_GB"}],"$L29","$L2a","$L2b","$L2c","$L2d","$L2e","$L2f","$L30"]}]}],null]}],"$L31"]}],"p":"$@32","v":null,"s":"$11"}},"a":"$@33","u":"$@34","b":"mHld_jG3BQwZo1vToftMo"}
+35:I[56514,["$2","$3","$4","$5","$6","$7","$8","$16","$17","$18"],"default"]
+36:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"OutletBoundary"]
+38:I[14762,["$2","$3","$4","$5","$6","$7","$8"],"IconMark"]
+1a:["$","p",null,{"children":["The missing-VAT-number rule: when your business is VAT-registered and a purchase over £250 shows no VAT and no VAT number, code asks the books whether the supplier is VAT-registered. If the books have never seen them, the card asks you instead — “Is ","<supplier>"," VAT-registered? Over £250 they should give a VAT invoice” — with a tick for “isn’t VAT-registered”. The tick teaches “not registered”; a VAT number seen on an approved receipt teaches “registered”; undoing the approval takes the tick back; Contacts can change the stored answer any time."]}]
+1b:["$","p",null,{"children":["Any failed check moves the card to ",["$","strong",null,{"children":"Needs a look"}]," with the reason in plain English and a suggested fix. Nothing is posted until you decide."]}]
+1c:["$","p",null,{"children":["When every check passes, a second model reads the same image again without seeing the first answer, and code compares six fields: supplier, VAT number, date, net, VAT and total. Any disagreement also means ",["$","strong",null,{"children":"Needs a look"}],", with both readings side by side for you to compare. Neither the model nor the code picks a winner."]}]
+1d:["$","p",null,{"children":"The “Why” line on each card is composed by code (“Checker, code”). There is no separate AI reviewer in the pipeline."}]
+1e:["$","$L35",null,{}]
+1f:["$","script","script-0",{"src":"/_next/static/chunks/0_ldk_kqh3_ua.js","async":true}]
+20:["$","script","script-1",{"src":"/_next/static/chunks/3bnr2d2t7ga6o.js","async":true}]
+21:["$","script","script-2",{"src":"/_next/static/chunks/1bp55fn2im5qr.js","async":true}]
+22:["$","$L36",null,{"children":["$","$28",null,{"name":"Next.MetadataOutlet","children":"$@37"}]}]
+29:["$","meta","8",{"property":"og:type","content":"website"}]
+2a:["$","meta","9",{"name":"twitter:card","content":"summary_large_image"}]
+2b:["$","meta","10",{"name":"twitter:title","content":"Review · Accnomos"}]
+2c:["$","meta","11",{"name":"twitter:description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}]
+2d:["$","link","12",{"rel":"icon","href":"/favicon.ico?favicon.2ag0ip0e0qwn3.ico","sizes":"48x48","type":"image/x-icon"}]
+2e:["$","link","13",{"rel":"icon","href":"/icon.svg?icon.3zlmpjsua-z-_.svg","sizes":"any","type":"image/svg+xml"}]
+2f:["$","link","14",{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.3azmh-23npcmw.png","sizes":"180x180","type":"image/png"}]
+30:["$","$L38","15",{}]
+31:["$","meta",null,{"name":"next-size-adjust","content":""}]
+11:300
+37:null
+34:true
+11:C
+33:0
+13:"$undefined"
+10:"$undefined"
+32:"$undefined"
+23:"$undefined"

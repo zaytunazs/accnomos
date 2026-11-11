@@ -1,0 +1,99 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/0rzo3pshtmi8i.js"
+3:"/_next/static/chunks/0yktw3zz44h0n.js"
+4:"/_next/static/chunks/18dt8t6e6mex6.js"
+5:"/_next/static/chunks/34m3zn69l9xq6.js"
+6:"/_next/static/chunks/07fysu0iar369.js"
+7:"/_next/static/chunks/1lkdayofvr43o.js"
+8:"/_next/static/chunks/2sb9n86jpgyk2.js"
+9:I[99214,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+a:I[59368,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+b:"/_next/static/chunks/1-i0azrln680m.js"
+c:I[58298,["$2","$3","$4","$5","$6","$7","$8","$b"],"default"]
+d:I[5736,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+e:"/_next/static/chunks/30p2doclbap4b.js"
+f:I[36981,["$2","$3","$4","$5","$6","$7","$8","$e"],"ProblemCard"]
+16:"/_next/static/chunks/43dfa924gm-ya.js"
+17:"/_next/static/chunks/44ok48z4cbj_r.js"
+18:I[39104,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"HomeData"]
+19:I[39104,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"SignedOut"]
+26:"ViewportBoundary"
+27:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$26"]
+28:"MetadataBoundary"
+29:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$28"]
+2a:"$Sreact.suspense"
+:HL["/_next/static/chunks/1wgtnz9chdllb.css","style"]
+11:X
+14:X
+14:C
+15:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"flex flex-col gap-6","children":["$","$L18",null,{"children":[["$","$L19",null,{"children":[["$","section",null,{"aria-labelledby":"pitch","className":"overflow-hidden rounded-2xl border border-border bg-white","children":[["$","div",null,{"className":"grid gap-0 min-[760px]:grid-cols-[1.1fr_1fr]","children":[["$","div",null,{"className":"flex flex-col gap-4 p-6 sm:p-8","children":[["$","p",null,{"className":"text-xs font-bold uppercase tracking-[0.08em] text-teal-dark","children":"Bookkeeping for UK small businesses"}],["$","h2",null,{"id":"pitch","className":"text-3xl font-bold leading-[1.1] tracking-tight sm:text-4xl","children":["Books read by AI.",["$","br",null,{}],"Approved by you.",["$","br",null,{}],["$","span",null,{"className":"text-teal","children":"Stored only by you."}]]}],["$","div",null,{"className":"flex flex-wrap items-center gap-x-4 gap-y-2","children":["$L1a","$L1b","$L1c","$L1d"]}]]}],"$L1e"]}],"$L1f"]}],"$L20"]}],"$L21"]}]}],["$L22","$L23"],"$L24"]}],"p":"$@25","v":null,"s":"$11"}}]]
+12:[["children",{"s":"try","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$La",null,{"parallelRouterKey":"children","template":["$","$Ld",null,{}]}]]}],"p":"$@13","v":"$14","s":"$11"},"c":"$Q15"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/1wgtnz9chdllb.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/0rzo3pshtmi8i.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/0yktw3zz44h0n.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/18dt8t6e6mex6.js","async":true}],["$","script","script-3",{"src":"/_next/static/chunks/34m3zn69l9xq6.js","async":true}],["$","script","script-4",{"src":"/_next/static/chunks/07fysu0iar369.js","async":true}],["$","script","script-5",{"src":"/_next/static/chunks/1lkdayofvr43o.js","async":true}],["$","script","script-6",{"src":"/_next/static/chunks/2sb9n86jpgyk2.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L9",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/admin","/admin/analytics","/admin/audit","/admin/bugs","/admin/codes","/admin/plans","/admin/support","/admin/user","/admin/users","/ai-models","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/calendar","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/demo","/files","/goals","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/models","/month-end","/notes","/payroll","/personal","/prices","/pricing","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/ledger-grid","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/billing","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/support","/terms","/try","/vat","/vehicles"],"children":["$","$La",null,{"parallelRouterKey":"children","error":"$c","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/1-i0azrln680m.js","async":true}]],"template":["$","$Ld",null,{}],"notFound":[["$","$Lf",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@10","v":null,"s":"$11"},"c":"$Q12"},"h":{"r":["$","$1","h",{"children":[null,["$","$L27",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#5A2D00"}]]}],["$","$L29",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$2a",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Sample books · Accnomos"}],["$","meta","1",{"name":"description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","link","2",{"rel":"canonical","href":"https://accnomos.com/try"}],["$","meta","3",{"property":"og:title","content":"Sample books · Accnomos"}],["$","meta","4",{"property":"og:description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","meta","5",{"property":"og:site_name","content":"Accnomos"}],["$","meta","6",{"property":"og:locale","content":"en_GB"}],["$","meta","7",{"property":"og:type","content":"website"}],"$L2b","$L2c","$L2d","$L2e","$L2f","$L30","$L31"]}]}],null]}],"$L32"]}],"p":"$@33","v":null,"s":"$11"}},"a":"$@34","u":"$@35","b":"mHld_jG3BQwZo1vToftMo"}
+36:I[74174,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],""]
+37:I[91798,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+38:I[38484,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"OverviewData"]
+39:I[71959,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"HomeByKind"]
+3a:I[45835,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"HomeSampleBooks"]
+3b:I[82937,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+3c:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"SummaryCard"]
+3d:I[90054,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+3e:I[64980,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"AttentionTiles"]
+3f:I[64514,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"SnapshotYear"]
+40:I[750,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+41:I[64514,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"SnapshotCharts"]
+42:I[32855,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+43:"PreviousFilesNotice"
+44:I[64682,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"$43"]
+45:I[64980,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"TodayCard"]
+46:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"MoneyCard"]
+47:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"ComingUpCard"]
+48:I[75897,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+49:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"AgedCard"]
+4a:I[77521,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+4b:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"BuyingCard"]
+4c:I[83998,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+4d:I[61637,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+4e:I[97283,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+4f:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"IncomeTaxCard"]
+50:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"PayrollCard"]
+51:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"CisCard"]
+52:I[73466,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"PropertyCard"]
+53:I[56903,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+54:I[33823,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+55:I[13555,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"default"]
+56:I[71959,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"HouseholdData"]
+57:I[44435,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"HouseholdTiles"]
+58:I[44435,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"ThisMonth"]
+59:I[44435,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"Budgets"]
+5a:I[44435,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"Bills"]
+5b:I[44435,["$2","$3","$4","$5","$6","$7","$8","$16","$17"],"WhereItWent"]
+5c:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"OutletBoundary"]
+5e:I[14762,["$2","$3","$4","$5","$6","$7","$8"],"IconMark"]
+1a:["$","$L36",null,{"href":"/connect?next=%2Ftry","className":"whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark","children":"Connect your OneDrive"}]
+1b:["$","$L37",null,{"variant":"secondary"}]
+1c:["$","$L36",null,{"href":"/review","className":"text-sm font-bold text-teal-dark underline underline-offset-2 hover:text-teal","children":"See the demo books"}]
+1d:["$","$L36",null,{"href":"/how-it-works","className":"text-sm font-bold text-teal-dark underline underline-offset-2 hover:text-teal","children":"How it works"}]
+1e:["$","div",null,{"aria-hidden":"true","className":"min-h-[220px] bg-ground bg-[url(/brand/hero.svg)] bg-cover bg-center"}]
+1f:["$","ul",null,{"className":"grid gap-px border-t border-border bg-border min-[760px]:grid-cols-3","children":[["$","li","Your books live in your OneDrive",{"className":"bg-white p-5","children":[["$","p",null,{"className":"text-sm font-bold text-ink","children":"Your books live in your OneDrive"}],["$","p",null,{"className":"mt-1 text-[13px] leading-relaxed text-muted","children":"Receipts, ledger, Books.xlsx and VAT returns sit in your own OneDrive folder. Accnomos runs no user database and keeps no copy."}]]}],["$","li","AI proposes, you approve, code calculates",{"className":"bg-white p-5","children":[["$","p",null,{"className":"text-sm font-bold text-ink","children":"AI proposes, you approve, code calculates"}],["$","p",null,{"className":"mt-1 text-[13px] leading-relaxed text-muted","children":"The AI reads each receipt and proposes an entry; nothing is posted until you approve it. The ledger and the 9-box VAT return are worked out by deterministic code, never by a model."}]]}],["$","li","AI you control",{"className":"bg-white p-5","children":[["$","p",null,{"className":"text-sm font-bold text-ink","children":"AI you control"}],["$","p",null,{"className":"mt-1 text-[13px] leading-relaxed text-muted","children":"Run an open-weights model on your own machine, or bring your own API key for the hosted model. The address or the key never leaves your device."}]]}]]}]
+20:["$","div",null,{"className":"flex items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3","children":[["$","p",null,{"className":"text-sm font-semibold text-muted","children":"Not connected yet?"}],["$","$L36",null,{"href":"/connect?next=%2Ftry","className":"shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark","children":"Connect your OneDrive"}]]}]
+21:["$","$L38",null,{"children":["$","$L39",null,{"business":[["$","$L3a",null,{}],["$","$L3b",null,{}],["$","$L3c",null,{}],["$","$L3d",null,{}],["$","$L3e",null,{}],["$","$L3f",null,{}],["$","$L40",null,{}],["$","$L41",null,{}],["$","$L42",null,{}],["$","$L44",null,{}],["$","div",null,{"className":"grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3","children":[["$","$L45",null,{}],["$","$L46",null,{}],["$","$L47",null,{}],["$","$L48",null,{}],["$","$L49",null,{}],["$","$L4a",null,{}],["$","$L4b",null,{}],["$","$L4c",null,{}],["$","$L4d",null,{}],["$","$L4e",null,{}],["$","$L4f",null,{}],["$","$L50",null,{}],["$","$L51",null,{}],["$","$L52",null,{}],["$","$L53",null,{}],["$","$L54",null,{}],["$","$L55",null,{}]]}]],"household":["$","$L56",null,{"children":[["$","$L3b",null,{}],["$","$L3c",null,{}],["$","$L3d",null,{"example":"where did my money go this month?"}],["$","$L57",null,{}],["$","$L58",null,{}],["$","$L40",null,{}],["$","div",null,{"className":"grid grid-cols-1 items-start gap-4 lg:grid-cols-2","children":[["$","$L59",null,{}],["$","$L5a",null,{}]]}],["$","$L5b",null,{}],["$","div",null,{"className":"grid grid-cols-1 items-stretch gap-4 empty:hidden md:grid-cols-2","children":[["$","$L52",null,{}],["$","$L4f",null,{}]]}],["$","$L42",null,{}],["$","$L44",null,{}],["$","$L55",null,{}]]}]}]}]
+22:["$","script","script-0",{"src":"/_next/static/chunks/43dfa924gm-ya.js","async":true}]
+23:["$","script","script-1",{"src":"/_next/static/chunks/44ok48z4cbj_r.js","async":true}]
+24:["$","$L5c",null,{"children":["$","$2a",null,{"name":"Next.MetadataOutlet","children":"$@5d"}]}]
+2b:["$","meta","8",{"name":"twitter:card","content":"summary_large_image"}]
+2c:["$","meta","9",{"name":"twitter:title","content":"Sample books · Accnomos"}]
+2d:["$","meta","10",{"name":"twitter:description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}]
+2e:["$","link","11",{"rel":"icon","href":"/favicon.ico?favicon.2ag0ip0e0qwn3.ico","sizes":"48x48","type":"image/x-icon"}]
+2f:["$","link","12",{"rel":"icon","href":"/icon.svg?icon.3zlmpjsua-z-_.svg","sizes":"any","type":"image/svg+xml"}]
+30:["$","link","13",{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.3azmh-23npcmw.png","sizes":"180x180","type":"image/png"}]
+31:["$","$L5e","14",{}]
+32:["$","meta",null,{"name":"next-size-adjust","content":""}]
+11:300
+5d:null
+35:true
+11:C
+34:0
+13:"$undefined"
+10:"$undefined"
+33:"$undefined"
+25:"$undefined"

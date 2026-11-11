@@ -1,0 +1,53 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/0rzo3pshtmi8i.js"
+3:"/_next/static/chunks/0yktw3zz44h0n.js"
+4:"/_next/static/chunks/18dt8t6e6mex6.js"
+5:"/_next/static/chunks/34m3zn69l9xq6.js"
+6:"/_next/static/chunks/07fysu0iar369.js"
+7:"/_next/static/chunks/1lkdayofvr43o.js"
+8:"/_next/static/chunks/2sb9n86jpgyk2.js"
+9:I[99214,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+a:I[59368,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+b:"/_next/static/chunks/1-i0azrln680m.js"
+c:I[58298,["$2","$3","$4","$5","$6","$7","$8","$b"],"default"]
+d:I[5736,["$2","$3","$4","$5","$6","$7","$8"],"default"]
+e:"/_next/static/chunks/30p2doclbap4b.js"
+f:I[36981,["$2","$3","$4","$5","$6","$7","$8","$e"],"ProblemCard"]
+1e:"ViewportBoundary"
+1f:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$1e"]
+20:"MetadataBoundary"
+21:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"$20"]
+22:"$Sreact.suspense"
+:HL["/_next/static/chunks/1wgtnz9chdllb.css","style"]
+11:X
+14:X
+14:C
+15:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"mx-auto max-w-2xl px-4 py-10 text-ink","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Terms of use"}],["$","p",null,{"className":"mt-2 text-sm text-muted","children":["Accnomos · Zaytuna Business Services Ltd · last updated ","28 October 2026"]}],["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"What Accnomos is"}],["$","p",null,{"children":["Accnomos is bookkeeping software built as a hackathon entry by Zaytuna Business Services Ltd (UK). It is a hackathon build, not a finished commercial product, and it is offered without charge. What has and has not been tested against real services is listed in"," ","$L16","."]}]]}],"$L17","$L18","$L19","$L1a","$L1b"]}],null,"$L1c"]}],"p":"$@1d","v":null,"s":"$11"}}]]
+12:[["children",{"s":"terms","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$La",null,{"parallelRouterKey":"children","template":["$","$Ld",null,{}]}]]}],"p":"$@13","v":"$14","s":"$11"},"c":"$Q15"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/1wgtnz9chdllb.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/0rzo3pshtmi8i.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/0yktw3zz44h0n.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/18dt8t6e6mex6.js","async":true}],["$","script","script-3",{"src":"/_next/static/chunks/34m3zn69l9xq6.js","async":true}],["$","script","script-4",{"src":"/_next/static/chunks/07fysu0iar369.js","async":true}],["$","script","script-5",{"src":"/_next/static/chunks/1lkdayofvr43o.js","async":true}],["$","script","script-6",{"src":"/_next/static/chunks/2sb9n86jpgyk2.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L9",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/admin","/admin/analytics","/admin/audit","/admin/bugs","/admin/codes","/admin/plans","/admin/support","/admin/user","/admin/users","/ai-models","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/calendar","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/demo","/files","/goals","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/models","/month-end","/notes","/payroll","/personal","/prices","/pricing","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/ledger-grid","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/billing","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/support","/terms","/try","/vat","/vehicles"],"children":["$","$La",null,{"parallelRouterKey":"children","error":"$c","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/1-i0azrln680m.js","async":true}]],"template":["$","$Ld",null,{}],"notFound":[["$","$Lf",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@10","v":null,"s":"$11"},"c":"$Q12"},"h":{"r":["$","$1","h",{"children":[null,["$","$L1f",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}],["$","meta","2",{"name":"theme-color","content":"#5A2D00"}]]}],["$","$L21",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$22",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Terms of use — Accnomos"}],["$","meta","1",{"name":"description","content":"The plain terms for using the Accnomos hackathon build, its demo and its sample books."}],["$","link","2",{"rel":"canonical","href":"https://accnomos.com/terms"}],["$","meta","3",{"property":"og:title","content":"Terms of use — Accnomos"}],["$","meta","4",{"property":"og:description","content":"The plain terms for using the Accnomos hackathon build, its demo and its sample books."}],["$","meta","5",{"property":"og:site_name","content":"Accnomos"}],["$","meta","6",{"property":"og:locale","content":"en_GB"}],["$","meta","7",{"property":"og:type","content":"website"}],["$","meta","8",{"name":"twitter:card","content":"summary_large_image"}],"$L23","$L24","$L25","$L26","$L27","$L28"]}]}],null]}],"$L29"]}],"p":"$@2a","v":null,"s":"$11"}},"a":"$@2b","u":"$@2c","b":"mHld_jG3BQwZo1vToftMo"}
+2d:I[74174,["$2","$3","$4","$5","$6","$7","$8"],""]
+2e:I[50381,["$2","$3","$4","$5","$6","$7","$8"],"OutletBoundary"]
+30:I[14762,["$2","$3","$4","$5","$6","$7","$8"],"IconMark"]
+16:["$","a",null,{"className":"font-semibold text-teal-dark underline","href":"https://github.com/zaytunazs/accnomos/blob/main/docs/HONESTY.md","children":"docs/HONESTY.md"}]
+17:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"You approve, you stay responsible"}],["$","ul",null,{"className":"list-disc space-y-2 pl-5","children":[["$","li",null,{"children":"The AI proposes entries; nothing reaches your books until you approve it. Check each proposal: a model can misread a document."}],["$","li",null,{"children":"Accnomos is not tax, legal or accounting advice. You remain responsible for your records and for what you send to HMRC. If you are unsure, ask an accountant."}],["$","li",null,{"children":"Direct submission to HMRC goes to HMRC's sandbox (its test service). Filing to HMRC from Accnomos is planned. For a real return, Accnomos prepares the figures as files (File it yourself on the VAT and Self-employment pages) for you to upload to bridging or MTD software, or to type into HMRC's online Self Assessment where that is allowed."}]]}]]}]
+18:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"Your books and your data"}],["$","p",null,{"children":["Your books are files in your own Microsoft OneDrive. We run no user database and keep no copy; you can export or delete them at any time. How we handle everything else is in the"," ",["$","$L2d",null,{"className":"font-semibold text-teal-dark underline","href":"/privacy","children":"privacy policy"}],"."]}]]}]
+19:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"The demo and the sample books"}],["$","p",null,{"children":"The demo sandbox and the sample books use a fictional company. Each demo is kept in memory on our server, reset after 2 hours, and seen only by you. Please do not upload real documents to it."}]]}]
+1a:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"Fair use and availability"}],["$","p",null,{"children":"Do not try to break, overload or misuse the service or other people's data. The service is provided as it is, may change or stop, and has not been load-tested; keep your own copy of anything important (your OneDrive already holds it)."}]]}]
+1b:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"Contact"}],["$","p",null,{"children":["Questions about these terms:"," ",["$","a",null,{"className":"font-semibold text-teal-dark underline","href":"mailto:zohaibsharif@gmail.com","children":"zohaibsharif@gmail.com"}],"."]}]]}]
+1c:["$","$L2e",null,{"children":["$","$22",null,{"name":"Next.MetadataOutlet","children":"$@2f"}]}]
+23:["$","meta","9",{"name":"twitter:title","content":"Terms of use — Accnomos"}]
+24:["$","meta","10",{"name":"twitter:description","content":"The plain terms for using the Accnomos hackathon build, its demo and its sample books."}]
+25:["$","link","11",{"rel":"icon","href":"/favicon.ico?favicon.2ag0ip0e0qwn3.ico","sizes":"48x48","type":"image/x-icon"}]
+26:["$","link","12",{"rel":"icon","href":"/icon.svg?icon.3zlmpjsua-z-_.svg","sizes":"any","type":"image/svg+xml"}]
+27:["$","link","13",{"rel":"apple-touch-icon","href":"/apple-icon.png?apple-icon.3azmh-23npcmw.png","sizes":"180x180","type":"image/png"}]
+28:["$","$L30","14",{}]
+29:["$","meta",null,{"name":"next-size-adjust","content":""}]
+11:300
+2f:null
+2c:true
+11:C
+2b:0
+13:"$undefined"
+10:"$undefined"
+2a:"$undefined"
+1d:"$undefined"
