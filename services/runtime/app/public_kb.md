@@ -63,8 +63,8 @@ The numbers are calculated by code from your ledger and the AI only writes the w
 checked against the code's facts, and a figure that is not in your books is replaced. Each answer shows the files it
 used. You can also ask for actions, for example "send a £100 invoice to JM Trading": the AI only returns the intent,
 code finds the customer and prices the lines, and a card waits for you to tap Approve before anything happens. Voice
-questions use Muse Voice Transcribe, with a local fallback model if it fails, and each answer says which one heard
-you; it has been used live, from the Android app on a real phone and on the live server, and measured on synthetic recordings only. Accnomos does not read answers aloud. This public chat is different: it only answers questions about
+questions are turned into text on Accnomos's own server and the recording is not kept; voice has been used live, from
+the Android app on a real phone and on the live server, and measured on synthetic recordings only. Accnomos does not read answers aloud. This public chat is different: it only answers questions about
 Accnomos itself and never sees anyone's books.
 Keywords: ask, question, questions, chat, chatbot, assistant, voice, speak, microphone, mic, actions, natural language, answer, grounded, figures
 
@@ -110,18 +110,15 @@ number and VAT period. An empty folder can be filled with the sample books to tr
 deleting the folder. You need a Microsoft account with OneDrive; there is no other sign-in option.
 Keywords: sign in, login, log in, account, register, sign up, start, getting started, setup, set up, try, demo, sample, microsoft account, onboarding, connect
 
-## The Meta AI models {#meta-models}
+## The AI {#meta-models}
 
-Six Meta models are wired in. Muse Spark 1.3 answers first on the live server through the Meta Model API (or with
-your own key): it reads documents (every field right on 95 % of 200 clean and 96 % of 200 messy synthetic documents),
-answers Ask and words the summaries. Muse Glimmer 30B (open weights, run by the team) is the local fallback and does
-the same jobs; most of the other measured results are Glimmer's. Muse Spark Open (hosted open weights) was measured
-as an independent Verifier and is off on the live server. Muse Voice Transcribe turns spoken questions into text; it
-has been used live and measured on synthetic recordings. SAM 3.1 can crop the receipt in a phone photo when the
-server owner switches it on; it has been run live on synthetic photos only, where it found the receipt every time but
-did not change the reading, and a plain-code crop takes over whenever it is unsure. Muse Image made the brand art at build time and is not in the running product. "Local"
-means the machine running the Accnomos runtime (for the demo, the team's own server), not your own laptop. The page
-/meta-models lists every model, the jobs it does and how it scored.
+Accnomos AI reads documents, answers Ask and words the summaries; code does every calculation and checks every figure
+the AI writes. It runs on Accnomos's own server. If that server cannot answer, the document or question goes to a
+backup AI provider under contract, which may not train its models on it; the privacy page names it. Nothing is sent
+to Meta from our server any more. A second, independent reading checks the six key fields of a document,
+and anything the two readings disagree on waits for you. You can instead point Accnomos at an AI running on your own
+hardware, or use your own API key, in Settings. Reading accuracy is measured on synthetic documents only. An optional
+photo crop step has been run live on synthetic photos only and is off; a plain-code crop finds the receipt instead.
 Keywords: ai, model, models, meta, muse, glimmer, spark, open weights, sam, voice, transcribe, image, gpu, local, key, api key, which ai, meta models
 
 ## How accurate it is {#accuracy}

@@ -18,7 +18,7 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
-from app.ai import chain
+from app.ai import anthropic, chain
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, image_mime, parse_model_json, user_message
 
@@ -131,7 +131,7 @@ async def classify(
                 },
                 "reasoning_effort": "low",
             }
-            r = await client.post(f"{c.base_url}/chat/completions", json=body, headers=c.auth_headers())
+            r = await anthropic.post_openai(client, c, body, c.auth_headers())
             r.raise_for_status()
             content = r.json()["choices"][0]["message"].get("content") or ""
             if isinstance(content, list):

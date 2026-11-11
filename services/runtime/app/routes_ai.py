@@ -73,7 +73,8 @@ async def _probe(c: AiConfig) -> tuple[str, str, int | None]:
     try:
         async with httpx.AsyncClient(timeout=PROBE_TIMEOUT, follow_redirects=False) as client:
             if c.mode == "key":
-                r = await client.get(f"{c.base_url}/models", headers=c.auth_headers())
+                page = "?limit=1000" if c.provider == "anthropic" else ""  # the Messages API's model list pages by 20
+                r = await client.get(f"{c.base_url}/models{page}", headers=c.auth_headers())
                 names = [m.get("id") for m in (r.json().get("data") or [])] if r.status_code == 200 else []
             else:
                 r = await client.get(f"{c.base_url}/api/tags", headers=c.auth_headers())

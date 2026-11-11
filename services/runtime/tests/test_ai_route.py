@@ -123,6 +123,8 @@ async def test_local_only_never_reaches_the_meta_api(monkeypatch: pytest.MonkeyP
 
 def test_local_only_turns_off_muse_voice_transcribe(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("SPARK_WHISPER_URL", raising=False)
+    assert stt.chain(routed(None)) == []  # the default (STT_PROVIDER=local) never sends the server's recordings to Meta
+    monkeypatch.setenv("STT_PROVIDER", "meta")
     assert [p.name for p in stt.chain(routed(None))] == ["muse"]
     assert stt.chain(routed("local_only")) == []
     monkeypatch.setenv("SPARK_WHISPER_URL", "http://spark.invalid:8000/v1")

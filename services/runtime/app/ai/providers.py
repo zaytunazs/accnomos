@@ -1,20 +1,25 @@
 """The server's AI provider chain (AI_PROVIDERS), so no AI call depends on one machine.
 
-    AI_PROVIDERS=modal,meta,spark      # the recommended production order
+    AI_PROVIDERS=spark,anthropic       # the production order since 11 Nov 2026: our own server first, Anthropic backup
 
-Every provider serves a Meta model (a judging requirement, and the product's promise):
+Owner's decision (11 Nov 2026): customer documents no longer go to Meta's Model API (the live server's
+`muse-spark-1.3-contributor` model may be trained on). The server's own models answer first; Anthropic's API is the
+backup when they cannot.
 
-* modal -> Muse Glimmer 30B on a hosted GPU (tools/modal_glimmer.py: a cloud GPU behind a web endpoint).
-           MODAL_GLIMMER_URL (the endpoint, e.g. https://<workspace>--accnomos-glimmer-serve.us-east.modal.run),
-           MODAL_MODEL (default muse-glimmer:30b), and, when the endpoint is deployed with proxy auth
-           (MODAL_PROXY_AUTH=1 in tools/modal_glimmer.py), MODAL_PROXY_TOKEN_ID + MODAL_PROXY_TOKEN_SECRET.
-* meta  -> Muse Spark on the Meta Model API with the server's key: META_API_KEY, MODEL_API_BASE, MODEL_API_MODEL.
-* spark -> Muse Glimmer 30B on our own server (local model runtime): OLLAMA_BASE, OLLAMA_MODEL. The last resort.
+* spark     -> Muse Glimmer 30B on our own server (local model runtime): OLLAMA_BASE, OLLAMA_MODEL.
+* anthropic -> the Anthropic Messages API (app/ai/anthropic.py): ANTHROPIC_API_KEY, ANTHROPIC_MODEL (default
+               claude-haiku-5-5), ANTHROPIC_VERIFY_MODEL, ANTHROPIC_BASE, ANTHROPIC_VERSION, ANTHROPIC_MAX_TOKENS.
+               Under Anthropic's Commercial Terms it may not train on the content; no zero data retention by default.
+* modal     -> Muse Glimmer 30B on a hosted GPU (tools/modal_glimmer.py: a cloud GPU behind a web endpoint).
+               MODAL_GLIMMER_URL, MODAL_MODEL (default muse-glimmer:30b), and, with proxy auth,
+               MODAL_PROXY_TOKEN_ID + MODAL_PROXY_TOKEN_SECRET. Supported, not deployed.
+* meta      -> Muse Spark on the Meta Model API with the server's key: META_API_KEY, MODEL_API_BASE, MODEL_API_MODEL.
+               Still supported, but no longer in the live server's chain.
 
 A provider without its settings (no URL, no key) is left out of the chain and shown as "not configured".
 Timeouts per provider, in seconds: <NAME>_CONNECT_S, <NAME>_FIRST_TOKEN_S (the longest wait for a reply to start,
 which covers a hosted GPU cold start), <NAME>_REQUEST_S (the longest one attempt may take in all); NAME is MODAL,
-META or SPARK. Test mode keeps the chain's names and order but points every provider at the stub AI.
+META, SPARK or ANTHROPIC. Test mode keeps the chain's names and order but points every provider at the stub AI.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.ai import anthropic
 from app.ai.config import (
     DEFAULT_MODEL_API_BASE,
     DEFAULT_MODEL_API_MODEL,
@@ -36,9 +42,9 @@ from app.ai.config import (
     stub_ai_base,
 )
 
-ProviderName = Literal["modal", "meta", "spark"]
-KNOWN: tuple[ProviderName, ...] = ("modal", "meta", "spark")
-RECOMMENDED = "modal,meta,spark"
+ProviderName = Literal["modal", "meta", "spark", "anthropic"]
+KNOWN: tuple[ProviderName, ...] = ("modal", "meta", "spark", "anthropic")
+RECOMMENDED = "spark,anthropic"
 
 #: (connect, first token, whole request) seconds by default.
 #: Hosted GPU: a cold start loads ~18 GB from a volume (60-120 s).
@@ -46,12 +52,14 @@ DEFAULT_TIMEOUTS: dict[str, tuple[float, float, float]] = {
     "modal": (10.0, 150.0, 240.0),
     "meta": (10.0, 90.0, 120.0),
     "spark": (5.0, 180.0, 200.0),
+    "anthropic": (10.0, 90.0, 120.0),
 }
 
 LABELS: dict[str, str] = {
     "modal": "hosted GPU",  # shown to users: no non-Meta host names
     "meta": "Meta Model API",
     "spark": "our own server",  # shown to users: no hardware or non-Meta names
+    "anthropic": "backup provider (Anthropic)",
     "local": "your machine",
     "key": "your Meta key",
     "test": "test stub",
@@ -124,6 +132,19 @@ def provider_config(name: ProviderName, env: Mapping[str, str] | None = None) ->
             extra_headers=headers,
             **common,
         )
+    if name == "anthropic":
+        key = (env.get("ANTHROPIC_API_KEY") or "").strip()
+        if not key:
+            return None
+        return AiConfig(
+            mode="key",
+            base_url=(env.get("ANTHROPIC_BASE") or anthropic.DEFAULT_BASE).rstrip("/"),
+            model=(env.get("ANTHROPIC_MODEL") or "").strip() or anthropic.DEFAULT_MODEL,
+            api_key=key,
+            extra_headers={"anthropic-version": anthropic.version(env)},
+            voice=False,
+            **common,
+        )
     if name == "meta":
         key = (env.get("META_API_KEY") or "").strip()
         if not key:
@@ -193,11 +214,15 @@ def describe(env: Mapping[str, str] | None = None) -> list[ProviderInfo]:
         cfg = _test_config(name) if is_test_mode() else provider_config(name, env)
         why = None
         if cfg is None:
-            why = "the hosted GPU endpoint is not set" if name == "modal" else "META_API_KEY is not set"
+            why = {"modal": "the hosted GPU endpoint is not set", "anthropic": "ANTHROPIC_API_KEY is not set"}.get(
+                name, "META_API_KEY is not set"
+            )
         if cfg is not None:
             model = cfg.model
         elif name == "modal":
             model = env.get("MODAL_MODEL") or DEFAULT_OLLAMA_MODEL
+        elif name == "anthropic":
+            model = env.get("ANTHROPIC_MODEL") or anthropic.DEFAULT_MODEL
         else:
             model = env.get("MODEL_API_MODEL") or DEFAULT_MODEL_API_MODEL
         out.append(

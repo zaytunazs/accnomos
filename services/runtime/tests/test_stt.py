@@ -1,6 +1,7 @@
-"""Speech-to-text chain (app/ai/stt.py): which providers a request gets, Muse Voice Transcribe first and Whisper on the
-Spark as the fallback, the provenance on proposals and in the actions audit log, and that no key reaches a log line,
-an error or an answer. All HTTP is faked with httpx.MockTransport in the documented shapes; nothing calls Meta.
+"""Speech-to-text chain (app/ai/stt.py): which providers a request gets (our own server's speech-to-text by default;
+Muse Voice Transcribe first and Whisper on the Spark as the fallback only with STT_PROVIDER=meta), the provenance on
+proposals and in the actions audit log, and that no key reaches a log line, an error or an answer. All HTTP is faked
+with httpx.MockTransport in the documented shapes; nothing calls Meta.
 """
 
 from __future__ import annotations
@@ -34,7 +35,13 @@ WHISPER_BASE = "http://spark.invalid:8000/v1"
 
 USER_CFG = AiConfig(mode="key", base_url=META_BASE, model="muse-spark-1.3", api_key=USER_KEY, provider="key")
 LOCAL_CFG = AiConfig(mode="local", base_url="http://ollama.invalid", model="muse-glimmer:30b", provider="local")
-ENV = {"META_API_KEY": SERVER_KEY, "MODEL_API_BASE": META_BASE, "SPARK_WHISPER_URL": WHISPER_BASE + "/"}
+ENV = {
+    "META_API_KEY": SERVER_KEY,
+    "MODEL_API_BASE": META_BASE,
+    "SPARK_WHISPER_URL": WHISPER_BASE + "/",
+    "SPARK_WHISPER_MODEL": stt.DEFAULT_WHISPER_MODEL,
+    "STT_PROVIDER": "meta",  # the Muse path is switched on explicitly in these tests
+}
 
 
 @pytest.fixture(autouse=True)
@@ -46,6 +53,9 @@ def _clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "SPARK_WHISPER_KEY",
         "SPARK_WHISPER_MODEL",
         "STT_PROVIDERS",
+        "STT_PROVIDER",
+        "STT_BASE",
+        "STT_MODEL",
         "AI_PROVIDERS",
         "ACCNOMOS_TEST_MODE",
         "MUSE_STT_TIMEOUT_S",
@@ -75,15 +85,22 @@ def test_local_mode_uses_the_servers_meta_key_when_set():
 
 
 def test_server_chain_uses_its_meta_provider():
-    env = {"AI_PROVIDERS": "modal,meta,spark", "META_API_KEY": SERVER_KEY, "MODEL_API_BASE": META_BASE}
+    env = {
+        "AI_PROVIDERS": "modal,meta,spark",
+        "META_API_KEY": SERVER_KEY,
+        "MODEL_API_BASE": META_BASE,
+        "STT_PROVIDER": "meta",
+        "STT_BASE": "off",
+    }
     cfg = ai_providers.chain_config(env)
     [muse] = stt.chain(cfg, env)
     assert (muse.key_source, muse.key, muse.base_url) == ("server", SERVER_KEY, META_BASE)
 
 
-def test_no_meta_key_means_whisper_only_and_nothing_means_empty():
-    assert [p.name for p in stt.chain(LOCAL_CFG, {"SPARK_WHISPER_URL": WHISPER_BASE})] == ["whisper"]
-    assert stt.chain(LOCAL_CFG, {}) == []
+def test_no_meta_key_means_whisper_only_and_switched_off_means_empty():
+    env = {"SPARK_WHISPER_URL": WHISPER_BASE, "STT_PROVIDER": "meta"}
+    assert [p.name for p in stt.chain(LOCAL_CFG, env)] == ["whisper"]
+    assert stt.chain(LOCAL_CFG, {"STT_BASE": "off"}) == []
 
 
 def test_order_and_timeouts_from_env():
@@ -181,7 +198,7 @@ async def test_whisper_takes_over_when_muse_fails(failure: Any, why: str):
     async with fake.client() as c:
         heard = await stt.transcribe(b"RIFFwav", stt.chain(USER_CFG, ENV), client=c)
     assert heard.text == "Remember to order 2-inch bolts for the Hendon job."
-    assert (heard.by.provider, heard.by.label) == ("whisper", "a local fallback model")
+    assert (heard.by.provider, heard.by.label) == ("whisper", "our own server")
     assert heard.by.fallback_reason and heard.by.fallback_reason.startswith("Muse Voice Transcribe: ")
     assert why in heard.by.fallback_reason
     assert fake.paths() == ["/v1/asr/transcribe", "/v1/audio/transcriptions"]
@@ -214,14 +231,14 @@ async def test_both_fail_reports_muses_reason_and_the_fallback():
         with pytest.raises(voice.VoiceError) as exc:
             await stt.transcribe(b"wav", stt.chain(USER_CFG, ENV), client=c)
     assert exc.value.status == 429
-    assert "rate-limiting" in str(exc.value) and "the fallback failed too: a local fallback model" in str(exc.value)
+    assert "rate-limiting" in str(exc.value) and "the fallback failed too: our own server" in str(exc.value)
 
 
 async def test_only_one_provider_raises_its_own_error():
     fake = Fake(httpx.Response(401))
     async with fake.client() as c:
         with pytest.raises(voice.VoiceError) as exc:
-            await stt.transcribe(b"wav", stt.chain(USER_CFG, {}), client=c)
+            await stt.transcribe(b"wav", stt.chain(USER_CFG, {"STT_BASE": "off"}), client=c)
     assert (exc.value.status, str(exc.value)) == (401, "Meta rejected the API key for Muse Voice")
 
 
@@ -391,7 +408,7 @@ def test_spoken_overtime_falls_back_to_whisper_and_says_so(route):
     assert r.status_code == 200, r.text
     body = r.json()
     by = body["transcribed_by"]
-    assert (by["provider"], by["label"]) == ("whisper", "a local fallback model")
+    assert (by["provider"], by["label"]) == ("whisper", "our own server")
     assert "Muse Voice returned HTTP 503" in by["fallback_reason"]
     assert state["fake"].seen[0].headers["Authorization"] == f"Bearer {SERVER_KEY}"
     card = body["proposed_action"]
@@ -416,8 +433,9 @@ def test_voice_route_with_no_provider_is_400(route, monkeypatch: pytest.MonkeyPa
     client, _state, _books = route
     monkeypatch.delenv("META_API_KEY")
     monkeypatch.delenv("SPARK_WHISPER_URL")
+    monkeypatch.setenv("STT_BASE", "off")
     r = _ask(client, {**H, "X-AI-Mode": "local"})
-    assert r.status_code == 400 and "local speech-to-text model" in r.json()["detail"]
+    assert r.status_code == 400 and "speech-to-text" in r.json()["detail"]
 
 
 def test_health_lists_speech_to_text_without_secrets(route):
@@ -425,3 +443,69 @@ def test_health_lists_speech_to_text_without_secrets(route):
     got = client.get("/health").json()
     assert [(p["name"], p["configured"]) for p in got["stt"]] == [("muse", True), ("whisper", True)]
     assert not any(s in json.dumps(got) for s in SECRETS) and WHISPER_BASE not in json.dumps(got)
+
+
+# --------------------------------------------------------------------------- #
+# Our own server's speech-to-text by default (owner's decision, 11 Nov 2026)
+# --------------------------------------------------------------------------- #
+
+
+def test_default_is_our_own_server_only_at_the_spark_voice_port():
+    [local] = stt.chain(LOCAL_CFG, {"META_API_KEY": SERVER_KEY})  # a server Meta key alone does not switch Muse on
+    assert (local.name, local.base_url, local.model) == ("whisper", "http://host.docker.internal:8890/v1", "")
+    assert [p.name for p in stt.chain(LOCAL_CFG, {"STT_BASE": "http://voice.invalid:9000/"})] == ["whisper"]
+    assert stt.chain(LOCAL_CFG, {"STT_BASE": "http://voice.invalid:9000"})[0].base_url == "http://voice.invalid:9000/v1"
+    env = {"STT_BASE": "http://voice.invalid:9000", "SPARK_WHISPER_URL": WHISPER_BASE}
+    assert stt.chain(LOCAL_CFG, env)[0].base_url == WHISPER_BASE  # the explicit URL wins
+
+
+def test_meta_only_when_switched_on_or_the_users_own_key():
+    env = {"META_API_KEY": SERVER_KEY, "STT_BASE": "off"}
+    assert stt.chain(LOCAL_CFG, env) == []
+    assert [p.name for p in stt.chain(LOCAL_CFG, {**env, "STT_PROVIDER": "meta"})] == ["muse"]
+    assert [(p.name, p.key_source) for p in stt.chain(USER_CFG, {})] == [("muse", "user"), ("whisper", "none")]
+    assert [p.name for p in stt.chain(USER_CFG, {"STT_PROVIDERS": "whisper"})] == ["whisper"]  # explicit order wins
+    assert [d["name"] for d in stt.describe({"STT_BASE": "http://voice.invalid:9000"})] == ["whisper"]
+
+
+async def test_local_model_comes_from_the_services_model_list(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(stt, "_MODELS", {})
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        if req.method == "GET":
+            return httpx.Response(
+                200, json={"object": "list", "data": [{"id": "spark-voice-large", "object": "model"}]}
+            )
+        return whisper_ok("Quote Harbour Cafe")
+
+    providers = stt.chain(LOCAL_CFG, {"STT_BASE": "http://voice.invalid:8890"})
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as c:
+        heard = await stt.transcribe(b"RIFFwav", providers, client=c)
+        again = await stt.transcribe(b"RIFFwav", providers, client=c)
+    assert heard.text == "Quote Harbour Cafe" and again.by.model == "spark-voice-large"
+    assert heard.by.model_dump() == {
+        "provider": "whisper",
+        "label": "our own server",
+        "model": "spark-voice-large",
+        "fallback_reason": None,
+    }
+    assert [(r.method, str(r.url)) for r in seen] == [
+        ("GET", "http://voice.invalid:8890/v1/models"),
+        ("POST", "http://voice.invalid:8890/v1/audio/transcriptions"),
+        ("POST", "http://voice.invalid:8890/v1/audio/transcriptions"),  # the model list is asked once
+    ]
+    assert b'name="model"\r\n\r\nspark-voice-large' in seen[1].content
+    assert stt.describe({"STT_BASE": "http://voice.invalid:8890"})[0]["model"] == "spark-voice-large"
+
+
+async def test_a_service_without_a_model_list_still_gets_the_default_model(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(stt, "_MODELS", {})
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(404) if req.method == "GET" else whisper_ok("hello")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as c:
+        heard = await stt.transcribe(b"wav", stt.chain(LOCAL_CFG, {"STT_BASE": "http://voice.invalid"}), client=c)
+    assert heard.by.model == stt.DEFAULT_WHISPER_MODEL

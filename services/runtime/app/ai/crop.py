@@ -10,7 +10,11 @@ Two methods, tried in order; any error or doubt returns the original bytes untou
           component -> bounding box. Accepted only if it covers 25-95 % of the photo and
           the paper fills most of its box; otherwise the original is returned.
 
-Env: CROP_MODE = auto (default: sam if allowed, else code) | code | off; SAM_CROP = 1 to allow sam.
+SAM runs on Meta's Model API: with SAM_CROP=1 every photo is sent to Meta for the box. Since the owner's decision of
+11 Nov 2026 (no customer documents to Meta) it stays off (the default; the live server sets SAM_CROP=0) and the code
+crop does the work. The Anthropic backup never runs SAM.
+
+Env: CROP_MODE = auto (default: sam if allowed, else code) | code | off; SAM_CROP = 1 to allow sam (default off).
 Nothing is cached. Boxes are [x0, y0, x1, y1] in source pixels (x1/y1 exclusive), after
 EXIF orientation is applied.
 """
@@ -353,7 +357,7 @@ def sam_config(cfg: AiConfig | None) -> AiConfig | None:
     """
     if cfg is None or os.getenv("SAM_CROP", "") != "1" or cfg.route in ("local_only", "local_first"):
         return None
-    return next((c for c in cfg.chain() if c.mode == "key" and c.api_key), None)
+    return next((c for c in cfg.chain() if c.mode == "key" and c.api_key and c.provider != "anthropic"), None)
 
 
 def sam_allowed(cfg: AiConfig | None) -> bool:

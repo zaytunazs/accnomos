@@ -7,7 +7,7 @@ Headers: X-AI-Mode (local|key|auto), X-AI-Base-Url, X-AI-Model, X-Meta-Api-Key,
          X-AI-Route (meta_first|local_first|local_only: which answers first, see `apply_route`).
 Env:     AI_MODE, OLLAMA_BASE, OLLAMA_MODEL, MODEL_API_BASE, MODEL_API_MODEL, META_API_KEY,
          AI_ALLOWED_BASE_URLS (extra base URLs a client may pick with X-AI-Base-Url),
-         AI_PROVIDERS (the server's ordered provider chain, e.g. `modal,meta,spark`: app/ai/providers.py).
+         AI_PROVIDERS (the server's ordered provider chain, e.g. `spark,anthropic`: app/ai/providers.py).
 
 A request that names no backend (no X-AI-* headers, or X-AI-Mode: auto) gets the server's chain when AI_PROVIDERS
 is set: each call tries the providers in order and falls over to the next on an outage (app/ai/chain.py). A request
@@ -75,8 +75,8 @@ class AiConfig(BaseModel):
     mode: AiMode
     base_url: str
     model: str
-    api_key: str | None = None
-    # Who serves it: modal | meta | spark (the server's chain), local | key (a backend the user chose), test.
+    api_key: str | None = Field(default=None, repr=False)  # never in a repr or a log line
+    # Who serves it: modal | meta | spark | anthropic (the server's chain), local | key (the user's own backend), test.
     provider: str = ""
     # Extra auth headers (Modal proxy auth: Modal-Key / Modal-Secret). Never logged or serialised.
     extra_headers: dict[str, str] = Field(default_factory=dict, repr=False, exclude=True)
@@ -87,7 +87,7 @@ class AiConfig(BaseModel):
     vision: bool = True  # reads images
     voice: bool = False  # Muse Voice Transcribe (Meta Model API only)
     in_chain: bool = False  # one of the server's AI_PROVIDERS: failover and the circuit breaker apply
-    local: bool = False  # a local model (the user's own computer, or the server's own Glimmer): not the Meta API
+    local: bool = False  # a local model (the user's own computer, or the server's own Glimmer): not a hosted API
     route: AiRoute | None = None  # the user's X-AI-Route, when they chose one
     fallbacks: list[AiConfig] = Field(default_factory=list, repr=False)
 
@@ -99,7 +99,10 @@ class AiConfig(BaseModel):
         """Headers every request to this backend carries (key: bearer token; Modal: its proxy-auth token)."""
         h = dict(self.extra_headers)
         if self.mode == "key" and self.api_key:
-            h["Authorization"] = f"Bearer {self.api_key}"
+            if self.provider == "anthropic":  # the Messages API: x-api-key (anthropic-version is in extra_headers)
+                h["x-api-key"] = self.api_key
+            else:
+                h["Authorization"] = f"Bearer {self.api_key}"
         return h
 
     def http_timeout(self, default_s: float) -> httpx.Timeout:
@@ -203,8 +206,10 @@ def apply_route(cfg: AiConfig, route: str | None) -> AiConfig:
     * local_only  - a local model and nothing else: nothing goes to the Meta Model API, voice included.
 
     "Local" is the user's own computer when they chose it (X-AI-Mode: local), else the server's own Glimmer
-    (`spark`). No route (or an unknown one) leaves the config exactly as before. A route that leaves nothing to try
-    raises ValueError (HTTP 400), so local only never quietly reaches the Meta API.
+    (`spark`). The server's Anthropic backup (`anthropic`) is never local and always goes last, whatever the route, so
+    documents reach it only when every other provider failed; local only never reaches it. No route (or an unknown
+    one) leaves the config exactly as before. A route that leaves nothing to try raises ValueError (HTTP 400), so
+    local only never quietly reaches a hosted API.
     """
     from app.ai import providers  # late: providers builds AiConfigs
 
@@ -221,7 +226,9 @@ def apply_route(cfg: AiConfig, route: str | None) -> AiConfig:
             local, cloud = mine, [c for c in server if not c.local]
         else:
             local, cloud = [c for c in server if c.local], mine
-    order = {"meta_first": cloud + local, "local_first": local + cloud, "local_only": local}[r]
+    backup = [c for c in cloud if c.provider == "anthropic"]  # the server's backup: last on every route, never first
+    cloud = [c for c in cloud if c.provider != "anthropic"]
+    order = {"meta_first": cloud + local + backup, "local_first": local + cloud + backup, "local_only": local}[r]
     if not order:
         if r == "local_only":
             raise ValueError("Local model only is chosen, but no local model is set up on this server")

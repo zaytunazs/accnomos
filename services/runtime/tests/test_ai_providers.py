@@ -443,7 +443,7 @@ def test_health_shows_the_chain_without_secrets() -> None:
     r = _client().get("/health")
     ai = r.json()["ai"]
     assert ai["chain"] == ["modal", "meta", "spark"] and ai["configured"] == ["modal", "meta", "spark"]
-    assert ai["recommended"] == "modal,meta,spark"
+    assert ai["recommended"] == "spark,anthropic"
     for secret in (*SECRETS, MODAL, SPARK):
         assert secret not in r.text
 

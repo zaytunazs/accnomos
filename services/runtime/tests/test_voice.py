@@ -267,7 +267,7 @@ def test_voice_route_local_mode_is_400(client: TestClient):
         headers={"X-Graph-Token": "t", "X-AI-Mode": "local"},
         files={"audio": ("q.wav", _tone_wav(), "audio/wav")},
     )
-    assert r.status_code == 400 and "Muse Voice Transcribe (a Meta API key)" in r.json()["detail"]
+    assert r.status_code == 400 and "Voice is not set up" in r.json()["detail"]
 
 
 def test_voice_route_without_ffmpeg_is_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):

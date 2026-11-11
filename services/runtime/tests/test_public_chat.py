@@ -349,20 +349,22 @@ def test_submission_mode_notes_never_mention_a_launch_or_coming_soon(monkeypatch
     assert "try the demo" in availability.body and "sign in" in availability.body
 
 
-# The same list as tests/test_docs.py NON_META_NAMES and apps/web/scripts/prelaunch-words.mjs THIRD_PARTY_NAMES.
+# The same list as tests/test_docs.py NON_META_NAMES and apps/web/scripts/prelaunch-words.mjs THIRD_PARTY_NAMES
+# (Anthropic allowed since 11 Nov 2026: the backup provider the privacy text names as a processor).
 THIRD_PARTY_NAMES = (
     r"whisper|kokoro|ollama|vllm|qwen|comfyui|\bdgx\b|\bnvidia\b|\bl40s\b|baseten|\bmodal\b|\bllama\b|\bclaude\b"
-    r"|anthropic|openai|\bchatgpt\b|\bgpt-\d|\bgemini\b|\bmistral\b|deepseek|hugging ?face|systran|speaches"
+    r"|openai|\bchatgpt\b|\bgpt-\d|\bgemini\b|\bmistral\b|deepseek|hugging ?face|systran|speaches"
 )
 
 
 @pytest.mark.parametrize("mode", ["1", "0"])
 def test_notes_name_no_non_meta_tool_engine_or_hardware(monkeypatch: pytest.MonkeyPatch, mode: str):
-    """Owner's rule: the public chat may name Meta's models only; a non-Meta fallback is "a local fallback model"."""
+    """Owner's rule: the public chat names no third-party model, tool or engine; since 11 Nov 2026 the AI is "Accnomos
+    AI" on our own server, with a backup provider under contract (named only on the privacy page)."""
     monkeypatch.setenv("PUBLIC_SUBMISSION_MODE", mode)
     text = " ".join(f"{s.title} {s.body}" for s in pc.knowledge())
     assert re.findall(THIRD_PARTY_NAMES, text, flags=re.IGNORECASE) == []
-    assert "a local fallback model" in text
+    assert "Accnomos AI" in text and "backup AI provider under contract" in text
 
 
 def test_prelaunch_notes_give_the_launch_date_and_the_demo(monkeypatch: pytest.MonkeyPatch):

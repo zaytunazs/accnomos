@@ -29,7 +29,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from app.ai import chain
+from app.ai import anthropic, chain
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
 from app.ask_router import (
@@ -726,6 +726,10 @@ async def _stream_one(
             "reasoning_effort": "low",
             **({"max_tokens": max_tokens} if max_tokens else {}),
         }
+        if anthropic.is_anthropic(cfg):  # the Messages API's own events, translated to text (app/ai/anthropic.py)
+            async for text in anthropic.stream_chat(client, cfg, body, lambda r: _lines(r, cfg.first_token_s)):
+                yield text
+            return
         headers = cfg.auth_headers()
         async with client.stream("POST", f"{cfg.base_url}/chat/completions", json=body, headers=headers) as r:
             if r.is_error:
@@ -801,7 +805,7 @@ async def _call_json_one(messages: list[dict[str, str]], cfg: AiConfig, schema: 
             "response_format": {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
             "reasoning_effort": "low",
         }
-        r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers=cfg.auth_headers())
+        r = await anthropic.post_openai(client, cfg, body, cfg.auth_headers())
         r.raise_for_status()
         content = r.json()["choices"][0]["message"].get("content") or ""
         if isinstance(content, list):

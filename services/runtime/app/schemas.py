@@ -386,7 +386,7 @@ class Transcription(StrictBody):
     by the signature) and in the actions audit log."""
 
     provider: str = Field(max_length=16)  # muse | whisper
-    label: str = Field(max_length=60)  # Muse Voice Transcribe | a local fallback model
+    label: str = Field(max_length=60)  # Muse Voice Transcribe | our own server
     model: str = Field(max_length=100)
     fallback_reason: str | None = Field(default=None, max_length=600)  # an earlier provider failed: "<label>: <why>"
 

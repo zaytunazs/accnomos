@@ -32,6 +32,13 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture(autouse=True)
+def _no_default_speech_to_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The speech-to-text default (app/ai/stt.py STT_BASE, the Spark's port) is not reachable from a test run: off
+    unless a test sets SPARK_WHISPER_URL or STT_BASE itself."""
+    monkeypatch.setenv("STT_BASE", "off")
+
+
+@pytest.fixture(autouse=True)
 def graph_me_stand_in(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
     """Routes that need to know who is calling (app/identity.py) would ask Graph /me; no test has a real token.
     Stand-in: any non-blank token is the user named in X-User (as test mode's fakes do), else sam@example.co.uk.
