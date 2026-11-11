@@ -56,7 +56,7 @@ const STEPS = [
   },
 ];
 
-/** The eight feature blocks of COPY.md, each with its fictional example; Landing places them by theme. */
+/** The ten feature blocks of COPY.md, each with its fictional example; Landing places them by theme. */
 type Block = { title: string; body: string; example: string };
 
 const BLOCK = {
@@ -96,6 +96,17 @@ const BLOCK = {
     title: "Month-end checks, listed plainly",
     body: "Run a month-end check that lists missing statements, uncategorised costs, possible duplicates and anything dated into a closed month. Work through the list and re-close when done.",
     example: "Fictional March books for Bramblewood Joinery Ltd flag two unmatched bank lines and one receipt still sitting in the inbox.",
+  },
+  paypal: {
+    title: "PayPal, in the same approve-first books",
+    body: "Put a PayPal pay link on your invoices, then Sync PayPal: each sale, purchase and fee is proposed with its journal, you choose the VAT on a sale with no invoice, and the PayPal balance is tied out against your books. Tried with PayPal's sandbox; nothing posts until you approve it.",
+    example:
+      "A fictional customer pays a £372.00 invoice through its PayPal link; the payment and PayPal's £11.09 fee wait on Invoices until you tap Approve.",
+  },
+  billpay: {
+    title: "Supplier bills paid through PayPal",
+    body: "Approve a bill now and it is paid from your PayPal on its due date, only if nothing about it changed. Upcoming payments go in your calendar, a dispute's evidence is built from your books, and one switch stops every automatic payment.",
+    example: "A fictional £51.90 bill from Novex Office Supplies Ltd, approved today, is paid on 12 November, the day it falls due.",
   },
   oneDrive: {
     title: "Your books live in OneDrive",
@@ -423,7 +434,7 @@ function Process() {
 }
 
 function Features() {
-  const blocks = [BLOCK.receipts, BLOCK.bank, BLOCK.payroll, BLOCK.monthEnd];
+  const blocks = [BLOCK.receipts, BLOCK.bank, BLOCK.paypal, BLOCK.billpay, BLOCK.payroll, BLOCK.monthEnd];
   return (
     <section id="features" aria-labelledby="features-title" className="scroll-mt-20 border-t border-border bg-white py-20">
       <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-2">
@@ -431,7 +442,7 @@ function Features() {
           <SectionHead
             id="features-title"
             title="The rest of the books, in the same place"
-            lead="Receipts, the bank, pay runs and month-end, all from the same approved entries."
+            lead="Receipts, the bank, PayPal, pay runs and month-end, all from the same approved entries."
           />
           <ul className="mt-8 grid gap-x-8 gap-y-7 sm:grid-cols-2">
             {blocks.map((b) => (
@@ -676,7 +687,7 @@ function Guides() {
         <SectionHead
           id="guides-title"
           title="How-to guides"
-          lead="Step-by-step guides with a screenshot for every step, taken from the demo's fictional sample books, with the Android app where it differs."
+          lead="Step-by-step guides with a screenshot for every step, taken from fictional sample books, with the Android app where it differs."
         />
         <ul aria-label="How-to guides" className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {featured.map((g) => (

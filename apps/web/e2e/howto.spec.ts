@@ -17,7 +17,7 @@ import { routeSandboxRelay } from "./sandbox-relay";
 
 test.skip(process.env.HOWTO_SHOTS !== "1", "how-to shots run only with HOWTO_SHOTS=1");
 test.describe.configure({ mode: "serial" });
-test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light", actionTimeout: 10_000, launchOptions: { args: ["--lang=en-GB"] } });
+test.use({ viewport: { width: 1280, height: 800 }, colorScheme: "light", actionTimeout: 10_000, launchOptions: { args: ["--lang=en-GB"], ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}) } });
 
 const OUT = path.resolve(__dirname, "../../../docs/howto/img");
 const LIMIT = 450 * 1024;
@@ -36,6 +36,11 @@ const SWAPS: [string, string][] = [
   ["Test stub:\\s*", ""],
   ["Your AI \\(local\\) could not write the note \\([A-Za-z]+\\)\\.?", ""],
   ["\\(test mode\\)", ""],
+  // No AI vendor or model name in a picture (as e2e/help-shots.spec.ts): the live app's neutral labels read "the AI".
+  ["[Mm]use[- ][A-Za-z]+(?:[- ]\\d[\\w.-]*)?(?:-contributor)?", "the AI"],
+  ["\\bMeta(?:'s)?\\s+(?:Model API|models?|AI)\\b", "the AI"],
+  ["\\bMeta\\b", "the AI"],
+  ["\\bGlimmer\\b", "the AI"],
 ];
 
 async function tidy(page: Page): Promise<void> {
@@ -234,23 +239,26 @@ test("company demo", async ({ page }) => {
   await bring(page, hmrc, 120);
   await mark(hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }));
   await shoot(page, "vat-return-3");
-  await hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }).click();
-  await hmrc.getByRole("button", { name: "Connect to HMRC sandbox" }).click();
-  await hmrc.getByRole("button", { name: "Show obligations" }).click();
-  await expect(hmrc.getByRole("radio", { name: "Choose period 18A2" })).toBeChecked();
-  await bring(page, hmrc, 120);
-  await shoot(page, "vat-return-4");
-  await hmrc.getByRole("button", { name: "Prepare submission" }).click();
-  await hmrc.getByLabel("I confirm the information is true and complete").check();
-  const submit = hmrc.getByRole("button", { name: "Submit to HMRC sandbox" });
-  await bring(page, submit, 420);
-  await mark(submit);
-  await shoot(page, "vat-return-5");
-  await submit.click();
-  const done = hmrc.getByRole("heading", { name: /Submitted to HMRC sandbox/ });
-  await expect(done).toBeVisible();
-  await bring(page, done, 200);
-  await shoot(page, "vat-return-6");
+  // The sandbox connect flow can need HMRC's own sign-in page: when it does not come back here, keep the earlier pictures.
+  await soft("vat-return-4..6", async () => {
+    await hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }).click();
+    await hmrc.getByRole("button", { name: "Connect to HMRC sandbox" }).click();
+    await hmrc.getByRole("button", { name: "Show obligations" }).click();
+    await expect(hmrc.getByRole("radio", { name: "Choose period 18A2" })).toBeChecked();
+    await bring(page, hmrc, 120);
+    await shoot(page, "vat-return-4");
+    await hmrc.getByRole("button", { name: "Prepare submission" }).click();
+    await hmrc.getByLabel("I confirm the information is true and complete").check();
+    const submit = hmrc.getByRole("button", { name: "Submit to HMRC sandbox" });
+    await bring(page, submit, 420);
+    await mark(submit);
+    await shoot(page, "vat-return-5");
+    await submit.click();
+    const done = hmrc.getByRole("heading", { name: /Submitted to HMRC sandbox/ });
+    await expect(done).toBeVisible();
+    await bring(page, done, 200);
+    await shoot(page, "vat-return-6");
+  });
 
   // ---- income-tax-update
   const business = await settings(page, "Business");

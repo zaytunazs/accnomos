@@ -29,7 +29,7 @@ bridging software, unless HMRC has given you an exemption (VAT Notice 700/22).
    sandbox**) and sign in with HMRC's test user. Once the server files to
    HMRC's live service, the button is **Connect to HMRC** and you sign in with
    your own HMRC online services account.
-   ![Connect to HMRC in the demo: the note that HMRC is not contacted, what signing in involves, and the Connect to HMRC (simulated) button.](img/vat-return-3.png)
+   ![Connect to HMRC in the demo: HMRC sandbox, real test service, no real tax filed, what signing in involves, and the Make an HMRC sandbox test user button outlined.](img/vat-return-3.png)
    If this goes wrong: the sign-in page does not come back, so close it and
    press Connect again; **Settings › Connection** shows whether HMRC is
    connected.

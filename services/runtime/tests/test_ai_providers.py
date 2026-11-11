@@ -324,7 +324,7 @@ async def test_stream_fails_over_before_the_first_token_only(monkeypatch: pytest
 
 
 def test_no_answer_names_the_providers_never_their_addresses() -> None:
-    assert chain.trouble(chain_cfg(), "x") == "None of the server's AI providers answered (modal, meta, spark)."
+    assert chain.trouble(chain_cfg(), "x") == "None of the server's AI providers answered (3 tried)."
     own = AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": SPARK})
     assert chain.trouble(own, f"could not be reached at {SPARK}") == f"Your AI (local) could not be reached at {SPARK}."
 

@@ -14,7 +14,14 @@ cd apps/web
 pnpm run e2e:build
 LANG=en_GB.UTF-8 HOWTO_SHOTS=1 pnpm exec playwright test e2e/howto.spec.ts --project=desktop --workers=1
 # one guide only: HOWTO_ONLY='^vat-return' (the whole flow still runs; only matching pictures are written)
+LANG=en_GB.UTF-8 HOWTO_SHOTS=1 pnpm exec playwright test e2e/howto-paypal.spec.ts --project=desktop --workers=1
 ```
+
+The PayPal guides (`paypal-*.png`, `power-grid-*.png`) come from
+`apps/web/e2e/howto-paypal.spec.ts`: signed in to the test-mode runtime, whose
+PayPal is the stand-in in `services/runtime/app/online_fakes.py` (fictional
+customers and suppliers, nothing reaches PayPal), and the company demo's sample
+dispute. `PW_CHROMIUM` points either spec at a Chromium of your own.
 
 **Android** (`android-<screen>.png`, 432 × 960, from 1080 × 2400): the debug
 build on an emulator (`accnomos_pixel`), signed out in **Try the demo** (the
@@ -23,4 +30,6 @@ sample data. `android-review.png` and `android-ask.png` are
 `apps/mobile/screenshots/review.png` and `ask.png` scaled down.
 
 **Landing page thumbnails** (`apps/web/public/howto/<guide>.webp`, 640 × 400):
-one picture from each featured guide, cropped to the page beside the menu and scaled down.
+one picture from each featured guide (`connect-books-3`, `review-approve-3`, `vat-return-1`, `voice-chat-2`,
+`paypal-invoice-link-3`, `paypal-bill-pay-2`), cropped to the page beside the menu (x 232–1280, y 0–655) and scaled
+down.
