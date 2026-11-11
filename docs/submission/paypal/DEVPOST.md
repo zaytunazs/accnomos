@@ -38,8 +38,11 @@ it gets paid and pays its bills.
 - **Sync PayPal.** Reads the PayPal account's transactions and proposes each one: gross, PayPal fee and net, matched to
   the invoice it pays. A sale with no invoice waits until the owner chooses its VAT. Nothing posts until the owner
   approves.
-- **Ask about PayPal.** "What did PayPal cost me this quarter?" and "How much is in PayPal?" are answered with a
-  figure worked out by code from the PayPal entries in the books, and explained in plain English.
+- **AI search in Ask (typed or spoken).** *"Did that client pay all the arrears? They had around £500 overdue — check
+  PayPal."* or *"There was a PayPal payment last month, around £100 for stationery — how much exactly?"* The AI turns the
+  words into a search (who, roughly how much, which months, money in or out); code checks it, searches the books, Sync
+  PayPal and PayPal's own transactions, and answers with the exact figure, date and payee, and whether it is in the
+  books yet. "What did PayPal cost me this quarter?" and "How much is in PayPal?" are answered by code from the books.
 - **Power grid (AG Grid Community).** An optional add-on (Settings › Business › Power grid): the synced PayPal
   transactions in one sortable, filterable grid with totals, where the owner ticks several waiting rows and approves
   them together (each goes through the same checked approval), plus a ledger explorer where plain words such as "PayPal
@@ -54,6 +57,9 @@ it gets paid and pays its bills.
 - **Disputes.** When a customer opens a PayPal dispute, Accnomos builds an evidence pack from the books (the invoice,
   the payment, the dates), checks every figure and date in the draft by code, and sends it only after the owner reads
   and approves it.
+- **Help and support.** A help centre with step-by-step guides, a support assistant that answers from them word for
+  word and offers a ticket, and an admin queue; when PayPal is connected, a PayPal help panel shows the connection,
+  last sync, open disputes and PayPal's own help links.
 - **VAT.** Approved PayPal sales are ordinary entries in the ledger, so they are in the VAT return Accnomos works out
   and files to HMRC (HMRC's sandbox in the demo).
 
@@ -62,8 +68,8 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
 ## How we built it
 
 - **Web app:** Next.js and TypeScript (`apps/web`), the PayPal screens on Invoices (Sync PayPal, tie-out, disputes)
-  and Purchases (Pay bills with PayPal). **Android app:** Flutter (`apps/mobile`), the same runtime API (it has no
-  PayPal screens yet: the PayPal features are on the web).
+  and Purchases (Pay bills with PayPal). **Android app:** Flutter (`apps/mobile`), the same runtime API, with Sync PayPal (VAT
+  choice, tie-out), disputes, bill pay with upcoming payments and add to calendar, and AI search in Ask.
 - **Power grid:** AG Grid Community 36.3 (`ag-grid-community`, `ag-grid-react`; Community modules only, no licence key),
   loaded only when the owner turns the add-on on: `apps/web/src/components/grid/PayPalReviewGrid.tsx` (bulk approve
   with totals) and `apps/web/src/components/grid/LedgerExplorer.tsx` (plain-English filters, checked by
@@ -128,7 +134,7 @@ The rule throughout: **the AI proposes, code calculates in pence, the owner appr
 - Run the remaining calls against the sandbox: Invoicing remind, itemised invoices, Disputes and the capture read for
   the fee.
 - PayPal webhooks, so payments are proposed without opening the app.
-- PayPal screens in the Android app.
+- Connecting PayPal and saving supplier PayPal emails from the phone (both are on the web today).
 
 ## Sponsor tools (Devpost form)
 
@@ -161,9 +167,11 @@ company's books (guide at `https://accnomos.com/judges`).
 1. **Invoices:** the **PayPal** panel: press **Sync PayPal**. In the demo, with no PayPal connected, this reads a fixed
    sample history, labelled "Sample PayPal history for this demo" (it is not PayPal data). Each card shows gross,
    PayPal fee and net, the invoice it pays, the entry approving would post, and **Approve** / **Reject**.
-2. **Ask:** after approving a PayPal card, ask *What did PayPal cost me this quarter?* or *How much is in PayPal?*: the
-   figure is worked out by code from the PayPal entries in the books (not a live PayPal call; the tie-out on Invoices
-   is the screen that reads PayPal's own balance when PayPal is connected).
+2. **Ask (AI search):** type *Did that client pay all the arrears? They had around £500 overdue — check PayPal.* and
+   then *There was a payment via PayPal last month, probably around £100 for stationery — how much exactly was it?*:
+   the answers name the customer and the exact amounts (£492.00 paid through PayPal, not yet in the books; £97.79 to
+   a stationery supplier), and say what was searched. After approving a PayPal card, *What did PayPal cost me this
+   quarter?* and *How much is in PayPal?* are answered by code from the books.
 3. **Invoices › PayPal disputes:** one SAMPLE dispute built by code. **Build evidence** → read the preview → **Send to
    PayPal (demo)** records it as sent; nothing goes to PayPal.
 4. **To use PayPal's real sandbox in the demo:** Settings › Online payments → **Connect PayPal (test mode)**. Then on
@@ -178,8 +186,9 @@ company's books (guide at `https://accnomos.com/judges`).
 6. **VAT** (`/vat`): the nine boxes from the ledger; filing goes to HMRC's sandbox with a test user HMRC makes for the
    demo.
 
-**Android:** install the newest `android-*` APK from `https://github.com/zaytunazs/accnomos/releases` and press **Try
-the company demo**. The PayPal screens are on the web; the app shares the same books and runtime.
+**Android:** install the newest `android-*` APK from `https://github.com/zaytunazs/accnomos/releases` (0.3.21 or
+later) and press **Try the company demo**: Invoices › Sync PayPal and Disputes, More › Bill pay, and Ask with the same
+questions as above.
 
 **Code and evidence:** `https://github.com/zaytunazs/accnomos`; what each PayPal feature is verified against (real
 sandbox or fakes) is in `docs/submission/paypal/JUDGES.md` and `docs/HONESTY.md`.
@@ -194,4 +203,5 @@ Accnomos invoices, PayPal receipts through a clearing account, payouts matched t
 mode and the first runs against PayPal's real sandbox (Invoicing, Transaction Search, Balances, Payouts), **Sync
 PayPal**, PayPal questions in Ask, the **tie-out** against PayPal's balance, the owner's VAT choice on unmatched sales, **bill pay by PayPal
 Payouts** with idempotent batch ids, **PayPal disputes** with evidence from the books, itemised PayPal invoices with the
-business's details, and PayPal as the default way to get paid. Dates are in `git log`.
+business's details, PayPal as the default way to get paid, AI search in Ask, the help centre and support desk, the AG Grid Power grid,
+and the PayPal screens in the Android app. Dates are in `git log`.
