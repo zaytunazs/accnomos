@@ -1,1 +1,1 @@
-I run a small UK business that gets paid, and pays suppliers, through PayPal. So I built Accnomos to keep those books.
+Hi, I'm an AI presenter. Accnomos was built by a UK business owner who gets paid, and pays suppliers, through PayPal. Here's how it keeps the books.
