@@ -14,7 +14,7 @@ Accnomos keeps a UK small business's books in its own OneDrive or Google Drive a
 - **Sync PayPal:** Transaction Search turns each PayPal payment into gross, PayPal fee and net, matched to the invoice; an unmatched sale waits for the owner to choose its VAT. A tie-out compares PayPal's balance (Balances API, with PayPal's refresh time) with the books' PayPal account.
 - **Bill pay:** supplier bills paid with PayPal Payouts on or after their due date, after the owner approves (idempotent `sender_batch_id`, so a retry never pays twice). PayPal cannot hold a payout for a future date, so Accnomos pays the next time it is open on or after the due date.
 - **Disputes:** PayPal Disputes v1 with an evidence pack built from the books; the owner approves before anything is sent.
-- **Sandbox only.** Which calls have run against the real PayPal sandbox, and which only against fakes: [docs/HONESTY.md](docs/HONESTY.md).
+- **Sandbox only.** Which calls have run against the real PayPal sandbox, and which only against fakes: [docs/HONESTY.md](docs/HONESTY.md). Judges' guide and Devpost texts: [docs/submission/paypal/](docs/submission/paypal/).
 - **Built in the submission period:** the first commit is 26 Oct 2026, inside the PayPal submission period (1 Oct – 12 Nov 2026); see `git log` and [docs/PROVENANCE.md](docs/PROVENANCE.md).
 - **Run the PayPal parts yourself:** create a PayPal Sandbox REST app (Invoicing and Transaction search ticked), then set `PAYPAL_DIRECT=1`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` in `.env` (see `.env.example`); `uv run python tools/payments_sandbox_smoke.py paypal` checks the connection. Test credentials for the live site are in the Devpost testing instructions, not in this repository.
 

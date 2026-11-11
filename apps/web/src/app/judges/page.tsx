@@ -78,10 +78,10 @@ export default function JudgesPage() {
         </h2>
         <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7">
           <li>
-            <strong>Criteria → evidence</strong>, each claim with a file path, and how to run the whole thing in test mode
-            with no accounts in about ten minutes:{" "}
-            <a href={`${REPO}/blob/main/docs/submission/JUDGING.md`} className={link}>
-              docs/submission/JUDGING.md
+            <strong>What it does and how to try it</strong>, including how to run the whole thing in test mode with no
+            accounts:{" "}
+            <a href={`${REPO}#try-it`} className={link}>
+              README › Try it
             </a>
             .
           </li>

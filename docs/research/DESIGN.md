@@ -122,7 +122,7 @@ pounds" in the label, accept "£1,234.50" as typed, and give specific errors ("m
 
 ### 1.6 What makes a 3-minute hackathon demo read well on screen
 
-- **Record at 1280 × 720 with 125 % zoom for close-ups** (as `docs/submission/VIDEO_SCRIPT.md` already says), and watch a test
+- **Record at 1280 × 720 with 125 % zoom for close-ups** (as the first video script said), and watch a test
   clip *on a phone* before publishing ([SSW rules](https://www.ssw.com.au/rules/easy-to-view-screen-recordings),
   [Honeycutt](https://www.honeycutt.com/posts/recording-guidelines-to-make-your-demos-sparkle)).
 - **Use the light theme with high-contrast text.** Dark mode suffers most from video compression (Honeycutt).

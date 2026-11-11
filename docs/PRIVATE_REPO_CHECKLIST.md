@@ -17,7 +17,7 @@ private and what to do first.
    second read-only deploy key from the Spark (`ssh-keygen -t ed25519 -f ~/.ssh/accnomos_deploy`) and switch the remote
    to SSH. Run `jobs/api_up.sh` once and check `https://api.accnomos.com/health`.
 3. **Android APK links.** Release downloads on a private repository need a GitHub login, so the links in `README.md`
-   and `docs/submission/JUDGING.md` stop working for the public. Once the Play listing is live, point people there;
+   and the GitHub links on `/judges` stop working for the public. Once the Play listing is live, point people there;
    otherwise host the APK on accnomos.com (e.g. `/download/accnomos-<version>.apk`) and update the links.
 4. **CodeQL.** Code scanning on private repositories needs GitHub Advanced Security. `codeql.yml` now skips itself when
    the repository is private, so it shows as skipped rather than failed. Dependabot keeps working.

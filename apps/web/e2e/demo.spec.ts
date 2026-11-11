@@ -7,7 +7,7 @@ import { confirmScan, createBooksFolder, DEMO_DAY, expect, pickVatPeriod, signIn
  * docs/DEMO.md on stage, step by step, in test mode (`pnpm run e2e:demo` writes the shots): the runtime's "today" is the stage date
  * (4 Nov 2026, the `demo` seed), the stub AI reads apps/web/public/sample-receipt.png, mail goes to the fake sender.
  * Step n is row n of the script table; each asserts the words the script quotes, saves
- * docs/submission/shots/<nn>-<step>[-phone].png for docs/submission/VIDEO_SCRIPT.md and logs its time.
+ * docs/submission/shots/<nn>-<step>[-phone].png (the demo walkthrough's stills) and logs its time.
  * Steps that need the real world (HMRC, the Android app) are skipped with the reason.
  */
 
