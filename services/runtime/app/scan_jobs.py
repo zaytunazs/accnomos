@@ -54,6 +54,7 @@ from app.ai import classify as classify_ai
 from app.ai.classify import KINDS, LABELS, Guess, Kind
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
+from app.billing.service import PlanLimit
 from app.books import SYSTEM, Books, now
 from app.checks import decide
 from app.formats import MAX_BYTES, FormatError, guess_mime, prepare
@@ -570,6 +571,10 @@ async def _route(books: Books, ctx: inbox.ScanContext, settings: Settings, f: Sc
             await books.audit(inbox.ACTOR, "extract_failed", {"path": ref.path, "error": str(exc)[:200]})
             f.stage, f.route = "failed", "inbox"
             f.message = str(exc) if isinstance(exc, inbox.DocTimeout) else f"The AI could not read it: {str(exc)[:200]}"
+            return
+        except PlanLimit as exc:  # the month's AI-read documents are used up (app/billing): it stays in the Inbox
+            f.stage, f.route = "failed", "inbox"
+            f.message = exc.body()["detail"]
             return
         apply_kind(p, kind)
         p = await inbox.commit(books, ctx, p, filed, mime)

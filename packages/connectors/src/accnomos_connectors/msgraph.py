@@ -515,12 +515,12 @@ class GraphSharingProvider(_GraphHttp, SharingProvider):
 
     async def whoami(self) -> Identity:
         me = (
-            await self._request("GET", f"{GRAPH}/me", params={"$select": "mail,userPrincipalName,displayName"})
+            await self._request("GET", f"{GRAPH}/me", params={"$select": "id,mail,userPrincipalName,displayName"})
         ).json()
         email = (me.get("mail") or me.get("userPrincipalName") or "").strip().lower()
         if not email:
             raise GraphError(200, "/me has neither mail nor userPrincipalName")
-        return Identity(email=email, name=me.get("displayName") or "")
+        return Identity(email=email, name=me.get("displayName") or "", subject=str(me.get("id") or ""))
 
 
 def _iso(dt: str | None) -> datetime:

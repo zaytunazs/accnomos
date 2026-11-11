@@ -270,6 +270,9 @@ class Identity(BaseModel):
 
     email: str
     name: str = ""
+    # The provider's stable id for the person (Graph `/me` `id`, Google's `sub`), "" when not given. Unlike the email
+    # it never changes, so the account registry keys on it (services/runtime/app/billing).
+    subject: str = ""
 
 
 class SharingProvider(ABC):

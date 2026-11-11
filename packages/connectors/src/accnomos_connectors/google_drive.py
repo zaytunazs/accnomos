@@ -191,7 +191,7 @@ class GoogleIdentity(_GoogleHttp):
         email = str(info.get("email") or "").strip().lower()
         if not email:
             raise GoogleDriveError(401, "Google did not say which account this is (no email scope)")
-        return Identity(email=email, name=str(info.get("name") or ""))
+        return Identity(email=email, name=str(info.get("name") or ""), subject=str(info.get("sub") or ""))
 
 
 class GoogleDriveStorageProvider(_GoogleHttp, StorageProvider):

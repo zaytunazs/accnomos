@@ -36,6 +36,7 @@ from app.ai import chain
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
+from app.billing.service import PlanLimit
 from app.books import SYSTEM, Books, DocMeta, Rule, now
 from app.books import today as london_today
 from app.checks import SupplierKnowledge, decide
@@ -428,6 +429,11 @@ async def scan_inbox_detailed(
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})
             errors.append({"path": f.path, "error": str(exc)[:300]})
             continue
+        except PlanLimit as exc:  # the month's AI-read documents are used up (app/billing): the rest stay in the Inbox
+            if not out:
+                raise  # nothing read: the route answers 402 with what to do
+            errors.append({"path": f.path, "error": exc.body()["detail"]})
+            break
         out.append(await commit(books, ctx, p, f, mime))
         log.info("scan: document %d of %d read in %.1f s", i + 1, min(limit, len(candidates)), time.perf_counter() - t0)
     await finish(books, ctx)

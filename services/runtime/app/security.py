@@ -48,11 +48,16 @@ UPLOAD_PATHS = frozenset({"/extract", "/books/ask/voice", "/books/bank/import"})
 UPLOAD_LIMIT = 25 * 1024 * 1024
 JSON_LIMIT = 256 * 1024
 # Small uploads: the file itself is checked by its route (a 1 MB logo), the cap leaves room for the multipart wrapping.
-SMALL_UPLOADS = {"/invoices/profile/logo": 2 * 1024 * 1024}
+SMALL_UPLOADS = {
+    "/invoices/profile/logo": 2 * 1024 * 1024,
+    "/bug-reports": 3 * 1024 * 1024,  # a 2 MB screenshot as base64 (app/billing/analytics.py checks the 2 MB)
+}
 # Upload routes by prefix: the demo sandbox's Graph look-alike (app/demo.py), where a demo's "Add a receipt" PUTs the
 # file (signed in, the browser uploads to Microsoft instead). DemoStorage refuses a file over DEMO_MAX_FILE_BYTES.
 PREFIX_UPLOADS = {"/demo/graph/": 11 * 1024 * 1024}
-UNLIMITED_PATHS = frozenset({"/health"})  # no rate limit (container healthcheck, uptime probes)
+# No per-IP rate limit: container healthcheck and uptime probes; Stripe's webhooks (signed, from a few Stripe IPs that
+# would otherwise share one bucket and be refused in a burst).
+UNLIMITED_PATHS = frozenset({"/health", "/billing/stripe/webhook"})
 UNLIMITED_PREFIXES: tuple[str, ...] = ()  # test mode adds "/__test/": stand-ins for Graph and the AI, not this server
 MAX_BUCKETS = 10_000
 
@@ -79,6 +84,9 @@ SERVER_SECRET_ENV = (
     "BASETEN_API_KEY",
     "COMPANIES_HOUSE_API_KEY",
     "ACTIONS_SIGNING_KEY",
+    "STRIPE_SECRET_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "SUPABASE_SERVICE_ROLE_KEY",
 )
 
 

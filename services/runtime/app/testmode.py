@@ -685,6 +685,11 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
         await SEEDS[seed](s)
     if security.LIMITER:  # each test starts with a full request budget
         security.LIMITER.reset()
+    from app.billing import registry as billing_registry
+    from app.billing import service as billing_service
+
+    billing_registry.reset_test_mode()  # nothing used yet this month (app/billing)
+    billing_service.forget()
     s.seeded = True
     return {"ok": True, "mail": len(s.mail.messages), "gold": len(golds), "seed": seed}
 
@@ -712,6 +717,9 @@ def enable() -> None:
     from app import ebay_fakes
 
     ebay_fakes.install()  # eBay calls (Connect eBay) go to the fakes, never out
+    from app.billing import fakes as billing_fakes
+
+    billing_fakes.install()  # Stripe Billing (plans, checkout, portal) goes to the fakes, never out
     install_google_fakes()
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 

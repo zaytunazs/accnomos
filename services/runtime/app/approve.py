@@ -17,7 +17,7 @@ from typing import Any
 
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from app.autopilot import ACTOR as AUTOPILOT_ACTOR
-from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
+from app.autopilot import AUTOPILOT, load_rules, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
 from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
@@ -233,6 +233,19 @@ async def approve(
     return p
 
 
+async def _rule_room(books: Books, supplier_key: str) -> bool:
+    """Whether one more Autopilot rule fits the caller's plan (app/billing). Replacing a supplier's rule always
+    does; approving is never refused for it."""
+    from app.billing import service as billing
+
+    if billing.current() is None:
+        return True
+    rules = await load_rules(books)
+    if any(r.supplier_key == supplier_key for r in rules):
+        return True
+    return billing.has_room("autopilot_rules", len(rules))
+
+
 async def _approve(books: Books, proposal_id: str, user: str, edits: dict[str, Any] | None, always: bool) -> Proposal:
     forget = getattr(books.storage, "forget", None)  # the request memo (app/cache.py): read the proposal fresh
     if forget is not None and re.fullmatch(r"[0-9a-f]{8,64}", proposal_id):
@@ -274,6 +287,8 @@ async def _approve(books: Books, proposal_id: str, user: str, edits: dict[str, A
             log.warning("contacts file unreadable; supplier VAT status not recorded for %s", p.id)
     rule = await _remember(books, p, user) if always else None
     auto_rule = rule_from_proposal(p, user) if always else None
+    if auto_rule and not await _rule_room(books, auto_rule.supplier_key):
+        auto_rule = None  # the plan's Autopilot rules are all in use: approved, but not automated (X-Plan-Limit)
     if auto_rule:
         await save_rule(books, auto_rule)
     await books.audit(

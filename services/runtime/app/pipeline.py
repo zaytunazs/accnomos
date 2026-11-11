@@ -245,6 +245,9 @@ async def process_document(
 ) -> Proposal:
     """A prepared file (app/formats.py) through the same checks and the same card. `digest` is the hash of the file
     that will be filed. Raises `ExtractionError`."""
+    from app.billing import service as billing
+
+    await billing.charge_document()  # one AI-read document on the caller's plan; PlanLimit when used up
     p = await process_image(
         prep.image,
         prep.mime,

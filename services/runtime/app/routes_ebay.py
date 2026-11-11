@@ -27,6 +27,7 @@ from pydantic import BaseModel, Field, StrictBool
 
 from app import demo
 from app import ebay_sync as es
+from app.billing import gauges
 from app.books import Books
 from app.region import rules_for
 from app.routes_books import get_books, require_uk, require_user
@@ -67,7 +68,8 @@ class StartResult(BaseModel):
 
 
 @router.post("/connect", response_model=StartResult, dependencies=CALLS_EBAY)
-async def connect(body: StartBody, _: Books = Depends(get_books), user: str = Depends(require_user)) -> StartResult:
+async def connect(body: StartBody, books: Books = Depends(get_books), user: str = Depends(require_user)) -> StartResult:
+    await gauges.marketplace_room(books)  # marketplace connections on the plan (app/billing): 402 when none left
     try:
         return StartResult(url=es.start(body.redirect_to, body.binding_hash, user))
     except es.EbaySyncError as exc:
