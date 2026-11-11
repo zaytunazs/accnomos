@@ -26,6 +26,10 @@ No database (docs/ARCHITECTURE.md), so:
   (in the clearing account), the bank only when the money arrives, and the clearing account's balance is what the
   provider still holds. Before clearing accounts, receipts went straight to 1200 Bank and the payout line was a
   second receipt of the same money.
+* **PayPal is the default.** Settings, the invoice "Add payment link" dialog and the assistant offer PayPal first,
+  then PayPal.me (no API). Stripe stays in code but is hidden (on hold, no live key): it is offered only with
+  `STRIPE_VISIBLE=1`, or to a user whose books already have a Stripe account linked (so they can still disconnect it
+  and the links already on invoices are still checked). See `stripe_visible()`.
 * **PayPal.me** needs no API at all: a `paypal.me/<name>/<amount>GBP` link. PayPal cannot tell us about those
   payments, so they are recorded by hand like a bank transfer.
 """
@@ -111,6 +115,17 @@ def direct_mode(provider: str) -> bool:
     made on the server's own test account (Stripe test key, PayPal sandbox REST app), which every user's books then
     point at. Test credentials only (refused with a live key or PayPal's live API). Never in test mode (fakes)."""
     return not is_test_mode() and os.getenv(f"{provider.upper()}_DIRECT", "").strip() == "1"
+
+
+def stripe_visible() -> bool:
+    """`STRIPE_VISIBLE=1`: offer Stripe payment links. Off by default (owner decision, 11 Nov 2026: PayPal is the
+    default handler; Stripe is on hold with no live key). Hidden Stripe is not offered for connecting or for new
+    links; a Stripe account already linked in the user's books is still listed (to disconnect it) and its existing
+    links are still checked for payments."""
+    return os.getenv("STRIPE_VISIBLE", "").strip() == "1"
+
+
+STRIPE_HIDDEN = "Stripe payment links are not offered on this server."
 
 
 DIRECT_PAYPAL_MERCHANT = "SANDBOXDIRECT"  # stands for the REST app's own sandbox account in providers.json
@@ -421,21 +436,12 @@ class ProviderStatus(BaseModel):
 
 
 async def status(books: Books) -> list[ProviderStatus]:
+    """What Settings and the payment-link dialog offer, PayPal first (the default), then PayPal.me, then Stripe only
+    when it is visible (`stripe_visible()`) or already linked in these books."""
     c = await load_connections(books)
     s_cfg, s_why = stripe_config()
     p_cfg, p_why = paypal_config()
-    return [
-        ProviderStatus(
-            provider="stripe",
-            label="Stripe",
-            available=s_cfg is not None,
-            reason=s_why,
-            test_mode=s_cfg.test_mode if s_cfg else True,
-            connected=c.stripe is not None,
-            account=c.stripe.account_id if c.stripe else None,
-            connected_at=c.stripe.connected_at if c.stripe else None,
-            can_match=True,
-        ),
+    rows = [
         ProviderStatus(
             provider="paypal",
             label="PayPal",
@@ -458,6 +464,21 @@ async def status(books: Books) -> list[ProviderStatus]:
             can_match=False,
         ),
     ]
+    if stripe_visible() or c.stripe is not None:
+        rows.append(
+            ProviderStatus(
+                provider="stripe",
+                label="Stripe",
+                available=s_cfg is not None and stripe_visible(),
+                reason=s_why if stripe_visible() else STRIPE_HIDDEN,
+                test_mode=s_cfg.test_mode if s_cfg else True,
+                connected=c.stripe is not None,
+                account=c.stripe.account_id if c.stripe else None,
+                connected_at=c.stripe.connected_at if c.stripe else None,
+                can_match=True,
+            )
+        )
+    return rows
 
 
 # --- Stripe: connect ------------------------------------------------------------------------------------------
@@ -466,6 +487,8 @@ async def status(books: Books) -> list[ProviderStatus]:
 def stripe_authorize_url(redirect_to: str, binding_hash_: str, user: str) -> str:
     from urllib.parse import urlencode
 
+    if not stripe_visible():
+        raise NotConfigured(STRIPE_HIDDEN)
     cfg = _need_stripe()
     state = make_state("stripe", check_redirect(redirect_to), binding_hash_, user)
     if cfg.direct:  # no Stripe consent screen: straight back through our own callback, which forwards to Settings
@@ -482,6 +505,8 @@ def stripe_authorize_url(redirect_to: str, binding_hash_: str, user: str) -> str
 
 
 async def connect_stripe(books: Books, code: str, state: str, binding: str, user: str) -> StripeConnection:
+    if not stripe_visible():
+        raise NotConfigured(STRIPE_HIDDEN)
     cfg = _need_stripe()
     _finish(state, "stripe", binding, user)
     async with client() as http:
@@ -798,6 +823,8 @@ async def add_link(books: Books, number: str, provider: Provider, user: str) -> 
     c = await load_connections(books)
     ref = secrets.token_hex(8)
     if provider == "stripe":
+        if not stripe_visible():
+            raise NotConfigured(STRIPE_HIDDEN)
         cfg = _need_stripe()
         if not c.stripe:
             raise OnlinePaymentError("Connect Stripe in Settings › Online payments first")

@@ -22,3 +22,20 @@ export const PROVIDER_NAME: Record<PaymentsProvider, string | null> = { none: nu
 
 /** Shown where a paid upgrade would be when payments are off. Neutral: no date, no promise. */
 export const PAYMENTS_OFF_NOTE = "Paid plans can't be bought here at the moment. Your free trial and promo codes work as usual.";
+
+/**
+ * Invoice "Pay online" links (not plan billing): PayPal is the default provider, then PayPal.me (no API). Stripe is
+ * kept in code but hidden (on hold, no live key): the runtime lists it only with STRIPE_VISIBLE=1 or when the user's
+ * books already have a Stripe account linked (services/runtime/app/online_payments.py `stripe_visible`). This build
+ * flag only decides whether static wording names Stripe; which providers are offered is the runtime's list.
+ */
+export const STRIPE_VISIBLE: boolean = process.env.NEXT_PUBLIC_STRIPE_VISIBLE === "1";
+
+const LINK_ORDER: Record<string, number> = { paypal: 0, paypalme: 1, stripe: 2 };
+
+/** The runtime's providers with PayPal first (the default), whatever order they came in. */
+export const payLinkOrder = <T extends { provider: string }>(rows: T[]): T[] =>
+  [...rows].sort((a, b) => (LINK_ORDER[a.provider] ?? 9) - (LINK_ORDER[b.provider] ?? 9));
+
+/** "your own PayPal account" or, with Stripe shown, "your own PayPal or Stripe account". */
+export const payLinkAccounts = (stripeShown: boolean): string => (stripeShown ? "PayPal or Stripe" : "PayPal");

@@ -890,8 +890,9 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
 
 
 async def _pay_online_provider(books: Books) -> str | None:
-    """The connected online-payment account a new invoice gets a "Pay online" link from: PayPal first, then Stripe.
-    None when neither is connected and set up on this server (the invoice then carries bank details only)."""
+    """The connected online-payment account a new invoice gets a "Pay online" link from: PayPal (the default), then
+    Stripe only when it is offered on this server (`STRIPE_VISIBLE=1`, app/online_payments.stripe_visible). None when
+    neither is connected and set up (the invoice then carries bank details only)."""
     try:
         from app import online_payments as op
     except ImportError:  # sales invoicing not in this build
@@ -902,7 +903,7 @@ async def _pay_online_provider(books: Books) -> str | None:
         return None
     if c.paypal and op.paypal_config()[0] is not None:
         return "paypal"
-    if c.stripe and op.stripe_config()[0] is not None:
+    if c.stripe and op.stripe_visible() and op.stripe_config()[0] is not None:
         return "stripe"
     return None
 

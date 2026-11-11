@@ -56,6 +56,7 @@ export default defineConfig({
         AI_PROVIDERS: "modal,meta,spark",
         ACCOUNTANT_TEAM_EMAIL: "reviews@accnomos.example", // Settings › Your accountant shows the opt-in (accountant.spec.ts)
         PUBLIC_CHAT_PER_MIN: "0",
+        STRIPE_VISIBLE: "1", // Stripe links are hidden by default (PayPal is the default); online-payments.spec covers both
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

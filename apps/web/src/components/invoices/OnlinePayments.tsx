@@ -8,6 +8,7 @@ import { balanceOf } from "@/components/invoices/PaymentDialogs";
 import { TestModeBadge } from "@/components/settings/OnlinePayments";
 import { RuntimeErrorNote } from "@/components/States";
 import { money, parsePounds } from "@/lib/invoices";
+import { STRIPE_VISIBLE, payLinkAccounts, payLinkOrder } from "@/lib/payments";
 import { runtime, ukDate, type RtFoundPayment, type RtInvoice, type RtPayProvider, type RtProviderStatus } from "@/lib/runtime";
 
 const LABEL: Record<RtPayProvider, string> = { stripe: "Stripe", paypal: "PayPal", paypalme: "PayPal.me" };
@@ -97,7 +98,8 @@ export function PaymentLinkDialog({
   useEffect(() => {
     runtime
       .payProviders(account)
-      .then((got) => {
+      .then((all) => {
+        const got = payLinkOrder(all); // PayPal first: the default when it is connected
         setRows(got);
         const usable = got.filter((r) => r.available && r.connected);
         if (usable.length) setChoice(usable[0].provider);
@@ -198,7 +200,7 @@ export function OnlineFound({
     <section aria-label="Paid online" className="space-y-2 rounded-2xl border-2 border-teal bg-teal-tint/40 p-4">
       <h2 className="text-lg font-extrabold">Paid online: waiting for your approval</h2>
       <p className="text-sm text-muted">
-        Found in your Stripe or PayPal account. Nothing is in your books until you approve; the fee goes in as its own
+        Found in your {payLinkAccounts(STRIPE_VISIBLE || found.some((f) => f.provider === "stripe"))} account. Nothing is in your books until you approve; the fee goes in as its own
         expense (bank charges, VAT exempt).
       </p>
       <ul className="space-y-2">

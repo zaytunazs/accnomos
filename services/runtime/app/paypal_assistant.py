@@ -501,7 +501,7 @@ async def resolve_message(
     link = inv.payment_link
     add: str | None = None
     if link is None or link.amount_pence != balance:
-        add = await act._pay_online_provider(books)  # noqa: SLF001  PayPal first, then Stripe
+        add = await act._pay_online_provider(books)  # noqa: SLF001  PayPal first; Stripe only when visible
         if add is None:
             try:
                 me = (await op.load_connections(books)).paypalme
