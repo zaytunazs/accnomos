@@ -283,6 +283,16 @@ SUMMARIES: dict[str, Summary] = {
         + f" against invoice {_inv(r)}"
         + (f", fee £{int(r['fee_pence']) // 100}.{int(r['fee_pence']) % 100:02d}" if r.get("fee_pence") else "")
     ),
+    # PayPal disputes (app/paypal_disputes.py)
+    "dispute_evidence_built": lambda r, w: f"Built evidence for PayPal dispute {r.get('dispute')} on invoice {_inv(r)}",
+    "dispute_evidence_sent": lambda r, w: (
+        f"Sent evidence for PayPal dispute {r.get('dispute')} on invoice {_inv(r)}"
+        + (" (demo: not sent to PayPal)" if r.get("demo") else "")
+    ),
+    "dispute_reversal_posted": lambda r, w: (
+        f"Took back the PayPal payment{_pounds(r, 'amount_pence')} on invoice {_inv(r)}"
+        f" after dispute {r.get('dispute')}"
+    ),
     "payout_matched": lambda r, w: (
         f"Matched a bank line as a {_provider(r)} payout"
         + _pounds(r, "amount_pence")
