@@ -1,6 +1,6 @@
 # Release notes — Accnomos mobile
 
-## PayPal on the phone (next release after 0.3.19+24)
+## 0.3.20 (25): PayPal on the phone
 
 Play "What's new" (about 390 characters):
 
