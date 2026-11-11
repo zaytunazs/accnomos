@@ -227,16 +227,23 @@ async def test_a_sale_keeps_gross_fee_and_net_apart_and_posts_only_on_approve(cl
     fee = paypal_fee(4800)  # 169
     assert (it["kind"], it["status"]) == ("sale", "proposed")
     assert (it["gross_pence"], it["fee_pence"], it["net_pence"]) == (4800, fee, 4800 - fee)
-    assert it["vat_code"] == "S"  # the books are VAT registered: 20% included
-    assert [(j["account"], j["debit_pence"], j["credit_pence"], j["vat_code"]) for j in it["journal"]] == [
+    assert it["vat_code"] is None  # VAT registered, but a sale with no invoice: the owner chooses its VAT
+    assert any("choose its VAT" in n for n in it["notes"])
+    r = client.post("/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True}, headers=H)
+    assert r.status_code == 400 and "Choose the VAT" in r.text
+    assert await books.list_events() == []
+    done = _ok(
+        client.post(
+            "/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True, "vat_code": "S"}, headers=H
+        )
+    )
+    assert [(j["account"], j["debit_pence"], j["credit_pence"], j["vat_code"]) for j in done["journal"]] == [
         ("1240 PayPal clearing", 4800, 0, None),
         ("4000 Sales", 0, 4000, "S"),
         ("2200 VAT control", 0, 800, "S"),
         ("7900 Bank charges", fee, 0, "E"),
         ("1240 PayPal clearing", 0, fee, None),
     ]
-    assert await books.list_events() == []  # syncing posts nothing
-    done = _ok(client.post("/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True}, headers=H))
     assert done["status"] == "approved" and len(done["event_ids"]) == 2
     events = await books.list_events()
     sale = next(e for e in events if e.kind == "sale")
@@ -261,8 +268,14 @@ async def test_syncing_again_never_proposes_twice_and_approving_twice_is_refused
     assert first["new"] == 2
     again = _sync(client, days=30)  # the same window again
     assert again["new"] == 0 and len(again["items"]) == 2
-    _ok(client.post("/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True}, headers=H))
-    r = client.post("/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True}, headers=H)
+    _ok(
+        client.post(
+            "/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True, "vat_code": "S"}, headers=H
+        )
+    )
+    r = client.post(
+        "/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True, "vat_code": "S"}, headers=H
+    )
     assert r.status_code == 409
     third = _sync(client, days=30)
     assert _item(third, "SALE0000000000001")["status"] == "approved"
@@ -496,7 +509,11 @@ def test_fee_summary_adds_up_what_paypal_charged_and_what_is_in_the_books(client
     other = reporting_row("SALE0000000000002", _at(2), code="T0006", gross=12000, fee=paypal_fee(12000), name="Ben")
     FAKES.reporting = [SALE, other, SCREWFIX]
     _sync(client)
-    _ok(client.post("/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True}, headers=H))
+    _ok(
+        client.post(
+            "/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True, "vat_code": "S"}, headers=H
+        )
+    )
     start, end = (_at(30).date().isoformat(), date.today().isoformat())
     out = _ok(client.get("/payments/paypal/fees", params={"start": start, "end": end}, headers=H))
     assert out["fees_pence"] == paypal_fee(4800) + paypal_fee(12000)
@@ -531,7 +548,11 @@ def test_audit_lines_read_as_sentences(client: TestClient, fake: FakeStorageProv
 
     FAKES.reporting = [SALE]
     _sync(client)
-    _ok(client.post("/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True}, headers=H))
+    _ok(
+        client.post(
+            "/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True, "vat_code": "S"}, headers=H
+        )
+    )
     lines = [
         json.loads(x)
         for p, d in fake.files.items()
@@ -542,3 +563,50 @@ def test_audit_lines_read_as_sentences(client: TestClient, fake: FakeStorageProv
     assert {"paypal_synced", "paypal_transaction_approved"} <= kinds
     for ln in lines:
         assert ln["action"] in SUMMARIES
+
+
+def test_tie_out_explains_the_gap_between_paypal_and_the_books(client: TestClient) -> None:
+    FAKES.reporting = [SALE]
+    _sync(client)
+    fee = paypal_fee(4800)
+    FAKES.balance_pence = 4800 - fee  # PayPal holds the sale less its fee
+    before = _ok(client.get("/payments/paypal/tieout", headers=H))
+    assert before["available"] and before["paypal_pence"] == 4800 - fee and before["books_pence"] == 0
+    assert (before["waiting_pence"], before["unexplained_pence"]) == (4800 - fee, 0)
+    assert before["paypal_as_of"]
+    _ok(
+        client.post(
+            "/payments/paypal/sync/SALE0000000000001/approve", json={"confirm": True, "vat_code": "S"}, headers=H
+        )
+    )
+    after = _ok(client.get("/payments/paypal/tieout", headers=H))
+    assert (after["books_pence"], after["difference_pence"], after["waiting_pence"]) == (4800 - fee, 0, 0)
+    assert after["unexplained_pence"] == 0 and "to the penny" in after["notes"][0]
+
+
+def test_a_duplicate_payout_refusal_names_the_original_batch_in_details() -> None:
+    """The real sandbox's answer to a reused sender_batch_id (11 Nov 2026): the link is inside details[].link."""
+    import httpx as _httpx
+
+    from app.payment_providers import _linked_batch
+
+    body = {
+        "name": "USER_BUSINESS_ERROR",
+        "message": "User business error.",
+        "details": [
+            {
+                "field": "SENDER_BATCH_ID",
+                "location": "body",
+                "issue": "Batch with given sender_batch_id already exists",
+                "link": [
+                    {
+                        "href": "https://api.sandbox.paypal.com/v1/payments/payouts/6UD9Q3JCLNVVY",
+                        "rel": "self",
+                        "method": "GET",
+                    }
+                ],
+            }
+        ],
+        "links": [],
+    }
+    assert _linked_batch(_httpx.Response(400, json=body)) == "6UD9Q3JCLNVVY"

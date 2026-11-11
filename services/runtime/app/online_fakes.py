@@ -75,6 +75,7 @@ class Fakes:
     disputes: dict[str, dict[str, Any]] = field(default_factory=dict)  # PP-D-… -> PayPal dispute, with "_merchant"
     evidence: dict[str, list[dict[str, Any]]] = field(default_factory=dict)  # dispute id -> what was provided
     # Payouts v1 (bills paid through PayPal, app/billpay.py): sender_batch_id -> batch, with "_merchant"
+    balance_pence: int = 0  # what /v1/reporting/balances reports (GBP total)
     payouts: dict[str, dict[str, Any]] = field(default_factory=dict)
     payout_fail_next: int = 0  # answer the next N payout POSTs with a 503 (PayPal may or may not have it)
     base: str = "http://127.0.0.1:8780"  # where the fake browser pages are (test mode sets the runtime's own)
@@ -796,6 +797,19 @@ def _paypal(request: httpx.Request) -> httpx.Response:
         ("/v2/invoicing/", "/v2/payments/", "/v1/reporting/", "/v1/customer/disputes", "/v1/payments/")
     ) and (merchant is None or merchant not in FAKES.merchants):
         return _paypal_error(403, "NOT_AUTHORIZED", "Authorization failed due to insufficient permissions.")
+    if path == "/v1/reporting/balances" and method == "GET":  # shape as the real sandbox answered (11 Nov 2026)
+        value = f"{FAKES.balance_pence // 100}.{FAKES.balance_pence % 100:02d}"
+        money = {"currency_code": "GBP", "value": value}
+        stamp = "2026-11-11T14:29:59Z"
+        bal = {
+            "currency": "GBP",
+            "total_balance": money,
+            "available_balance": money,
+            "withheld_balance": {"currency_code": "GBP", "value": "0.00"},
+        }
+        return _json(
+            200, {"balances": [bal], "account_id": "FAKEACCOUNT", "as_of_time": stamp, "last_refresh_time": stamp}
+        )
     if path == "/v1/reporting/transactions" and method == "GET":
         return _reporting(request)
     if path == "/v2/invoicing/invoices" and method == "POST":

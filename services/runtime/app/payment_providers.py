@@ -706,6 +706,13 @@ class PayPalApi:
             raise ProviderError("PayPal", resp.status_code, _error_text(resp))
         return resp.json() if resp.content else {}
 
+    async def balances(self, merchant: str | None, currency: str = "GBP") -> dict[str, Any]:
+        """`GET /v1/reporting/balances?currency_code=GBP` (Transaction Search family; run against the sandbox on
+        11 Nov 2026): {"balances": [{"currency", "total_balance", "available_balance", "withheld_balance"}],
+        "as_of_time", "last_refresh_time"}. PayPal's own figure, refreshed in batches (it lagged ~1.5 h in the
+        sandbox), so it is shown with its time."""
+        return await self._call("GET", f"/v1/reporting/balances?currency_code={currency}", merchant=merchant)
+
     async def payout_batch(self, merchant: str, batch_id: str) -> dict[str, Any]:
         return await self._call("GET", f"/v1/payments/payouts/{batch_id}", merchant=merchant)
 
@@ -753,8 +760,16 @@ def _linked_batch(resp: httpx.Response) -> str | None:
         body = resp.json()
     except ValueError:
         return None
-    links = body.get("links") if isinstance(body, dict) else None
-    for link in links if isinstance(links, list) else []:
+    if not isinstance(body, dict):
+        return None
+    # Seen against the real sandbox (11 Nov 2026): 400 USER_BUSINESS_ERROR with the link inside
+    # details[].link[] ({"field": "SENDER_BATCH_ID", "issue": "Batch with given sender_batch_id already exists"}),
+    # and an empty top-level `links`. Both places are read.
+    candidates: list[Any] = list(body.get("links") or []) if isinstance(body.get("links"), list) else []
+    for detail in body.get("details") or []:
+        if isinstance(detail, dict) and isinstance(detail.get("link"), list):
+            candidates += detail["link"]
+    for link in candidates:
         href = str(link.get("href") or "") if isinstance(link, dict) else ""
         if "/v1/payments/payouts/" in href:
             return href.rstrip("/").rsplit("/", 1)[-1] or None
