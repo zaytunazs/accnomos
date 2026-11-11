@@ -1,4 +1,4 @@
-import { BUILD_PAYMENTS_PROVIDER, PROVIDER_NAME } from "@/lib/payments";
+import { BUILD_PAYMENTS_PROVIDER, PROVIDER_NAME, STRIPE_VISIBLE } from "@/lib/payments";
 
 export const metadata = { title: "Privacy policy — Accnomos" };
 
@@ -154,9 +154,10 @@ export default function PrivacyPage() {
         </p>
         {PAYMENTS && (
           <p>
-            <strong>Payments are taken by {PAYMENTS}</strong> (checkout, billing and the customer portal). {PAYMENTS} holds your card and payment
-            history; we never see or store a card number. {PAYMENTS} tells us your plan and payment status, and we keep a copy of that status in the
-            registry.
+            <strong>Payments for your Accnomos plan are taken by {PAYMENTS}</strong>
+            {BUILD_PAYMENTS_PROVIDER === "paypal"
+              ? ` (PayPal Subscriptions: you approve the subscription at PayPal, and PayPal takes each payment). PayPal holds your payment method and payment history; we never see your card or your PayPal login. PayPal tells us whether the subscription is active and when a payment is made or fails, and we keep a copy of that status in the registry. PayPal's own privacy statement covers what PayPal does with your details.`
+              : ` (checkout, billing and the customer portal). ${PAYMENTS} holds your card and payment history; we never see or store a card number. ${PAYMENTS} tells us your plan and payment status, and we keep a copy of that status in the registry.`}
           </p>
         )}
         <p>
@@ -239,7 +240,7 @@ export default function PrivacyPage() {
                 { data: "Mail read during intake and triage", where: "Memory only; copies land in 00 Inbox and to-dos in _System/Todos", who: "You — full bodies and attachments are never fetched by triage" },
                 { data: "Calendar days read for planning", where: "Memory only; applied plans in _System/Planner/applied.json", who: "You — nothing written before you tap Apply" },
                 { data: "Account registry: email, sign-in kind, plan, billing status, trial dates, promo redemptions, monthly usage counts, support notes", where: "Supabase database (UK or EU region)", who: "The service operator; never your books or financial records" },
-                ...(PAYMENTS ? [{ data: "Card and payment details, invoices for your plan", where: PAYMENTS, who: `You and ${PAYMENTS}; we receive only your plan and payment status` }] : []),
+                ...(PAYMENTS ? [{ data: "Payment details and payments for your plan", where: PAYMENTS, who: `You and ${PAYMENTS}; we receive only your plan and payment status` }] : []),
                 { data: "Usage analytics events (page, feature, counts; off if you opt out)", where: "Our registry, kept 13 months", who: "The service operator" },
                 { data: "Problem reports (message, page, app version, browser, optional screenshot)", where: "Our registry", who: "The service operator, until closed plus 12 months" },
                 { data: "Error reports (amounts, emails, VAT numbers and tokens removed; only when enabled)", where: "Sentry, EU region", who: "The service operator" },
@@ -265,7 +266,7 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">Third parties</h2>
         <ul className="list-disc space-y-2 pl-5">
           <li>Supabase — hosts our account registry (plan, billing status, usage counts, analytics events, problem reports) in a UK or EU region; never your books or financial records.</li>
-          {PAYMENTS && <li>{PAYMENTS} — takes payment for your Accnomos plan and holds your card; we receive your plan and payment status.</li>}
+          {PAYMENTS && <li>{PAYMENTS} — our payment processor for Accnomos plans; it takes the payments and holds your payment method; we receive your plan and payment status.</li>}
           <li>Sentry (EU region) — receives scrubbed error reports, only where error reporting is enabled.</li>
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
           <li>Google (sign-in, Google Drive, and Gmail, Calendar and Contacts) — only if you sign in with Google, under your Google account terms.</li>
@@ -274,7 +275,7 @@ export default function PrivacyPage() {
           <li>Meta Model API — only with your own Meta key, if you provide one, under Meta&apos;s terms for that key. Our server sends it nothing of yours.</li>
           <li>Our web host (IONOS, the server that terminates HTTPS for accnomos.com and api.accnomos.com) — carries your requests, including document content, over an encrypted tunnel to our own server; it is a processor for that transport only.</li>
           <li>TrueLayer — only if you connect a bank for bank feeds; it receives your bank sign-in choice and consent, and returns account and transaction data, which we write to your OneDrive.</li>
-          <li>Stripe and PayPal — only if you connect either for payment links on invoices; they receive the invoice amount, reference and description needed to create the link, and tell us when it is paid.</li>
+          <li>{STRIPE_VISIBLE ? "PayPal and Stripe — only if you connect either" : "PayPal — only if you connect it"} for payment links on invoices; {STRIPE_VISIBLE ? "they receive" : "it receives"} the invoice amount, reference and description needed to create the link, and {STRIPE_VISIBLE ? "tell" : "tells"} us when it is paid.</li>
           <li>A hosted inference provider chosen by the server owner — only if you use your own key and the server owner has switched on a hosted second-reading model; the document image is then sent there for an independent second reading. It is off today. In local mode documents are never sent there.</li>
           <li>HM Revenue &amp; Customs — only if you connect HMRC.</li>
         </ul>

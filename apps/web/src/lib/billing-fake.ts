@@ -146,9 +146,14 @@ export async function fakeCall<T>(fullPath: string, method: string, body?: unkno
     }
     return out(method === "PATCH" ? account() : accountAnswer());
   }
-  if (path === "/billing/checkout" || path === "/billing/topup" || path === "/billing/portal") {
+  if (path === "/billing/checkout" || path === "/billing/topup" || path === "/billing/portal" || path === "/billing/change-plan") {
     if (account().payments_provider === "none") throw new HttpError(503, "Paid plans can't be bought on this server.");
-    return out({ url: `${window.location.origin}/settings?stripe=test#plan-billing` });
+    return out({ url: `${window.location.origin}/settings?${account().payments_provider}=test#plan-billing` });
+  }
+  if (path === "/billing/cancel") {
+    if (account().payments_provider === "none") throw new HttpError(503, "Paid plans can't be bought on this server.");
+    const a = account();
+    return out({ ok: true, message: "Cancelled: nothing more is taken", account: { ...a, cancel_at_period_end: true } });
   }
   if (path === "/billing/redeem") {
     const code = String((body as { code?: string }).code ?? "").trim().toUpperCase();

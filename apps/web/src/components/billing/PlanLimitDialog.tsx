@@ -19,11 +19,15 @@ export default function PlanLimitDialog() {
   const account = useAccount();
   // A top-up is offered only when the runtime takes payments (lib/payments.ts); asked once, when the dialog first opens.
   const [pays, setPays] = useState(false);
+  const [paypal, setPaypal] = useState(false);
   useEffect(() => {
     if (!account) return;
     billingApi
       .account(account)
-      .then((a) => setPays(a.configured && takesPayments(a.payments_provider)))
+      .then((a) => {
+        setPays(a.configured && takesPayments(a.payments_provider));
+        setPaypal(a.configured && a.payments_provider === "paypal");
+      })
       .catch(() => setPays(false));
   }, [account]);
   const [info, setInfoState] = useState<BillingRefusal | null>(() => currentPlanLimit());
@@ -84,7 +88,7 @@ export default function PlanLimitDialog() {
         <div className="mt-5 flex flex-wrap gap-2">
           {pays && topUpHelps(info) && (
             <button type="button" className={primaryButton} disabled={busy || !account} onClick={topUp}>
-              Buy {TOPUP_DOCS} documents for {money(TOPUP_PENCE)}
+              Buy {TOPUP_DOCS} documents for {money(TOPUP_PENCE)}{paypal ? " with PayPal" : ""}
             </button>
           )}
           <Link href="/settings#plan-billing" onClick={() => setInfo(null)} className={`${pays && topUpHelps(info) ? secondaryButton : primaryButton} inline-flex items-center`}>

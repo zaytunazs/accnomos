@@ -14,9 +14,10 @@ import { demoSession } from "@/lib/demo";
 import { PAYMENTS_OFF_NOTE, PROVIDER_NAME, takesPayments } from "@/lib/payments";
 
 /**
- * Settings › Plan & billing: where the plan stands, this month's use, and every way to change it. Buying (upgrade,
- * top-up, card and invoices) shows only when the runtime takes payments (`payments_provider`, lib/payments.ts); with
- * `none` the plans, the trial and promo codes still show and work.
+ * Settings › Plan & billing: where the plan stands, this month's use, and every way to change it. Buying (subscribe,
+ * change plan, cancel, top-up, manage) shows only when the runtime takes payments (`payments_provider`, lib/payments.ts);
+ * with `none` the plans, the trial and promo codes still show and work. PayPal is the owner's provider: the buyer
+ * approves at PayPal, plan changes are PayPal revisions, Manage opens PayPal's automatic payments page.
  */
 export default function PlanBilling({ card, heading }: { card: string; heading: string }) {
   const account = useAccount();
@@ -31,15 +32,24 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
   const [code, setCode] = useState("");
   const [demo, setDemo] = useState(false);
   const [off, setOff] = useState<RtAccountOff | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   useEffect(() => {
     queueMicrotask(() => {
       setDemo(!!demoSession());
-      // Back from Stripe: Checkout and the Customer Portal return to /settings/billing?checkout=… (see app/settings/billing).
+      // Back from the payment provider (PayPal's approval, or Stripe Checkout): /settings/billing?checkout=…, ?change=…
+      // or ?topup=… (see app/settings/billing).
       const q = new URLSearchParams(window.location.search);
-      const back = q.get("checkout") ?? q.get("topup");
-      if (back === "success") setMessage(q.get("topup") ? "Thank you: your extra documents are being added." : "Thank you: your plan is being set up. It shows here within a minute.");
-      else if (back === "cancelled") setMessage("Nothing was charged.");
+      const back = q.get("checkout") ?? q.get("change") ?? q.get("topup");
+      if (back === "success")
+        setMessage(
+          q.get("topup")
+            ? "Thank you: your extra documents are being added."
+            : q.get("change")
+              ? "Thank you: your new plan shows here within a minute."
+              : "Thank you: your plan is being set up. It shows here within a minute.",
+        );
+      else if (back === "cancelled") setMessage(q.get("change") ? "Your plan is unchanged." : "Nothing was charged.");
     });
     fetchPlans().then((p) => p && setPlans(p));
   }, []);
@@ -73,6 +83,26 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
       window.location.assign(url);
     } catch (e) {
       setError((e as Error).message);
+      setBusy(null);
+    }
+  }
+
+  async function cancelPlan() {
+    if (!account) return;
+    setBusy("cancel");
+    setError(null);
+    setMessage(null);
+    try {
+      track("cancel_click");
+      const r = await billingApi.cancel(account);
+      setConfirmCancel(false);
+      if (r.ok) {
+        setMessage(r.message);
+        setAcct(r.account);
+      } else setError(r.message);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
       setBusy(null);
     }
   }
@@ -132,6 +162,10 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
   // Nothing offers to take money until the runtime says it can (and not while the account is loading).
   const pays = acct ? takesPayments(acct.payments_provider) : false;
   const providerName = acct ? PROVIDER_NAME[acct.payments_provider] : null;
+  const paypal = acct?.payments_provider === "paypal";
+  // A subscription that is still renewing (a PayPal one subscribed during the trial is `trialing` until it starts).
+  const subscribed = !!acct?.has_payment_account && !acct.cancel_at_period_end && (paying || acct.status === "trialing");
+  const manageLabel = paypal ? "Manage in PayPal" : "Manage card & invoices";
 
   return (
     <div className="space-y-4" data-plan-billing="">
@@ -139,7 +173,9 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
         <div role="status" className="rounded-2xl border-2 border-brass bg-brass/10 p-4 text-[15px] text-ink">
           <strong>Your free trial ends {reminder.days === 0 ? "today" : reminder.days === 1 ? "tomorrow" : `in ${reminder.days} days`}</strong> ({longDate(acct?.trial_ends_at)}).
           {pays
-            ? "Choose a plan below and add a card before then to keep going. If you do not, your books become read-only; nothing is deleted."
+            ? subscribed
+              ? "Your plan starts then; nothing is charged before."
+              : `Choose a plan below and ${paypal ? "subscribe with PayPal" : "add a card"} before then to keep going. If you do not, your books become read-only; nothing is deleted.`
             : "After that your books become read-only until a plan or a promo code is applied; nothing is deleted."}
         </div>
       )}
@@ -170,10 +206,15 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
           </p>
         )}
         {paying && acct?.cancel_at_period_end && (
-          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">Your plan is set to end on {longDate(acct.current_period_end)}. Resume it under Manage card &amp; invoices.</p>
+          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">
+            Your plan is set to end on {longDate(acct.current_period_end)}.{" "}
+            {paypal ? "To keep going, choose a plan below: nothing is charged until that date." : "Resume it under Manage card & invoices."}
+          </p>
         )}
         {acct?.status === "past_due" && (
-          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">The last payment did not go through. Update your card under Manage card &amp; invoices.</p>
+          <p className="mt-3 rounded-xl bg-ground p-3 text-sm text-ink">
+            The last payment did not go through. {paypal ? "Check the payment method in PayPal (Manage in PayPal)." : "Update your card under Manage card & invoices."}
+          </p>
         )}
       </section>
 
@@ -254,29 +295,60 @@ export default function PlanBilling({ card, heading }: { card: string; heading: 
         )}
         {pays && (
         <>
-        <label className="mt-3 block">
-          <span className={fieldLabel}>Promo code (optional)</span>
-          <input className={fieldInput} value={promo} onChange={(e) => setPromo(e.target.value)} autoComplete="off" />
-        </label>
+        {!paypal && !subscribed && (
+          <label className="mt-3 block">
+            <span className={fieldLabel}>Promo code (optional)</span>
+            <input className={fieldInput} value={promo} onChange={(e) => setPromo(e.target.value)} autoComplete="off" />
+          </label>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
           <button
             type="button"
             className={primaryButton}
             disabled={!account || busy !== null}
             onClick={() => {
-              track("upgrade_click", { plan: pick, interval });
-              void go("checkout", () => billingApi.checkout(account!, { plan_code: pick, interval, ...(promo.trim() ? { promo_code: promo.trim() } : {}) }));
+              track(subscribed ? "change_plan_click" : "upgrade_click", { plan: pick, interval });
+              void go(
+                "checkout",
+                subscribed
+                  ? () => billingApi.changePlan(account!, { plan_code: pick, interval })
+                  : () => billingApi.checkout(account!, { plan_code: pick, interval, ...(!paypal && promo.trim() ? { promo_code: promo.trim() } : {}) }),
+              );
             }}
           >
-            {paying ? "Change plan" : "Upgrade"}
+            {subscribed ? "Change plan" : paypal ? "Subscribe with PayPal" : "Upgrade"}
           </button>
           <button type="button" className={secondaryButton} disabled={!account || busy !== null || acct?.has_payment_account === false} onClick={() => void go("portal", () => billingApi.portal(account!))}>
-            Manage card &amp; invoices
+            {manageLabel}
           </button>
+          {subscribed && !confirmCancel && (
+            <button type="button" className={secondaryButton} disabled={!account || busy !== null} onClick={() => setConfirmCancel(true)}>
+              Cancel plan
+            </button>
+          )}
         </div>
+        {confirmCancel && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-ground p-3 text-sm" data-confirm-cancel="">
+            <span>
+              Cancel your plan? Nothing more is taken.{" "}
+              {acct?.status === "trialing" ? "Your free trial carries on to its end date." : "You keep it until the end of the time already paid for, then your books become read-only; nothing is deleted."}
+            </span>
+            <button type="button" className={primaryButton} disabled={busy !== null} onClick={() => void cancelPlan()}>
+              {busy === "cancel" ? "Cancelling…" : "Yes, cancel"}
+            </button>
+            <button type="button" className={secondaryButton} onClick={() => setConfirmCancel(false)}>
+              Keep my plan
+            </button>
+          </div>
+        )}
         <p className="mt-2 text-xs text-muted">
-          Payment is taken by {providerName ?? "our payment provider"}; we never see or store your card. Cancel any time from Manage card &amp; invoices.
+          {paypal
+            ? "Payment is taken by PayPal: you approve the subscription there, and we never see your card or PayPal login. Prices are plus UK VAT at 20%, added by PayPal. Cancel any time here or in PayPal."
+            : `Payment is taken by ${providerName ?? "our payment provider"}; we never see or store your card. Cancel any time from Manage card & invoices.`}
         </p>
+        {paypal && !subscribed && (
+          <p className="mt-1 text-xs text-muted">Have a discount code? Contact us and we&apos;ll apply it. Free-month codes go under Redeem a code below.</p>
+        )}
         </>
         )}
       </section>

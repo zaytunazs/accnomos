@@ -82,7 +82,7 @@ export interface RtAccount {
   billing_interval: BillingInterval | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
-  /** A Stripe customer exists (Manage card & invoices works). */
+  /** A payment account exists: a PayPal subscription or a Stripe customer (Manage billing works). */
   has_payment_account: boolean;
   analytics_opt_out: boolean;
   usage: RtUsage;
@@ -101,6 +101,13 @@ export interface RtAccountOff {
 
 export type RtAccountAnswer = RtAccount | RtAccountOff;
 
+/** POST /billing/cancel: the subscription stops renewing; `account` shows until when the plan runs. */
+export interface CancelResult {
+  ok: boolean;
+  message: string;
+  account: RtAccount;
+}
+
 /** POST /billing/redeem: `code` and `kind` are there when the code was found. */
 export interface RedeemResult {
   ok: boolean;
@@ -110,7 +117,7 @@ export interface RedeemResult {
   account: RtAccount;
 }
 
-/** POST /billing/checkout, /billing/portal, /billing/topup: where to send the browser (Stripe). */
+/** POST /billing/checkout, /billing/portal, /billing/change-plan, /billing/topup: where to send the browser (PayPal, or Stripe). */
 export interface StripeRedirect {
   url: string;
 }

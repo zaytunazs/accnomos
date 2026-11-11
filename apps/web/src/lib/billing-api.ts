@@ -8,7 +8,7 @@
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { runtimeCall, runtimeHeaders } from "./runtime";
-import type { BillingInterval, RedeemResult, RtAccount, RtAccountAnswer, RtPlan } from "./billing";
+import type { BillingInterval, CancelResult, RedeemResult, RtAccount, RtAccountAnswer, RtPlan } from "./billing";
 import {
   readAccount, readActionResult, readAnalytics, readAuditList, readBug, readBugs, readCode, readCodes, readMetrics, readPlan, readPlans,
   readScreenshot, readUserDetail, readUserList,
@@ -59,6 +59,11 @@ export const billingApi = {
   checkout: (a: AccountInfo, body: { plan_code: string; interval: BillingInterval; promo_code?: string }) =>
     rt<{ url: string }>(a, "/billing/checkout", { method: "POST", body }),
   portal: (a: AccountInfo) => rt<{ url: string }>(a, "/billing/portal", { method: "POST" }),
+  /** PayPal: a plan revision the buyer approves at PayPal; Stripe: its billing portal. */
+  changePlan: (a: AccountInfo, body: { plan_code: string; interval: BillingInterval }) =>
+    rt<{ url: string }>(a, "/billing/change-plan", { method: "POST", body }),
+  /** Stops renewing; the plan runs to the end of the time paid for. */
+  cancel: (a: AccountInfo) => rt<CancelResult>(a, "/billing/cancel", { method: "POST" }),
   redeem: (a: AccountInfo, code: string) => rt<RedeemResult>(a, "/billing/redeem", { method: "POST", body: { code } }),
   topup: (a: AccountInfo) => rt<{ url: string }>(a, "/billing/topup", { method: "POST" }),
 };
