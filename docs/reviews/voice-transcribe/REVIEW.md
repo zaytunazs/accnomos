@@ -1,13 +1,13 @@
-# Review: Muse Voice Transcribe first, a local speech-to-text model on our own server as fallback (`claude/muse-transcribe`)
+# Review: The speech-to-text model first, a local speech-to-text model on our own server as fallback (`claude/muse-transcribe`)
 
-Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, the open-weights host and the hosted GPU were not called from here.
+Branch from `origin/main` (`c353bd4`). No push to main, no PR. The model provider's API, the open-weights host and the hosted GPU were not called from here.
 
 ## What the brief assumed, and what was there
 
 - The brief says voice "today is transcribed by the local speech-to-text model on the owner's Spark voice server". **It was not.** a case-insensitive `git grep` for speech-to-text
   clients and `audio/transcriptions` over `services`, `apps` and every `origin/*` branch found no local speech-to-text model client:
-  `POST /books/ask/voice` already called Muse Voice Transcribe (`app/ai/voice.py`), key mode only, with a request shape
-  taken from research notes. So this branch (a) corrects the Muse request to the documented shape, (b) adds the
+  `POST /books/ask/voice` already called the speech-to-text model (`app/ai/voice.py`), key mode only, with a request shape
+  taken from research notes. So this branch (a) corrects the model request to the documented shape, (b) adds the
   the local speech-to-text model client as a standard-API `/audio/transcriptions` call configured by `SPARK_WHISPER_URL` (empty = off),
   and (c) puts both behind a chain. Whether the Spark actually serves the local speech-to-text model, and under which model id, is for the
   owner to set up; `docs/HONESTY.md` says so.
@@ -19,19 +19,19 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, the o
 
 | What | Source | Notes |
 |---|---|---|
-| Endpoint, auth, multipart parts, request JSON (`mode`, `model`, `audioEncoding: "WAV"`, `keywords`, `languageBias`), response (`sessionId`, `transcript`, `audioDurationMs`, `turns`), error codes, audio formats (mono 16-bit WAV, 16 or 24 kHz), limits (10 min or 32 MB one-shot; 60 min streaming), streaming handshake, events and close codes | Meta's cookbook `meta-models/meta-model-cookbook`, commit `0a99b98` (7 Oct 2026), `06_muse_voice/README.md`, `06_muse_voice/01_voice_api_fundamentals/{README.md,utils.py,transcribe_file.py}` | Official (Meta's own repo; it links https://dev.meta.ai/docs/speech-to-text and https://dev.meta.ai/docs/api-reference/voice). **dev.meta.ai and developer.meta.com do not resolve from this sandbox**, so the pages the brief names (https://dev.meta.ai/docs/overview, https://dev.meta.ai/docs/models, https://developer.meta.com/ai/resources/blog/meet-muse-voice-transcribe-streaming-speech-to-text/) could not be read directly; search snippets of them agree on the base URL, the two endpoints and the WebSocket auth-in-handshake. |
-| Price, USD 3.00 per 1,000 audio minutes (USD 0.18 an hour), same for streaming and file | orcarouter.ai/blog/muse-voice-transcribe, openrouter.ai/meta/muse-voice-transcribe-1.0, productbuilder.net/models/muse-voice-transcribe-1-0 (web search) | **Third party only**; no Meta pricing page was readable. Recorded as such in `docs/META_MODELS.md`. |
+| Endpoint, auth, multipart parts, request JSON (`mode`, `model`, `audioEncoding: "WAV"`, `keywords`, `languageBias`), response (`sessionId`, `transcript`, `audioDurationMs`, `turns`), error codes, audio formats (mono 16-bit WAV, 16 or 24 kHz), limits (10 min or 32 MB one-shot; 60 min streaming), streaming handshake, events and close codes | The model provider's cookbook `meta-models/meta-model-cookbook`, commit `0a99b98` (7 Oct 2026), `06_muse_voice/README.md`, `06_muse_voice/01_voice_api_fundamentals/{README.md,utils.py,transcribe_file.py}` | Official (the model provider's own repo; it links https://dev.meta.ai/docs/speech-to-text and https://dev.meta.ai/docs/api-reference/voice). **dev.meta.ai and developer.meta.com do not resolve from this sandbox**, so the pages the brief names (https://dev.meta.ai/docs/overview, https://dev.meta.ai/docs/models, https://developer.meta.com/ai/resources/blog/meet-muse-voice-transcribe-streaming-speech-to-text/) could not be read directly; search snippets of them agree on the base URL, the two endpoints and the WebSocket auth-in-handshake. |
+| Price, USD 3.00 per 1,000 audio minutes (USD 0.18 an hour), same for streaming and file | orcarouter.ai/blog/muse-voice-transcribe, openrouter.ai/meta/muse-voice-transcribe-1.0, productbuilder.net/models/muse-voice-transcribe-1-0 (web search) | **Third party only**; no provider pricing page was readable. Recorded as such in `docs/AI_MODELS.md`. |
 | The local speech-to-text model request (`file`, `model`, `language`, `prompt`, `response_format=json` → `{"text"}`) | standard audio API reference, https://platform.openai.com/docs/api-reference/audio/createTranscription | The shape a local speech-to-text server implement; from knowledge, not re-fetched. |
 
 ## Design
 
 - **`app/ai/stt.py`**: providers `muse` and `whisper`, order from `STT_PROVIDERS` (default `muse,whisper`), each left
-  out when unconfigured, like `app/ai/providers.py`. Muse's key: the user's own `X-Meta-Api-Key` in key mode, else the
+  out when unconfigured, like `app/ai/providers.py`. The model's key: the user's own `X-Meta-Api-Key` in key mode, else the
   server chain's `meta` provider, else `META_API_KEY`. `transcribe()` tries each in order and falls over on **any**
-  `VoiceError` (network, timeout, 401/403, 400, 413, 429, 5xx, no words). Both failing raises Muse's status and reason
+  `VoiceError` (network, timeout, 401/403, 400, 413, 429, 5xx, no words). Both failing raises the model's status and reason
   plus "the fallback failed too: …". Timeouts `MUSE_STT_TIMEOUT_S` (45 s) and `WHISPER_STT_TIMEOUT_S` (90 s). Test mode
   returns no providers, so no e2e run can reach a real service.
-- **`app/ai/voice.py`**: the Muse client now sends `{"mode": "PUSH_TO_TALK", "model", "audioEncoding": "WAV",
+- **`app/ai/voice.py`**: the model client now sends `{"mode": "PUSH_TO_TALK", "model", "audioEncoding": "WAV",
   "languageBias": ["english"], "keywords"?}`, reads `transcript` first (keeps `text`, `turns`, `results`, `segments`
   for tolerance), maps 400 to 422 and a timeout to 504. The realtime WebSocket is documented but not used: a question
   is recorded whole, so one POST is quicker than replaying it at real time (the server closes a session that is sent
@@ -40,12 +40,12 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, the o
   `ProposedAction.transcribed_by` (re-signed after it is set, so it cannot be changed before Approve; left out of the
   signed payload when None, so typed proposals sign exactly as before); `actions._claim` and `actions.reject` write it
   to `_System/audit/actions/<yyyy-mm>.jsonl`. `/health` gains `stt` (names, labels, models, configured; no keys, no URLs).
-- **Keywords**: job and staff names from the books (best effort, read in parallel with the ffmpeg step) go to Muse as
+- **Keywords**: job and staff names from the books (best effort, read in parallel with the ffmpeg step) go to the model as
   `keywords` and to the local speech-to-text model as a `prompt`, so "Hendon" and "Andy" are spelt as in the books.
 - **Keys and audio**: keys only from the request header or env; held in `SttProvider.key` (`repr=False`), never in an
   error message, log line, answer, audit line or eval output (tested). Audio: unchanged; ffmpeg runs in a temporary
   directory deleted at once, and the WAV bytes go to each provider in memory.
-- **Web** (`AskThread.tsx`, `ActionCard.tsx`, `runtime.ts`): "Transcribed by Muse Voice Transcribe" under a spoken
+- **Web** (`AskThread.tsx`, `ActionCard.tsx`, `runtime.ts`): "Transcribed by the speech-to-text model" under a spoken
   question; "Spoken request · transcribed by … (kept in the audit log)" on its action card. The mic is now enabled in
   local mode when `/health.stt` lists a configured provider. Capture is unchanged.
 - **Android** (`ask_screen.dart`, `runtime_client.dart`): `VoiceAnswer.transcribedBy`; the "Spoken" label reads
@@ -60,7 +60,7 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, the o
 
 | Where | New / changed | Result here |
 |---|---|---|
-| `services/runtime/tests/test_stt.py` | 27 new: chain config (user key, server key in local mode, server chain, order and timeouts from env, test mode empty, no key in repr/describe), Muse-first, the local speech-to-text model after each of 8 Muse failures (500, 429, 413, 400, 401, timeout, connect error, no words), the local speech-to-text model request shape with and without a key, both failing, single provider, none, **no key in logs (DEBUG incl. httpx) / errors / results**; route: spoken overtime "Andy did 2 hours overtime at double time on the Hendon job last week" heard by Muse → signed `pay_overtime` card with `transcribed_by`, tampering refused (403), approve writes it to the audit; Muse 503 → the local speech-to-text model with the server key in local mode → card says the local speech-to-text model, reject audits it; typed proposals sign as before; no provider = 400; `/health.stt` without secrets | pass |
+| `services/runtime/tests/test_stt.py` | 27 new: chain config (user key, server key in local mode, server chain, order and timeouts from env, test mode empty, no key in repr/describe), the model-first, the local speech-to-text model after each of 8 the model failures (500, 429, 413, 400, 401, timeout, connect error, no words), the local speech-to-text model request shape with and without a key, both failing, single provider, none, **no key in logs (DEBUG incl. httpx) / errors / results**; route: spoken overtime "Andy did 2 hours overtime at double time on the Hendon job last week" heard by the model → signed `pay_overtime` card with `transcribed_by`, tampering refused (403), approve writes it to the audit; the model 503 → the local speech-to-text model with the server key in local mode → card says the local speech-to-text model, reject audits it; typed proposals sign as before; no provider = 400; `/health.stt` without secrets | pass |
 | `services/runtime/tests/test_voice.py` | documented request JSON asserted exactly; keywords only when given; `turns` reply shape; 400 → 422; route returns `transcribed_by`; local-mode message | 28 pass |
 | `services/runtime/tests/test_shopping.py` | the bolts-for-Hendon voice test's fake accepts the new keyword args | pass |
 | `services/runtime/tests/test_security_routes.py` | `ai/stt.py` added to the modules allowed to make HTTP calls (bases: user cfg / `MODEL_API_BASE` / `SPARK_WHISPER_URL`) | pass |
@@ -80,7 +80,7 @@ Playwright itself uses: all passed. None of the 8 touches a file this branch cha
 
 ## Risks
 
-- **Live shapes unverified.** Built against Meta's cookbook, not a live call. If the server wants another
+- **Live shapes unverified.** Built against the model provider's cookbook, not a live call. If the server wants another
   `languageBias` value than `"english"` it ignores it silently (per the cookbook), so the risk is a weaker bias, not an
   error. The first owner run of `tools/spark_queue.sh --only stt` with a key will show it.
 - **Server key in local mode.** By design, `META_API_KEY` now also transcribes voice for local-mode users. On a public

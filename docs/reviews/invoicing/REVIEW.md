@@ -1,7 +1,7 @@
 # Review: `claude/invoicing`
 
 Second-agent review of the sales invoicing task (`TASK_BRIEF.md`): create, PDF, send via Outlook, track payment,
-Muse-drafted reminders.
+The model-drafted reminders.
 
 ## What was checked
 

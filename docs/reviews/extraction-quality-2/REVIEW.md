@@ -16,7 +16,7 @@ Second-agent review of the receipt extraction-quality branch (brief: `TASK_BRIEF
   card wording, and the eval harness (`run_extraction.py` single run, `report_200.py` `--note`, new `replay.py`).
 - Product rules: arithmetic is in integer pence (`p()`), and repairs come only from the document's own figures. Every figure repair
   is recorded both as a check and as `repaired_by_code`, and the card shows "Figures repaired by code from the receipt's own
-  arithmetic: …". Nothing is written server-side and no secrets appear. The new code calls only the Glimmer extractor.
+  arithmetic: …". Nothing is written server-side and no secrets appear. The new code calls only the local open-weights model extractor.
 - Measured offline: `python -m harness.replay runs/glimmer_messy_200` re-runs today's repairs and checks over the stored readings
   of the 27 Oct run (no model):
 
@@ -52,12 +52,12 @@ Second-agent review of the receipt extraction-quality branch (brief: `TASK_BRIEF
   (this would also fix the existing false pass on 049), or change the gold expectation for zero-VAT receipts.
 - **No live eval was run.** Deliverable 1 (baseline under `evals/runs/glimmer_messy_200_before/`) and deliverable 3 (final run
   into `evals/runs/glimmer_messy_200/`, README eval row) are missing. At about 22 s per document, a pair of runs is about
-  2.5 hours on Glimmer. The README eval row and `REPORT_glimmer_messy_200_2026-10-27.md` still show the pre-branch numbers, which
+  2.5 hours on the local open-weights model. The README eval row and `REPORT_glimmer_messy_200_2026-10-27.md` still show the pre-branch numbers, which
   is accurate for that run.
 - **2c (prompt sentences) was not attempted**, and the commits for 2a/2b/2d carry no before/after eval numbers. `2e5e710` is a
   "wip" commit that mixes the second read, the card wording and harness changes; it was left as is, because history was not
   rewritten.
-- The second read triggers at confidence **≤ 0.6**, not the brief's < 0.6, because Glimmer's "unsure" value is exactly 0.6 (see the
+- The second read triggers at confidence **≤ 0.6**, not the brief's < 0.6, because the local open-weights model's "unsure" value is exactly 0.6 (see the
   comment in `pipeline.py`). Every unsure document therefore costs a second model call; the latency impact is unmeasured.
 - The doubled-quantity repair rounds the new unit price to 2 dp, as the schema does. For awkward quantities (for example £100 over
   qty 7 = 14.29) qty × unit is then 3p off, and `ARITH_LINES` warns. This is only a warning while the totals hold, so status does not change.
@@ -69,7 +69,7 @@ Second-agent review of the receipt extraction-quality branch (brief: `TASK_BRIEF
 From `services/runtime` run `pytest -q tests/test_repair.py tests/test_second_read.py` (fake extractor, under a second). From
 `evals` run `python -m harness.replay runs/glimmer_messy_200 --show`: it lists every document the repairs change, with the note
 the card would show, and the before/after table including false passes (005 and 027 are the two new ones). For a live check,
-start the runtime against the local model server (Glimmer), upload `evals/gold` receipt 081 or 123 rendered messy, and confirm the card says
+start the runtime against the local model server (the local open-weights model), upload `evals/gold` receipt 081 or 123 rendered messy, and confirm the card says
 "Figures repaired by code from the receipt's own arithmetic: Net £… was the VAT-inclusive total …". For the eval itself, run
 `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'` once from
 `../repo-lane-d-before/evals` (baseline) and once here, then compare with `harness.report_200 … --note '<what changed>'`.

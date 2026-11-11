@@ -16,7 +16,7 @@ builds only, a Playwright suite, and a CI job.
 - **E2E** `pnpm run e2e`: **23 passed, 0 failed, about 36 s** (7 desktop flows and 16 phone-width pages). Run three
   times, the last with the runtime loading this branch's packages.
 - **Diff read for:** whether test mode can switch on in production, or whether any request can leave the machine in
-  test mode. All AI configs, including `/ai/test`, are forced to the stub. SAM crop and Muse Voice need `mode=key`,
+  test mode. All AI configs, including `/ai/test`, are forced to the stub. The model crop and the speech-to-text model need `mode=key`,
   so they cannot run. Graph mail, contacts and storage are swapped for the fakes, and a token is still required.
   Also checked: nothing written server-side beyond in-memory fakes; the sample calendar entry is labelled
   "SAMPLE — FICTIONAL COMPANY"; pence (the stub returns the gold figures, and code computes the VAT boxes); and

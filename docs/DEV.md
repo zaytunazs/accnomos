@@ -28,10 +28,10 @@ gets a 400 (the web app's default local URL, `http://192.168.1.176:11434`, needs
 `AI_ALLOWED_BASE_URLS=http://192.168.1.176:11434`); 60 requests per minute per IP (`RATE_LIMIT_PER_MIN=0` turns it off).
 
 **ffmpeg** must be on the runtime's `PATH` for voice questions (`POST /books/ask/voice` converts browser/phone audio to
-WAV mono 16 kHz before Muse Voice Transcribe). Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`;
+WAV mono 16 kHz before the speech-to-text model). Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`;
 Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The runtime checks at startup: without
 ffmpeg it logs a warning, `/health` reports `"voice": false` and `/books/ask/voice` answers 503. Its tests skip the
-conversion cases when ffmpeg is missing. Voice needs a speech-to-text service (`app/ai/stt.py`): Muse Voice Transcribe with the user's key (key mode) or the
+conversion cases when ffmpeg is missing. Voice needs a speech-to-text service (`app/ai/stt.py`): The speech-to-text model with the user's key (key mode) or the
 server's `META_API_KEY`, then a local speech-to-text model on our own server when `SPARK_WHISPER_URL` is set; with none of them the route answers
 400. Test mode has no speech-to-text.
 
@@ -70,15 +70,15 @@ supersedes). One job per concern, so a red check names what broke:
 The runtime job installs ffmpeg so the voice tests run rather than skip. `deploy-web.yml` (publish to `site` on
 `main`) is separate. Results and run times: `docs/reviews/ci/REVIEW.md`.
 
-## Evals (Meta model outputs graded against the synthetic gold set)
+## Evals (AI model outputs graded against the synthetic gold set)
 
 ```powershell
 cd evals
 $env:OLLAMA_BASE='http://<spark>:11434'
 ..\.venv\Scripts\python.exe -m harness.run_extraction --mode local --messy --out runs/<name>   # Glimmer
-..\.venv\Scripts\python.exe -m harness.run_extraction --mode key   --out runs/<name>          # muse-spark-1.3 (MODEL_API_KEY)
+..\.venv\Scripts\python.exe -m harness.run_extraction --mode key   --out runs/<name>          # the hosted model (MODEL_API_KEY)
 ..\.venv\Scripts\python.exe -m harness.judge runs/<name> --escalate <judge-model>         # an AI judge (H19)
-..\.venv\Scripts\python.exe -m harness.crop_bench --limit 20                                   # crop IoU; adds SAM if MODEL_API_KEY is set
+..\.venv\Scripts\python.exe -m harness.crop_bench --limit 20                                   # crop IoU; adds the image model's crop if MODEL_API_KEY is set
 ```
 
 ## End-to-end tests (Playwright, test mode)
@@ -151,15 +151,15 @@ the runtime's look-alike. A normal `pnpm build` folds both away: `out/` contains
 original whenever it is unsure. The result is on the proposal as `crop` plus an ok `CROP` check.
 
 - `CROP_MODE=auto` (default) | `code` | `off`.
-- `SAM_CROP=1` lets `auto` call `sam-3.1` on `{MODEL_API_BASE}/responses` first, with the user's own
-  Meta key or else the server chain's `meta` provider (`META_API_KEY`); not under `X-AI-Route`
+- `SAM_CROP=1` lets `auto` call the receipt-crop image model on `{MODEL_API_BASE}/responses` first, with the user's own
+  a hosted-model key or else the server chain's `meta` provider (`META_API_KEY`); not under `X-AI-Route`
   `local_first` / `local_only` (~$2.50 per 1k images, two calls when "receipt" finds nothing and
   "invoice" is tried; 30 s per call, then the code crop). The request and the `<|box;…|>` reply
-  follow dev.meta.ai/docs/sam and were checked live on 4 Nov 2026; the fixture
+  follow the provider's documentation and were checked live on 4 Nov 2026; the fixture
   `services/runtime/tests/fixtures/sam_response.json` is a captured reply. Live check:
   `cd evals && python -m harness.sam_crop_live --limit 20 --read` with `META_API_KEY` set
   (`evals/runs/sam_crop_live/report.md`). Off unless 1; `deploy/docker-compose.yml` passes both variables.
-- Without SAM, Pillow + numpy find the largest bright region (Otsu); accepted at 25–95 % of the frame.
+- Without the receipt-crop image model, Pillow + numpy find the largest bright region (Otsu); accepted at 25–95 % of the frame.
 - Crops keep the upload's format (JPEG, including phone MPO files, PNG, WebP); anything else is passed
   through uncropped so the MIME type stays true.
 
@@ -177,4 +177,4 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
 - Runtime package is `app`; relay package is `relay` (two services, two names — they share one venv).
 - Money is integer pence inside the ledger; the model returns pounds to 2 dp.
 - Every automatic action writes one line to `_System/audit/{yyyy-mm}.jsonl` in the user's folder (format and the full folder layout: `docs/ARCHITECTURE.md`).
-- Branch names: `muse/*` (Muse Code jobs), `claude/*` (coding-agent jobs on our own server); every merge is reviewed.
+- Branch names: `muse/*` (coding-assistant jobs), `claude/*` (coding-agent jobs on our own server); every merge is reviewed.

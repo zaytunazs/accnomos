@@ -2,7 +2,7 @@
 
 Accnomos monorepo (public; UK English; no secrets). Read first `apps/web/src/components/review/LiveReview.tsx`, `components/review/*`,
 `lib/runtime.ts` (`approve`, `reject`, `undo`, `rules`), `services/runtime/app/{approve.py,autopilot.py,pipeline.py,schemas.py}`
-(`Proposal.crop`, `verification`, `checks`), `docs/AUTOPILOT.md`, `docs/reviews/sam-crop/REVIEW.md`, `docs/reviews/verifier/REVIEW.md`.
+(`Proposal.crop`, `verification`, `checks`), `docs/AUTOPILOT.md`, `docs/reviews/image-crop/REVIEW.md`, `docs/reviews/verifier/REVIEW.md`.
 
 ## Deliverables
 1. **Keyboard**: J/K move between cards, A approve, E edit, R reject (with a confirm for R), U undo the last decision; a visible

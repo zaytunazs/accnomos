@@ -1,6 +1,6 @@
 # Review: upload → progress → confirm the type → Review (branch `claude/upload-flow`)
 
-Owner report (live demo, accnomos.com, `DEMO_MODE=1`, AI chain Meta then local): after "Add a receipt" with two real
+Owner report (live demo, accnomos.com, `DEMO_MODE=1`, AI chain the model provider then local): after "Add a receipt" with two real
 PDFs (a Currys receipt, a self-storage invoice) the page said "2 files added to 00 Inbox. Press Scan 00 Inbox now",
 then "Reading your Inbox…" for 10+ minutes; the server logged the CORS preflight `OPTIONS /books/scan?stagger=1`
 but never the POST.
@@ -87,7 +87,7 @@ Android
 
 ## Risks
 
-- The time limits are judgement, not measured on the live Meta chain; set `SCAN_DOC_TIMEOUT_S`, `AI_CALL_TIMEOUT_S`
+- The time limits are judgement, not measured on the live the server's chain; set `SCAN_DOC_TIMEOUT_S`, `AI_CALL_TIMEOUT_S`
   and `CLASSIFY_TIMEOUT_S` from real latencies.
 - The classifier has no eval set; the user always confirms, so a wrong guess costs a click, not a wrong posting.
 - One extra model call per document (the type). For a PDF with text it is text-only and short.

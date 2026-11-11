@@ -1,4 +1,4 @@
-# Task: Sales invoicing — create, PDF, send via Outlook, track payment, Muse-drafted reminders
+# Task: Sales invoicing — create, PDF, send via Outlook, track payment, the model-drafted reminders
 
 Accnomos monorepo (public; UK English; no secrets; stateless runtime; files in the user's OneDrive). Read first: the contacts branch
 work if merged (`services/runtime/app/contacts.py`, `/contacts` page) — if not on main yet, read `TASK_BRIEF.md` of that task in
@@ -17,7 +17,7 @@ work if merged (`services/runtime/app/contacts.py`, `/contacts` page) — if not
   (Graph `POST /me/sendMail` with the PDF attached **only after the user confirmed in the UI**; scope `Mail.Send` requested on demand;
   also save a copy to `03 Sales/invoices/sent/`), `POST /invoices/{id}/mark-paid` (payment_ref; link to a bank line if `routes_bank`
   has a matcher), `GET /invoices?status=`.
-- Reminders: `POST /invoices/{id}/reminder-draft` → Muse (user's AI config, same backends as Ask) writes a short polite UK-English chase
+- Reminders: `POST /invoices/{id}/reminder-draft` → the model (user's AI config, same backends as Ask) writes a short polite UK-English chase
   email from facts the code supplies (amount, days overdue, invoice number); returned as a draft for the user to approve, then sent via
   Graph. Never auto-sent.
 - Tests: totals/VAT per line (pence), numbering, status transitions, PDF renders (smoke), send gated behind an explicit `confirm: true`.

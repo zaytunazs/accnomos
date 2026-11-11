@@ -3,7 +3,7 @@
 Accnomos monorepo (public; UK English; no secrets; stateless runtime). Read first: `services/runtime/app/{routes_ask.py,ai/ask.py}`,
 the invoicing, contacts, jobs and vehicles modules on main (`routes_invoices.py`, `contacts.py`, `jobs.py`, `mileage.py` — whatever has
 landed; for anything not yet merged, read its brief in `~/spark/accnomos/jobs/*_task.md` and code against that contract behind a
-feature check so the build never breaks), `ai/extract.py` (Meta/local backends), `apps/web/src/app/ask/*`, `apps/mobile/lib/screens/ask_screen.dart`.
+feature check so the build never breaks), `ai/extract.py` (the model provider/local backends), `apps/web/src/app/ask/*`, `apps/mobile/lib/screens/ask_screen.dart`.
 
 ## Goal
 `POST /books/ask` (and `/ask/voice`) can return, instead of or alongside an answer, a **proposed action** the user must approve.

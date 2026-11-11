@@ -1,6 +1,6 @@
 # Accnomos: session handover (11 Nov 2026, ~16:00 UK), for the PayPal hackathon build
 
-The Meta hackathon is finished (submitted 4 Nov). This handover is for the next session, which adapts Accnomos for the **PayPal hackathon**. **Stripe is on hold**: no live key exists, and the apps don't show it to users.
+The hackathon is finished (submitted 4 Nov). This handover is for the next session, which adapts Accnomos for the **PayPal hackathon**. **Stripe is on hold**: no live key exists, and the apps don't show it to users.
 
 ## Where the code is
 - **`main` = `b5ab460`** (4 Nov). It is live: the web deploys itself from main, and the API runs on the Spark (`api.accnomos.com`). Nothing from this session is on main yet.
@@ -56,18 +56,18 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
 
 ## AI (`claude/ai-local`, merged into `integ/wave3`)
 - The chain is our own server (the model server on the Spark) first, then Anthropic (`claude-haiku-5-5`) as the backup. "Local only" never reaches Anthropic.
-- Voice is spark-voice at `STT_BASE` (`http://host.docker.internal:8890`). SAM crop is off.
+- Voice is spark-voice at `STT_BASE` (`http://host.docker.internal:8890`). The model crop is off.
 - Privacy text is updated (Anthropic, US, backup only; not used for training; 30-day deletion).
 - `/health` only says "Accnomos AI". Full details are at `GET /admin/ai-status` (`ADMIN_EMAILS` only).
 - **Not done:**
-  - **Client side still shows model names:** "Read by Muse Spark" (`lib/meta-models.ts` `servedLine`, Android `proposal.dart`), the `/meta-models` page, `GET /ai/health` and `/ai/calls`, the Settings › AI routing names, and the marketing alt text.
+  - **Client side still shows model names:** "Read by the hosted model" (`lib/ai-models.ts` `servedLine`, Android `proposal.dart`), the `/ai-models` page, `GET /ai/health` and `/ai/calls`, the Settings › AI routing names, and the marketing alt text.
   - **Bring your own AI is not started:** provider presets, model picker, Test button, keys sealed (AES-GCM) in `_System/`, an ask-before-fallback choice, the billing exemption, Android Settings, and their tests.
 - **Not verified live:** Anthropic calls, reaching spark-voice from the container, and the image limits.
 
 ## Spark server (`ssh spark`, from the PC zs-pc01 via Desktop Commander)
 - `.env` is `~/spark/accnomos/deploy-repo/.env`. Never print it.
 - Set now: `AI_PROVIDERS=spark`, `SAM_CROP=0`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (`sb_secret`, verified), `ADMIN_EMAILS=admin@zaytunauk.co.uk`, and `STRIPE_SECRET_KEY` (test).
-- Stale and unused: `MODEL_API_MODEL` and `VERIFIER_MODEL`, which still name Meta models.
+- Stale and unused: `MODEL_API_MODEL` and `VERIFIER_MODEL`, which still name AI models.
 - **At deploy:** set `ANTHROPIC_API_KEY` (from `~/.anthropic_key`) and `AI_PROVIDERS=spark,anthropic`. Keep `PAYMENTS_PROVIDER=none` until PayPal is ready. Redeploy with the new `deploy/docker-compose.yml`, which passes the new variables into the container.
 - Helper scripts are in `~/spark/accnomos/ci/`:
   - `set-env-secret.sh NAME PREFIX`: the value goes in on stdin from the PC clipboard, then clear the clipboard.

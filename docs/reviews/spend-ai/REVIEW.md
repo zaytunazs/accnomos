@@ -75,7 +75,7 @@ Docs: `docs/ARCHITECTURE.md` (new section, two `_System` rows, model call sites)
 ## Risks and what a human should check
 
 1. **Only the stub model has run.** The spending summary prompt and the same-product prompt have not been tried on
-   Glimmer or Spark. The spending facts pack is ~3 KB for the sample month and bounded by TOP_N=6 lists, but it is not
+   the local open-weights model or Spark. The spending facts pack is ~3 KB for the sample month and bounded by TOP_N=6 lists, but it is not
    trimmed to Ask's PACK_TOKENS like Ask's own pack.
 2. **Normalisation is regexes.** Check real receipt lines: "6 pack" vs "x6" vs "(6)" (the last is not read as a pack),
    inches/feet, "dozen", brand names left in the name words (they keep "Tesa" tape apart from unbranded tape until

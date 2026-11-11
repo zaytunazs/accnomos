@@ -47,7 +47,7 @@ Second-agent review of the inbox triage task (`TASK_BRIEF.md`): Home *Inbox* car
   of naming the bad setting.
 - **Answered threads:** Sent Items are not read, so a thread the user already answered can still show *Reply*
   (documented in `docs/INBOX.md` Known limits).
-- **Real services:** not run against a real mailbox, a real Meta or local model, or a real OneDrive. Every test uses
+- **Real services:** not run against a real mailbox, a real the model provider or local model, or a real OneDrive. Every test uses
   a fake mailbox and fake storage with a stubbed model, plus Graph request shapes against a mock transport.
 - **Web components:** no unit tests (the repo has no web test runner). They are checked only by `pnpm run build`
   (TypeScript).

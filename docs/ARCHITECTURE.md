@@ -6,7 +6,7 @@ folder with the user's own token on each request and keep nothing. Checked again
 
 ```
 apps/web (Next.js PWA) ─┐                      ┌─> Microsoft Graph: the user's OneDrive folder
-apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (user's key) or the local model server (local mode)
+apps/mobile (Flutter) ──┼─> services/runtime ──┼─> AI models (server chain, user's key) or the local model server (local mode)
                         │   (FastAPI, :8780)   └─> hosted verifier (only if the server owner sets a key)
                         └─> services/hmrc-relay (:8787) ─> HMRC MTD VAT API (sandbox)
 ```
@@ -404,12 +404,12 @@ account's own OneDrive. A user with several links several accounts; there is sti
   the logo and the profile switcher (current profile and its kind) at the far left, the groups Home, Sales, Purchases,
   Reporting, Accounting, Tax, Payroll, Contacts and (personal books) Personal as disclosure dropdowns, then Search (find
   a page), Ask, Help, Notifications (the Review count) and the signed-in name and Microsoft email opening the account
-  menu (profile, the AI line linking to `/meta-models`, Settings, *Sign out of this one*; *Accountant portal* only for an
+  menu (profile, the AI line linking to `/ai-models`, Settings, *Sign out of this one*; *Accountant portal* only for an
   account whose portal has listed clients). Under 900 px the groups are in a drawer dialog; there is no sidebar when
   signed in. When MSAL cannot give an account on a device that looks signed in, the bar stays and says *Sign in again*.
   A link shows only when its page is in the build (`apps/web/src/lib/routes.server.ts` lists `src/app` when the static
   export is made) and the profile has its feature, so the menu never links to a 404. Every app page ends with
-  `AppFooter.tsx` (How it works, Help and guides, Privacy, Meta models at work, For judges, Contact, version). Signed
+  `AppFooter.tsx` (How it works, Help and guides, Privacy, AI models at work, For judges, Contact, version). Signed
   out, the sample's sidebar and phone header stay. `/accountant` with no client open has its own minimal bar.
 * **Back up now and earlier files** (`services/runtime/app/full_backup.py`, `previous_files.py`; `/backups/full`,
   `/files/previous*`): a dated folder `Accnomos Backups/YYYY-MM-DD-HHMM` with the `_System` zip (restorable through
@@ -428,11 +428,11 @@ account's own OneDrive. A user with several links several accounts; there is sti
 | # | Stage | Done by | Today |
 |---|---|---|---|
 | 1 | Intake | Code | Upload to `00 Inbox`, scan, optional Outlook copy (`Mail.Read`, plain-code filters, no AI) |
-| 2 | Crop | **Code** by default (Pillow + Otsu); SAM 3.1 only with `SAM_CROP=1` in key mode; `CROP_MODE=off` disables | Code crop tested; SAM never run |
-| 3 | Extractor | **Muse Glimmer 30B** (local) or **Muse Spark** (key mode), strict-JSON schema | Glimmer and Muse Spark 1.3 measured on 200 synthetic documents each (`evals/runs/glimmer_200_v2`, `spark13_200`) |
+| 2 | Crop | **Code** by default (Pillow + Otsu); the receipt-crop image model only with `SAM_CROP=1` in key mode; `CROP_MODE=off` disables | Code crop tested; the receipt-crop image model never run |
+| 3 | Extractor | **The local open-weights model** (local) or **The hosted model** (key mode), strict-JSON schema | The local open-weights model and the hosted model measured on 200 synthetic documents each (`evals/runs/glimmer_200_v2`, `spark13_200`) |
 | 4 | Checker | **Code**: line and total arithmetic, VAT maths and rates, VAT-number format, duplicate hash, currency, valid date, confidence, and the document's date against the current VAT period (a **warning**, never a fail) | Tested; any failure → *Needs a look* |
 | 5 | Reviewer | **Code** composes the "why" line on each card ("Checker, code"). Models write words only in *Ask*, triage, reminders and the planner rationale | **No separate LLM reviewer exists** |
-| 6 | Verifier | A second reading with a different prompt that never sees the first answer, run only if the checks pass; **code** compares six fields (supplier, VAT number, date, net, VAT, total) | Glimmer/Glimmer run on 20 documents; Spark Open and Muse Spark 1.3 as Verifier measured on 200 (`evals/runs/spark_open_200`, `spark13_200`); `VERIFIER=off` disables it |
+| 6 | Verifier | A second reading with a different prompt that never sees the first answer, run only if the checks pass; **code** compares six fields (supplier, VAT number, date, net, VAT, total) | The local open-weights model/the local open-weights model run on 20 documents; the open-weights verifier model and the hosted model as Verifier measured on 200 (`evals/runs/spark_open_200`, `spark13_200`); `VERIFIER=off` disables it |
 | 7 | Human | The user taps Approve (or Reject) | Always, unless an Autopilot rule applies |
 | 8 | Poster | Code writes the ledger event | Tested |
 | 9 | Filer | Code renames and files the document; HMRC submission is a separate, explicit web step with a legal declaration | Tested; HMRC sandbox only, never run end to end |
@@ -504,22 +504,22 @@ note says the changes are not on that return; Undo keeps dating corrections toda
 
 | Model | Called from | Mode | Status |
 |---|---|---|---|
-| **Muse Glimmer 30B** (`muse-glimmer:30b`, the local model server's `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale, `ai/spending.py` summaries, `ai/items.py` same-product suggestions) | local | Run by hand on our own server for extraction and verifier (`evals/`); the other tasks tested with a stub |
-| **Muse Spark** (`muse-spark-1.3`, Meta Model API `/chat/completions`, the user's key) | the same call sites in key mode; `ai/verify.py` when no hosted-verifier key is set | key | **Unverified**: unit-tested against stubs; no key in our eval environment |
-| **Muse Spark Open** (hosted open weights) | `ai/verify.py`, only in key mode when the **server owner** sets `BASETEN_API_KEY` | key | Wired on the demo server (key set 27 Oct 2026); id `meta-models/muse-spark-open` as the open-weights host lists it; one real call checked; eval on 200 gold documents: all fields 91 % clean, 93 % messy (`evals/runs/spark_open_200`, `spark_open_messy_200`) |
-| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | `ai/stt.py` (the speech-to-text chain: Muse first, a local speech-to-text model on our own server as fallback) → `ai/voice.py` `transcribe()`, from `POST /books/ask/voice` (web and Android mic) after ffmpeg converts to WAV 16 kHz mono | the user's key, or the server's `META_API_KEY` | **Unverified live**: request format from Meta's cookbook, faked HTTP in tests; no live mic run |
-| **SAM 3.1** (`sam-3.1`) | `ai/crop.py` `_call_sam`, only with `SAM_CROP=1` | key | **Unverified and off by default**: wire format is a guess; the default crop is code |
-| **Muse Image** (`muse-image-1.0`) | `tools/brand_muse.py`, build time, for the brand artwork | n/a | Run once; **not part of the runtime** |
+| **The local open-weights model** (open weights, the local model server's `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale, `ai/spending.py` summaries, `ai/items.py` same-product suggestions) | local | Run by hand on our own server for extraction and verifier (`evals/`); the other tasks tested with a stub |
+| **The hosted model** (the hosted model's API `/chat/completions`, the user's key) | the same call sites in key mode; `ai/verify.py` when no hosted-verifier key is set | key | **Unverified**: unit-tested against stubs; no key in our eval environment |
+| **The open-weights verifier model** (hosted open weights) | `ai/verify.py`, only in key mode when the **server owner** sets `BASETEN_API_KEY` | key | Wired on the demo server (key set 27 Oct 2026); one real call checked; eval on 200 gold documents: all fields 91 % clean, 93 % messy (`evals/runs/spark_open_200`, `spark_open_messy_200`) |
+| **The speech-to-text model** (hosted) | `ai/stt.py` (the speech-to-text chain: the hosted speech-to-text model first, a local speech-to-text model on our own server as fallback) → `ai/voice.py` `transcribe()`, from `POST /books/ask/voice` (web and Android mic) after ffmpeg converts to WAV 16 kHz mono | the user's key, or the server's `META_API_KEY` | **Unverified live**: request format from the model provider's cookbook, faked HTTP in tests; no live mic run |
+| **The receipt-crop image model** | `ai/crop.py` `_call_sam`, only with `SAM_CROP=1` | key | **Unverified and off by default**: wire format is a guess; the default crop is code |
+| **An image-generation model** | `tools/brand_muse.py`, build time, for the brand artwork | n/a | Run once; **not part of the runtime** |
 
-`muse-wonder-1.0` is not called anywhere: chat actions use the user's configured Glimmer or Spark. Details and eval numbers:
-`docs/META_MODELS.md`. In local mode documents go only to the local model server, never to Meta or a model host. Caveat: in our demo the runtime and
+The provider's planning model is not called anywhere: chat actions use the user's configured local open-weights model or hosted model. Details and eval numbers:
+`docs/AI_MODELS.md`. In local mode documents go only to the local model server, never to a hosted model's API or a model host. Caveat: in our demo the runtime and
 The local model server are on our own server, so the image passes through that machine's memory; "on your machine" needs you to run the runtime yourself.
 
 ## What never leaves the device
 
-- Meta API key: browser `localStorage`, sent per request to the runtime in a header (Android: app settings, **not** in secure storage yet).
+- An API key for the hosted model: browser `localStorage`, sent per request to the runtime in a header (Android: app settings, **not** in secure storage yet).
 - HMRC tokens: tab `sessionStorage`. Microsoft tokens: MSAL's cache in the browser or app.
-- Voice audio is not kept; voice needs a Meta key (the user's or the server's) or a local speech-to-text server (`SPARK_WHISPER_URL`).
+- Voice audio is not kept; voice needs a hosted-model key (the user's or the server's) or a local speech-to-text server (`SPARK_WHISPER_URL`).
 
 ## Threat model
 

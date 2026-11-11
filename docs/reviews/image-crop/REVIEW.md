@@ -1,6 +1,6 @@
 # Review — `claude/sam-crop`
 
-Task: SAM 3.1 receipt crop before extraction, with a Pillow + numpy fallback (`TASK_BRIEF.md`).
+Task: The receipt-crop image model receipt crop before extraction, with a Pillow + numpy fallback (`TASK_BRIEF.md`).
 
 ## What was checked
 
@@ -10,8 +10,8 @@ Task: SAM 3.1 receipt crop before extraction, with a Pillow + numpy fallback (`T
   (code: 20/20 cropped, mean IoU 0.882, median 0.890, 19/20 ≥ 0.8, 20/20 kept ≥ 99 %).
 - Diff read for product rules. Nothing is written server-side: the crop runs in memory and nothing is cached. The
   `details` diagnostics are never put on the proposal. Duplicate detection still hashes the original file. Cropping
-  cannot fail the pipeline: every path falls back to the original bytes. SAM only runs in key mode (the user's
-  Meta API key) and only with `SAM_CROP=1`. No secrets, money maths or UK-English slips found.
+  cannot fail the pipeline: every path falls back to the original bytes. The receipt-crop image model only runs in key mode (the user's
+  an API key for the hosted model) and only with `SAM_CROP=1`. No secrets, money maths or UK-English slips found.
 
 ## What I fixed
 
@@ -19,12 +19,12 @@ Task: SAM 3.1 receipt crop before extraction, with a Pillow + numpy fallback (`T
   - Phone JPEGs that Pillow reports as `MPO` were re-encoded as **PNG** while the request still said
     `image/jpeg`. They now stay JPEG.
   - Any format other than JPEG/PNG/WebP (for example GIF) is now passed through uncropped, so the MIME type stays true.
-  - SAM used to receive the raw, unrotated bytes while its box was applied to the EXIF-upright image. Rotated
-    phone photos now send SAM the upright pixels.
+  - The receipt-crop image model used to receive the raw, unrotated bytes while its box was applied to the EXIF-upright image. Rotated
+    phone photos now send the receipt-crop image model the upright pixels.
   - The pure-Python flood fill and the re-encoding now run in `asyncio.to_thread` instead of blocking the event loop.
-  - Two tests added: SAM sees upright pixels; MPO stays JPEG and GIF passes through.
+  - Two tests added: The receipt-crop image model sees upright pixels; MPO stays JPEG and GIF passes through.
 - `a242ae3` web(review): the ok `CROP` check was counted in "Checks run by code: N of M passed", which made the count
-  bigger than the real number of checks. It is now left out of the count, and the crop note ("Cropped with SAM 3.1" /
+  bigger than the real number of checks. It is now left out of the count, and the crop note ("Cropped with the receipt-crop image model" /
   "Cropped by code") is added to the end of the same line.
 - This commit: one line in `docs/DEV.md` on format pass-through, plus this file.
 
@@ -32,7 +32,7 @@ Task: SAM 3.1 receipt crop before extraction, with a Pillow + numpy fallback (`T
 
 - **`uv.lock` is stale**: `services/runtime/pyproject.toml` now depends on `pillow>=10` and `numpy>=1.26`, but the lock's
   `accnomos-runtime` entry does not list them. I did not have permission to run `uv lock` here. Run `uv lock` and commit before merging.
-- **The SAM 3.1 wire format is unverified.** The request body and the parser follow the research note only. The fixture
+- **The receipt-crop image model wire format is unverified.** The request body and the parser follow the research note only. The fixture
   is marked ILLUSTRATIVE. `SAM_CROP` stays off by default until a real response has been captured and checked against `parse_sam_boxes`.
   Method A has never run against the live API, and the crop report has numbers for method B only.
 - No dedicated chip component in the UI. The crop note is plain text on the verifier line (`LiveReview.tsx`), and

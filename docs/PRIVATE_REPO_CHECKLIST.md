@@ -1,6 +1,6 @@
 # Making the repository private (not before 16 Dec 2026)
 
-Both hackathons require a public repository. The Meta community vote closes on 16 Nov; the PayPal AI Hackathon judges
+Both hackathons require a public repository. The first hackathon's community vote closes on 16 Nov; the PayPal AI Hackathon judges
 from 1 to 15 Dec and needs the repository public and the project testable until judging ends (15 Dec 2026), so keep it
 public until at least 16 Dec. This list is what breaks when it goes
 private and what to do first.

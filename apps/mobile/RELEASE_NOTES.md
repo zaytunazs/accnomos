@@ -136,7 +136,7 @@ labelled fictional sample.
   Vehicles, Bank, Payroll, Settings groups (Connection, AI,
   Automation, Business): no exceptions and no RenderFlex overflows
   in `adb logcat`.
-- Capture multi-shot: two photos queued, "Read with Meta AI" offered.
+- Capture multi-shot: two photos queued, "Read with AI" offered.
 - Landscape on Home, Review, Ask and Contacts: no overflow, state
   kept (Review stayed on its card, Ask kept its thread and draft).
 - System dark mode: the app stays on its light theme

@@ -3,32 +3,32 @@
 Synthetic gold sets (`gold/`), the harness that grades the product against them (`harness/`), offline tests (`tests/`)
 and the committed reports (`runs/`, `REPORT_*.md`). Every document in a gold set is fictional and labelled
 `SAMPLE — FICTIONAL COMPANY` (em dash, U+2014). The gold generators call **A second open-weight model** (a local model server, `127.0.0.1:8000`) as a
-test-data generator only; the product models are **Muse Glimmer 30B** (the local model server, `127.0.0.1:11434`) and Muse Spark.
+test-data generator only; the product models are **The local open-weights model** (the local model server, `127.0.0.1:11434`) and the hosted model.
 
 ```sh
 cd evals && python -m pytest -q tests      # offline, no model; needs the repo's Python environment
 cd evals && ruff check . && ruff format --check .
 ```
 
-Existing evals are described in `docs/META_MODELS.md` and `gold/README.md` (`run_extraction`, `bank_match`, `ask_40`,
+Existing evals are described in `docs/AI_MODELS.md` and `gold/README.md` (`run_extraction`, `bank_match`, `ask_40`,
 `mail_intake`, `bench_runtime`). The jobs below were added for our own server, which has both models running all the time.
-Each has a way to try it without a model, and each was tested here only against stubs: **no real Glimmer or second-model call
+Each has a way to try it without a model, and each was tested here only against stubs: **no real the local open-weights model or second-model call
 has been made by this code yet**.
 
 ## The Spark jobs
 
 | Job | Model | What it produces | Offline try-out |
 |---|---|---|---|
-| `harness/bank_ai.py` | Glimmer | accuracy, refusals, invalid JSON and latency of the bank-rule AI coding (`suggest_ai`) over every gold bank line | `--dry-run`, `--stub` |
-| `harness/cis_read.py` | Glimmer | per-field accuracy, check codes, latency and misses of the CIS reader (`read_cis_document` + code checks) over every gold CIS statement and reverse-charge invoice | `--dry-run`, `--stub` |
-| `harness/property_docs.py` | Glimmer | category, property, amount and date accuracy of the generic extraction reader over the gold landlord statements and bills (no property-specific reader exists yet) | `--dry-run`, `--stub` |
+| `harness/bank_ai.py` | The local open-weights model | accuracy, refusals, invalid JSON and latency of the bank-rule AI coding (`suggest_ai`) over every gold bank line | `--dry-run`, `--stub` |
+| `harness/cis_read.py` | The local open-weights model | per-field accuracy, check codes, latency and misses of the CIS reader (`read_cis_document` + code checks) over every gold CIS statement and reverse-charge invoice | `--dry-run`, `--stub` |
+| `harness/property_docs.py` | The local open-weights model | category, property, amount and date accuracy of the generic extraction reader over the gold landlord statements and bills (no property-specific reader exists yet) | `--dry-run`, `--stub` |
 | `gold/gen_gold4.py` | A second open-weight model | `gold/ledger4/`: about 120 price-history receipts, five suppliers, six months, `expectations.json` | `--dry-run`, `--stub` |
 | `gold/gen_personal.py` | A second open-weight model | `gold/personal/NN_name/`: six months of a household's bank statement and `expectations.json` | `--dry-run`, `--stub` |
 | `harness/public_chat_eval.py` | the chat route's model | pass rates for `POST /public/chat`: product facts, refusals, injections | `--dry-run`, `--stub` |
-| `harness/stt.py` | Muse Voice Transcribe, a local speech-to-text model on our own server | word error rate, number and pound-amount accuracy, latency per provider over the teaser voice-over and 20 accounting clips (`gold/voice/`, made with an open-source voice model by `--generate`) | `--dry-run`, `--stub` |
+| `harness/stt.py` | The speech-to-text model, a local speech-to-text model on our own server | word error rate, number and pound-amount accuracy, latency per provider over the teaser voice-over and 20 accounting clips (`gold/voice/`, made with an open-source voice model by `--generate`) | `--dry-run`, `--stub` |
 | `tools/spark_queue.sh` | both | runs the jobs above one after another, `stt` last | `--dry-run` |
 
-### `stt`: Muse Voice Transcribe against the local speech-to-text model
+### `stt`: The speech-to-text model against the local speech-to-text model
 
 ```sh
 cd evals && python -m harness.stt --dry-run                  # samples and which providers are configured
@@ -41,9 +41,9 @@ Runs the runtime's own clients (`app.ai.stt`), each provider alone (no fallback)
 runtime does. The open-source voice model is reached at its standard-API `POST /v1/audio/speech` (voices `bm_george`
 and `bf_emma`); the docs had no voice-model endpoint written down, so `KOKORO_URL` defaults to the voice-model server's default port 8880.
 Writes `runs/stt/{results.jsonl, summary.json, report.md}`. Not run yet: it needs the Spark (the local speech-to-text and voice models) and a
-Meta key, and no key is used from CI.
+A hosted-model key, and no key is used from CI.
 
-### `bank_ai`: does Glimmer code bank lines?
+### `bank_ai`: does the local open-weights model code bank lines?
 
 ```sh
 cd evals && python -m harness.bank_ai --dry-run            # 459 lines, expectations printed, nothing called
@@ -115,8 +115,8 @@ tools/spark_queue.sh --list             # which steps are done
 tools/spark_queue.sh --only bank_ai     # one step;  --force runs a done step again;  --no-check skips the server probe
 ```
 
-Order: `gen_gold4`, `gen_personal`, `bank_ai`, then `run_extraction` (Glimmer, messy) on each
-`gold/ledger{2,3,4}/receipts` folder that exists, then `cis_read` and `property_docs` (both Glimmer).
+Order: `gen_gold4`, `gen_personal`, `bank_ai`, then `run_extraction` (the local open-weights model, messy) on each
+`gold/ledger{2,3,4}/receipts` folder that exists, then `cis_read` and `property_docs` (both the local open-weights model).
 `ledger2` has none (its credit notes and part-paid invoices use another schema that `run_extraction` does not score)
 and `ledger3` is not in this repository, so both are skipped with a note; `ledger4` is picked up once `gen_gold4`
 has run. Log: `~/spark/accnomos/jobs/spark_queue.log`; markers in `~/spark/accnomos/jobs/state/` (delete one to
@@ -124,4 +124,4 @@ re-run that step). Everything runs under `nice -n 19` and `ionice -c3`, one job 
 server does not answer is skipped (and tried again next run). The script never runs git, installs nothing, and writes
 only under `evals/` (gold and runs) and the jobs folder. Set `SPARK_PYTHON` to the environment's interpreter if
 `.venv/bin/python` in the checkout is not the one to use. The GPU is shared with the production runtime:
-`nice` does not stop a long second-model or Glimmer request from slowing a live user, so start it when the site is quiet.
+`nice` does not stop a long second-model or the local open-weights model request from slowing a live user, so start it when the site is quiet.

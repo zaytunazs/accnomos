@@ -2,7 +2,7 @@
 
 Who this is for: an owner who wants to ask about the books, or get something
 done, in plain words, typed or spoken. Every figure in an answer is worked out
-by code from your books; Meta's Muse models only write the words. Anything
+by code from your books; the AI models only write the words. Anything
 that would change your books comes back as a card that waits for your
 approval.
 
@@ -35,12 +35,12 @@ For notes, to-dos and calendar events by voice, see
 ## Which AI answers
 
 In **Settings › AI** you choose where documents are read and questions are
-answered: on your own machine with Meta's open-weight Muse models, or with
-Meta's Muse models through the Meta Model API with your key. There is also a
-routing choice for answers: **Meta API first**; **local first**, handing to the
-Meta API when the local answer is unsure; or **local only**, so nothing leaves
-your network. Spoken questions are transcribed by Muse Voice Transcribe when the
-server has a Meta key. The audio is not kept.
+answered: on your own machine with an open-weights AI model, or with
+The AI models through the hosted model's API with your key. There is also a
+routing choice for answers: **The hosted model's API first**; **local first**, handing to the
+The hosted model's API when the local answer is unsure; or **local only**, so nothing leaves
+your network. Spoken questions are transcribed by the speech-to-text model when the
+server has a hosted-model key. The audio is not kept.
 
 ## On Android
 

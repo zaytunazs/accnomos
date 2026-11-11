@@ -10,7 +10,7 @@ Kept = share of the receipt inside that box. Cropped = a box was returned rather
 |---|---|---|---|---|---|---|---|
 | code | 20/20 | 0.882 | 0.890 | 19/20 | 20/20 | 0.475 | 0.06 s |
 
-Method A (SAM 3.1) not run: no MODEL_API_KEY in this environment.
+Method A (the receipt-crop image model) not run: no MODEL_API_KEY in this environment.
 
 ## By scene
 

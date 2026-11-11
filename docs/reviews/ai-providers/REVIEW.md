@@ -1,15 +1,15 @@
 # Review: AI provider chain (`claude/ai-providers`)
 
 Goal: no AI call depends on the owner's home server. `AI_PROVIDERS=modal,meta,spark` (recommended for production and
-the judges' demo): Muse Glimmer 30B on a hosted GPU, then Muse Spark on the Meta Model API (server key), then our own server's
-local model runtime. All three are Meta models.
+the judges' demo): The local open-weights model on a hosted GPU, then the hosted model on the hosted model's API (server key), then our own server's
+local model runtime. All three are AI models.
 
 ## What changed
 
 Runtime (`services/runtime/app`)
 - `ai/providers.py` (new): builds the chain from the environment. Per provider: base URL, model, auth (the hosted GPU proxy-auth
-  `Modal-Key`/`Modal-Secret`; Meta bearer key; none for the Spark), timeouts (connect / first token / whole request,
-  `<NAME>_CONNECT_S` etc.; hosted GPU 10/150/240 s for the cold start), capabilities (vision, strict JSON, voice = Meta only).
+  `Modal-Key`/`Modal-Secret`; the model provider bearer key; none for the Spark), timeouts (connect / first token / whole request,
+  `<NAME>_CONNECT_S` etc.; hosted GPU 10/150/240 s for the cold start), capabilities (vision, strict JSON, voice = the model provider only).
   An unconfigured provider drops out. Test mode keeps the names and order but points every provider at the stub AI
   (`ACCNOMOS_TEST_AI_DOWN=modal` makes one answer 503).
 - `ai/config.py`: `AiConfig` gains `provider`, `extra_headers` (never serialised), timeouts, capabilities, `in_chain`,
@@ -22,7 +22,7 @@ Runtime (`services/runtime/app`)
   backend has no breaker. Last 50 calls in memory; `take_served()` via a ContextVar.
 - Every caller goes through it: extract, verify (the open-weights host first when keyed, then the chain), Ask (streamed and not),
   plan rationale, triage, reminders, chat intents, bank coding, duplicate contacts. The local model server calls now send the
-  provider's auth headers. Voice in chain mode uses the chain's Meta provider.
+  provider's auth headers. Voice in chain mode uses the chain's the model provider provider.
 - `ServedBy {provider, model, latency_ms, fell_back_from}` on `Proposal`, `Verification`, `AskAnswer`, `TriageThread`.
   Existing `model` strings are kept (chain proposals read `modal:muse-glimmer:30b`).
 - Failure text for the chain names providers, never their URLs ("None of the server's AI providers answered (...)").
@@ -37,17 +37,17 @@ the GPU host's scaling guide). Cost stated: cloud GPU $0.000542/s = $1.95/h (the
 and memory, about $2.00/h.
 
 Web (`apps/web`)
-- Review card line (`data-testid="served-by"`): "Read by Muse Glimmer 30B (hosted GPU) · 14 s · checked by … · the hosted GPU did not
-  answer", linking to `/models`. Chain proposals' chip says "Read by Muse Glimmer 30B" instead of the wrong
-  "Read by Muse Spark".
+- Review card line (`data-testid="served-by"`): "Read by the local open-weights model (hosted GPU) · 14 s · checked by … · the hosted GPU did not
+  answer", linking to `/models`. Chain proposals' chip says "Read by the local open-weights model" instead of the wrong
+  "Read by the hosted model".
 - `/models` page: the chain in order with live health and capabilities, the last 50 calls, and eval headlines read from
   `evals/runs/*/summary.json` / `result.json` at build time (`src/lib/evals.ts`), linking to the reports on GitHub.
   Linked from the footer and Settings → AI.
 - `POST /ai/warm` from Home and Review when signed in with no AI of one's own.
-- Sidebar label for "no AI chosen" now reads "AI: the server's Meta models".
+- Sidebar label for "no AI chosen" now reads "AI: the server's AI models".
 
 Config/docs: `.env.example`, `deploy/docker-compose.yml` (`AI_PROVIDERS` defaults to `modal,meta,spark`; with no hosted GPU
-URL and no `META_API_KEY` that is just the Spark, as before), `docs/PRODUCTION.md` §6, `docs/META_MODELS.md`,
+URL and no `META_API_KEY` that is just the Spark, as before), `docs/PRODUCTION.md` §6, `docs/AI_MODELS.md`,
 `docs/HONESTY.md`.
 
 ## Tests
@@ -64,9 +64,9 @@ URL and no `META_API_KEY` that is just the Spark, as before), `docs/PRODUCTION.m
 
 - 401/403/404/408 fail over: the brief listed timeout, 5xx, connection, 402/429. A hosted-GPU 401 (proxy token wrong) or an
   the local model server 404 (model not pulled) is that provider's problem, and stopping there would end the demo; 400/413/422 do not.
-- With the chain, a request without AI headers sends documents to the hosted GPU/Meta (the owner's accounts) before the Spark;
+- With the chain, a request without AI headers sends documents to the hosted GPU/the model provider (the owner's accounts) before the Spark;
   inbox triage still requires a user choice. Written up in HONESTY.
 - The calls log and breaker are per process and shared by all users (no content, no user ids).
-- The Glimmer-on-Modal verifier is the same model as the extractor unless `BASETEN_API_KEY` is set.
-- Nothing was run against the hosted GPU, Meta or a Spark. `MODAL_KEEP_WARM` is undeployed; the GPU host's SDK version on the deploy
+- The local open-weights model-on-Modal verifier is the same model as the extractor unless `BASETEN_API_KEY` is set.
+- Nothing was run against the hosted GPU, the model provider or a Spark. `MODAL_KEEP_WARM` is undeployed; the GPU host's SDK version on the deploy
   machine decides between `autoscaler.update` and the older `update_autoscaler` (both handled).

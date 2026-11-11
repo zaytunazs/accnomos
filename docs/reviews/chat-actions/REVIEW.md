@@ -53,7 +53,7 @@ Second-agent review of the chat/voice actions task (`TASK_BRIEF.md`).
 
 ## How to verify by hand
 
-1. Run the runtime with a Meta/local model configured, and set `ACTIONS_SIGNING_KEY` to any long random string.
+1. Run the runtime with a model provider/local model configured, and set `ACTIONS_SIGNING_KEY` to any long random string.
 2. Sign in on the web app with a OneDrive that has some customers in contacts, plus one open job and one staff member.
 3. On Ask, type "log 7.5 hours for Sam on the Elm Road job". You should get a Timesheet card with the right person, job,
    today's date and 7.5 hours.

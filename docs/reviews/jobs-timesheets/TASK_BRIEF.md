@@ -20,6 +20,6 @@ task briefs in `~/spark/accnomos/jobs/{contacts_task.md,invoicing_task.md}` and 
 ## Web
 - `/jobs` list with summary tiles; job page with timesheet entry table (quick-add row: staff, date, hours, note, billable) and
   "Create invoice from unbilled hours"; `/settings` → Staff list editor. Nav entry. README row. `pnpm run build` passes.
-- Mobile is out of scope here (a separate Muse task will add quick timesheet entry).
+- Mobile is out of scope here (a separate the model task will add quick timesheet entry).
 
 Commit in small steps; do not push. Finish with `git log --oneline -8` and five lines a human must verify.

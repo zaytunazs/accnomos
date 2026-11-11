@@ -8,7 +8,7 @@ Task: jobs, staff and timesheets → invoice lines (`TASK_BRIEF.md`).
 - `apps/web`: `pnpm run build` passed before and after the changes.
 - Read the whole diff. Runtime: `jobs.py`, `routes_jobs.py`, the `job_id` approve edit, the Books.xlsx `Jobs` sheet, `Proposal.job_id`. Web: `/jobs`, job page, Staff editor, Review job picker, runtime client.
 - Money: all integer pence. Hours are worked on whole quarters, and `pence_for` rounds half-up in integers. Costs are per person (total quarters × rate), so per-entry rounding cannot drift. The Staff editor converts £ to pence with a 2-decimal regex and `Math.round`.
-- Product rules: files live only in the user's folder (`_System/Jobs`, `_System/Staff`, `_System/Timesheets`) and nothing is kept server-side. Staff records hold name and role only. Invoice lines are a proposal that marks nothing. Entries become invoiced only on an explicit, confirmed "Invoice sent" action. No AI is involved in this feature, so the Meta runtime rule does not apply. No synthetic data was added, so no SAMPLE label is needed.
+- Product rules: files live only in the user's folder (`_System/Jobs`, `_System/Staff`, `_System/Timesheets`) and nothing is kept server-side. Staff records hold name and role only. Invoice lines are a proposal that marks nothing. Entries become invoiced only on an explicit, confirmed "Invoice sent" action. No AI is involved in this feature, so the model provider runtime rule does not apply. No synthetic data was added, so no SAMPLE label is needed.
 - Wording is UK English throughout ("colour", dd/mm/yyyy, "ex VAT").
 - README row against the code: the button labels, routes, file paths and the "not yet run against a real OneDrive" caveat are accurate.
 

@@ -13,8 +13,8 @@ Accnomos monorepo (public; UK English; no secrets). Many features landed after t
    Each row: what it does · how it is tested · what is NOT verified (real OneDrive / real model / real HMRC / real phone). No duplicates,
    one contiguous table, 8–12 lines of intro above it. Every claim must point at a file or test that proves it; delete any you cannot prove.
 2. `docs/ARCHITECTURE.md`: folder layout (`_System/*`, `00 Inbox`, `03 Sales`, `03 Bank statements`, `04 Payroll`, `05 VAT returns` …) and
-   the header table checked against `services/runtime/app/*.py`; the models table (Glimmer local, Spark key, Muse Voice, Muse Image for
-   brand assets, SAM crop, Spark Open verifier via the open-weights host) with where each is called. Mark anything unverified.
+   the header table checked against `services/runtime/app/*.py`; the models table (the local open-weights model local, Spark key, the speech-to-text model, an image-generation model for
+   brand assets, the model crop, the open-weights verifier model via the open-weights host) with where each is called. Mark anything unverified.
 3. `docs/HONESTY.md`: one bullet per known gap, pulled from every REVIEW.md "What remains" (deduplicated) plus: no HMRC obligations
    endpoint, UTC "today" on the runtime, single-worker rate limit, verifier needs a hosted-verifier key, Play signing hash → Entra pending,
    estimates-only payroll (no RTI), bank formats modelled not verified. Keep it a flat list grouped by area.

@@ -27,7 +27,7 @@ checks, you approve: nothing reaches your books until you tap Approve.
    a look* with both values; pick the one the document supports.
 4. The next card opens. Keys work too: **J**/**K** move, **A** approves,
    **E** edits, **R** rejects and **U** undoes the last approval.
-   ![The next proposal, Northgate Timber & Hardware Supplies £643.80, read by Muse Spark at 97 %, with its proposed entry.](img/review-approve-4.png)
+   ![The next proposal, Northgate Timber & Hardware Supplies £643.80, read by the hosted model at 97 %, with its proposed entry.](img/review-approve-4.png)
 5. Tick **Always do this for …** on a supplier you trust and Autopilot approves
    their next documents that pass every check. Undo any of them from
    **Approved by Autopilot**: Undo adds a reversing entry, it never deletes.
@@ -42,4 +42,4 @@ same checks, the **Always do this** tick and **Approve**, **Edit** and
 **Reject**. The camera button at the top photographs a receipt straight into
 `00 Inbox`.
 
-![Android Review 1 of 6: Fictional Plastics Ltd £126.00, 97 % sure, read by Muse Spark, with net, VAT to reclaim, the supplier VAT number, Check VAT number, and Approve, Edit and Reject.](img/android-review.png)
+![Android Review 1 of 6: Fictional Plastics Ltd £126.00, 97 % sure, read by the hosted model, with net, VAT to reclaim, the supplier VAT number, Check VAT number, and Approve, Edit and Reject.](img/android-review.png)

@@ -8,7 +8,7 @@ no server state; BYO AI key passed in headers.
 1. Token handling: never log `X-Graph-Token`, `X-Meta-Api-Key`, `X-HMRC-Access-Token` (scrub in logging filters and error responses);
    reject tokens > 8 KB; require `Authorization`-style headers only over HTTPS when `X-Forwarded-Proto` is present.
 2. Request limits: body size caps per route (uploads 25 MB, JSON 256 KB), per-IP rate limit (simple in-memory token bucket, e.g. 60/min,
-   with `Retry-After`), timeouts on all outbound HTTP (Graph, Meta, the local model server, HMRC), and a global exception handler that returns a safe
+   with `Retry-After`), timeouts on all outbound HTTP (Graph, the model provider, the local model server, HMRC), and a global exception handler that returns a safe
    JSON error with a correlation id (no stack traces).
 3. CORS: exact origins from env only; no wildcard; preflight cached. Security headers on the edge nginx (HSTS, nosniff, referrer policy,
    permissions policy) and on the static site `.htaccess`.

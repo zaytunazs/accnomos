@@ -1,6 +1,6 @@
 # Review: `claude/evals-expand`
 
-Brief: `TASK_BRIEF.md`. 140 more model-generated gold documents (061-200), 6 bank CSVs, 20 mailbox fixtures, and a Glimmer eval
+Brief: `TASK_BRIEF.md`. 140 more model-generated gold documents (061-200), 6 bank CSVs, 20 mailbox fixtures, and a local open-weights model eval
 on all 200 with an AI judge pass. Only `evals/` was changed on the branch, plus one parser alias added in review.
 
 ## What was checked

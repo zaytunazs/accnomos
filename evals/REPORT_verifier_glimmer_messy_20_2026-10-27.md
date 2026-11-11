@@ -1,8 +1,8 @@
-# Verifier eval: Glimmer extracts, Glimmer verifies (different prompt), 20 messy gold receipts
+# Verifier eval: The local open-weights model extracts, the local open-weights model verifies (different prompt), 20 messy gold receipts
 
 Run 27 Oct 2026 on our own server: `cd evals && python -m harness.run_extraction --mode local --limit 20 --messy --verify`.
 Extractor and Verifier are both `muse-glimmer:30b` via the local model server (local mode never sends documents to the open-weights host). The open-weights host
-Muse Spark Open and the Meta API verifier paths are unit-tested only, not run here.
+The open-weights verifier model and the hosted model's API verifier paths are unit-tested only, not run here.
 
 ## What it shows (read this first)
 

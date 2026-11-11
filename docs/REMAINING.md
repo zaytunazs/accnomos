@@ -12,7 +12,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| High | **Almost nothing has run against a real OneDrive, a real Meta key, HMRC's sandbox or a phone.** Only sign-in, folder setup, read → approve → ledger and the VAT boxes were run by hand (maintainers' word; no log committed). Everything else is tested on fakes. |
+| High | **Almost nothing has run against a real OneDrive, a real a hosted-model key, HMRC's sandbox or a phone.** Only sign-in, folder setup, read → approve → ledger and the VAT boxes were run by hand (maintainers' word; no log committed). Everything else is tested on fakes. |
 | Medium | In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`: typed and voice Ask would run on the operator's key. A product decision, not changed. |
 
 | Medium | `flutter analyze` and `flutter test` pass here but nothing on the phone has been run on a device. |
@@ -28,7 +28,7 @@ Severity:
 | Severity | Item |
 |---|---|
 
-| Low | Standard `muse-spark-1.3` (the user's own key) has no eval; the live server's Contributor model is measured on synthetic documents only (`evals/runs/spark13_200`). |
+| Low | The hosted model in standard mode (the user's own key) has no eval; the live server's Contributor model is measured on synthetic documents only (`evals/runs/spark13_200`). |
 
 ## HMRC (sandbox) and VAT periods
 
@@ -48,7 +48,7 @@ Severity:
 | Severity | Item |
 |---|---|
 | Medium | Barclays, Starling, Tide, Monzo and HSBC/Lloyds layouts follow public formats and have not been checked against real exports. Unknown headers fall back to `bank`. |
-| Medium | Bank-rule AI codings have run against the test stub only (`testmode.bank_ai_reply`); no real Glimmer/Meta call has coded a line end to end. |
+| Medium | Bank-rule AI codings have run against the test stub only (`testmode.bank_ai_reply`); no real local open-weights or hosted model call has coded a line end to end. |
 | Low | `suggested_filename` on bank-line expense proposals is a clean description with no extension; nothing reads it. |
 | Low | The phone lists bank rules read-only; adding or editing rules needs the web app (on purpose). |
 
@@ -64,7 +64,7 @@ Severity:
 | Low | An invoice marked paid before payments were recorded (no amount kept) counts as paid on Invoices and Home but stays open in Contacts and *Aged balances*, as before; *Remove* on it puts it back to sent. `payments.json` is rewritten whole (last write wins). |
 | Low | Two tabs editing the same contact's same field at once: the second save wins on that field (edits to different contacts, or different fields, merge). |
 | Low | `Contacts.Read` may need admin consent on work accounts (untested). |
-| Medium | Duplicate AI judgement has run against the test stub only (`testmode.duplicate_reply`); no real Glimmer/Meta call has judged a group end to end. |
+| Medium | Duplicate AI judgement has run against the test stub only (`testmode.duplicate_reply`); no real local open-weights or hosted model call has judged a group end to end. |
 | Low | After a merge the *Undo* offer lives in the page state: reloading Contacts loses the button (the record stays in `_System/Contacts/merges/`; undo again through the API). |
 | Low | A merge across different VAT numbers is refused; telling two same-named businesses apart still needs the numbers on file. |
 
@@ -106,10 +106,10 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | The hosted verifier (`meta-models/muse-spark-open`) is wired and one real call was checked; its eval over 200 receipts is pending; no real Meta (muse-spark-1.3) verifier call has been made. |
-| Medium | Mixed-rate receipts give false alarms; the prompt needs a mixed-rate hint. The catch rate is unmeasured (20 documents, Glimmer on Glimmer): run the full 60 and real photos. |
-| Medium | The SAM 3.1 wire format is unverified, so `SAM_CROP` stays off. Capture a real response first. |
-| Medium | The Muse Voice request (`/asr/transcribe`, multipart parts, response field) comes from research notes. No live mic run in any browser or on the phone. |
+| Medium | The hosted verifier (the open-weights verifier model) is wired and one real call was checked; its eval over 200 receipts is pending; no real hosted-model verifier call has been made. |
+| Medium | Mixed-rate receipts give false alarms; the prompt needs a mixed-rate hint. The catch rate is unmeasured (20 documents, the local open-weights model on the local open-weights model): run the full 60 and real photos. |
+| Medium | The receipt-crop image model wire format is unverified, so `SAM_CROP` stays off. Capture a real response first. |
+| Medium | The speech-to-text model request (`/asr/transcribe`, multipart parts, response field) comes from research notes. No live mic run in any browser or on the phone. |
 | Low | The card cannot adopt the second reading: approve the first or reject. |
 | Low | Bench scenes for the crop are synthetic; the crop shows only as a note on the verifier line. Harness gold issues `015_zero` and `016_no_vat_number`. |
 | Low | Ask has no period picker of its own; it uses the period picked on `/vat`. |
@@ -121,7 +121,7 @@ Severity:
 | Low | Reports on the phone is a thin client over `GET /reports/*` with no offline copy; a failed load shows a retry, not stale figures. |
 | Medium | Sign-in on a Play install (0.3.1+4 onwards, Play signing hash registered in Entra on 27 Oct) has not been tried on a real phone. |
 | Medium | The phone saves a VAT stagger in Settings but sends it nowhere, so Home, the dashboard, the VAT picker and the Reports default period use calendar quarters. |
-| Low | The Meta API key is not in secure storage (`apps/mobile/lib/services/settings.dart`). Payroll is read-only; Bank only confirms certain matches and lists bank rules; no HMRC filing. |
+| Low | The API key for the hosted model is not in secure storage (`apps/mobile/lib/services/settings.dart`). Payroll is read-only; Bank only confirms certain matches and lists bank rules; no HMRC filing. |
 
 ## Security and deployment
 
