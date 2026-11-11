@@ -1,5 +1,3 @@
-import 'dart:io' show Platform;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -118,7 +116,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       });
 
   bool get _googleVisible =>
-      widget.showGoogle ?? (GoogleAuth.configured && Platform.isAndroid);
+      widget.showGoogle ?? GoogleAuth.available;
 
   Future<void> _demo(String kind) => _run(kind, () async {
         final custom = widget.startDemo;

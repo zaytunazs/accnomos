@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en-GB</string>
+	<key>CFBundleDisplayName</key>
+	<string>Accnomos</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Accnomos</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<!-- URL schemes the app answers (docs/IOS_APP_STORE.md, "Sign-in and callbacks"):
+	     * msauth.com.accnomos.app - MSAL (Microsoft sign-in) redirect, msauth.com.accnomos.app://auth.
+	     * GOOGLE_IOS_REVERSED_CLIENT_ID - Google Sign-In redirect (ios/Flutter/GoogleSignIn.xcconfig).
+	     * com.accnomos.app - HMRC VAT sign-in: accnomos.com/auth/hmrc-app.html hands the one-time PKCE code
+	       back as com.accnomos.app://hmrc/callback (lib/services/hmrc.dart, Runner/AccnomosChannels.swift). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.accnomos.app.msal</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>msauth.$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.accnomos.app.google</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(GOOGLE_IOS_REVERSED_CLIENT_ID)</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.accnomos.app.hmrc</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.accnomos.app</string>
+			</array>
+		</dict>
+	</array>
+	<!-- Google Sign-In (google_sign_in_ios): the iOS OAuth client and the web "server" client the runtime
+	     trusts. Public identifiers, not secrets; set in ios/Flutter/GoogleSignIn.xcconfig. The Dart side
+	     also passes them at initialise, which takes precedence (lib/services/google_auth.dart). -->
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>GIDServerClientID</key>
+	<string>$(GOOGLE_SERVER_CLIENT_ID)</string>
+	<!-- Only standard HTTPS/TLS from the OS: exempt from export-compliance documentation. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- MSAL brokered sign-in through Microsoft Authenticator when installed (falls back to Safari). -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>msauthv2</string>
+		<string>msauthv3</string>
+	</array>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Accnomos uses the camera to photograph receipts and bills so they can be added to your books.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Accnomos reads your contacts only when you open Import contacts › Phone, so you can choose which customers and suppliers to add to your books. Only the ones you tick are saved.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Accnomos uses the microphone when you record a voice note or ask a question out loud.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Accnomos opens your photo library when you choose a picture of a receipt or bill to add to your books.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+</dict>
+</plist>

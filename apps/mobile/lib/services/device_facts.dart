@@ -48,7 +48,8 @@ class DeviceFacts {
   }
 
   /// `{os_family, os_version, device_manufacturer, device_model, colour_depth,
-  /// app_version}` from MainActivity, or an empty map off Android.
+  /// app_version}` from MainActivity (Android) or AccnomosChannels.swift (iOS),
+  /// or an empty map elsewhere.
   Future<Map<String, dynamic>> _platform() async {
     try {
       final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>('facts');
@@ -105,7 +106,8 @@ class DeviceFacts {
     }
     final version = p['app_version'];
     if (version is String && version.isNotEmpty) {
-      facts['vendor_versions'] = {'accnomos-android': version};
+      final product = Platform.isIOS ? 'accnomos-ios' : 'accnomos-android';
+      facts['vendor_versions'] = {product: version};
     }
     return facts;
   }

@@ -1,0 +1,13 @@
+// Google Sign-In for iOS (docs/IOS_APP_STORE.md, owner step "Google iOS OAuth client").
+// Public OAuth client identifiers, not secrets: commit the real values once the iOS client exists in
+// Google Cloud project accnomos-514413, or let CI write them from repository variables (.github/workflows/ios.yml).
+//
+// GOOGLE_IOS_CLIENT_ID           <number>-<hash>.apps.googleusercontent.com (iOS client)
+// GOOGLE_IOS_REVERSED_CLIENT_ID  com.googleusercontent.apps.<number>-<hash> (the same id, reversed: the URL scheme)
+// GOOGLE_SERVER_CLIENT_ID        the existing Web application client the runtime trusts (same as Android's)
+//
+// Until then the scheme is a harmless placeholder and the Google button stays hidden on iOS
+// (the Dart build also needs --dart-define=GOOGLE_IOS_CLIENT_ID=... and GOOGLE_SERVER_CLIENT_ID=...).
+GOOGLE_IOS_CLIENT_ID =
+GOOGLE_IOS_REVERSED_CLIENT_ID = com.googleusercontent.apps.not-configured
+GOOGLE_SERVER_CLIENT_ID =
