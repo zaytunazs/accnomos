@@ -842,7 +842,9 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
         warnings.append(
             f"{contact.name} has no email address in your contacts, so the invoice will be saved as a draft, not sent."
         )
+    pay_online = await _pay_online_provider(books)
     preview = {
+        "pay_online": pay_online,
         "customer": {
             "contact_id": contact.id,
             "name": contact.name,
@@ -870,8 +872,29 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
             else "".join(f"\n- {_md(ln['description'])}" for ln in priced["lines"])
         )
     )
+    if pay_online:
+        label = "PayPal" if pay_online == "paypal" else "Stripe"
+        summary += f"\n\nWith a **Pay online** link through your {label} account on the invoice."
     confirm = f"Create the invoice and email it to {email}" if send else "Create the invoice as a draft (not sent)"
     return Draft("create_invoice", summary, preview, confirm)
+
+
+async def _pay_online_provider(books: Books) -> str | None:
+    """The connected online-payment account a new invoice gets a "Pay online" link from: PayPal first, then Stripe.
+    None when neither is connected and set up on this server (the invoice then carries bank details only)."""
+    try:
+        from app import online_payments as op
+    except ImportError:  # sales invoicing not in this build
+        return None
+    try:
+        c = await op.load_connections(books)
+    except Exception:  # noqa: BLE001  a payments problem never blocks the invoice itself
+        return None
+    if c.paypal and op.paypal_config()[0] is not None:
+        return "paypal"
+    if c.stripe and op.stripe_config()[0] is not None:
+        return "stripe"
+    return None
 
 
 async def resolve_quote(books: Books, intent: CreateQuoteIntent, today: date) -> Draft | Clarification:
@@ -1679,8 +1702,16 @@ async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
         "status": inv.status,
         "sent_to": None,
     }
+    if p.get("pay_online") in ("paypal", "stripe"):  # approved on the card; added before sending so the email has it
+        from app import online_payments as op
+
+        try:
+            inv, _ = await op.add_link(ctx.books, inv.number, p["pay_online"], ctx.user)
+            result["payment_link"] = inv.payment_link.url if inv.payment_link else None
+        except Exception as exc:  # noqa: BLE001  the invoice stands without the link; say so
+            result["payment_link_error"] = str(exc)[:300]
     if not p.get("send"):
-        return f"Invoice **{inv.number}** for {money(inv.total_pence)} saved as a draft.", result
+        return f"Invoice **{inv.number}** for {money(inv.total_pence)} saved as a draft.{_link_note(result)}", result
     try:
         pdf = await _invoice_pdf(ctx.books, inv_mod, inv)
         sender = ctx.mail_sender() if ctx.mail_sender else None
@@ -1699,7 +1730,18 @@ async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
             result,
         )
     result.update(status=inv.status, sent_to=inv.sent_to)
-    return f"Invoice **{inv.number}** for {money(inv.total_pence)} sent to {_md(inv.sent_to or '')}.", result
+    return (
+        f"Invoice **{inv.number}** for {money(inv.total_pence)} sent to {_md(inv.sent_to or '')}.{_link_note(result)}",
+        result,
+    )
+
+
+def _link_note(result: dict[str, Any]) -> str:
+    if result.get("payment_link"):
+        return " It has a **Pay online** link; the payment is found when you open Invoices, for you to approve."
+    if result.get("payment_link_error"):
+        return f" The **Pay online** link could not be added: {_md(str(result['payment_link_error'])[:200])}."
+    return ""
 
 
 async def run_chase(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:

@@ -103,6 +103,16 @@ def live_allowed() -> bool:
     return os.getenv("PAYMENTS_LIVE", "").strip() == "1"
 
 
+def direct_mode(provider: str) -> bool:
+    """`STRIPE_DIRECT=1` / `PAYPAL_DIRECT=1`: the sandbox demo mode. No Connect OAuth or partner onboarding; links are
+    made on the server's own test account (Stripe test key, PayPal sandbox REST app), which every user's books then
+    point at. Test credentials only (refused with a live key or PayPal's live API). Never in test mode (fakes)."""
+    return not is_test_mode() and os.getenv(f"{provider.upper()}_DIRECT", "").strip() == "1"
+
+
+DIRECT_PAYPAL_MERCHANT = "SANDBOXDIRECT"  # stands for the REST app's own sandbox account in providers.json
+
+
 def public_base() -> str:
     """This runtime as the browser reaches it (test mode only: the fakes' pages and the fake consent screens)."""
     return os.getenv("RUNTIME_PUBLIC_URL", "").rstrip("/") or f"http://127.0.0.1:{os.getenv('PORT', '8780')}"
@@ -124,6 +134,18 @@ def stripe_config() -> tuple[StripeConfig | None, str | None]:
     key = os.getenv("STRIPE_SECRET_KEY", "").strip()
     cid = os.getenv("STRIPE_CONNECT_CLIENT_ID", "").strip()
     redirect = os.getenv("STRIPE_REDIRECT_URI", "").strip()
+    if direct_mode("stripe"):
+        if not key:
+            return None, "Stripe payment links are not set up on this server yet."
+        cfg = StripeConfig(
+            secret_key=key,
+            client_id="",
+            redirect_uri=redirect or f"{public_base()}/payments/online/stripe/callback",
+            direct=True,
+        )
+        if not cfg.test_mode:  # direct mode puts everyone's payments in one account: never with a live key
+            return None, "Direct mode only runs with a Stripe test key (sk_test_…)."
+        return cfg, None
     if not (key and cid and redirect):
         return None, "Stripe payment links are not set up on this server yet."
     cfg = StripeConfig(secret_key=key, client_id=cid, redirect_uri=redirect)
@@ -154,6 +176,21 @@ def paypal_config() -> tuple[PayPalConfig | None, str | None]:
             "PAYPAL_RETURN_URL",
         )
     }
+    if direct_mode("paypal"):
+        if not (env["PAYPAL_CLIENT_ID"] and env["PAYPAL_CLIENT_SECRET"]):
+            return None, "PayPal payment links are not set up on this server yet."
+        cfg = PayPalConfig(
+            client_id=env["PAYPAL_CLIENT_ID"],
+            client_secret=env["PAYPAL_CLIENT_SECRET"],
+            partner_merchant_id="",
+            attribution_id="",
+            return_url=env["PAYPAL_RETURN_URL"] or f"{public_base()}/payments/online/paypal/callback",
+            base=os.getenv("PAYPAL_BASE", "").strip().rstrip("/") or PAYPAL_SANDBOX,
+            direct=True,
+        )
+        if not cfg.test_mode:  # direct mode puts everyone's payments in one account: never against the live API
+            return None, "Direct mode only runs against PayPal's sandbox."
+        return cfg, None
     if not all(env.values()):
         return None, "PayPal payment links are not set up on this server yet."
     cfg = PayPalConfig(
@@ -428,6 +465,9 @@ def stripe_authorize_url(redirect_to: str, binding_hash_: str, user: str) -> str
 
     cfg = _need_stripe()
     state = make_state("stripe", check_redirect(redirect_to), binding_hash_, user)
+    if cfg.direct:  # no Stripe consent screen: straight back through our own callback, which forwards to Settings
+        sep = "&" if "?" in cfg.redirect_uri else "?"
+        return f"{cfg.redirect_uri}{sep}{urlencode({'code': 'direct', 'state': state})}"
     q = {
         "response_type": "code",
         "client_id": cfg.client_id,
@@ -443,6 +483,24 @@ async def connect_stripe(books: Books, code: str, state: str, binding: str, user
     _finish(state, "stripe", binding, user)
     async with client() as http:
         api = StripeApi(cfg, http)
+        if cfg.direct:
+            if code != "direct":
+                raise OnlinePaymentError("This server links its own Stripe test account; connect again")
+            try:
+                own = await api.own_account()
+            except ProviderError as exc:
+                raise OnlinePaymentError(
+                    f"Stripe did not answer for this server's test account: {exc.message}"
+                ) from exc
+            account = str(own.get("id") or "")
+            conn = StripeConnection(account_id=account, livemode=False, connected_at=now(), connected_by=user)
+            await _save_connection(books, "stripe", conn)
+            await books.audit(
+                f"user:{user}",
+                "payment_provider_connected",
+                {"provider": "stripe", "account": account, "test": True, "direct": True},
+            )
+            return conn
         try:
             got = await api.exchange_code(code)
         except ProviderError as exc:
@@ -471,6 +529,14 @@ async def paypal_signup_url(redirect_to: str, binding_hash_: str, user: str) -> 
     state = make_state("paypal", check_redirect(redirect_to), binding_hash_, user)
     nonce = read_state(state, "paypal").nonce
     sep = "&" if "?" in cfg.return_url else "?"
+    if cfg.direct:  # no PayPal sign-up: straight back through our own callback, as if onboarding had finished
+        q = {
+            "state": state,
+            "merchantIdInPayPal": DIRECT_PAYPAL_MERCHANT,
+            "permissionsGranted": "true",
+            "consentStatus": "true",
+        }
+        return f"{cfg.return_url}{sep}{urlencode(q)}"
     async with client() as http:
         try:
             return await PayPalApi(cfg, http).partner_referral(
@@ -486,6 +552,22 @@ async def connect_paypal(books: Books, merchant_id: str, state: str, binding: st
     st = _finish(state, "paypal", binding, user)
     if not re.fullmatch(r"[A-Za-z0-9]{5,32}", merchant_id):
         raise OnlinePaymentError("PayPal sent back a merchant id that does not look right")
+    if cfg.direct:
+        if merchant_id != DIRECT_PAYPAL_MERCHANT:
+            raise OnlinePaymentError("This server links its own PayPal sandbox account; connect again")
+        async with client() as http:
+            try:
+                await PayPalApi(cfg, http).token()  # the REST app's credentials work
+            except ProviderError as exc:
+                raise OnlinePaymentError(f"PayPal did not accept this server's sandbox app: {exc.message}") from exc
+        conn = PayPalConnection(merchant_id=merchant_id, sandbox=True, connected_at=now(), connected_by=user)
+        await _save_connection(books, "paypal", conn)
+        await books.audit(
+            f"user:{user}",
+            "payment_provider_connected",
+            {"provider": "paypal", "account": merchant_id, "test": True, "direct": True},
+        )
+        return conn
     async with client() as http:
         try:
             info = await PayPalApi(cfg, http).merchant_status(merchant_id)

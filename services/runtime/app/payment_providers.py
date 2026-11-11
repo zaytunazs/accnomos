@@ -123,6 +123,10 @@ class StripeConfig:
     authorize_url: str = "https://connect.stripe.com/oauth/authorize"
     connect_base: str = "https://connect.stripe.com"
     api_base: str = "https://api.stripe.com"
+    # Direct mode (STRIPE_DIRECT=1): no Connect. Every call is made on the server's own Stripe account with its own
+    # key, so no `Stripe-Account` header is sent. For the sandbox demo, where every user's links are paid into one
+    # test account; the Connect flow is the one for real users.
+    direct: bool = False
 
     @property
     def test_mode(self) -> bool:
@@ -143,7 +147,7 @@ class StripeApi:
         account: str | None = None,
         idempotency_key: str | None = None,
     ) -> dict[str, Any]:
-        headers = {"Stripe-Account": account} if account else {}
+        headers = {"Stripe-Account": account} if account and not self.cfg.direct else {}
         if idempotency_key:
             headers["Idempotency-Key"] = idempotency_key
         try:
@@ -178,6 +182,10 @@ class StripeApi:
             f"{self.cfg.connect_base}/oauth/deauthorize",
             data=[("client_id", self.cfg.client_id), ("stripe_user_id", account)],
         )
+
+    async def own_account(self) -> dict[str, Any]:
+        """GET /v1/account: the key's own account (`id`, `charges_enabled`), used by direct mode to link it."""
+        return await self._call("GET", f"{self.cfg.api_base}/v1/account")
 
     async def create_link(
         self, account: str, *, amount_pence: int, invoice_number: str, ref: str, idempotency_key: str
@@ -255,6 +263,10 @@ class PayPalConfig:
     attribution_id: str  # the partner's BN code (PayPal-Partner-Attribution-Id)
     return_url: str
     base: str = PAYPAL_SANDBOX
+    # Direct mode (PAYPAL_DIRECT=1): no partner onboarding. Every call is made on the REST app's own PayPal account
+    # with its own token, so no `PayPal-Auth-Assertion` (and no partner attribution) is sent. For the sandbox demo,
+    # where every user's links are paid into one sandbox business account; partner onboarding is for real users.
+    direct: bool = False
 
     @property
     def test_mode(self) -> bool:
@@ -310,9 +322,10 @@ class PayPalApi:
         headers = {
             "Authorization": f"Bearer {await self.token()}",
             "Content-Type": "application/json",
-            "PayPal-Partner-Attribution-Id": self.cfg.attribution_id,
         }
-        if merchant:
+        if self.cfg.attribution_id and not self.cfg.direct:
+            headers["PayPal-Partner-Attribution-Id"] = self.cfg.attribution_id
+        if merchant and not self.cfg.direct:
             headers["PayPal-Auth-Assertion"] = auth_assertion(self.cfg.client_id, merchant)
         if request_id:
             headers["PayPal-Request-Id"] = request_id
