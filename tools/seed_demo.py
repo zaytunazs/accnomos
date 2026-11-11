@@ -61,7 +61,13 @@ for _p in ("packages/connectors/src", "packages/ledger/src", "services/runtime")
         sys.path.insert(0, str(ROOT / _p))
 
 from accnomos_connectors import FakeMailProvider  # noqa: E402
-from accnomos_connectors.base import MailAttachment, MailMessage, MailSender, OutgoingMail, StorageProvider  # noqa: E402
+from accnomos_connectors.base import (  # noqa: E402
+    MailAttachment,
+    MailMessage,
+    MailSender,
+    OutgoingMail,
+    StorageProvider,
+)
 from accnomos_ledger.bank import reconciled_to  # noqa: E402
 from app import (  # noqa: E402
     autopilot,
@@ -90,7 +96,13 @@ from app.checks import (  # noqa: E402  sys.path first
     normalise_vat_number,
     run_checks,
 )
-from app.deadlines import STAGGER_START_MONTH, add_months, period_containing, period_label, previous_period  # noqa: E402
+from app.deadlines import (  # noqa: E402
+    STAGGER_START_MONTH,
+    add_months,
+    period_containing,
+    period_label,
+    previous_period,
+)
 from app.journal import BANK, VAT_CONTROL, draft_journal  # noqa: E402
 from app.paths import DOCS, INBOX, REPORTS, readme_text  # noqa: E402
 from app.pdf import render_invoice  # noqa: E402

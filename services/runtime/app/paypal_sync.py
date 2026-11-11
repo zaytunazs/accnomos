@@ -81,7 +81,10 @@ HINTS: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"\b(adobe|microsoft|google|apple|dropbox|canva|xero|zoom|slack|notion|github|openai|software)\b"),
         "Software & subscriptions",
     ),
-    (re.compile(r"\b(screwfix|toolstation|wickes|b&q|travis perkins|jewson|selco|howdens|timber|hardware)\b"), "Materials"),
+    (
+        re.compile(r"\b(screwfix|toolstation|wickes|b&q|travis perkins|jewson|selco|howdens|timber|hardware)\b"),
+        "Materials",
+    ),
     (re.compile(r"\b(royal mail|parcelforce|evri|hermes|dpd|ups|fedex|yodel|parcel2go)\b"), "Postage"),
     (re.compile(r"\b(ebay|amazon)\b"), "Office supplies"),
     (re.compile(r"\b(facebook|meta platforms|instagram|google ads|linkedin)\b"), "Advertising"),
