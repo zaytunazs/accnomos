@@ -226,7 +226,7 @@ def test_stripe_direct_links_the_keys_own_account_without_stripe_account(client:
 
 
 async def test_a_spoken_invoice_gets_the_paypal_link_before_it_is_emailed(client: TestClient, books: Books) -> None:
-    """"Send JM Trading an invoice for £200 for October support": the card says it will carry a PayPal link, and
+    """ "Send JM Trading an invoice for £200 for October support": the card says it will carry a PayPal link, and
     once approved the invoice is created, linked and emailed with the link in it."""
     from datetime import date
 
@@ -265,3 +265,16 @@ async def test_no_connected_account_means_no_link_on_the_card(books: Books) -> N
     from app import actions
 
     assert await actions._pay_online_provider(books) is None
+
+
+def test_demo_may_connect_in_direct_mode_only(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Direct mode only points the demo's books at the server's own sandbox account, so the demo may "connect"."""
+    demo_h = H | {"X-Demo-Session": "demo-session"}
+    body = {"redirect_to": SETTINGS, "binding_hash": binding_hash(BINDING)}
+    assert client.post("/payments/online/paypal/start", json=body, headers=demo_h).status_code == 200
+    monkeypatch.delenv("PAYPAL_DIRECT")
+    monkeypatch.setenv("PAYPAL_PARTNER_MERCHANT_ID", "PARTNER1")
+    monkeypatch.setenv("PAYPAL_PARTNER_ATTRIBUTION_ID", "BN")
+    monkeypatch.setenv("PAYPAL_RETURN_URL", f"{API}/payments/online/paypal/callback")
+    r = client.post("/payments/online/paypal/start", json=body, headers=demo_h)
+    assert r.status_code == 403 and "demo" in r.text
