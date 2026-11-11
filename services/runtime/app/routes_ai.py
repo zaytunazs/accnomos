@@ -2,6 +2,8 @@
 
 GET  /ai/health  the chain (AI_PROVIDERS) and each provider's live health: cheap probes, cached HEALTH_TTL_S.
 GET  /ai/calls   the last 50 AI calls (provider, model, task, latency, fell back?), kept in memory only.
+GET  /admin/ai-status  (ADMIN_EMAILS only) all of the above plus speech-to-text, for support: customers see only
+                 "Accnomos AI" in GET /health (owner's request, 11 Nov 2026).
 POST /ai/warm    ping the hosted GPU endpoint so its container is up before a judge's first upload; at most one ping per
                  WARM_EVERY_S, on top of the usual per-IP rate limit.
 
@@ -18,7 +20,7 @@ import time
 from typing import Any
 
 import httpx
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
 from app.ai import chain, providers
@@ -190,3 +192,48 @@ def reset() -> None:
     _cache, _last_warm = None, None
     chain.BREAKER.reset()
     chain.RECENT.clear()
+
+
+# --------------------------------------------------------------------------- #
+# Admins only: which providers, models and speech-to-text services the server uses
+# --------------------------------------------------------------------------- #
+
+admin_router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+async def require_ai_admin(request: Request) -> str:
+    """The verified caller's email if it is on ADMIN_EMAILS (app/billing/admin.py's list); 401 without a sign-in,
+    403 otherwise. Unlike the billing admin routes it needs no registry: it reads only this process's state."""
+    from app import identity
+    from app.billing.admin import admin_emails
+
+    me = await identity.signed_in_identity(request)
+    email = (me.email or "").strip().lower()
+    if not email or email not in admin_emails():
+        raise HTTPException(403, "Admins only")
+    return email
+
+
+class AiStatus(BaseModel):
+    """For support: the chain, each provider's health, speech-to-text and the recent calls (no keys, tokens, URLs or
+    document content). Customers see only "Accnomos AI" (GET /health)."""
+
+    health: AiHealth
+    recommended: str
+    verifier_provider: str
+    stt: list[dict[str, Any]]
+    calls: list[chain.CallRecord]
+
+
+@admin_router.get("/ai-status", response_model=AiStatus)
+async def ai_status(_admin: str = Depends(require_ai_admin)) -> AiStatus:
+    from app.ai import stt
+    from app.ai.verify import verifier_provider
+
+    return AiStatus(
+        health=await ai_health(),
+        recommended=providers.RECOMMENDED,
+        verifier_provider=verifier_provider(os.environ),
+        stt=stt.describe(),
+        calls=chain.recent(),
+    )

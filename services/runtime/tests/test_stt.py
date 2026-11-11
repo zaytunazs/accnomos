@@ -441,8 +441,10 @@ def test_voice_route_with_no_provider_is_400(route, monkeypatch: pytest.MonkeyPa
 def test_health_lists_speech_to_text_without_secrets(route):
     client, _state, _books = route
     got = client.get("/health").json()
-    assert [(p["name"], p["configured"]) for p in got["stt"]] == [("muse", True), ("whisper", True)]
-    assert not any(s in json.dumps(got) for s in SECRETS) and WHISPER_BASE not in json.dumps(got)
+    assert [p["configured"] for p in got["stt"]] == [True] and got["voice_ok"] is (got["voice"] is True)
+    shown = json.dumps(got).lower()
+    assert not any(s.lower() in shown for s in SECRETS) and WHISPER_BASE not in shown
+    assert "muse" not in shown and "whisper" not in shown and stt.DEFAULT_WHISPER_MODEL.lower() not in shown
 
 
 # --------------------------------------------------------------------------- #
