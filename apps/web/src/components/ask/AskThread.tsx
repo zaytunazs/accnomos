@@ -19,7 +19,7 @@ import { ASK_EXAMPLE, ASK_EXAMPLE_HOUSEHOLD } from "@/components/home/AskBar";
 import ActionCard, { ClarifyCard, withPicked } from "./ActionCard";
 import AnswerCard from "./AnswerCard";
 import MicButton from "./MicButton";
-import { FALLBACK_QUESTIONS, suggestedQuestions } from "./suggested";
+import { FALLBACK_QUESTIONS, PAYPAL_QUESTIONS, suggestedQuestions } from "./suggested";
 
 interface Turn {
   question: string; // empty while a spoken question is being transcribed
@@ -119,7 +119,7 @@ export default function AskThread() {
       const dash = await runtime.dashboard(acct, `${vat ? `${vat}&` : ""}today=${todayIso()}`);
       setSuggestions(suggestedQuestions(dash));
     } catch {
-      setSuggestions(FALLBACK_QUESTIONS);
+      setSuggestions([...FALLBACK_QUESTIONS, ...PAYPAL_QUESTIONS]);
     }
   }, []);
   const end = useRef<HTMLDivElement>(null);

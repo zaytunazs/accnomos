@@ -10,6 +10,14 @@ export const FALLBACK_QUESTIONS = [
 
 const MAX_SUGGESTIONS = 4;
 
+/** "Talk to your accountant" about PayPal (app/paypal_assistant.py): typed or spoken, answered by code or turned into
+ * a card to approve. Offered after the dashboard's own questions. */
+export const PAYPAL_QUESTIONS = [
+  "Send a PayPal reminder to everyone who owes me",
+  "What did PayPal cost me this quarter?",
+  "How much is sitting in PayPal?",
+];
+
 const gbp2 = (pounds: string) =>
   `£${Number(pounds).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -19,7 +27,7 @@ const gbp2 = (pounds: string) =>
  * so the answer is one the books can actually give.
  */
 export function suggestedQuestions(d: RtDashboard | null): string[] {
-  if (!d) return FALLBACK_QUESTIONS;
+  if (!d) return [...FALLBACK_QUESTIONS, ...PAYPAL_QUESTIONS];
   const out: string[] = [];
   const vat = tileData(d.vat);
   const owedToYou = tileData(d.owed_to_you);
@@ -42,5 +50,5 @@ export function suggestedQuestions(d: RtDashboard | null): string[] {
   if (cash?.balance_pence !== null && cash?.balance_pence !== undefined) out.push("What is my cash balance?");
   if (out.length < MAX_SUGGESTIONS) out.push("Summarise my spending");
   const picked = out.slice(0, MAX_SUGGESTIONS);
-  return picked.length > 0 ? picked : FALLBACK_QUESTIONS;
+  return [...(picked.length > 0 ? picked : FALLBACK_QUESTIONS), ...PAYPAL_QUESTIONS];
 }

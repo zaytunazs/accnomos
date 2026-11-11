@@ -11,7 +11,7 @@ mobile `apps/mobile/lib/screens/ask_screen.dart`.
 
 | Step | Decided by | How |
 |---|---|---|
-| Is this an instruction at all? | code, then the model | Code only asks the model if the message has an action word (invoice, send, chase, log, miles, hours…) and doesn't start like a question ("how", "what", "did"…). The model then returns `kind`: `create_invoice`, `chase_invoice`, `log_mileage`, `log_timesheet`, `pay_overtime`, `create_quote`, `convert_quote_to_invoice` or `none`. `none`, or a reply in the wrong shape, means an ordinary Ask answer. |
+| Is this an instruction at all? | code, then the model | Code only asks the model if the message has an action word (invoice, send, chase, log, miles, hours…) and doesn't start like a question ("how", "what", "did"…). The model then returns `kind`: `create_invoice`, `chase_invoice`, `log_mileage`, `log_timesheet`, `pay_overtime`, `create_quote`, `convert_quote_to_invoice`, `remind_unpaid`, `payment_link_message` or `none`. `none`, or a reply in the wrong shape, means an ordinary Ask answer. |
 | Names (customer, job, staff, vehicle, invoice) | the model **quotes**, code **finds** | The model copies the words the user used ("JM Trading"). Code matches them against the user's own lists: contacts (customers only), open jobs, active staff, active vehicles, unpaid invoices. It uses `difflib` ≥ 0.8 on normalised names ("J.M. Trading Ltd" = "JM Trading"), also against runs of whole words, so "Alex" finds Alex Green and "Oak Lane" finds "Bathroom, 4 Oak Lane". If two names match about equally, or none does, Ask asks which one and lists the candidates. The lists never go to the model. |
 | Amounts, hours, miles | the model **quotes**, code **parses** | The model returns the text as said (`"£1,250.50"`, `"7.5"`). Code parses it, and **refuses any figure that isn't in the user's message**, so a made-up amount becomes a "How much?" question. Hours round to the nearest quarter (as on timesheets), miles to 0.1. |
 | Dates | the model **quotes**, code **parses** | "yesterday", "Monday", "3 Oct", "3/10" → a date (a day with no year is the latest one not after today). Future dates are refused. |
@@ -76,8 +76,54 @@ second invoice.
 | `close_month` | `month_end.lock`: recomputes the month's snapshot and refuses (409) if its hash differs from the card's, then saves `07 Reports/<yyyy-mm>-month-end.xlsx`, appends a close record to `_System/close/<yyyy-mm>.json` and audits `month_closed` / `month_reclosed` | month-end close only |
 | `create_quote` | `quotes.create_quote`: priced like an invoice by the same code, saved as a **draft**; never emailed from Ask (sending is the Quotes page, with its own tick). "Valid for 14 days" is the only figure it reads beyond the amount. | now |
 | `convert_quote_to_invoice` | `quotes.convert_to_invoice`: a draft invoice with the quote's lines and totals exactly. The quote is found by number ("QU-0003", "quote 3") or by customer; several open quotes for a customer means a question (an accepted one wins if only one is). Refused at Approve if the quote changed or was already converted. | now |
+| `remind_unpaid` | `paypal_assistant.run_remind`: for each invoice on the card, checked again first (still unpaid, same PayPal invoice), PayPal's own reminder (`POST /v2/invoicing/invoices/{id}/remind`) when its Pay online link is a PayPal invoice on the connected account, otherwise the reminder email shown on the card (`invoicing.send_reminder`). One that fails does not stop the rest; the result names it. Tap only | now |
+| `payment_link_message` | `paypal_assistant.run_message`: adds a Pay online link first if the card said so (`online_payments.add_link`, PayPal first), then returns the message with the link added by code, a `wa.me` link and an `sms:` link. Nothing is sent: the user sends it from their own phone | now |
 
 Questions about quotes ("any outstanding quotes?") are not actions: they are answered from the quote facts in the Ask pack (`quotes` in `app/facts.py`: waiting for an answer, expiring within 7 days, expired, accepted and not yet invoiced, drafts), worked out by `quotes.quote_facts` and checked by the same number check as every other answer.
+
+## PayPal: talk to your accountant
+
+`app/paypal_assistant.py`. Typed in Ask or spoken to the assistant (speech-to-text, then exactly the same path as typed
+text, `routes_ask.ask_voice`); the web's empty Ask thread offers the first three as chips.
+
+| Say | What happens |
+|---|---|
+| "Send a PayPal reminder to everyone who owes me" | `remind_unpaid` card: every overdue unpaid invoice (oldest first, at most 10), who, how much (what is still owed, in pence, after part payments and credit notes), how many days overdue, and how each goes: **PayPal reminder** when the invoice's Pay online link is a PayPal invoice on the connected account and the customer has an email address, otherwise the usual **email reminder** (`app/ai/remind.py`, checked by code). Not-yet-due invoices are left out and the card says how many. |
+| "Remind JM Trading through PayPal" | the same card for that customer's unpaid invoices (due or not). A chase that mentions PayPal or "everyone" is turned into this card by code (`paypal_assistant.reroute`), whatever kind the model picked. |
+| "WhatsApp JM Trading the payment link", "text Hartley the pay link for INV-0003" | `payment_link_message` card: the message, who it is for, the amount, and which link goes with it. On Approve: the text with the link, **Copy message**, **Open in WhatsApp** (`https://wa.me/<number>?text=`) and **Open in Messages** (`sms:<number>?&body=`). The number is the contact's phone, as `44…`; without one the links open the app with no chat picked. |
+| "Who owes me money?" | the aged balances answer (`ask_more.owed_answer`) plus, by code, how many of the unpaid invoices have a PayPal link and how many have no payment link. |
+| "What did PayPal cost me this quarter?" | code adds up the PayPal fee entries in the span (7900 Bank charges in entries against 1240 PayPal clearing, or with PayPal as the counterparty; reversals net off): the fees, the number of fee entries, what came in through PayPal and the fee as a percentage of it (one decimal, half up). "This quarter" is the calendar quarter so far; other spans as for profit questions (`ask_router.pnl_span`). With no fee entries it says so, in code's words. |
+| "How much is sitting in PayPal?" | `online_payments.clearing_balance(books, "paypal")`: the 1240 PayPal clearing balance by the books (payments approved, less fees, less payouts matched to the bank), the last payout, and what is owed on unpaid invoices with a PayPal link. It is the books' figure, not PayPal's live balance, and the answer says so. |
+
+Words and figures: the model may word the answers and the payment message; code checks them as everywhere else (every
+figure must be in the facts, `ai/ask.py KnownNumbers`; the message must quote the invoice number and the amount exactly
+and contain no link or web address). Anything that fails is replaced by code's own words, with the reason on the card.
+The link itself is always added by code after the check, at approval.
+
+PayPal calls: the runtime calls PayPal's REST endpoints itself (`app/payment_providers.py`, `PayPalApi.remind_invoice`),
+with the same token cache, partner `PayPal-Auth-Assertion` (or none in direct sandbox
+mode), test transport and error handling as the payment links. Invoicing v2 `remind` (schema checked 11 Nov 2026):
+body `{"send_to_recipient": true, "send_to_invoicer": false}`, answer 204; PayPal documents that a caller's `subject` and
+`note` are not honoured, so none are sent and the card says "PayPal reminder" rather than showing an email.
+UNVERIFIED against the live sandbox (no sandbox credentials on the build machine): that `remind` accepts an invoice we
+sent with `send_to_recipient: false`, and that PayPal emails the address on the PayPal invoice (the customer's email when
+the link was made). The unit tests check the request field by field against a mock; `app/online_fakes.py` answers it in
+test mode.
+
+**PayPal Agent Toolkit: not used, on purpose.** Checked `paypal-agent-toolkit` 1.11.0 from PyPI (the wheel's source,
+github.com/paypal/agent-toolkit) on 11 Nov 2026. It does have `send_invoice_reminder`, but in-process use here is
+impractical: the package pins `openai-agents==0.0.2`, `langchain==0.3.23` and `crewai-tools==0.13.2` as install
+requirements; its `PayPalClient` uses blocking `requests` with the base URL fixed to PayPal's sandbox or live constants
+(no transport to inject, so neither the test fakes nor test mode could see the calls); it fetches a new OAuth token on
+every request; it sends no `PayPal-Request-Id` and no `PayPal-Auth-Assertion` (its `Context.merchant_id` is stored but
+never used), so it cannot act for an onboarded merchant; its reminder handler posts the invoice id in the body and
+`print`s the URL and PayPal's response to stdout; and it has no capture-refund tool. The runtime therefore calls the same
+PayPal REST endpoints directly, behind the same approve card, and makes no claim to use the toolkit.
+
+**Refunds: not built.** Refunding a captured PayPal payment (`POST /v2/payments/captures/{id}/refund`) would need the
+capture id of an invoice payment, which is still UNVERIFIED (see `payment_providers.py`), and a reversing entry whose
+treatment (re-open the debt, or a credit note) is the user's decision. Without a tested path it is left out rather than
+offered.
 
 ## Cards from the month-end close
 

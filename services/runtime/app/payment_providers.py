@@ -65,6 +65,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -621,6 +622,19 @@ class PayPalApi:
         )
         return await self._call("GET", f"/v1/reporting/transactions?{q}", merchant=merchant)
 
+    async def remind_invoice(self, merchant: str, invoice_id: str) -> None:
+        """`POST /v2/invoicing/invoices/{id}/remind` (Invoicing v2 schema, checked 11 Nov 2026): PayPal emails the payer
+        a reminder and answers 204. Its `notification` body's `subject` and `note` are documented as not honoured
+        (PayPal writes its own), so only who gets it is sent. The id is checked before it goes into the path."""
+        if not PAYPAL_INVOICE_ID.fullmatch(invoice_id):
+            raise ProviderError("PayPal", 0, "that does not look like a PayPal invoice id")
+        await self._call(
+            "POST",
+            f"/v2/invoicing/invoices/{invoice_id}/remind",
+            merchant=merchant,
+            body={"send_to_recipient": True, "send_to_invoicer": False},
+        )
+
 
 @dataclass(frozen=True)
 class PayPalInvoiceDetails:
@@ -651,6 +665,9 @@ def paypal_parse_time(raw: Any) -> datetime | None:
     except ValueError:
         return None
     return got if got.tzinfo else got.replace(tzinfo=UTC)
+
+
+PAYPAL_INVOICE_ID = re.compile(r"INV2(?:-[A-Z0-9]{1,8}){1,6}")  # "INV2-Z56S-5LLA-Q52L-CPZ5"
 
 
 def recipient_view_url(invoice: dict[str, Any]) -> str | None:

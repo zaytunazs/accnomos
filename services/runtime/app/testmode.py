@@ -279,6 +279,17 @@ _SHOPPING_WORDS = (
 )
 
 
+#: The PayPal assistant's phrases (app/paypal_assistant.py), so the demo works in test mode without a model.
+_PAYPAL_REMIND_WORDS = re.compile(
+    r"^\s*(?:please\s+)?(?:send\s+(?:a\s+)?paypal\s+reminders?\s+to|remind)\s+(?P<who>.+?)"
+    r"(?:\s+(?:through|via|on|by|with)\s+paypal)?\s*[.!?]?\s*$",
+    re.I,
+)
+_LINK_MESSAGE_WORDS = re.compile(
+    r"^\s*(?:whats\s?app|text|message|sms)\s+(?P<who>.+?)\s+(?:the\s+|a\s+)?(?:payment|pay)\s+link\b", re.I
+)
+
+
 def intent_reply(question: str) -> dict[str, Any]:
     """The words of "send a £100 invoice to JM Trading [for …]" or "add [6] packing tape to my shopping list" copied
     into the intent; anything else is `none`."""
@@ -293,6 +304,11 @@ def intent_reply(question: str) -> dict[str, Any]:
                 "quantity_text": shop["qty"],
                 "job_ref": job,
             }
+    if pp := _LINK_MESSAGE_WORDS.match(question):
+        return {**fields, "kind": "payment_link_message", "customer_ref": pp["who"]}
+    if pp := _PAYPAL_REMIND_WORDS.match(question):
+        everyone = re.match(r"(?:everyone|everybody|all\b)", pp["who"], re.I)
+        return {**fields, "kind": "remind_unpaid", "customer_ref": None if everyone else pp["who"]}
     m = _INVOICE_WORDS.match(question)
     if m is None:
         return {**fields, "kind": "none"}

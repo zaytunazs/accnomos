@@ -277,6 +277,9 @@ SUMMARIES: dict[str, Summary] = {
         f"Made a {_provider(r)} payment link" + _pounds(r, "amount_pence") + f" for invoice {_inv(r)}"
     ),
     "payment_link_removed": lambda r, w: f"Removed the {_provider(r)} payment link from invoice {_inv(r)}",
+    "payment_message_prepared": lambda r, w: (  # app/paypal_assistant.py: the user sends it from their own phone
+        f"Prepared a payment message with the {_provider(r)} link for invoice {_inv(r)}"
+    ),
     "online_payment_approved": lambda r, w: (
         f"Posted a {_provider(r)} payment"
         + _pounds(r, "amount_pence")
