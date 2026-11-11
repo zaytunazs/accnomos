@@ -416,6 +416,9 @@ app.include_router(personal_router)
 from app.routes_goals import router as goals_router  # noqa: E402  /books/goals (goals tracked against the books)
 
 app.include_router(goals_router)
+from app.routes_grid_filter import router as grid_filter_router  # noqa: E402  POST /ai/grid-filter (Power grid)
+
+app.include_router(grid_filter_router)
 from app.routes_property import router as property_router  # noqa: E402  /property/* (landlords, MTD property)
 
 app.include_router(property_router)

@@ -2,49 +2,20 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import type { AccountInfo } from "@azure/msal-browser";
 import { fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { RuntimeErrorNote } from "@/components/States";
 import { money } from "@/lib/invoices";
 import { runtime, ukDate, type RtPaypalSyncItem, type RtPaypalSyncView } from "@/lib/runtime";
+import { COST_ACCOUNTS, KIND, VAT_CODES } from "@/components/invoices/paypal-codes";
+import { usePowerGridOn, useWide } from "@/lib/power-grid";
 
-/** The cost accounts a PayPal purchase can go to (services/runtime/app/journal.py CATEGORY_ACCOUNTS and Sundry). */
-const COST_ACCOUNTS = [
-  "5000 Materials",
-  "5100 Tools & small equipment",
-  "6200 Advertising",
-  "7100 Rent",
-  "7200 Utilities",
-  "7300 Motor expenses",
-  "7400 Travel",
-  "7410 Subsistence",
-  "7500 Office supplies",
-  "7510 Software & subscriptions",
-  "7520 Postage",
-  "7550 Telephone & internet",
-  "7600 Professional fees",
-  "7700 Insurance",
-  "7900 Bank charges",
-  "7999 Sundry expenses",
-];
-const VAT_CODES: Record<string, string> = {
-  S: "Standard 20%",
-  R: "Reduced 5%",
-  Z: "Zero rated",
-  E: "Exempt",
-  N: "No VAT to reclaim",
-  O: "Outside the scope of VAT",
-};
-const KIND: Record<RtPaypalSyncItem["kind"], string> = {
-  invoice: "Invoice payment",
-  sale: "Sale",
-  expense: "Purchase",
-  fee: "PayPal fee",
-  withdrawal: "Withdrawal to bank",
-  deposit: "Added from bank",
-  refund: "Refund or reversal",
-  other: "Not posted",
-};
+/** The Power grid add-on (Settings › Business): loaded only when it is on, so AG Grid stays out of everyone else's pages. */
+const PayPalReviewGrid = dynamic(() => import("@/components/grid/PayPalReviewGrid"), {
+  ssr: false,
+  loading: () => <p className="text-sm text-muted">Opening the grid…</p>,
+});
 
 /** "Sync PayPal": one tap reads the PayPal history; each transaction waits here for the user's yes. */
 export default function PayPalSync({ account, onPosted }: { account: AccountInfo; onPosted: () => void }) {
@@ -53,6 +24,8 @@ export default function PayPalSync({ account, onPosted }: { account: AccountInfo
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [showDone, setShowDone] = useState(false);
+  const powerGrid = usePowerGridOn();
+  const wide = useWide();
 
   const load = useCallback(async () => {
     try {
@@ -123,14 +96,17 @@ export default function PayPalSync({ account, onPosted }: { account: AccountInfo
       </div>
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-2 text-sm font-bold text-teal-dark">{note}</p>}
       {error && <RuntimeErrorNote message={error} title="Could not sync PayPal" />}
-      {waiting.length > 0 && (
+      {powerGrid && wide && view.items.length > 0 && (
+        <PayPalReviewGrid account={account} items={view.items} onChanged={update} />
+      )}
+      {!(powerGrid && wide) && waiting.length > 0 && (
         <ul className="space-y-2" aria-label="PayPal transactions waiting for approval">
           {waiting.map((i) => (
             <SyncRow key={i.transaction_id} account={account} item={i} onChanged={update} />
           ))}
         </ul>
       )}
-      {rest.length > 0 && (
+      {!(powerGrid && wide) && rest.length > 0 && (
         <div>
           <button type="button" className="text-[13px] font-bold text-teal-dark hover:underline" onClick={() => setShowDone((s) => !s)}>
             {showDone ? "Hide" : "Show"} {rest.length} other PayPal transaction{rest.length === 1 ? "" : "s"}

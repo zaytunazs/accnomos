@@ -988,6 +988,10 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify(reason ? { reason } : {}),
     }),
+  /** POST /ai/grid-filter (services/runtime/app/routes_grid_filter.py): plain words to a grid filter model and sort,
+   *  checked against an allowlist there and again in lib/grid-core.ts. Filters only: nothing is written. */
+  gridFilter: (a: AccountInfo, body: { grid: "ledger"; text: string; today?: string; accounts?: string[] }) =>
+    call<RtGridFilter>(a, "/ai/grid-filter", { method: "POST", body: JSON.stringify(body) }),
   paypalFees: (a: AccountInfo, start: string, end: string) =>
     call<RtPaypalFees>(a, `/payments/paypal/fees?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
   invoiceCustomers: (a: AccountInfo) => call<RtInvoiceCustomer[]>(a, "/invoices/customers"),
@@ -2442,6 +2446,16 @@ export interface RtPaypalSyncItem {
   journal: { account: string; debit_pence: number; credit_pence: number; vat_code: string | null }[];
   event_ids: string[];
   reject_reason: string | null;
+}
+/** POST /ai/grid-filter. `filter_model` and `sort` are AG Grid shapes; `quick_filter` stands in when the model failed. */
+export interface RtGridFilter {
+  filter_model: Record<string, unknown>;
+  sort: { colId: string; sort: "asc" | "desc" }[];
+  quick_filter: string | null;
+  summary: string;
+  dropped: string[];
+  model: string;
+  fallback_reason: string | null;
 }
 export interface RtPaypalSyncView {
   available: boolean;

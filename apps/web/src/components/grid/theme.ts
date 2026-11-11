@@ -1,0 +1,71 @@
+"use client";
+
+import {
+  CellStyleModule,
+  ClientSideRowModelApiModule,
+  ClientSideRowModelModule,
+  ColumnApiModule,
+  CsvExportModule,
+  DateFilterModule,
+  ModuleRegistry,
+  NumberFilterModule,
+  PinnedRowModule,
+  QuickFilterModule,
+  RenderApiModule,
+  RowApiModule,
+  RowSelectionModule,
+  RowStyleModule,
+  SelectEditorModule,
+  TextFilterModule,
+  TooltipModule,
+  ValidationModule,
+  themeQuartz,
+} from "ag-grid-community";
+
+/** AG Grid Community (MIT) only, no Enterprise module, so no licence key and no watermark. Just the modules the two
+ *  grids use (smaller than AllCommunityModule); ValidationModule names a missing one in development builds only. */
+ModuleRegistry.registerModules([
+  ClientSideRowModelModule,
+  ClientSideRowModelApiModule,
+  ColumnApiModule,
+  RowApiModule,
+  RenderApiModule,
+  RowSelectionModule,
+  TextFilterModule,
+  NumberFilterModule,
+  DateFilterModule,
+  QuickFilterModule,
+  SelectEditorModule,
+  CsvExportModule,
+  PinnedRowModule,
+  TooltipModule,
+  CellStyleModule,
+  RowStyleModule,
+  ...(process.env.NODE_ENV !== "production" ? [ValidationModule] : []),
+]);
+
+/** The Accnomos brand in AG Grid's Theming API: the app's own CSS tokens (src/app/globals.css) and Manrope. */
+export const accnomosGridTheme = themeQuartz.withParams({
+  browserColorScheme: "light",
+  fontFamily: "var(--font-manrope), ui-sans-serif, system-ui, sans-serif",
+  fontSize: 14,
+  headerFontSize: 13,
+  headerFontWeight: 800,
+  foregroundColor: "var(--color-ink)",
+  textColor: "var(--color-ink)",
+  subtleTextColor: "var(--color-muted)",
+  backgroundColor: "#ffffff",
+  accentColor: "var(--color-teal)",
+  borderColor: "var(--color-border)",
+  headerBackgroundColor: "var(--color-teal-tint)",
+  headerTextColor: "var(--color-ink)",
+  oddRowBackgroundColor: "var(--color-ground)",
+  selectedRowBackgroundColor: "color-mix(in srgb, var(--color-teal) 12%, white)",
+  rowHoverColor: "color-mix(in srgb, var(--color-teal) 6%, white)",
+  wrapperBorderRadius: "0.75rem",
+  borderRadius: "0.5rem",
+  spacing: 6,
+  focusShadow: { radius: 0, spread: 3, color: "var(--color-teal-dark)" },
+  checkboxCheckedBackgroundColor: "var(--color-teal)",
+  pinnedRowBorder: { width: 2, color: "var(--color-teal)" },
+});

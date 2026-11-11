@@ -2,6 +2,7 @@ import Link from "next/link";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import LiveReports from "@/components/reports/LiveReports";
+import PowerGridLink from "@/components/grid/PowerGridLink";
 
 export const metadata = { title: "Reports · Accnomos", robots: { index: false, follow: false } };
 
@@ -35,6 +36,7 @@ export default function ReportsPage() {
         </Link>
         <span className="text-muted"> · trial balance, ledger, balance sheet, HMRC VAT return, the Accountant pack and files for Xero, QuickBooks, Sage and FreeAgent</span>
       </p>
+      <PowerGridLink />
       <LiveReports />
     </div>
   );

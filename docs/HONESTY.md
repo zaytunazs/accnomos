@@ -191,6 +191,23 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Monthly caps count by the month the payout was sent** (UTC timestamp of the claim), and only Autopilot's own payouts.
 - **Web panel** (`apps/web/src/components/trade/BillPay.tsx`, on /purchases) was type-checked and linted, not run in a browser or covered by an e2e test.
 
+## Power grid add-on (AG Grid)
+
+- **Third-party grid.** The add-on uses AG Grid Community (MIT, `ag-grid-community` and `ag-grid-react` 36.3), Community
+  modules only: no Enterprise module, no licence key, no watermark. Row grouping is Enterprise, so the ledger explorer
+  sorts by account and draws a rule where the account changes instead. It is off by default, saved on this device only
+  (not in the books), and loaded only when on, so other pages do not download it.
+- **Bulk approve is the same approve.** *Approve selected* calls `POST /payments/paypal/sync/{id}/approve` once per ticked
+  row, one after another, after one browser confirmation; the runtime does every check and works the journal out again.
+  Rows that are not waiting cannot be ticked. A changed account or VAT code is sent as the existing endpoint allows
+  (purchases only). There is no batch endpoint and no undo beyond what each approval already has.
+- **The AI only filters.** `POST /ai/grid-filter` asks the user's AI (or the server's) for conditions and a sort as strict
+  JSON; code keeps only allowlisted columns and operators with valid values (`app/ai/grid_filter.py`) and the browser
+  checks again (`grid-core.ts`). It cannot write, post or approve. On any failure the words become a plain search.
+  The prompt was not evaluated against a set of real requests; only the stubbed model is tested.
+- **Not covered.** No e2e test; checked by hand against the test-mode runtime. Bank lines and the Review queue have no
+  grid yet. Totals in the PayPal grid add GBP rows only. The ledger explorer reads the newest 500 lines.
+
 ## Sales and purchases: items, quotes, orders, repeating, overviews, statements
 
 - **Products and services** (`app/items.py`, `_System/Items/items.json`) fill invoice, quote, order and repeating lines. The *income account* is stored and exported but **invoices still post every sale to 4000 Sales** (the VAT package finds sales by that name), so changing it changes nothing in the books. A bill or purchase order uses one *expense account*: a bill whose lines come from items with different expense accounts posts them all to the account with the most net, which the Review card shows and the user can change. CSV import reads our own columns and Xero's inventory export; rows it cannot read are skipped and listed; it has not been tried on a real Xero file.
