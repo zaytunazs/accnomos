@@ -56,10 +56,12 @@ from app.books import SYSTEM, Books, now
 from app.invoicing import (
     Invoice,
     InvoiceError,
+    InvoiceProfile,
     InvoiceStateError,
     PaymentLink,
     get_invoice,
     list_invoices,
+    load_profile,
     money,
     save_invoice,
 )
@@ -68,6 +70,7 @@ from app.payment_providers import (
     PAYPAL_SANDBOX,
     PayPalApi,
     PayPalConfig,
+    PayPalInvoiceDetails,
     ProviderError,
     StripeApi,
     StripeConfig,
@@ -665,6 +668,126 @@ async def _switch_off(link: PaymentLink, c: Connections) -> str | None:
     return None
 
 
+UK_POSTCODE = re.compile(r"\b([A-Z]{1,2}\d[A-Z\d]?)\s*(\d[A-Z]{2})\b", re.IGNORECASE)
+
+
+def _quantity(q: Any) -> str | None:
+    """A line's quantity as PayPal's `quantity` string (`^\\d+(.\\d{1,5})?$`), or None when it cannot be one."""
+    s = format(q.normalize(), "f") if hasattr(q, "normalize") else str(q)
+    return s if re.fullmatch(r"\d+(\.\d{1,5})?", s) else None
+
+
+def paypal_items(inv: Invoice, amount_pence: int) -> list[dict[str, Any]] | None:
+    """The invoice's own lines as PayPal items (description, quantity, unit price before VAT, VAT as item tax), or
+    None when they would not add up to exactly `amount_pence` the way Accnomos priced them: a part-paid or credited
+    invoice, a CIS deduction, a discount line (PayPal's quantity cannot be negative and a negative unit price is
+    not worth the risk), or more than PayPal's 100 items. Code checks the sum here and PayPal's own total again
+    after it is made (app/payment_providers.PayPalApi.create_invoice)."""
+    if not inv.lines or len(inv.lines) > 100:
+        return None
+    items: list[dict[str, Any]] = []
+    total = 0
+    for ln in inv.lines:
+        qty = _quantity(ln.quantity)
+        if qty is None or ln.unit_price_pence <= 0 or ln.net_pence <= 0:
+            return None
+        item: dict[str, Any] = {
+            "name": ln.description[:200],
+            "quantity": qty,
+            "unit_amount": {"currency_code": "GBP", "value": paypal_value(ln.unit_price_pence)},
+            "unit_of_measure": "HOURS" if (ln.unit or "").strip().lower().startswith("hour") else "QUANTITY",
+        }
+        if ln.vat_pence:
+            item["tax"] = {"name": "VAT", "percent": str(ln.vat_rate)}
+        items.append(item)
+        total += ln.net_pence + ln.vat_pence
+    return items if total == amount_pence else None
+
+
+def _phone(raw: str | None) -> dict[str, str] | None:
+    """A UK phone number in E.164 parts (`country_code` 44, `national_number` without the leading 0)."""
+    digits = re.sub(r"\D", "", raw or "")
+    if (raw or "").strip().startswith("+") and digits.startswith("44"):
+        national = digits[2:]
+    elif digits.startswith("0"):
+        national = digits[1:]
+    else:
+        return None
+    if not 9 <= len(national) <= 10:
+        return None
+    return {
+        "country_code": "44",
+        "national_number": national,
+        "phone_type": "MOBILE" if national[0] == "7" else "OTHER",
+    }
+
+
+def _address(raw: str) -> dict[str, str] | None:
+    """The profile's free-text address as PayPal's `address_portable`, only when it ends in a UK postcode."""
+    parts = [p.strip() for p in re.split(r"[\n,]+", raw or "") if p.strip()]
+    if not parts:
+        return None
+    last = parts[-1]
+    m = UK_POSTCODE.search(last)
+    if not m:
+        return None
+    postcode = f"{m.group(1)} {m.group(2)}".upper()
+    town = last[: m.start()].strip() or (parts[-2] if len(parts) > 1 else "")
+    rest = parts[:-1] if last[: m.start()].strip() else parts[:-2]
+    out = {"country_code": "GB", "postal_code": postcode}
+    if rest:
+        out["address_line_1"] = rest[0][:300]
+    if len(rest) > 1:
+        out["address_line_2"] = ", ".join(rest[1:])[:300]
+    if town:
+        out["admin_area_2"] = town[:120]
+    return out
+
+
+def support_line(profile: InvoiceProfile, number: str) -> str | None:
+    """Who the payer contacts about the invoice, from the profile, or None when it has no email or phone."""
+    ways = [w for w in (profile.email, profile.phone) if w]
+    if not ways:
+        return None
+    who = profile.name.strip() or "us"
+    return f"Questions about invoice {number}? Contact {who} at {' or '.join(ways)}, quoting {number}."
+
+
+def paypal_details(inv: Invoice, profile: InvoiceProfile, amount_pence: int, ref: str) -> PayPalInvoiceDetails:
+    """The business and support details for the PayPal invoice, from the invoice profile (Settings › Business)."""
+    note = " ".join(
+        p
+        for p in (f"Invoice {inv.number} from {profile.name.strip() or 'us'}.", support_line(profile, inv.number))
+        if p
+    )
+    terms = " ".join(
+        p
+        for p in (
+            f"Payment for invoice {inv.number}, issued {inv.issue_date:%d/%m/%Y}, due {inv.due_date:%d/%m/%Y}.",
+            profile.footer_note,
+        )
+        if p
+    )
+    invoicer: dict[str, Any] | None = None
+    if profile.name.strip():
+        invoicer = {"business_name": profile.name.strip()[:300]}
+        if addr := _address(profile.address):
+            invoicer["address"] = addr
+        if phone := _phone(profile.phone):
+            invoicer["phones"] = [phone]
+        if profile.vrn:
+            invoicer["tax_id"] = profile.vrn[:100]
+        if profile.email:
+            invoicer["additional_notes"] = f"Email: {profile.email}"[:400]
+    return PayPalInvoiceDetails(
+        note=note,
+        terms=terms,
+        memo=f"Accnomos invoice {inv.number} (link {ref})",
+        invoicer=invoicer,
+        items=paypal_items(inv, amount_pence),
+    )
+
+
 async def add_link(books: Books, number: str, provider: Provider, user: str) -> tuple[Invoice, str | None]:
     """Make a payment link for what is owed on the invoice and keep it on the invoice (replacing an old one, which
     is switched off first). Returns the invoice and a warning when the old link could not be switched off."""
@@ -713,6 +836,7 @@ async def add_link(books: Books, number: str, provider: Provider, user: str) -> 
                     customer_name=inv.customer.name,
                     customer_email=inv.customer.email,
                     request_id=f"accnomos-{ref}",
+                    details=paypal_details(inv, await load_profile(books), amount, ref),
                 )
             except ProviderError as exc:
                 raise OnlinePaymentError(f"PayPal did not make the invoice: {exc.message}") from exc

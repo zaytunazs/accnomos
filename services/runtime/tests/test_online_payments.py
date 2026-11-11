@@ -660,7 +660,13 @@ def test_paypal_signup_asks_for_invoicing_and_checks_the_merchant(
     referral = json.loads(_calls("/v2/customer/partner-referrals")[0].content)
     rest = referral["operations"][0]["api_integration_preference"]["rest_api_integration"]
     assert rest["integration_type"] == "THIRD_PARTY"
-    assert rest["third_party_details"]["features"] == ["PAYMENT", "REFUND", "INVOICE_READ_WRITE"]
+    assert rest["third_party_details"]["features"] == [
+        "PAYMENT",
+        "REFUND",
+        "INVOICE_READ_WRITE",
+        "READ_SELLER_DISPUTE",
+        "UPDATE_SELLER_DISPUTE",
+    ]
     assert referral["legal_consents"] == [{"type": "SHARE_DATA_CONSENT", "granted": True}]
     token = _calls("/v1/oauth2/token")[0]
     assert _form(token) == {"grant_type": "client_credentials"}
@@ -708,7 +714,13 @@ async def test_paypal_invoice_link_pay_find_approve(client: TestClient, books: B
     assert link["provider"] == "paypal" and link["url"].startswith("https://fake.example/__test/paypal/pay/INV2-")
     create = _calls("/v2/invoicing/invoices")[0]
     body = json.loads(create.content)
-    assert body["items"][0]["unit_amount"] == {"currency_code": "GBP", "value": "372.00"}
+    assert [
+        (i["name"], i["quantity"], i["unit_amount"]["value"], i["tax"], i["unit_of_measure"]) for i in body["items"]
+    ] == [
+        ("Kitchen first fix", "6", "45.00", {"name": "VAT", "percent": "20"}, "HOURS"),
+        ("Fixings", "4", "10.00", {"name": "VAT", "percent": "20"}, "QUANTITY"),
+    ]
+    assert FAKES.invoices[link["provider_ref"]]["amount"]["value"] == "372.00"  # PayPal's total = the amount owed
     assert body["detail"]["currency_code"] == "GBP" and body["detail"]["reference"] == link["ref"]
     assert body["configuration"]["partial_payment"]["allow_partial_payment"] is False
     claims = json.loads(base64.b64decode(create.headers["PayPal-Auth-Assertion"].split(".")[1]))
