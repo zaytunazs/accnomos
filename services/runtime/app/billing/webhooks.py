@@ -1,4 +1,5 @@
-"""Stripe webhook events mirrored into `accounts` (Stripe is the source of truth for payment state).
+"""Payment-provider webhook events mirrored into `accounts` (the provider is the source of truth for payment state):
+Stripe first, then PayPal (`handle_paypal`, below).
 
 Idempotent by event id (`stripe_events`): a repeat delivery is acknowledged and ignored; an event whose handling
 fails is forgotten again, so Stripe's retry gets another go.
@@ -167,4 +168,183 @@ async def _subscription(reg: Registry, sub: dict[str, Any], deleted: bool) -> bo
         await S.emit(reg, updated, "subscription_cancelled", {"plan": updated.get("plan_code")})
     if status == "trial_ended" and before != "trial_ended":
         await S.emit(reg, updated, "trial_ended", {})
+    return True
+
+
+# --------------------------------------------------------------------------- #
+# PayPal (PAYMENTS_PROVIDER=paypal; app/billing/paypal_api.py)
+# --------------------------------------------------------------------------- #
+#
+# Verified with PayPal before this runs (routes.paypal_webhook). Idempotent by event id in the same table as Stripe's
+# (PayPal's ids are `WH-…`); a failed event is forgotten again so PayPal's retry gets another go.
+#
+#   * BILLING.SUBSCRIPTION.ACTIVATED / UPDATED: the subscription speaks for the account (`custom_id` = our account
+#     id): plan and interval from the plan id (PAYPAL_PLAN_* env), period end from `billing_info.next_billing_time`.
+#     ACTIVE with a `start_time` still ahead (subscribed during our trial or a comp) is `trialing` until then.
+#     SUSPENDED is `past_due`; CANCELLED / EXPIRED as below.
+#   * BILLING.SUBSCRIPTION.CANCELLED / EXPIRED: see service.paypal_cancelled_patch (paid-for time is kept).
+#   * BILLING.SUBSCRIPTION.SUSPENDED and BILLING.SUBSCRIPTION.PAYMENT.FAILED: `past_due`.
+#   * PAYMENT.SALE.COMPLETED: a payment on the subscription (`billing_agreement_id`): `active`, comp over, and the
+#     period end refreshed from the subscription.
+#   * CHECKOUT.ORDER.APPROVED for a top-up order (`custom_id` = `topup:<account id>`): captured here, and 100
+#     documents added once the capture is COMPLETED. A second delivery (or an order already captured) adds nothing.
+
+PAYPAL_STATUS = {"ACTIVE": "active", "SUSPENDED": "past_due"}
+
+
+async def handle_paypal(reg: Registry, client: Any, payload: bytes) -> dict[str, Any]:
+    try:
+        event = json.loads(payload)
+        event_id, event_type = str(event["id"]), str(event["event_type"])
+        resource = event["resource"]
+        if not isinstance(resource, dict):
+            raise TypeError
+    except (ValueError, KeyError, TypeError) as exc:
+        raise HTTPException(400, "Not a PayPal event") from exc
+    if not await reg.record_stripe_event(event_id, event_type):
+        return {"ok": True, "duplicate": True}
+    try:
+        handled = await _paypal_dispatch(reg, client, event_type, resource)
+    except Exception:
+        await reg.forget_stripe_event(event_id)
+        log.exception("PayPal event %s (%s) failed; PayPal will retry", event_id, event_type)
+        raise
+    return {"ok": True, "handled": handled}
+
+
+async def _paypal_dispatch(reg: Registry, client: Any, event_type: str, res: dict[str, Any]) -> bool:
+    if event_type in ("BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.UPDATED"):
+        return await _paypal_subscription(reg, res)
+    if event_type in ("BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.EXPIRED"):
+        return await _paypal_ended(reg, res, expired=event_type.endswith("EXPIRED"))
+    if event_type in ("BILLING.SUBSCRIPTION.SUSPENDED", "BILLING.SUBSCRIPTION.PAYMENT.FAILED"):
+        acc = await _paypal_account(reg, res, str(res.get("id") or ""))
+        if acc is not None and acc.get("status") in ("active", "trialing"):
+            await reg.update_account(acc["id"], {"status": "past_due"})
+            S.forget(acc)
+            return True
+        return False
+    if event_type == "PAYMENT.SALE.COMPLETED":
+        return await _paypal_sale(reg, client, res)
+    if event_type == "CHECKOUT.ORDER.APPROVED":
+        return await _paypal_topup(reg, client, res)
+    return False
+
+
+async def _paypal_account(reg: Registry, res: dict[str, Any], sub_id: str) -> Row | None:
+    """The account a subscription event is about: by `custom_id` (our account id), else by the subscription id. Only
+    the account's current subscription speaks for it (an older one, after a re-subscribe, is ignored)."""
+    acc = None
+    if custom := res.get("custom_id") or res.get("custom"):
+        acc = await reg.get_account(str(custom))
+    if acc is None and sub_id:
+        acc = await reg.get_account_by_subscription(sub_id)
+    if acc is None:
+        log.warning("PayPal subscription event for an unknown account")
+        return None
+    current = acc.get("stripe_subscription_id")
+    if current and sub_id and current != sub_id:
+        return None
+    return acc
+
+
+async def _paypal_subscription(reg: Registry, sub: dict[str, Any]) -> bool:
+    from app.billing import paypal_api
+
+    sub_id = str(sub.get("id") or "")
+    status = str(sub.get("status") or "")
+    if status in ("CANCELLED", "EXPIRED"):
+        return await _paypal_ended(reg, sub, expired=status == "EXPIRED")
+    ours = PAYPAL_STATUS.get(status)
+    if not sub_id or ours is None:
+        return False  # APPROVAL_PENDING / APPROVED: nothing to mirror yet
+    acc = await _paypal_account(reg, sub, sub_id)
+    if acc is None:
+        return False
+    now = S.now()
+    start = paypal_api.parse_time(sub.get("start_time"))
+    patch: Row = {"stripe_subscription_id": sub_id, "cancel_at_period_end": False}
+    if ours == "active" and start is not None and start > now:
+        patch["status"] = "trialing"  # deferred start: nothing is charged until our trial or comp ends
+        patch["trial_ends_at"] = start
+        patch["comp_until"] = None
+    else:
+        patch["status"] = ours
+    if found := paypal_api.plan_for_id(sub.get("plan_id")):
+        patch["plan_code"], patch["billing_interval"] = found
+    if period_end := paypal_api.parse_time((sub.get("billing_info") or {}).get("next_billing_time")):
+        patch["current_period_end"] = period_end
+    if patch["status"] == "active":
+        patch["comp_until"] = None
+    before = acc.get("status")
+    updated = await reg.update_account(acc["id"], patch) or {**acc, **patch}
+    S.forget(acc)
+    if patch["status"] == "active" and before != "active":
+        interval = patch.get("billing_interval")
+        await S.emit(reg, updated, "subscription_active", {"plan": updated.get("plan_code"), "interval": interval})
+    return True
+
+
+async def _paypal_ended(reg: Registry, sub: dict[str, Any], expired: bool) -> bool:
+    sub_id = str(sub.get("id") or "")
+    acc = await _paypal_account(reg, sub, sub_id)
+    if acc is None or not sub_id or acc.get("stripe_subscription_id") != sub_id:
+        return False  # already handled (our own cancel cleared it first), or not the current subscription
+    patch: Row = {"stripe_subscription_id": None, "status": "cancelled", "cancel_at_period_end": False}
+    if not expired:
+        patch = S.paypal_cancelled_patch(acc, S.now())
+    before = acc.get("status")
+    updated = await reg.update_account(acc["id"], patch) or {**acc, **patch}
+    S.forget(acc)
+    if updated.get("status") == "cancelled" and before != "cancelled":
+        await S.emit(reg, updated, "subscription_cancelled", {"plan": updated.get("plan_code")})
+    return True
+
+
+async def _paypal_sale(reg: Registry, client: Any, sale: dict[str, Any]) -> bool:
+    from app.billing import paypal_api
+
+    sub_id = str(sale.get("billing_agreement_id") or "")
+    if not sub_id or str(sale.get("state") or "completed").lower() != "completed":
+        return False
+    acc = await reg.get_account_by_subscription(sub_id)
+    if acc is None:
+        log.warning("PayPal sale for an unknown subscription")
+        return False
+    patch: Row = {"status": "active", "comp_until": None}
+    try:
+        sub = await client.subscription(sub_id)
+        if period_end := paypal_api.parse_time((sub.get("billing_info") or {}).get("next_billing_time")):
+            patch["current_period_end"] = period_end
+    except paypal_api.PayPalError:
+        log.info("PayPal subscription not read after a sale; the period end waits for the next event")
+    before = acc.get("status")
+    updated = await reg.update_account(acc["id"], patch) or {**acc, **patch}
+    S.forget(acc)
+    if before != "active":
+        await S.emit(reg, updated, "subscription_active", {"plan": updated.get("plan_code")})
+    return True
+
+
+async def _paypal_topup(reg: Registry, client: Any, order: dict[str, Any]) -> bool:
+    from app.billing import paypal_api
+
+    units = order.get("purchase_units") or [{}]
+    custom = str((units[0] or {}).get("custom_id") or "")
+    if not custom.startswith("topup:") or not order.get("id"):
+        return False
+    acc = await reg.get_account(custom.removeprefix("topup:"))
+    if acc is None:
+        log.warning("PayPal top-up for an unknown account")
+        return False
+    try:
+        captured = await client.capture_order(str(order["id"]))
+    except paypal_api.PayPalError as exc:
+        if exc.issue == "ORDER_ALREADY_CAPTURED":
+            return False  # counted when it was captured
+        raise
+    if captured.get("status") != "COMPLETED":
+        return False
+    await reg.add_topup(acc["id"], P.month_start(), P.TOPUP_DOCS)
+    await S.emit(reg, acc, "topup_bought", {"count": P.TOPUP_DOCS})
     return True

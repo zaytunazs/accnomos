@@ -572,6 +572,56 @@
     "ok": "boolean",
     "url": "string"
   },
+  "POST /billing/cancel": {
+    "account": {
+      "analytics_opt_out": "boolean",
+      "billing_interval": "string",
+      "cancel_at_period_end": "boolean",
+      "comp_until": "string",
+      "configured": "boolean",
+      "current_period_end": "null",
+      "display_name": "null",
+      "email": "string",
+      "has_payment_account": "boolean",
+      "id": "string",
+      "limits": {
+        "ask": "number",
+        "autopilot_rules": "number",
+        "bank_feeds": "number",
+        "docs": "number",
+        "invoices": "number",
+        "marketplaces": "number",
+        "multi_currency": "boolean",
+        "payroll_employees": "number",
+        "projects": "boolean",
+        "support": "string",
+        "users": "number"
+      },
+      "own_ai": "boolean",
+      "payments_provider": "string",
+      "plan_code": "string",
+      "read_only": "boolean",
+      "status": "string",
+      "trial_ends_at": "string",
+      "upgrade_url": "string",
+      "usage": {
+        "ask": "number",
+        "autopilot_rules": "null",
+        "bank_feeds": "null",
+        "docs": "number",
+        "invoices": "number",
+        "marketplaces": "null",
+        "topup_docs_remaining": "number",
+        "topup_expires_at": "null",
+        "users": "null"
+      }
+    },
+    "message": "string",
+    "ok": "boolean"
+  },
+  "POST /billing/change-plan": {
+    "url": "string"
+  },
   "POST /billing/checkout": {
     "url": "string"
   },

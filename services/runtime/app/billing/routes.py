@@ -3,11 +3,16 @@
 GET  /plans                    public
 GET  /account                  the caller's account, usage and limits (registers it on the first call)
 PATCH /account                 {analytics_opt_out}: Settings › Privacy
-POST /billing/checkout         {plan_code, interval, promo_code?} -> {url} (Stripe Checkout)
-POST /billing/portal           -> {url} (Stripe Customer Portal)
+POST /billing/checkout         {plan_code, interval, promo_code?} -> {url} (PayPal approval, or Stripe Checkout)
+POST /billing/portal           -> {url} (PayPal's automatic payments page, or the Stripe Customer Portal)
+POST /billing/change-plan      {plan_code, interval} -> {url} (PayPal approves the revision; Stripe: the portal)
+POST /billing/cancel           -> {ok, message, account} (paid-for time is kept until the period ends)
 POST /billing/redeem           {code} -> {ok, message, account}
-POST /billing/topup            -> {url} (Checkout for 100 documents, £3 ex VAT)
+POST /billing/topup            -> {url} (100 documents, £3 ex VAT: a PayPal order, or Stripe Checkout)
+POST /billing/paypal/webhook   PayPal only (verified with PayPal, PAYPAL_WEBHOOK_ID)
 POST /billing/stripe/webhook   Stripe only (signature checked)
+
+The provider is PAYMENTS_PROVIDER (app/billing/payments.py); `provider_or_503()` gives its client.
 """
 
 from __future__ import annotations
@@ -21,10 +26,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import accounts, identity
+from app.billing import paypal_api, stripe_api
 from app.billing import plans as P
 from app.billing import registry as R
 from app.billing import service as S
-from app.billing import stripe_api
 from app.billing.registry import Registry, Row, add_months
 from app.validation import StrictBody
 
@@ -83,16 +88,20 @@ def code_problem(row: Row | None, plan_code: str | None, at: datetime) -> str | 
     return None
 
 
-def stripe_or_503() -> stripe_api.StripeBilling:
+Provider = stripe_api.StripeBilling | paypal_api.PayPalBilling
+
+
+def provider_or_503() -> Provider:
+    """The configured provider's client (PAYMENTS_PROVIDER), or a 503 with a neutral sentence."""
     from app.billing import payments
 
     if not payments.taking_payments():
         raise HTTPException(
             503, "Paid plans can't be bought on this server. Your free trial and promo codes work as usual."
         )
-    client = stripe_api.client()
+    client: Provider | None = paypal_api.client() if payments.provider() == "paypal" else stripe_api.client()
     if client is None:
-        raise HTTPException(503, "Card payments are not set up on this server")
+        raise HTTPException(503, "Payments are not set up on this server")
     return client
 
 
@@ -119,6 +128,17 @@ async def coupon_for(reg: Registry, stripe: stripe_api.StripeBilling, row: Row) 
 
 def _stripe_http(exc: stripe_api.StripeError) -> HTTPException:
     return HTTPException(502, f"Stripe refused: {exc.message}" if exc.status else "Stripe could not be reached")
+
+
+def _paypal_http(exc: paypal_api.PayPalError) -> HTTPException:
+    return HTTPException(502, f"PayPal refused: {exc.message}" if exc.status else "PayPal could not be reached")
+
+
+def _approve_url(out: dict[str, Any]) -> str:
+    url = paypal_api.link(out, "approve", "payer-action")
+    if not url:
+        raise HTTPException(502, "PayPal did not give an approval link")
+    return url
 
 
 # --------------------------------------------------------------------------- #
@@ -199,13 +219,16 @@ class UrlOut(BaseModel):
 
 
 def trial_end_for(acc: Row, at: datetime) -> int | None:
-    """Carry the rest of our 90-day trial (or a comp) into the Stripe subscription, so a card is not charged before
-    it ends. Stripe wants a trial end at least 48 hours away."""
+    """Carry the rest of our 90-day trial (or a comp, or time already paid for before a cancel) into the new
+    subscription, so nothing is charged before it ends: Stripe's trial end, PayPal's `start_time`. Stripe wants a
+    trial end at least 48 hours away; the same margin is used for PayPal."""
     if acc.get("stripe_subscription_id"):
         return None
     ends = acc.get("trial_ends_at") if acc.get("status") == "trialing" else None
     if acc.get("status") == "comped":
         ends = acc.get("comp_until")
+    if acc.get("status") in ("active", "past_due") and acc.get("cancel_at_period_end"):
+        ends = acc.get("current_period_end")
     if isinstance(ends, datetime) and ends > at + timedelta(hours=48):
         return int(ends.timestamp())
     return None
@@ -214,16 +237,13 @@ def trial_end_for(acc: Row, at: datetime) -> int | None:
 @router.post("/billing/checkout", response_model=UrlOut)
 async def checkout(body: CheckoutIn, acc: Account) -> UrlOut:
     reg = require_registry()
-    stripe = stripe_or_503()
+    provider = provider_or_503()
     if acc.get("stripe_subscription_id") and acc.get("status") in ("active", "past_due", "trialing"):
-        raise HTTPException(409, "You already have a subscription: use Manage billing to change plan")
+        raise HTTPException(409, "You already have a subscription: use Change plan or Manage billing instead")
     plan = (await S.plans_by_code(reg)).get(body.plan_code)
     if plan is None or not plan.get("active", True):
         raise HTTPException(400, "That plan is not available")
-    price = stripe_api.env_price(body.plan_code, body.interval) or plan.get(f"stripe_price_{body.interval}")
-    if not price:
-        raise HTTPException(503, "Prices are not set up in Stripe yet")
-    coupon = code = None
+    code: str | None = None
     if body.promo_code:
         code = normalise_code(body.promo_code)
         row = await reg.get_code(code)
@@ -232,6 +252,42 @@ async def checkout(body: CheckoutIn, acc: Account) -> UrlOut:
         assert row is not None
         if row["kind"] == "free_months":
             raise HTTPException(400, "That code gives free months: redeem it under Billing instead")
+        if isinstance(provider, paypal_api.PayPalBilling):
+            raise HTTPException(400, PAYPAL_DISCOUNT_NOTE)
+    if isinstance(provider, paypal_api.PayPalBilling):
+        url = await _paypal_checkout(provider, acc, body)
+    else:
+        url = await _stripe_checkout(reg, provider, acc, plan, body, code)
+    await S.emit(reg, acc, "checkout_started", {"plan": body.plan_code, "interval": body.interval})
+    return UrlOut(url=url)
+
+
+PAYPAL_DISCOUNT_NOTE = (
+    "Discount codes can't be added to a PayPal subscription here: contact us and we'll apply it for you. "
+    "Free-month codes work under Billing."
+)
+
+
+async def _paypal_checkout(paypal: paypal_api.PayPalBilling, acc: Row, body: CheckoutIn) -> str:
+    plan_id = paypal_api.env_plan(body.plan_code, body.interval)
+    if not plan_id:
+        raise HTTPException(503, "Prices are not set up in PayPal yet")
+    try:
+        out = await paypal.create_subscription(
+            plan_id=plan_id, account_id=acc["id"], email=acc.get("email"), start=trial_end_for(acc, S.now())
+        )
+    except paypal_api.PayPalError as exc:
+        raise _paypal_http(exc) from exc
+    return _approve_url(out)
+
+
+async def _stripe_checkout(
+    reg: Registry, stripe: stripe_api.StripeBilling, acc: Row, plan: Row, body: CheckoutIn, code: str | None
+) -> str:
+    price = stripe_api.env_price(body.plan_code, body.interval) or plan.get(f"stripe_price_{body.interval}")
+    if not price:
+        raise HTTPException(503, "Prices are not set up in Stripe yet")
+    coupon = None
     try:
         if code:
             row = await reg.get_code(code)
@@ -250,20 +306,90 @@ async def checkout(body: CheckoutIn, acc: Account) -> UrlOut:
         )
     except stripe_api.StripeError as exc:
         raise _stripe_http(exc) from exc
-    await S.emit(reg, acc, "checkout_started", {"plan": body.plan_code, "interval": body.interval})
-    return UrlOut(url=str(session["url"]))
+    return str(session["url"])
 
 
 @router.post("/billing/portal", response_model=UrlOut)
 async def portal(acc: Account) -> UrlOut:
-    stripe = stripe_or_503()
+    provider = provider_or_503()
+    if isinstance(provider, paypal_api.PayPalBilling):
+        if not acc.get("stripe_subscription_id"):
+            raise HTTPException(409, "There is no PayPal subscription on this account yet: choose a plan first")
+        return UrlOut(url=provider.cfg.autopay_url)  # PayPal has no per-merchant portal: the payer's own page
     if not acc.get("stripe_customer_id"):
         raise HTTPException(409, "There is no card or invoice on this account yet: choose a plan first")
     try:
-        session = await stripe.portal(str(acc["stripe_customer_id"]))
+        session = await provider.portal(str(acc["stripe_customer_id"]))
     except stripe_api.StripeError as exc:
         raise _stripe_http(exc) from exc
     return UrlOut(url=str(session["url"]))
+
+
+class ChangePlanIn(StrictBody):
+    plan_code: Literal["starter", "comprehensive", "ultimate"]
+    interval: Literal["month", "year"]
+
+
+@router.post("/billing/change-plan", response_model=UrlOut)
+async def change_plan(body: ChangePlanIn, acc: Account) -> UrlOut:
+    """Move a subscription to another plan or interval. PayPal: a revision the buyer approves at PayPal (the
+    BILLING.SUBSCRIPTION.UPDATED webhook then moves the plan here). Stripe: its Customer Portal does it."""
+    reg = require_registry()
+    provider = provider_or_503()
+    sub = acc.get("stripe_subscription_id")
+    if not sub or acc.get("status") not in ("active", "past_due", "trialing"):
+        raise HTTPException(409, "There is no subscription to change: choose a plan first")
+    if body.plan_code == acc.get("plan_code") and body.interval == acc.get("billing_interval"):
+        raise HTTPException(400, "You are already on that plan")
+    if isinstance(provider, stripe_api.StripeBilling):
+        return await portal(acc)
+    plan_id = paypal_api.env_plan(body.plan_code, body.interval)
+    if not plan_id:
+        raise HTTPException(503, "Prices are not set up in PayPal yet")
+    try:
+        out = await provider.revise(str(sub), plan_id)
+    except paypal_api.PayPalError as exc:
+        raise _paypal_http(exc) from exc
+    await S.emit(reg, acc, "plan_change_started", {"plan": body.plan_code, "interval": body.interval})
+    return UrlOut(url=_approve_url(out))
+
+
+@router.post("/billing/cancel")
+async def cancel(request: Request, acc: Account) -> dict[str, Any]:
+    """Stop the subscription renewing. Time already paid for is kept: the plan stays until the period ends, then the
+    account becomes read-only (`cancelled`); a deferred (still in trial) subscription just ends and the trial runs on.
+    PayPal cancels at once (it has no cancel-at-period-end), so the end date is ours; Stripe cancels at period end."""
+    reg = require_registry()
+    provider = provider_or_503()
+    sub = acc.get("stripe_subscription_id")
+    own = S.own_ai(request.headers)
+    if not sub or acc.get("status") not in ("active", "past_due", "trialing"):
+        return {
+            "ok": False,
+            "message": "There is no subscription to cancel",
+            "account": await S.account_view(reg, acc, own, {}),
+        }
+    try:
+        if isinstance(provider, paypal_api.PayPalBilling):
+            await provider.cancel(str(sub))
+            patch = S.paypal_cancelled_patch(acc, S.now())
+        else:
+            await provider.set_cancel_at_period_end(str(sub), True)
+            patch = {"cancel_at_period_end": True}
+    except paypal_api.PayPalError as exc:
+        raise _paypal_http(exc) from exc
+    except stripe_api.StripeError as exc:
+        raise _stripe_http(exc) from exc
+    acc = await reg.update_account(acc["id"], patch) or {**acc, **patch}
+    S.forget(acc)
+    await S.emit(reg, acc, "subscription_cancel_requested", {"plan": acc.get("plan_code")})
+    end = acc.get("current_period_end") if acc.get("cancel_at_period_end") else None
+    message = (
+        f"Cancelled: your plan carries on until {end.day} {end:%B %Y}, and nothing more is taken"
+        if isinstance(end, datetime)
+        else "Cancelled: nothing more is taken"
+    )
+    return {"ok": True, "message": message, "account": await S.account_view(reg, acc, own, {})}
 
 
 @router.post("/billing/topup", response_model=UrlOut)
@@ -271,20 +397,30 @@ async def topup(acc: Account) -> UrlOut:
     import os
 
     reg = require_registry()
-    stripe = stripe_or_503()
-    try:
-        customer = await ensure_customer(reg, stripe, acc)
-        session = await stripe.checkout_topup(
-            customer=customer,
-            account_id=acc["id"],
-            price=os.getenv("STRIPE_PRICE_TOPUP", "").strip() or None,
-            pence=P.TOPUP_PRICE_PENCE,
-            docs=P.TOPUP_DOCS,
-        )
-    except stripe_api.StripeError as exc:
-        raise _stripe_http(exc) from exc
+    provider = provider_or_503()
+    if isinstance(provider, paypal_api.PayPalBilling):
+        try:
+            order = await provider.create_topup_order(
+                account_id=acc["id"], pence=P.TOPUP_PRICE_PENCE, docs=P.TOPUP_DOCS
+            )
+        except paypal_api.PayPalError as exc:
+            raise _paypal_http(exc) from exc
+        url = _approve_url(order)
+    else:
+        try:
+            customer = await ensure_customer(reg, provider, acc)
+            session = await provider.checkout_topup(
+                customer=customer,
+                account_id=acc["id"],
+                price=os.getenv("STRIPE_PRICE_TOPUP", "").strip() or None,
+                pence=P.TOPUP_PRICE_PENCE,
+                docs=P.TOPUP_DOCS,
+            )
+        except stripe_api.StripeError as exc:
+            raise _stripe_http(exc) from exc
+        url = str(session["url"])
     await S.emit(reg, acc, "checkout_started", {"plan": "topup"})
-    return UrlOut(url=str(session["url"]))
+    return UrlOut(url=url)
 
 
 class RedeemIn(StrictBody):
@@ -327,10 +463,17 @@ async def redeem(body: RedeemIn, request: Request, acc: Account) -> dict[str, An
         return {"ok": False, "message": problem, "account": await S.account_view(reg, acc, own, {})}
     assert row is not None
     if row["kind"] != "free_months":
+        from app.billing import payments
+
         off = f"{row['value']}% off" if row["kind"] == "percent" else f"£{int(row['value']) / 100:.2f} off"
+        how = (
+            "contact us and we'll apply it to your PayPal subscription"
+            if payments.provider() == "paypal"
+            else "choose a plan and it's applied at checkout"
+        )
         return {
             "ok": True,
-            "message": f"Code {code} gives {off}: choose a plan and it's applied at checkout",
+            "message": f"Code {code} gives {off}: {how}",
             "code": code,
             "kind": row["kind"],
             "account": await S.account_view(reg, acc, own, {}),
@@ -345,6 +488,23 @@ async def redeem(body: RedeemIn, request: Request, acc: Account) -> dict[str, An
         "kind": row["kind"],
         "account": await S.account_view(reg, acc, own, {}),
     }
+
+
+@router.post("/billing/paypal/webhook", include_in_schema=False)
+async def paypal_webhook(request: Request) -> dict[str, Any]:
+    """PayPal's notifications, each checked with PayPal (verify-webhook-signature, PAYPAL_WEBHOOK_ID) before use."""
+    from app.billing import webhooks
+
+    reg = require_registry()
+    client = paypal_api.client()
+    if client is None:
+        raise HTTPException(503, "PayPal billing is not set up on this server")
+    payload = await request.body()
+    try:
+        await client.verify_webhook(request.headers, payload)
+    except paypal_api.BadSignature as exc:
+        raise HTTPException(400, f"Bad signature: {exc}") from exc
+    return await webhooks.handle_paypal(reg, client, payload)
 
 
 @router.post("/billing/stripe/webhook", include_in_schema=False)
