@@ -18,6 +18,7 @@ import VatSchemeSettings from "@/components/settings/VatSchemeSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import LandlordSetting from "@/components/settings/LandlordSetting";
+import PowerGridSetting from "@/components/settings/PowerGridSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
 import YourAccountant from "@/components/settings/YourAccountant";
 import FilesBackups from "@/components/settings/FilesBackups";
@@ -80,6 +81,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "invoice-profile-title": "business",
   "settings-staff": "business",
   "settings-personal": "business",
+  "settings-power-grid": "business",
   "settings-payments": "business",
   "settings-accountant": "accountant",
   accountant: "accountant",
@@ -492,6 +494,8 @@ export default function SettingsPanels() {
         )}
 
         {uk && <LandlordSetting card={card} heading={heading} />}
+
+        <PowerGridSetting card={card} heading={heading} />
       </div>
 
       <div

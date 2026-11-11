@@ -924,6 +924,29 @@ def public_chat_reply(content: str) -> dict[str, Any]:
     return {"answerable": True, "answer": f"{first} (Test stub answer: no real model ran.)", "sections": [m.group(1)]}
 
 
+def grid_filter_reply(user: str) -> dict[str, Any]:
+    """The Power grid's words-to-filter (app/ai/grid_filter.py), deterministic: "paypal" filters the counterparty,
+    "over £N" the amount, a month name that month (on or before TODAY); "biggest first" sorts by amount."""
+    import calendar
+
+    today = date.fromisoformat(user.split("TODAY: ", 1)[1][:10])
+    text = user.rsplit("REQUEST: ", 1)[1].lower()
+    conds: list[dict[str, Any]] = []
+    if "paypal" in text:
+        conds.append({"column": "counterparty", "op": "contains", "value": "PayPal", "value_to": None})
+    if m := re.search(r"(?:over|more than|above) £?(\d+(?:\.\d+)?)", text):
+        conds.append({"column": "amount", "op": "greaterThan", "value": m.group(1), "value_to": None})
+    for n, name in enumerate(calendar.month_name):
+        if n and name.lower() in text:
+            year = today.year if n <= today.month else today.year - 1
+            last = calendar.monthrange(year, n)[1]
+            conds.append(
+                {"column": "date", "op": "inRange", "value": f"{year}-{n:02d}-01", "value_to": f"{year}-{n:02d}-{last}"}
+            )
+    sort = [{"column": "amount", "direction": "desc"}] if "biggest" in text else []
+    return {"conditions": conds, "sort": sort, "summary": "Lines matching your words." if conds or sort else ""}
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()
@@ -955,6 +978,10 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(items_reply(messages[-1]["content"])))
     if system == public_chat.SYSTEM_PROMPT:
         return JSONResponse(_ollama(public_chat_reply(messages[-1]["content"])))
+    from app.ai import grid_filter as grid_filter_ai
+
+    if system == grid_filter_ai.system_prompt("ledger"):
+        return JSONResponse(_ollama(grid_filter_reply(messages[-1]["content"])))
     from app import cashflow
 
     if system == cashflow.SYSTEM_PROMPT:  # one line quoting two of the forecast's own figures

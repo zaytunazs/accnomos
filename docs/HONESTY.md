@@ -211,6 +211,24 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Calendar.** The `.ics` file (RFC 5545: all-day VEVENT on the due date, UID `billpay-<bill id>@accnomos.com`, SEQUENCE rising with time, text escaped and lines folded) is tested for its content only; whether a given calendar app updates rather than duplicates on re-import was not tried. Accnomos cannot change or remove an event added from a file, and the panel says so. The connected calendar (Google or Outlook through the existing `CalendarProvider`, events tagged `billpay:<bill id>`) is written only on the user's tap and tested against `FakeCalendarProvider` only, not against Google or Microsoft. A cancelled or paid payment's event is not removed by code on its own: the panel lists such events and removes them on the user's tap. A downloaded file and a calendar event are not updated by themselves when the amount or date changes; the panel marks a connected event as outdated and "Update" rewrites it.
 - **Web** (`apps/web/src/components/trade/UpcomingPayments.tsx`, `apps/web/src/components/home/UpcomingPaymentsCard.tsx`, the approve-in-advance control in `BillPay.tsx`) was type-checked and linted, and its copy helpers unit-tested; not run in a browser.
 
+## Power grid add-on (AG Grid)
+
+- **Third-party grid.** The add-on uses AG Grid Community (MIT, `ag-grid-community` and `ag-grid-react` 36.3), Community
+  modules only: no Enterprise module, no licence key, no watermark. Row grouping is Enterprise, so the ledger explorer
+  sorts by account and draws a rule where the account changes instead. It is off by default, saved on this device only
+  (not in the books), and loaded only when on, so other pages do not download it.
+- **Bulk approve is the same approve.** *Approve selected* calls `POST /payments/paypal/sync/{id}/approve` once per ticked
+  row, one after another, after one browser confirmation; the runtime does every check and works the journal out again.
+  Rows that are not waiting cannot be ticked. A changed account or VAT code is sent as the existing endpoint allows
+  (purchases only). There is no batch endpoint and no undo beyond what each approval already has.
+- **The AI only filters.** `POST /ai/grid-filter` asks the user's AI (or the server's) for conditions and a sort as strict
+  JSON; code keeps only allowlisted columns and operators with valid values (`app/ai/grid_filter.py`) and the browser
+  checks again (`grid-core.ts`). It cannot write, post or approve. On any failure the words become a plain search.
+  The prompt was not evaluated against a set of real requests; only the stubbed model is tested.
+- **Not covered.** The e2e test (`apps/web/e2e/power-grid.spec.ts`) runs against the fake PayPal and the stub AI
+  only; no phone layout test beyond the fallback to the card list. Bank lines and the Review queue have no
+  grid yet. Totals in the PayPal grid add GBP rows only. The ledger explorer reads the newest 500 lines.
+
 ## Sales and purchases: items, quotes, orders, repeating, overviews, statements
 
 - **Products and services** (`app/items.py`, `_System/Items/items.json`) fill invoice, quote, order and repeating lines. The *income account* is stored and exported but **invoices still post every sale to 4000 Sales** (the VAT package finds sales by that name), so changing it changes nothing in the books. A bill or purchase order uses one *expense account*: a bill whose lines come from items with different expense accounts posts them all to the account with the most net, which the Review card shows and the user can change. CSV import reads our own columns and Xero's inventory export; rows it cannot read are skipped and listed; it has not been tried on a real Xero file.
