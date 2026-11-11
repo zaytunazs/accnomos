@@ -191,11 +191,17 @@ async def owed_answer(
     balances = cb.aged(contacts, ledger, as_of)
     table = balances.debtors if side == "debtors" else balances.creditors
     f = owed_facts(table, side, as_of)
+    if side == "debtors":  # each customer's PayPal link status (app/paypal_assistant.py), counts by code
+        from app import paypal_assistant
+
+        await paypal_assistant.add_link_status(books, f)
     code_text = owed_code_text(f, side)
     if f["contacts"]:
         text, by, why = await worded(question, f, OWED_PROMPT, code_text, cfg, "ask_owed")
     else:
         text, by, why = code_text, "code", None
+    if side == "debtors" and f["contacts"]:
+        text += paypal_assistant.link_status_text(f)
     label = "Owed to you" if side == "debtors" else "You owe"
     keys = [
         KeyNumber(label=label, value=f["total_outstanding"], source=f"{EVENTS}/"),

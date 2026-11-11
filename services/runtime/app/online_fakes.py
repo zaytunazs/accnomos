@@ -417,6 +417,11 @@ def _paypal(request: httpx.Request) -> httpx.Response:
         if rest[1:] == ["cancel"] and method == "POST":
             inv["status"] = "CANCELLED"
             return httpx.Response(204)
+        if rest[1:] == ["remind"] and method == "POST":  # PayPal emails the payer; 204, no body
+            if inv["status"] not in ("UNPAID", "SENT", "PARTIALLY_PAID"):
+                return _paypal_error(422, "UNPROCESSABLE_ENTITY", "Invoice is not in a remindable state.")
+            inv["reminders"] = int(inv.get("reminders", 0)) + 1
+            return httpx.Response(204)
     if path.startswith("/v2/payments/captures/") and method == "GET":
         cap = FAKES.captures.get(path.rsplit("/", 1)[1])
         if cap is None or not FAKES.paypal_fee_known:

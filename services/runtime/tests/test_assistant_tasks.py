@@ -272,6 +272,8 @@ def test_calendar_add_by_ask_and_tap(client) -> None:
         ("calendar_add_event", {}, False),
         ("calendar_remove_event", {}, False),
         ("calendar_move_event", {}, False),
+        ("remind_unpaid", {}, True),  # sends PayPal or email reminders
+        ("payment_link_message", {}, False),  # a message the user sends from their own phone
     ],
 )
 def test_which_cards_need_a_tap(kind: str, preview: dict[str, Any], tap: bool) -> None:
@@ -296,6 +298,7 @@ def test_every_action_kind_is_classified() -> None:
         "pay_overtime", "match_bank_line", "close_month", "chase_invoice", "create_invoice", "create_quote",
         "convert_quote_to_invoice", "log_timesheet", "log_mileage", "add_to_shopping_list", "save_note",
         "delete_note", "add_todo", "calendar_add_event", "calendar_remove_event", "calendar_move_event",
+        "remind_unpaid", "payment_link_message",
     }  # fmt: skip
     assert set(get_args(ActionKind)) == listed, "a new action kind: decide in needs_tap and add it to the test above"
 

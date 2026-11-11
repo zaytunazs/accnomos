@@ -1233,6 +1233,8 @@ class _AskScreenState extends State<AskScreen> {
     'calendar_add_event': 'Add to calendar',
     'calendar_remove_event': 'Remove from calendar',
     'calendar_move_event': 'Move in calendar',
+    'remind_unpaid': 'Payment reminders',
+    'payment_link_message': 'Payment message',
   };
 
   /// Kinds whose preview is plain label/value rows worked out by code
@@ -1244,6 +1246,8 @@ class _AskScreenState extends State<AskScreen> {
     'calendar_add_event',
     'calendar_remove_event',
     'calendar_move_event',
+    'remind_unpaid', // app/paypal_assistant.py: rows by code too
+    'payment_link_message',
   };
 
   /// One label/value row, like the web's action details.

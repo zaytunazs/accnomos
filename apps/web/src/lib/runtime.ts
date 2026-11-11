@@ -3079,7 +3079,9 @@ export type RtActionKind =
   | "add_todo"
   | "calendar_add_event"
   | "calendar_remove_event"
-  | "calendar_move_event";
+  | "calendar_move_event"
+  | "remind_unpaid" // PayPal (or email) reminders to everyone overdue, or one customer (app/paypal_assistant.py)
+  | "payment_link_message"; // a WhatsApp/text message with the pay link, sent by the user from their own phone
 /** A saved note (GET /notes; app/assistant_tasks.py). */
 export interface RtNote {
   id: string;

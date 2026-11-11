@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import actions, ask_more, ask_pnl, jobs, spending
+from app import actions, ask_more, ask_pnl, jobs, paypal_assistant, spending
 from app import assistant_tasks as tasks
 from app import dashboard as dash
 from app.ai import ask as ask_ai
@@ -165,7 +165,13 @@ async def _prepare(
     prof = await dash._profile_or_default(books)  # noqa: SLF001 - the same lenient profile read Home uses
     if prof.kind == "personal":  # a household has no VAT return: its questions are about its bank lines
         return await ask_more.household_answer(req.question, books, cfg, period, today(TZ))
+    if (paid := await paypal_assistant.question_answer(req.question, books, cfg, period, today(TZ))) is not None:
+        return paid  # "what did PayPal cost me this quarter?", "how much is sitting in PayPal?"
     if (side := ask_more.owed_intent(req.question)) is not None:  # the aged balances Home shows
+        if actions.looks_like_action(req.question):  # "send a PayPal reminder to everyone who owes me"
+            found = await actions.propose(req.question, books, cfg, token, today(TZ))
+            if found is not None:
+                return _action_answer(found, cfg, period)
         return await ask_more.owed_answer(req.question, side, books, cfg, period, today(TZ))
     if (bought := await ask_pnl.job_items_answer(req.question, books, cfg, period)) is not None:  # "what did we
         return bought  # order for the kitchen job?": the purchases tagged to that job, line by line
