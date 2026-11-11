@@ -1,0 +1,884 @@
+{
+  "version": 1,
+  "updated": "2026-11-11",
+  "categories": [
+    {
+      "id": "start",
+      "title": "Getting started"
+    },
+    {
+      "id": "documents",
+      "title": "Receipts and review"
+    },
+    {
+      "id": "bank",
+      "title": "Bank"
+    },
+    {
+      "id": "sales",
+      "title": "Invoices and PayPal"
+    },
+    {
+      "id": "tax",
+      "title": "VAT and month-end"
+    },
+    {
+      "id": "assistant",
+      "title": "Assistant and apps"
+    },
+    {
+      "id": "support",
+      "title": "Help and support"
+    }
+  ],
+  "articles": [
+    {
+      "id": "sign-up-connect-storage",
+      "title": "Sign up and connect your storage",
+      "summary": "Try the fictional demo with no sign-in, or sign in with Microsoft or Google so your books live in a folder in your own OneDrive or Google Drive.",
+      "category": "start",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "sign up",
+        "sign in",
+        "register",
+        "account",
+        "onedrive",
+        "google drive",
+        "storage",
+        "connect",
+        "folder",
+        "demo",
+        "first time",
+        "trial",
+        "login",
+        "log in"
+      ],
+      "steps": [
+        {
+          "title": "Open Connect",
+          "body": "Go to **Connect** (/connect). It explains what signing in asks for. Choose **Sign in with Microsoft** (OneDrive) or **Sign in with Google** (Google Drive) for your own books, or a demo to look round first.",
+          "image": "/help/connect-books-1.webp",
+          "alt": "The Connect page with the sign-in choices and the demo buttons."
+        },
+        {
+          "title": "Allow the folder",
+          "body": "Sign in and allow access. Accnomos makes one books folder in your storage: **00 Inbox** to **07 Reports**, **Books.xlsx** and **_System**. Everything it keeps is a file there, in your account, not on our servers.",
+          "image": "/help/connect-books-4.webp",
+          "alt": "The Files page showing the books folder from 00 Inbox to 07 Reports."
+        },
+        {
+          "title": "Read Your summary on Home",
+          "body": "**Home** opens with **Your summary**: what needs you first (items to approve, overdue invoices, the next deadline), each with a button that takes you to the page that clears it.",
+          "image": "/help/connect-books-2.webp",
+          "alt": "Home with Your summary listing overdue invoices, items to approve and the VAT deadline."
+        },
+        {
+          "title": "Set up your business",
+          "body": "Open **Settings › Business** and fill in your business name, whether you are VAT registered and your VAT quarters. The VAT return and deadlines use these."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The Files tree is empty after signing in",
+          "fix": "Go back to /connect and finish the folder step."
+        },
+        {
+          "problem": "The demo says the sample books are being prepared",
+          "fix": "Wait a minute or two: the first demo of the day takes a moment to build."
+        },
+        {
+          "problem": "Sign-in loops back to the start",
+          "fix": "Allow pop-ups and third-party sign-in for accnomos.com, then try again in one browser tab."
+        }
+      ],
+      "related": [
+        "upload-receipts",
+        "contact-support"
+      ]
+    },
+    {
+      "id": "upload-receipts",
+      "title": "Upload receipts, or drop a whole folder at once",
+      "summary": "Add photos, PDFs and bank CSVs one at a time, or drop a zip or a whole folder; everything lands in 00 Inbox and is read for you.",
+      "category": "documents",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "upload",
+        "receipt",
+        "receipts",
+        "bulk",
+        "drop",
+        "zip",
+        "folder",
+        "photo",
+        "pdf",
+        "scan",
+        "inbox",
+        "add a receipt",
+        "invoice from supplier",
+        "bill",
+        "documents"
+      ],
+      "steps": [
+        {
+          "title": "Open Review",
+          "body": "Open **Review** (/review). At the top, **Scan 00 Inbox now** reads what is already in your Inbox folder and **Add a receipt** brings new documents in.",
+          "image": "/help/review-approve-1.webp",
+          "alt": "Review with Scan 00 Inbox now and Add a receipt at the top."
+        },
+        {
+          "title": "Add files, a zip or a folder",
+          "body": "Press **Add a receipt** and pick or drop photos, PDFs and bank CSVs. You can also drop a **zip**, or a whole folder with **Choose a folder**: zips and folders are opened for you and every file lands flat in **00 Inbox**."
+        },
+        {
+          "title": "Watch them being read",
+          "body": "Each file shows its progress while it is read and checked. When it is done it becomes a card in **Review** for you to approve. Anything that is not a photo, PDF or CSV is skipped, and the summary under the buttons says how many and why."
+        },
+        {
+          "title": "On your phone",
+          "body": "In the Android app, the camera button at the top of **Review** photographs a receipt straight into **00 Inbox**."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The queue is empty after a scan",
+          "fix": "Check the file landed in 00 Inbox and is a photo, PDF or CSV."
+        },
+        {
+          "problem": "A zip is refused",
+          "fix": "A zip over 500 files or 500 MB is refused: split it and add the parts."
+        },
+        {
+          "problem": "You have used this month's documents",
+          "fix": "Settings › Plan shows your allowance; a top-up or a bigger plan adds more."
+        }
+      ],
+      "related": [
+        "review-approve",
+        "contact-support"
+      ]
+    },
+    {
+      "id": "review-approve",
+      "title": "Review and approve",
+      "summary": "Check each reading against the document, then approve, edit or reject. Nothing reaches your books until you approve it.",
+      "category": "documents",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "review",
+        "approve",
+        "approval",
+        "reject",
+        "edit",
+        "proposal",
+        "card",
+        "autopilot",
+        "always do this",
+        "undo",
+        "post",
+        "needs a look",
+        "check"
+      ],
+      "steps": [
+        {
+          "title": "Open a card",
+          "body": "In **Review**, open the document from its card and compare it with the reading: supplier, VAT number, date, net, VAT and total.",
+          "image": "/help/review-approve-2.webp",
+          "alt": "An original document opened over the Review page."
+        },
+        {
+          "title": "Read the checks",
+          "body": "Read the **Why** line, the second reading and the checks by code, and the proposed entry. Then press **Approve (post to books)**, **Edit** or **Reject**.",
+          "image": "/help/review-approve-3.webp",
+          "alt": "One proposal with its checks and the Approve, Edit and Reject buttons."
+        },
+        {
+          "title": "Move through the queue",
+          "body": "The next card opens. Keys work too: **J**/**K** move, **A** approves, **E** edits, **R** rejects and **U** undoes the last approval.",
+          "image": "/help/review-approve-4.webp",
+          "alt": "The next proposal in the Review queue."
+        },
+        {
+          "title": "Let Autopilot handle trusted suppliers",
+          "body": "Tick **Always do this for …** on a supplier you trust and Autopilot approves their next documents that pass every check. Undo any of them from **Approved by Autopilot**: Undo adds a reversing entry, it never deletes.",
+          "image": "/help/review-approve-5.webp",
+          "alt": "Approved, with the Approved by Autopilot list and its Undo buttons."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The two readings disagree",
+          "fix": "The card waits in Needs a look with both values: pick the one the document supports."
+        },
+        {
+          "problem": "The image is unreadable",
+          "fix": "Reject the card and photograph the receipt again."
+        },
+        {
+          "problem": "Autopilot did not approve a bill",
+          "fix": "A bill much larger than usual waits in Review even with a rule: Autopilot only posts up to twice the usual."
+        }
+      ],
+      "related": [
+        "upload-receipts",
+        "month-end"
+      ]
+    },
+    {
+      "id": "bank-feeds",
+      "title": "Connect a bank feed and reconcile",
+      "summary": "Bring bank lines in from a feed or a statement CSV, then confirm the matches. Matching never posts anything on its own.",
+      "category": "bank",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "bank",
+        "bank feed",
+        "open banking",
+        "statement",
+        "csv",
+        "reconcile",
+        "reconciliation",
+        "match",
+        "unmatched",
+        "rules",
+        "truelayer",
+        "transactions",
+        "fetch"
+      ],
+      "steps": [
+        {
+          "title": "Open Bank",
+          "body": "Open **Bank** (/bank). The tiles show **Reconciled to date**, how many lines are matched, what waits **To confirm** and what is **Unmatched**.",
+          "image": "/help/reconcile-bank-1.webp",
+          "alt": "The Bank page with the reconciliation tiles."
+        },
+        {
+          "title": "Connect a feed, or drop a statement",
+          "body": "Under **Bank feed**, press **Connect** and follow your bank's Open Banking pages, then **Fetch now**. Or drop a statement CSV in the box (most UK bank exports work); the same file twice is ignored."
+        },
+        {
+          "title": "Confirm the matches",
+          "body": "Open the **Reconcile** tab. **Confirm all exact matches** takes the certain ones together; the rest are listed one by one with **Approve**, or **Suggest with AI** where code found nothing certain.",
+          "image": "/help/reconcile-bank-2.webp",
+          "alt": "The Reconcile tab with suggested matches."
+        },
+        {
+          "title": "Deal with what is left",
+          "body": "For lines nothing matches, create an expense proposal (it lands in Review), mark it as a transfer, or ignore it. **Create rule from this** turns a line into a rule for next time; the **Rules** tab lists them in order.",
+          "image": "/help/reconcile-bank-3.webp",
+          "alt": "The Rules tab."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The bank asks you to reconnect",
+          "fix": "Open Banking consent lasts 90 days: press Reconfirm on Bank or Reconnect your bank."
+        },
+        {
+          "problem": "A statement file is refused",
+          "fix": "Save it as CSV with one header row and try again."
+        },
+        {
+          "problem": "A rule catches the wrong lines",
+          "fix": "Move the more specific rule above it with Up: the first rule that matches wins."
+        }
+      ],
+      "related": [
+        "month-end",
+        "sync-paypal"
+      ]
+    },
+    {
+      "id": "invoices-paypal-links",
+      "title": "Send an invoice with a PayPal pay link",
+      "summary": "Connect PayPal once, then add a Pay online link to any invoice. When the customer pays, the payment waits on Invoices for you to approve.",
+      "category": "sales",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "invoice",
+        "invoices",
+        "pay link",
+        "payment link",
+        "paypal",
+        "pay online",
+        "customer pay",
+        "send invoice",
+        "online payments",
+        "connect paypal",
+        "paypal.me",
+        "get paid"
+      ],
+      "steps": [
+        {
+          "title": "Connect PayPal",
+          "body": "Open **Settings › Business › Online payments** and press **Connect** beside PayPal. Sign in to your PayPal business account and come back. You can also save a PayPal.me name instead, but payments through PayPal.me are not found by code.",
+          "image": "/help/paypal-connect-1.webp",
+          "alt": "Settings, Online payments, with the PayPal Connect button."
+        },
+        {
+          "title": "Make the invoice",
+          "body": "Open **Invoices** (/invoices) and press **New invoice**, or ask the assistant: \"send a £300 invoice to Hartwell for the October work\". The card shows the lines, VAT and whether a pay link will be added.",
+          "image": "/help/invoices-1.webp",
+          "alt": "The Invoices page with the list of invoices."
+        },
+        {
+          "title": "Add the pay link",
+          "body": "On the invoice, press **Make payment link** (or **Add payment link**). The link is printed on the invoice and put in the email. **Copy the payment link** to send it another way."
+        },
+        {
+          "title": "Approve the payment when it arrives",
+          "body": "Payments are found when you open **Invoices**. Each one waits as **Approve payment**: approving posts the payment and PayPal's fee to your books."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The link asks for the old amount",
+          "fix": "A link has a fixed amount. After a part payment or credit note, make a new payment link."
+        },
+        {
+          "problem": "Connect says PayPal is not available on this server",
+          "fix": "The server has no PayPal app set up yet; use a PayPal.me name or raise a ticket."
+        },
+        {
+          "problem": "A payment does not appear",
+          "fix": "Open Invoices again; payments are looked for when the page opens, not in the background."
+        }
+      ],
+      "related": [
+        "sync-paypal",
+        "paypal-disputes",
+        "paypal-help"
+      ]
+    },
+    {
+      "id": "sync-paypal",
+      "title": "Sync PayPal",
+      "summary": "One tap reads your PayPal history and proposes each transaction for your books: invoice payments, other sales, purchases and fees. Nothing posts until you approve it.",
+      "category": "sales",
+      "platforms": [
+        "web"
+      ],
+      "keywords": [
+        "sync paypal",
+        "paypal history",
+        "paypal transactions",
+        "paypal fees",
+        "import paypal",
+        "paypal sales",
+        "paypal purchases",
+        "paypal balance",
+        "withdrawal"
+      ],
+      "steps": [
+        {
+          "title": "Open Invoices",
+          "body": "Open **Invoices** (/invoices) and find **Sync PayPal** in the PayPal panel. PayPal must be connected in Settings first.",
+          "image": "/help/paypal-sync-1.webp",
+          "alt": "The PayPal panel on Invoices with the Sync PayPal button."
+        },
+        {
+          "title": "Press Sync PayPal",
+          "body": "The first sync reads the last 90 days. Later syncs start a little before the last one ended, and anything already synced is skipped, so nothing is proposed twice."
+        },
+        {
+          "title": "Approve what it proposes",
+          "body": "**PayPal transactions waiting for approval** lists each one: an invoice payment, a sale, a purchase (with **No receipt** when none matches) or a PayPal fee, with what approving posts. Withdrawals to your bank, refunds and other currencies are shown but never posted."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "Could not sync PayPal",
+          "fix": "Check Settings › Online payments still shows PayPal connected, then try again. If it keeps failing, raise a ticket and tick the PayPal details."
+        },
+        {
+          "problem": "A transaction is missing",
+          "fix": "PayPal lists some transactions up to three hours late, and pending ones are kept back until PayPal completes them. Sync again later."
+        }
+      ],
+      "related": [
+        "invoices-paypal-links",
+        "bank-feeds",
+        "paypal-help"
+      ]
+    },
+    {
+      "id": "paypal-disputes",
+      "title": "Respond to a PayPal dispute",
+      "summary": "When a customer disputes a payment made through one of your invoice links, Accnomos builds the evidence from your books; you preview it and send it to PayPal.",
+      "category": "sales",
+      "platforms": [
+        "web"
+      ],
+      "keywords": [
+        "dispute",
+        "disputes",
+        "chargeback",
+        "claim",
+        "paypal case",
+        "evidence",
+        "resolution centre",
+        "resolution center",
+        "refund",
+        "customer complaint",
+        "item not received"
+      ],
+      "steps": [
+        {
+          "title": "Find the dispute",
+          "body": "Open **Invoices**. **PayPal disputes** lists each dispute on a payment Accnomos knows about, with the invoice it matched, the reason and when PayPal needs your answer.",
+          "image": "/help/paypal-disputes-1.webp",
+          "alt": "The PayPal disputes panel on Invoices."
+        },
+        {
+          "title": "Build the evidence",
+          "body": "Press **Build evidence**. Code gathers the invoice, when and to whom it was emailed, the payment and your reminders into one PDF, and drafts a short factual response. Every figure and date in the draft is checked against your books."
+        },
+        {
+          "title": "Preview, then send",
+          "body": "Read **Response for PayPal (preview)** and the PDF, then press **Send to PayPal**. Nothing reaches PayPal before you press it."
+        },
+        {
+          "title": "If the dispute is lost",
+          "body": "When PayPal refunds the whole payment, Accnomos offers the reversing entry so the invoice is open again; it is posted only if you say yes."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "Not a payment Accnomos knows about",
+          "fix": "Answer this one in PayPal's Resolution Centre: there is no record of the payment in your books."
+        },
+        {
+          "problem": "Could not check PayPal disputes",
+          "fix": "Check PayPal is still connected in Settings › Online payments. The Support page lists the latest PayPal problem when you raise a ticket."
+        }
+      ],
+      "related": [
+        "paypal-help",
+        "invoices-paypal-links"
+      ]
+    },
+    {
+      "id": "bill-pay-paypal",
+      "title": "Pay supplier bills with PayPal",
+      "summary": "Save a supplier's PayPal email, then pay their approved bills through PayPal on the due date, one at a time or with Autopilot inside limits you set.",
+      "category": "sales",
+      "platforms": [
+        "web"
+      ],
+      "keywords": [
+        "bill pay",
+        "pay bills",
+        "pay supplier",
+        "payouts",
+        "paypal payouts",
+        "supplier paypal email",
+        "due today",
+        "autopilot for bills",
+        "kill switch",
+        "pay automatically"
+      ],
+      "steps": [
+        {
+          "title": "Open Purchases",
+          "body": "Open **Purchases** (/purchases) and find **Pay bills with PayPal**. **Due today** lists approved bills whose due date has come.",
+          "image": "/help/billpay-1.webp",
+          "alt": "Purchases with the Pay bills with PayPal panel."
+        },
+        {
+          "title": "Save the supplier's PayPal email",
+          "body": "Under **Suppliers' PayPal emails**, add the email the supplier gave you and press **Save PayPal email**. Payees are never taken from a document."
+        },
+        {
+          "title": "Pay a bill",
+          "body": "Press **Pay** on a bill. PayPal processes it; once PayPal says it succeeded, the payment and PayPal's fee are posted against the bill."
+        },
+        {
+          "title": "Optional: Autopilot for bills",
+          "body": "Turn on **Pay automatically** with **Most per bill (£)** and **Most per month (£)**. A bill whose payment details changed is held for you, and **Stopped** switches everything off at once."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "Payment details changed on a bill",
+          "fix": "Check with the supplier by phone before paying, then tick I checked with the supplier."
+        },
+        {
+          "problem": "Waiting for the supplier to claim it",
+          "fix": "The supplier has no PayPal account for that email yet; nothing is posted until they claim it."
+        },
+        {
+          "problem": "A bill was not paid on its due date",
+          "fix": "Payments run when Accnomos is open on or after the due date; open Purchases."
+        }
+      ],
+      "related": [
+        "paypal-help",
+        "review-approve"
+      ]
+    },
+    {
+      "id": "vat-return",
+      "title": "Do a VAT return and send it to HMRC",
+      "summary": "Pick the quarter, check the nine boxes worked out from your approved entries, then connect to HMRC and submit, or make a bridging file.",
+      "category": "tax",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "vat",
+        "vat return",
+        "hmrc",
+        "making tax digital",
+        "mtd",
+        "nine boxes",
+        "box 1",
+        "submit",
+        "file",
+        "bridging",
+        "obligations",
+        "quarter",
+        "period",
+        "declaration"
+      ],
+      "steps": [
+        {
+          "title": "Pick the period",
+          "body": "Open **VAT return** (/vat, under **Tax**) and pick the quarter in **VAT period**. The nine boxes are worked out by code from the entries you approved, with the number of entries behind each.",
+          "image": "/help/vat-return-1.webp",
+          "alt": "The VAT return page with the nine boxes."
+        },
+        {
+          "title": "Check the boxes",
+          "body": "Press **?** beside a box for what it means, or the entries count to see the documents behind it.",
+          "image": "/help/vat-return-2.webp",
+          "alt": "A VAT box with its explanation."
+        },
+        {
+          "title": "Connect to HMRC",
+          "body": "Under **Connect to HMRC**, press **Connect to HMRC** and sign in with your HMRC online services account (in the demo, HMRC's sandbox test user)."
+        },
+        {
+          "title": "Pick the obligation",
+          "body": "Press **Show obligations** and pick the period that matches your return; its row says *matches your return*.",
+          "image": "/help/vat-return-4.webp",
+          "alt": "HMRC's obligations, one marked as matching the return."
+        },
+        {
+          "title": "Submit",
+          "body": "Press **Prepare submission**, read the declaration, tick **I confirm the information is true and complete**, and submit. The receipt is saved to **06 VAT returns** and listed under **Previous receipts**."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The periods are the wrong months",
+          "fix": "Set your VAT quarters in Settings › Business first."
+        },
+        {
+          "problem": "The submit button stays disabled",
+          "fix": "Tick the declaration: nothing is sent until you do."
+        },
+        {
+          "problem": "Nothing in HMRC's list matches",
+          "fix": "A return filed elsewhere may already cover it: check HMRC's list first."
+        },
+        {
+          "problem": "You would rather use bridging software",
+          "fix": "File it yourself makes the return as a CSV or XLSX for HMRC-recognised bridging software."
+        }
+      ],
+      "related": [
+        "month-end",
+        "review-approve"
+      ]
+    },
+    {
+      "id": "month-end",
+      "title": "Close the month",
+      "summary": "One run checks the month: documents waiting, bank lines, bills, invoices, payroll and VAT. You clear what blocks it, then approve the close.",
+      "category": "tax",
+      "platforms": [
+        "web"
+      ],
+      "keywords": [
+        "month end",
+        "month-end",
+        "close",
+        "close the month",
+        "lock",
+        "period end",
+        "checklist",
+        "blocking",
+        "reports",
+        "p&l",
+        "balance sheet"
+      ],
+      "steps": [
+        {
+          "title": "Open Month-end",
+          "body": "Open **Month-end** (/month-end) and pick the month. The checks cover documents waiting in 00 Inbox or Review, statement coverage and unmatched bank lines, bills due, overdue invoices, the pay run and, if the month ends a VAT period, the nine boxes.",
+          "image": "/help/month-end-1.webp",
+          "alt": "The Month-end page with the checks for the month."
+        },
+        {
+          "title": "Clear what blocks the close",
+          "body": "**Blocking items** must be cleared first; each has a button to the page that clears it. Matches and reminders that code suggests come as cards to approve."
+        },
+        {
+          "title": "Approve the close",
+          "body": "Read **The month's figures before and after**, then approve the close card. The P&L and balance sheet are saved as a draft in **07 Reports**. Closing posts nothing."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "This card has expired",
+          "fix": "Run the close again: cards last 15 minutes."
+        },
+        {
+          "problem": "The close is refused",
+          "fix": "Something in the month changed after the card was made; run it again."
+        }
+      ],
+      "related": [
+        "bank-feeds",
+        "vat-return"
+      ]
+    },
+    {
+      "id": "voice-assistant",
+      "title": "Use the assistant by voice or chat",
+      "summary": "Ask about your books or get something done in plain words, typed or spoken. Figures come from your books; anything that changes them comes back as a card to approve.",
+      "category": "assistant",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "assistant",
+        "voice",
+        "talk",
+        "chat",
+        "ask",
+        "microphone",
+        "mic",
+        "hands-free",
+        "speak",
+        "question",
+        "approve by voice"
+      ],
+      "steps": [
+        {
+          "title": "Open the assistant",
+          "body": "Press **Talk to Accnomos** (bottom right of every page). Type a question, pick a suggestion, tap the mic for one spoken question, or press **Hands-free** and just talk.",
+          "image": "/help/voice-chat-1.webp",
+          "alt": "The assistant panel open with suggestions and the mic button."
+        },
+        {
+          "title": "Read the answer",
+          "body": "Figures sit beside the answer with the files they came from, and a button takes you to the page.",
+          "image": "/help/voice-chat-2.webp",
+          "alt": "An answer with figures and their sources."
+        },
+        {
+          "title": "Approve cards",
+          "body": "When it proposes something it shows a card. Hands-free reads it back and asks \"Shall I go ahead?\"; a clear yes approves notes, to-dos and events. Cards that send or move money always need a tap on **Approve**."
+        },
+        {
+          "title": "Ask how to do something",
+          "body": "Ask \"how do I…\" and the assistant answers from these help articles, with a link to the article. If that doesn't solve it, it offers a support ticket card.",
+          "image": "/help/voice-chat-help.webp",
+          "alt": "The assistant answering how to connect a bank feed with the guide's steps and a link to the guide."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The mic is refused",
+          "fix": "Allow the microphone for accnomos.com in your browser and try again."
+        },
+        {
+          "problem": "The answer shows no figures",
+          "fix": "Name the period, for example \"this quarter\" or \"in September\"."
+        }
+      ],
+      "related": [
+        "contact-support",
+        "android-app"
+      ]
+    },
+    {
+      "id": "android-app",
+      "title": "Use the Android app",
+      "summary": "The same books on your phone: Home, Review with the camera, VAT, Ask and the Talk button. Settings and connecting accounts are done on the web.",
+      "category": "assistant",
+      "platforms": [
+        "android"
+      ],
+      "keywords": [
+        "android",
+        "phone",
+        "mobile",
+        "app",
+        "camera",
+        "play store",
+        "install",
+        "tablet"
+      ],
+      "steps": [
+        {
+          "title": "Sign in or try the demo",
+          "body": "Open the app and sign in with the same Microsoft or Google account you use on the web, or press **Try the demo**."
+        },
+        {
+          "title": "Photograph receipts",
+          "body": "In **Review**, the camera button photographs a receipt straight into **00 Inbox**. Approve cards one at a time with **Approve**, **Edit** or **Reject**."
+        },
+        {
+          "title": "Talk to it",
+          "body": "The **Talk** button sits on every screen and **Ask** is a tab. Hands-free reads the answer aloud and listens again."
+        },
+        {
+          "title": "Get help",
+          "body": "**More › Help** opens this help centre, and **More › Contact support** opens the Support page to raise a ticket."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "The app shows different data from the web",
+          "fix": "Check both are signed in with the same account; the demo on the phone is its own copy."
+        }
+      ],
+      "related": [
+        "voice-assistant",
+        "contact-support"
+      ]
+    },
+    {
+      "id": "contact-support",
+      "title": "Get help and raise a support ticket",
+      "summary": "Ask the support assistant first; if it can't solve it, raise a ticket. You choose what is attached, and replies appear on the Support page.",
+      "category": "support",
+      "platforms": [
+        "web",
+        "android"
+      ],
+      "keywords": [
+        "support",
+        "help",
+        "ticket",
+        "contact",
+        "problem",
+        "bug",
+        "error",
+        "not working",
+        "broken",
+        "report",
+        "complaint",
+        "customer service",
+        "email us"
+      ],
+      "steps": [
+        {
+          "title": "Open Support",
+          "body": "Open **Support** (/support), signed in. **Ask the support assistant** answers \"how do I…\" questions from these articles, with a link to the one it used.",
+          "image": "/help/support-1.webp",
+          "alt": "The Support page with the support assistant and your tickets."
+        },
+        {
+          "title": "Raise a ticket",
+          "body": "If the answer doesn't help, or something is broken, the assistant offers a ticket card with a summary, a category and the steps. Check it, then press **Create ticket**. You can also press **New ticket** and fill in the form yourself.",
+          "image": "/help/support-ticket-card.webp",
+          "alt": "A proposed support ticket card with its summary, category, what to attach and the Create ticket button."
+        },
+        {
+          "title": "Choose what to attach",
+          "body": "Tick **Attach recent errors** to send the last error messages the app saw (no figures). Tick **Include PayPal details** to send whether PayPal is connected, the last sync and the last PayPal problem. Financial details are only sent if you tick **Include financial details**."
+        },
+        {
+          "title": "Follow the thread",
+          "body": "Your tickets are listed on **Support** with their status: **Open**, **Waiting for you** or **Solved**. Open one to read replies and answer.",
+          "image": "/help/support-2.webp",
+          "alt": "A support ticket's thread on the Support page with the reply box."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "Support says it is not set up on this server",
+          "fix": "Email the address at the bottom of the Help page instead."
+        },
+        {
+          "problem": "You can't sign in at all",
+          "fix": "Use Report a problem on the Help page or email us: a ticket needs a sign-in."
+        }
+      ],
+      "related": [
+        "paypal-help",
+        "voice-assistant"
+      ]
+    },
+    {
+      "id": "paypal-help",
+      "title": "PayPal problems: where to get help",
+      "summary": "What Accnomos can sort out for you, and what only PayPal can: account limits, holds, refunds and disputes are handled in PayPal's own Resolution Centre and help pages.",
+      "category": "support",
+      "platforms": [
+        "web"
+      ],
+      "keywords": [
+        "paypal help",
+        "paypal support",
+        "paypal problem",
+        "paypal account",
+        "limited",
+        "hold",
+        "on hold",
+        "paypal case",
+        "resolution centre",
+        "resolution center",
+        "paypal down",
+        "paypal status",
+        "contact paypal"
+      ],
+      "steps": [
+        {
+          "title": "Check the PayPal panel on Support",
+          "body": "With PayPal connected, **Support** shows **PayPal help**: whether PayPal is connected, the last sync, any open disputes from the disputes feature, and the last problem Accnomos had talking to PayPal."
+        },
+        {
+          "title": "Use PayPal for PayPal-only problems",
+          "body": "Account limits, money on hold, payments you sent from PayPal directly and disputes on payments Accnomos doesn't know about are handled by PayPal: use **PayPal Resolution Centre** or **PayPal Business help** from the panel. PayPal does not offer a way for apps to open a support case for you."
+        },
+        {
+          "title": "Raise a ticket for problems in Accnomos",
+          "body": "If Sync PayPal, a pay link or bill pay fails in Accnomos, raise a ticket and tick **Include PayPal details**, so we can see the connection status and the last error without asking."
+        }
+      ],
+      "troubleshooting": [
+        {
+          "problem": "PayPal itself seems down",
+          "fix": "Check PayPal's status page from the panel before anything else."
+        }
+      ],
+      "related": [
+        "paypal-disputes",
+        "sync-paypal",
+        "contact-support"
+      ]
+    }
+  ]
+}

@@ -1,49 +1,64 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
 import ReportProblemButton from "@/components/billing/ReportProblemButton";
-import { CONTACT_EMAIL, HONESTY_URL } from "@/lib/public-site";
+import HelpSearch from "@/components/support/HelpSearch";
+import { HELP_ARTICLES } from "@/lib/help";
+import { CONTACT_EMAIL } from "@/lib/public-site";
 
-export const metadata = { title: "Help and guides · Accnomos" };
+export const metadata = {
+  title: "Help centre · Accnomos",
+  description: "Step-by-step guides for Accnomos on the web and Android: receipts, bank feeds, invoices and PayPal, VAT returns to HMRC, month-end and the assistant.",
+  alternates: { canonical: "/help" },
+};
 
-const GUIDES: { href: string; title: string; body: string }[] = [
-  { href: "/how-it-works", title: "How it works", body: "From a receipt in your Inbox to an approved entry in your own OneDrive, step by step." },
-  { href: "/how-it-works#guides", title: "Step-by-step guides", body: "Fifteen how-to guides with a screenshot for every step: VAT, payroll, goals, calendar, contacts, voice and more." },
-  { href: "/review", title: "Review and approve", body: "Every reading is a card: check it, change it if needed, approve it. Nothing is posted without you." },
-  { href: "/files", title: "Files and backups", body: "Where your documents are, earlier files not read yet, Back up now and how to restore." },
-  { href: "/vat", title: "VAT returns", body: "The nine boxes worked out from your approved entries, and the file ready for HMRC." },
-  { href: "/ask", title: "Ask about your books", body: "Questions in plain words; the figures come from your ledger, not from the AI." },
-  { href: "/meta-models", title: "Meta models at work", body: "Which Meta Muse models read your documents and how they scored on our test sets." },
-  { href: "/settings", title: "Settings", body: "Your business, VAT periods, AI choice, your accountant, files and backups, your data." },
-  { href: "/demo", title: "Demo guide", body: "A tour of the sample books: review and approve a receipt, ask, invoices, bank, VAT to HMRC's sandbox, goals." },
+const SITE = "https://accnomos.com";
+
+const MORE: { href: string; title: string; body: string }[] = [
+  { href: "/how-it-works", title: "How it works", body: "What the AI does, what code checks, and guides for payroll, goals, the calendar, contacts and more." },
+  { href: "/demo", title: "Demo guide", body: "A tour of the fictional sample books, with nothing to sign in to." },
 ];
 
-/** Help and guides: one page that points at the guide for each part of the app (footer link). */
+/** The help centre: every article (src/content/help/articles.json) by category, with search, and how to reach us. */
 export default function HelpPage() {
+  const ld = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: "Accnomos help centre",
+    url: `${SITE}/help`,
+    hasPart: HELP_ARTICLES.map((a) => ({ "@type": "HowTo", name: a.title, url: `${SITE}/help/${a.id}` })),
+  };
   return (
     <div className="flex flex-col">
-      <PageHeader title="Help and guides" description="Short guides to each part of Accnomos, and how to reach us." />
-      <ul aria-label="Guides" className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
-        {GUIDES.map((g) => (
-          <li key={g.href}>
-            <Link href={g.href} className="block h-full rounded-2xl border border-border bg-white p-4 hover:bg-ground">
-              <span className="block text-[15px] font-extrabold text-teal-dark">{g.title}</span>
-              <span className="mt-1 block text-sm text-ink">{g.body}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <section aria-labelledby="help-contact" className="mt-6 rounded-2xl border border-border bg-white p-4">
+      <PageHeader title="Help centre" description="Step-by-step guides for the web and the Android app, and how to reach us when a guide doesn't help." />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(ld) }} />
+      <HelpSearch />
+      <section aria-labelledby="help-more" className="mt-8 rounded-2xl border border-border bg-white p-4">
+        <h2 id="help-more" className="text-[15px] font-extrabold">
+          More guides
+        </h2>
+        <ul aria-label="Guides" className="mt-2 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
+          {MORE.map((g) => (
+            <li key={g.href}>
+              <Link href={g.href} className="block rounded-xl border border-border p-3 hover:bg-ground">
+                <span className="block font-extrabold text-teal-dark">{g.title}</span>
+                <span className="mt-0.5 block text-ink">{g.body}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section aria-labelledby="help-contact" className="mt-4 rounded-2xl border border-border bg-white p-4">
         <h2 id="help-contact" className="text-[15px] font-extrabold">
           Still stuck?
         </h2>
         <p className="mt-1 text-sm text-ink">
-          Email{" "}
+          Signed in, open{" "}
+          <Link href="/support" className="font-bold text-teal-dark underline underline-offset-2">
+            Support
+          </Link>{" "}
+          to ask the support assistant or raise a ticket. Or email{" "}
           <a href={`mailto:${CONTACT_EMAIL}`} className="font-bold text-teal-dark underline underline-offset-2">
             {CONTACT_EMAIL}
-          </a>
-          . What is and is not tested against real services is listed in{" "}
-          <a href={HONESTY_URL} className="font-bold text-teal-dark underline underline-offset-2">
-            HONESTY.md
           </a>
           .
         </p>

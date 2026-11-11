@@ -78,7 +78,7 @@ test.describe("signed in", () => {
       await expect(page.getByRole("contentinfo")).toContainText("Accnomos version 0.1.0");
     }
     await page.getByRole("navigation", { name: "About" }).getByRole("link", { name: "Help and guides" }).click();
-    await expect(page.getByRole("heading", { level: 1, name: "Help and guides" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Help centre" })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/footer-help-1440.png`, fullPage: true });
   });
 

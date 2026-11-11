@@ -21,6 +21,7 @@ import {
 import { SpecFields, specBody, type SpecValues } from "@/components/spending/LiveShopping";
 import { Markdown } from "./AnswerCard";
 import { readBack } from "@/lib/readback";
+import TicketCard from "@/components/support/TicketCard";
 
 const gbp = (pence: number) =>
   `${pence < 0 ? "-" : ""}£${(Math.abs(pence) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -72,6 +73,7 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   calendar_move_event: "Move in calendar",
   remind_unpaid: "Payment reminders",
   payment_link_message: "Payment message",
+  create_support_ticket: "Support ticket",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -94,6 +96,7 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   calendar_move_event: "your calendar",
   remind_unpaid: "each invoice's reminders on Invoices",
   payment_link_message: "the invoice on Invoices",
+  create_support_ticket: "Support",
 };
 
 /**
@@ -375,7 +378,13 @@ function Details({ action }: { action: RtProposedAction }) {
 type State = { step: "ready" | "working" | "rejected" } | { step: "done"; result: RtActionResult } | { step: "error"; message: string };
 
 /** A proposed action: what will happen, to whom, for how much. Nothing happens until Approve. */
-export default function ActionCard({
+export default function ActionCard(props: Parameters<typeof ProposedCard>[0]) {
+  // A support ticket card has its own consent boxes and Create ticket button (components/support/TicketCard.tsx).
+  if (props.action.kind === "create_support_ticket") return <TicketCard action={props.action} account={props.account} />;
+  return <ProposedCard {...props} />;
+}
+
+function ProposedCard({
   action,
   account,
   receivedAt,

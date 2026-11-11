@@ -297,7 +297,9 @@ def extraction_json_schema() -> dict[str, Any]:
 ASK_ANSWER_MAX = 1200
 ASK_HISTORY_MAX = 6
 #: plan_day and open_spending: code only
-AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "plan_day", "open_spending", "none"]
+AskActionKind = Literal[
+    "open_review", "open_vat", "chase_supplier", "plan_day", "open_spending", "open_help", "open_support", "none"
+]  # open_help: arg is a help article id (app/support/help.py)
 Confidence = Literal["high", "medium", "low"]
 
 
@@ -380,6 +382,7 @@ ActionKind = Literal[
     "calendar_move_event",
     "remind_unpaid",  # app/paypal_assistant.py: PayPal (or email) reminders to everyone overdue, or one customer
     "payment_link_message",  # app/paypal_assistant.py: a WhatsApp/text message with the pay link, sent by the user
+    "create_support_ticket",  # app/support: the assistant could not solve it, or the user reported a problem
 ]
 
 

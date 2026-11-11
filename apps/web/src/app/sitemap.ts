@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { HELP_ARTICLES } from "@/lib/help";
 
 export const dynamic = "force-static";
 
@@ -19,5 +20,5 @@ const PUBLIC_PAGES = [
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return PUBLIC_PAGES.map((path) => ({ url: `${SITE}${path}` }));
+  return [...PUBLIC_PAGES, ...HELP_ARTICLES.map((a) => `/help/${a.id}`)].map((path) => ({ url: `${SITE}${path}` }));
 }

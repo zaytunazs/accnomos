@@ -8,6 +8,7 @@ import { moneySign, type Region } from "./region";
 import { handlePlanLimit } from "./plan-limit";
 import { vatQuery } from "./vat-period";
 import { DEMO_HEADER, demoSession } from "./demo";
+import { recordError } from "./recent-errors";
 import {
   clientHeaders,
   CLIENT_SCOPES,
@@ -300,7 +301,11 @@ async function call<T>(
   const json = typeof init.body === "string"; // FormData sets its own multipart Content-Type
   const headers = { ...(await runtimeHeaders(account, extraScopes, opts)), ...(json ? { "Content-Type": "application/json" } : {}) };
   const res = await fetch(`${RUNTIME_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers ?? {}) } });
-  if (!res.ok) throw new Error(await errorDetail(res, `${init.method ?? "GET"} ${path}`));
+  if (!res.ok) {
+    const message = await errorDetail(res, `${init.method ?? "GET"} ${path}`);
+    recordError(init.method ?? "GET", path, res.status, message); // for a support ticket, only if the user ticks it
+    throw new Error(message);
+  }
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
@@ -3212,7 +3217,7 @@ export interface RtKeyNumber {
 }
 export interface RtSuggestedAction {
   label: string;
-  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "open_spending" | "none"; // plan_day: arg = YYYY-MM-DD
+  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "open_spending" | "open_help" | "open_support" | "none"; // plan_day: arg = YYYY-MM-DD; open_help: arg = article id
   arg: string | null;
 }
 export interface RtAskAnswer {
@@ -3247,7 +3252,8 @@ export type RtActionKind =
   | "calendar_remove_event"
   | "calendar_move_event"
   | "remind_unpaid" // PayPal (or email) reminders to everyone overdue, or one customer (app/paypal_assistant.py)
-  | "payment_link_message"; // a WhatsApp/text message with the pay link, sent by the user from their own phone
+  | "payment_link_message" // a WhatsApp/text message with the pay link, sent by the user from their own phone
+  | "create_support_ticket"; // the assistant couldn't solve it: a ticket card (components/support/TicketCard.tsx)
 /** A saved note (GET /notes; app/assistant_tasks.py). */
 export interface RtNote {
   id: string;

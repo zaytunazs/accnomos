@@ -35,6 +35,7 @@ const DISALLOWED = [
   "/demo",
   "/judges",
   "/auth",
+  "/support",
 ];
 
 export default function robots(): MetadataRoute.Robots {

@@ -55,6 +55,7 @@ from app.schemas import (
     SuggestedAction,
     Transcription,
 )
+from app.support import help as support_help
 from app.vat_cycle import VatCycle, vat_cycle
 from app.vat_schemes import scheme_context
 
@@ -116,6 +117,33 @@ async def spending_answer(books: Books, period: AskPeriod, cfg: AiConfig, busine
     )
 
 
+async def support_answer(question: str, request: Request | None, period: AskPeriod) -> AskAnswer:
+    """A how-to or problem question: the help centre's answer (app/support/help.py, code quotes the article), cited as
+    `help:<article id>`, with a support ticket card when it can't solve it. No model is called."""
+    from app.support.routes import assist_answer
+
+    if request is None:
+        found = support_help.answer(question)
+        return AskAnswer(
+            answer_md=found.answer_md, key_numbers=[], citations=[f"help:{found.article.id}"] if found.article else [],
+            suggested_actions=[], confidence="high", model="code", period=period,
+        )  # fmt: skip
+    out = await assist_answer(question, request, None, "web", None, "assistant")
+    answer_md = out.answer_md + (f"\n\n{out.ticket_note}" if out.ticket_note else "")
+    return AskAnswer(
+        answer_md=answer_md,
+        key_numbers=[],
+        citations=[f"help:{c.id}" for c in out.citations],
+        suggested_actions=[
+            SuggestedAction(label=f"Open the guide: {c.title}", kind="open_help", arg=c.id) for c in out.citations[:1]
+        ],  # fmt: skip
+        confidence="high",
+        model="code",
+        period=period,
+        proposed_action=out.ticket_card,
+    )
+
+
 async def _deadlines(books: Books, cycle: VatCycle) -> list[Any]:
     """The deadlines Home lists (VAT, Self Assessment for a sole trader), for "when is my next deadline?"."""
     from app import home_overview
@@ -135,6 +163,7 @@ async def _prepare(
     token: str,
     cycle: VatCycle,
     calendar: tasks.CalendarFactory | None = None,
+    request: Request | None = None,
 ) -> AskAnswer | dict[str, Any]:
     """Day-plan intent (code, no model) → instruction (proposed action) → the facts pack for a question about the books.
 
@@ -145,6 +174,8 @@ async def _prepare(
         period = AskPeriod(start=start, end=end)
     if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
+    if support_help.route_from_ask(req.question):  # "how do I connect my bank?", "the upload isn't working"
+        return await support_answer(req.question, request, period)
 
     def card(kind: Any, summary: str, preview: dict[str, Any], confirm: str) -> ProposedAction:
         return actions.new_action(actions.Draft(kind, summary, preview, confirm), token)
@@ -196,8 +227,9 @@ async def _answer(
     token: str,
     cycle: VatCycle,
     calendar: tasks.CalendarFactory | None = None,
+    request: Request | None = None,
 ) -> AskAnswer:
-    ready = await _prepare(req, books, cfg, business, token, cycle, calendar)
+    ready = await _prepare(req, books, cfg, business, token, cycle, calendar, request)
     if isinstance(ready, AskAnswer):
         return ready
     return await ask_ai.answer(req.question, ready, req.history, cfg)
@@ -231,7 +263,7 @@ async def ask(
 ) -> Any:
     """An answer about the books, or, for an instruction ("send a £100 invoice to …"), a proposed action to approve."""
     ready = await _prepare(
-        body, books, cfg, business, token, cycle, calendar_factory(request)
+        body, books, cfg, business, token, cycle, calendar_factory(request), request
     )  # before streaming, so its errors keep their status
     if stream:
         return StreamingResponse(
@@ -282,7 +314,7 @@ async def ask_voice(
         raise HTTPException(
             422, f"That question is too long ({len(heard.text)} characters; keep it under 500)"
         ) from exc
-    answer = await _answer(req, books, cfg, business, token, cycle, calendar_factory(request))
+    answer = await _answer(req, books, cfg, business, token, cycle, calendar_factory(request), request)
     if answer.proposed_action is not None:  # re-signed: the provenance is part of what the user approves
         spoken = answer.proposed_action.model_copy(update={"transcribed_by": heard.by})
         answer = answer.model_copy(update={"proposed_action": actions.sign(spoken, token)})

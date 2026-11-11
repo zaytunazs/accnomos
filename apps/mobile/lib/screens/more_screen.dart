@@ -6,6 +6,7 @@ import '../services/books.dart' show booksClient;
 import '../services/demo.dart';
 import '../services/navigation.dart';
 import '../services/plan_limit.dart' show planBillingUrl;
+import '../widgets/web_only.dart' show webAppBase;
 import '../services/region.dart';
 import '../services/store_policy.dart';
 import '../services/settings.dart';
@@ -58,6 +59,16 @@ Future<void> _openPlanBilling(BuildContext context) async {
 
 Future<void> _openReport(BuildContext context) => showReportProblem(context);
 
+/// The help centre and the Support page (assistant, tickets) live on the web: opened in the browser.
+const helpCentreUrl = '$webAppBase/help';
+const supportUrl = '$webAppBase/support';
+
+Future<void> _openHelp(BuildContext context) =>
+    launchUrl(Uri.parse(helpCentreUrl), mode: LaunchMode.externalApplication);
+
+Future<void> _openSupport(BuildContext context) =>
+    launchUrl(Uri.parse(supportUrl), mode: LaunchMode.externalApplication);
+
 /// The last rows of every More, business and household books alike. Plan &
 /// billing opens the web, so it is left out where the store does not allow a
 /// purchase link ([StorePolicy.purchaseLinksAllowed]: iOS).
@@ -69,6 +80,12 @@ List<MoreEntry> accountEntries(bool purchaseLinksAllowed) => [
         const MoreEntry(Icons.workspace_premium_outlined, 'Plan & billing',
             'Your plan, usage and invoices, on the web', null,
             action: _openPlanBilling),
+      const MoreEntry(Icons.help_outline, 'Help',
+          'Step-by-step guides, on the web', null,
+          action: _openHelp),
+      const MoreEntry(Icons.support_agent_outlined, 'Contact support',
+          'Ask the support assistant or raise a ticket, on the web', null,
+          action: _openSupport),
       const MoreEntry(Icons.flag_circle_outlined, 'Report a problem',
           'Tell us what went wrong', null,
           action: _openReport),

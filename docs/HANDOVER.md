@@ -26,6 +26,13 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
   | `claude/ios-app` | iOS Xcode project, privacy manifest, TestFlight CI; `docs/IOS_APP_STORE.md` |
   | `claude/ai-local` | Our own server first, Anthropic as the backup; voice on our own server |
 
+## Support desk (branch `support-desk`, 11 Nov 2026)
+- **Help centre** `/help` and `/help/<id>` (14 articles, `apps/web/src/content/help/articles.json`; after editing it run `python tools/sync_help_articles.py`). Pictures in `apps/web/public/help/` (`apps/web/e2e/help-shots.spec.ts` + `tools/help_shots_webp.py`, which OCR-checks for vendor and model names).
+- **Support page** `/support`: the support assistant (quotes the matched article, cites it; offers a ticket card), my tickets and threads, New ticket, and the PayPal help panel. **Admin › Support tickets** `/admin/support`: queue by status, thread, reply or internal note, status, optional email from the admin's own mailbox.
+- Runtime: `services/runtime/app/support/` (`routes.py`, `help.py`, `store.py`); tests `services/runtime/tests/test_support.py`.
+- **Owner to do: apply `supabase/migrations/0002_support.sql`** in the Supabase SQL editor. It is NOT applied; until then tickets fail on the live registry.
+- No system mail sender exists: user notifications are in-app, or emailed from the admin's mailbox when ticked. PayPal has no support-case API (see docs/HONESTY.md).
+
 ## Payments: how to add PayPal
 - **Plan payments** use the backend setting `PAYMENTS_PROVIDER` (`none` by default, or `stripe`) in `services/runtime/app/billing/payments.py`, mirrored on the web in `apps/web/src/lib/payments.ts` / `NEXT_PUBLIC_PAYMENTS_PROVIDER`.
   - With `none`, checkout, the customer portal and top-up return 503 with a neutral sentence.

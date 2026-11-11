@@ -110,6 +110,7 @@ async def approve(
         calendar=calendar_factory(request),
         via=body.via,
         approval_heard=(body.heard or "").strip() or None if body.via == "voice" else None,
+        request=request,
     )
     try:
         return await actions.approve(body.action, ctx)

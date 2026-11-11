@@ -43,7 +43,7 @@ void main() {
       'Payroll', 'Bill pay', 'Month-end', 'Reports', 'Goals', 'Calendar', 'Notes', 'Your accountant',
       'Audit trail',
       // the account rows every More ends with (test/plan_billing_test.dart)
-      'Plan & billing', 'Report a problem',
+      'Plan & billing', 'Help', 'Contact support', 'Report a problem',
     ]);
     expect(reportsNote(null), contains('VAT'));
   });

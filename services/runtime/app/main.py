@@ -455,6 +455,12 @@ app.include_router(billing_router)
 app.include_router(billing_admin_router)
 app.include_router(billing_analytics_router)
 
+from app.support.routes import admin_router as support_admin_router  # noqa: E402  /admin/support/* (ADMIN_EMAILS)
+from app.support.routes import router as support_router  # noqa: E402  /support/* (help articles, assistant, tickets)
+
+app.include_router(support_router)
+app.include_router(support_admin_router)
+
 
 @app.exception_handler(billing_service.PlanLimit)
 async def plan_limit(_request: Request, exc: billing_service.PlanLimit) -> JSONResponse:

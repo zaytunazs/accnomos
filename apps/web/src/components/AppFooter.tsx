@@ -43,6 +43,9 @@ export default function AppFooter() {
         <Link href="/help" className={linkClass}>
           Help and guides
         </Link>
+        <Link href="/support" className={linkClass}>
+          Support
+        </Link>
         <Link href="/privacy" className={linkClass}>
           Privacy
         </Link>
