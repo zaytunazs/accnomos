@@ -8,6 +8,8 @@ import '../theme.dart';
 import 'invoice_send.dart';
 import 'new_invoice_screen.dart';
 import 'payments_sheets.dart';
+import 'paypal_disputes_screen.dart';
+import 'paypal_sync_screen.dart';
 import 'settings_screen.dart';
 
 const _statuses = ['all', 'draft', 'sent', 'paid', 'void'];
@@ -128,6 +130,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
               ? _signedOut()
               : Column(
                   children: [
+                    _payPalBar(),
                     _statusBar(),
                     if (_error != null)
                       Padding(
@@ -178,6 +181,36 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Sync PayPal and PayPal disputes, as the web's Invoices page shows them
+  /// above the list. Coming back reloads the invoices (an approved PayPal
+  /// payment can mark one paid).
+  Widget _payPalBar() {
+    Widget entry(Key key, IconData icon, String label, Widget screen) =>
+        Expanded(
+          child: OutlinedButton.icon(
+            key: key,
+            style: OutlinedButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                backgroundColor: Colors.white),
+            icon: Icon(icon, size: 18),
+            label: Text(label, overflow: TextOverflow.ellipsis),
+            onPressed: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => screen))
+                .then((_) => _reload()),
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: Row(children: [
+        entry(const Key('invoices-paypal-sync'), Icons.sync_outlined,
+            'Sync PayPal', const PayPalSyncScreen()),
+        const SizedBox(width: 8),
+        entry(const Key('invoices-paypal-disputes'), Icons.gavel_outlined,
+            'Disputes', const PayPalDisputesScreen()),
+      ]),
     );
   }
 

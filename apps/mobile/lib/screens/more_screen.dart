@@ -14,6 +14,7 @@ import '../widgets/brand.dart';
 import 'accountant_screen.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
+import 'bill_pay_screen.dart';
 import 'calendar_screen.dart';
 import 'contacts_screen.dart';
 import 'ask_screen.dart';
@@ -99,6 +100,11 @@ List<MoreEntry> moreEntries(List<String>? features,
     const MoreEntry(Icons.payments_outlined, 'Payroll',
         'Pay runs: prepare, export and confirm', PayrollScreen(),
         needs: 'payroll'),
+    // Business books only (the web's /purchases): suppliers' bills paid from
+    // PayPal on their due date, each one approved by the owner.
+    const MoreEntry(Icons.outbox_outlined, 'Bill pay',
+        'Pay suppliers\' bills with PayPal on their due date', BillPayScreen(),
+        needs: 'invoices'),
     const MoreEntry(Icons.event_available_outlined, 'Month-end',
         'Run the close and approve its cards', MonthEndScreen()),
     if (showPersonal)
