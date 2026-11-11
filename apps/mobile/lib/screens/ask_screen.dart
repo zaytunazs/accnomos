@@ -1015,7 +1015,12 @@ class _AskScreenState extends State<AskScreen> {
     final numbered = RegExp(r'^(\d+)[.)]\s+');
     final bullet = RegExp(r'^[-*•]\s+');
     for (final raw in md.split('\n')) {
-      final line = raw.trim().replaceAll('**', '').replaceAll('`', '');
+      final line = raw
+          .trim()
+          .replaceAll('**', '')
+          .replaceAll('`', '')
+          // [Sync PayPal](/invoices#paypal-sync) -> Sync PayPal: this renderer shows text only.
+          .replaceAllMapped(RegExp(r'\[([^\]]+)\]\([^)]*\)'), (m) => m.group(1)!);
       if (line.isEmpty) continue;
       final n = numbered.firstMatch(line);
       if (n != null) {

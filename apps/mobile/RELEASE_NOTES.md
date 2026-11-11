@@ -1,5 +1,9 @@
 # Release notes — Accnomos mobile
 
+## 0.3.22 (27): clean links in answers
+
+- Ask answers show a link such as "Sync PayPal" as plain words instead of the raw link text.
+
 ## 0.3.21 (26): no model names on screen
 
 - The goals note, the second-reading note and Settings › AI › Test connection name the AI in plain words, never a model id.
