@@ -9,7 +9,7 @@
  * `/judges` is the hackathon judges' notes, linked from the footer and the repository only; `/meta-models` says
  * which Meta model does which job.
  */
-export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/demo", "/judges", "/join"]);
+export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/pricing", "/privacy", "/terms", "/demo", "/judges", "/join"]);
 
 export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
 

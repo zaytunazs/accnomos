@@ -65,10 +65,10 @@ function SiteFooter() {
             { href: "/#features", text: "Features" },
             { href: "/#how", text: "How it works" },
             { href: "/#accountants", text: "For accountants" },
-            { href: "/#pricing", text: "Pricing" },
+            { href: "/pricing", text: "Pricing" },
             { href: DEMO_GUIDE, text: "Try the demo" },
             { href: "/try", text: "Browse the sample books" },
-            { href: "/join", text: "Join the waiting list" },
+            { href: "/connect?next=%2Fsettings%23plan-billing", text: "Start your free trial" },
           ]}
         />
         <FooterLinks

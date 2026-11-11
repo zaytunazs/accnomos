@@ -1,7 +1,6 @@
 import Link from "next/link";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
-import JoinForm from "@/components/sign-up/JoinForm";
 import { GUIDES, GUIDES_URL } from "@/lib/howto-guides";
 import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
@@ -120,7 +119,13 @@ function BlockText({ block }: { block: Block }) {
 const FAQ: { q: string; a: React.ReactNode }[] = [
   {
     q: "How much does it cost?",
-    a: "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo with sample books costs nothing to try.",
+    a: (
+      <>
+        Every account starts with a 3-month free trial, no card needed. After that, Starter is £10, Comprehensive £20 and Ultimate £50 a month
+        ex VAT (2 months free if you pay yearly). The demo with sample books costs nothing to try.{" "}
+        <Link href="/pricing" className="font-bold underline underline-offset-2">See the plans</Link>.
+      </>
+    ),
   },
   {
     q: "Where are my books kept?",
@@ -147,8 +152,13 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     a: "Export your lists and statements from your current software and bring them across as files. Your opening position is entered once, and new documents flow in from there.",
   },
   {
-    q: "How do I join the waiting list?",
-    a: "Leave your email in the waiting-list form at the end of this page (or at accnomos.com/join).",
+    q: "How do I start the free trial?",
+    a: (
+      <>
+        Sign in with Microsoft: the 3-month trial starts at once and needs no card.{" "}
+        <Link href="/pricing" className="font-bold underline underline-offset-2">See what each plan includes</Link>.
+      </>
+    ),
   },
   {
     q: "Does my accountant need an account?",
@@ -225,16 +235,14 @@ export default function Landing() {
       <Pricing />
       <Guides />
       <Faq />
-      {/* "Join the waiting list": the neutral form in the submission build (JoinForm); the pre-launch build shows its own
-          EarlyAccessForm, which is in neither the HTML nor the payload of a submission build. Same list either way. */}
-      <div id="join" className="mx-auto max-w-3xl scroll-mt-20 px-4 pb-16 sm:px-6">
-        {PRELAUNCH_IN_BUILD && (
+      {/* The pre-launch build keeps its own early-list form (never in a submission build); the submission build points to the free trial instead. */}
+      {PRELAUNCH_IN_BUILD && (
+        <div id="join" className="mx-auto max-w-3xl scroll-mt-20 px-4 pb-16 sm:px-6">
           <Prelaunch>
             <EarlyAccessForm source="/" />
           </Prelaunch>
-        )}
-        <JoinForm source="/" />
-      </div>
+        </div>
+      )}
       <Closing />
     </>
   );
@@ -268,9 +276,9 @@ function CtaPair({ dark = false, join = false }: { dark?: boolean; join?: boolea
         Try the personal demo
       </DemoLink>
       {join && (
-        <a href="#join" className={secondary}>
-          Join the waiting list
-        </a>
+        <Link href="/pricing" className={secondary}>
+          Start your free trial
+        </Link>
       )}
       <Link href="/connect?next=%2F" className={secondary}>
         Sign in with Microsoft
@@ -566,8 +574,8 @@ function Pricing() {
           title="Pricing"
           lead={
             SUBMISSION_MODE
-              ? "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo needs no account and no card; your own books need only a Microsoft account. Leave your email to join the waiting list."
-              : "Free while we launch. The demo needs no account and no card; your own books need only a Microsoft account."
+              ? "Start with a 3-month free trial, no card needed. Then Starter is £10, Comprehensive £20 and Ultimate £50 a month ex VAT, with your own AI allowed on every plan. The demo needs no account and no card."
+              : "Start with a 3-month free trial, no card needed. The demo needs no account and no card."
           }
         />
         <CtaPair join />

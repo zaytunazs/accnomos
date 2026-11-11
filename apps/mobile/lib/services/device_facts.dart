@@ -47,6 +47,21 @@ class DeviceFacts {
     }
   }
 
+  /// The app's own version, for a problem report ('unknown' when it cannot be read).
+  Future<String> appVersion() async => (await _platform())['app_version']?.toString() ?? 'unknown';
+
+  /// 'Android 15 Google Pixel 7', from the same facts, for a problem report.
+  Future<String> userAgent() async {
+    final p = await _platform();
+    final parts = [
+      p['os_family'],
+      p['os_version'],
+      p['device_manufacturer'],
+      p['device_model'],
+    ].where((x) => x != null && '$x'.isNotEmpty).join(' ');
+    return parts.isEmpty ? 'Android' : parts;
+  }
+
   /// `{os_family, os_version, device_manufacturer, device_model, colour_depth,
   /// app_version}` from MainActivity, or an empty map off Android.
   Future<Map<String, dynamic>> _platform() async {

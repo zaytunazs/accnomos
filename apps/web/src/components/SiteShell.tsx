@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import GlobalEffects from "@/components/GlobalEffects";
 import AppShell from "@/components/AppShell";
 import MarketingShell from "@/components/marketing/MarketingShell";
 import { isPublicPath } from "@/lib/public-site";
@@ -16,6 +17,12 @@ import { useSignedIn } from "@/lib/signed-in";
 export default function SiteShell({ children, routes }: { children: ReactNode; routes: string[] }) {
   const path = usePathname() ?? "/";
   const signedIn = useSignedIn(path);
-  if (isPublicPath(path) && signedIn !== true) return <MarketingShell path={path}>{children}</MarketingShell>;
-  return <AppShell routes={routes}>{children}</AppShell>;
+  const shell =
+    isPublicPath(path) && signedIn !== true ? <MarketingShell path={path}>{children}</MarketingShell> : <AppShell routes={routes}>{children}</AppShell>;
+  return (
+    <>
+      {shell}
+      <GlobalEffects />
+    </>
+  );
 }

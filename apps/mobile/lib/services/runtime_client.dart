@@ -14,6 +14,7 @@ import 'ai_route.dart';
 import 'auth.dart' show AuthService;
 import 'books_events.dart';
 import 'demo.dart';
+import 'plan_limit.dart';
 import 'settings.dart';
 
 /// Error from the reader service. [message] is safe to show in the UI.
@@ -2175,6 +2176,36 @@ class RuntimeClient {
         '/public',
       ].any(path.startsWith);
 
+  /// `POST /bug-reports` (docs/billing/PLANS_AND_CONTRACT.md) → the report id.
+  Future<String> postBugReport({
+    required String message,
+    required String page,
+    required String version,
+    required String ua,
+    String? screenshotB64,
+  }) async {
+    _requireBooks();
+    final response = await _http
+        .post(
+          _uri('/bug-reports'),
+          headers: {..._headers, 'Content-Type': 'application/json'},
+          body: json.encode({
+            'message': message,
+            'page': page,
+            'app': 'android',
+            'version': version,
+            'ua': ua,
+            'screenshot_b64': ?screenshotB64,
+          }),
+        )
+        .timeout(_timeout);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _fail(response.statusCode, response.body.trim());
+    }
+    final decoded = json.decode(response.body);
+    return decoded is Map ? '${decoded['id'] ?? ''}' : '';
+  }
+
   Never _fail(int status, String body) {
     if (Demo.active && (status == 401 || status == 404) && _demoGone(body)) {
       // The runtime forgot this demo (two idle hours, or a restart): start
@@ -2182,6 +2213,12 @@ class RuntimeClient {
       unawaited(Demo.renew());
       throw RuntimeException(
           'The demo had timed out, so a fresh one has started. Pull down to reload.');
+    }
+    final limit = PlanLimitInfo.parse(status, body);
+    if (limit != null) {
+      // HTTP 402 plan_limit: one friendly dialog over whatever is open.
+      unawaited(PlanLimit.show(limit));
+      throw RuntimeException(limit.sentence);
     }
     final detail = body.length > 300 ? '${body.substring(0, 300)}…' : body;
     throw RuntimeException(

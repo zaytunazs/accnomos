@@ -12,6 +12,7 @@ import { useSelfEmployed } from "@/lib/itsa";
 import { usePersonalOn } from "@/lib/personal";
 import { useLandlordOn } from "@/lib/property";
 import { currentFeatures, currentMeta } from "@/lib/profiles";
+import { openReportProblem } from "@/lib/report-problem";
 
 /**
  * The signed-in menu bar, laid out like Xero's (the owner's choice; docs/reviews/app-shell/REVIEW.md weighs it against
@@ -468,6 +469,10 @@ function SideBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: s
           <NavIcon label="Help" />
           Help &amp; support
         </Link>
+        <button type="button" onClick={() => openReportProblem()} className={`${bottom} ${tone(false)} text-left`}>
+          <NavIcon label="Help" />
+          Report a problem
+        </button>
       </div>
     </div>
   );

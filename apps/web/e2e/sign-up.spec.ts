@@ -42,45 +42,22 @@ async function fillAndSend(page: Page, email: string) {
 test.describe("submission build (the default)", () => {
   test.use({ viewport: { width: 360, height: 780 } });
 
-  test("the hero's Join the waiting list leads to the form, which signs up at 360 px", async ({ page }) => {
+  test("the home page offers the free trial, not a waiting list, and /join still has the form", async ({ page }) => {
     await page.goto("/");
     const hero = page.getByRole("region", { name: "Bookkeeping you only have to check" });
     await expect(hero.getByRole("link", { name: "Try the demo", exact: true })).toBeVisible();
-    const cta = hero.getByRole("link", { name: HEADING, exact: true });
-    await expect(cta).toHaveAttribute("href", "#join");
-    await cta.click();
-    const f = form(page);
-    await expect(f).toBeInViewport();
+    await expect(hero.getByRole("link", { name: "Start your free trial", exact: true })).toHaveAttribute("href", "/pricing");
+    await expect(page.getByText(/waiting list/i)).toHaveCount(0);
+    await expect(form(page)).toHaveCount(0);
+    await expect(page.locator("#pricing")).toContainText("3-month free trial");
+    await page.getByText("How do I start the free trial?").click();
+    await expect(page.getByText(/the 3-month trial starts at once and needs no card/)).toBeVisible();
+    await expect(page.getByRole("contentinfo").getByRole("link", { name: "Start your free trial" })).toBeVisible();
+
+    await page.goto("/join");
+    await expect(form(page)).toBeVisible();
+    await expect(form(page).getByRole("checkbox", { name: CONSENT })).not.toBeChecked(); // never pre-ticked
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
-
-    await expect(f).toContainText("Leave your email to join the waiting list.");
-    const consent = f.getByRole("checkbox", { name: CONSENT });
-    await expect(consent).not.toBeChecked(); // never pre-ticked
-    await expect(f.getByText(/Zaytuna Business Services Ltd keeps these details only to email you/)).toBeVisible();
-    await expect(f.getByRole("link", { name: "privacy policy" })).toHaveAttribute("href", "/privacy#sign-up");
-    // No launch, beta or waiting-list wording anywhere in the form, its errors included.
-    await f.getByRole("button", { name: HEADING }).click();
-    await expect(f.getByRole("textbox", { name: "Email" })).toBeFocused();
-    await expect(f.getByText("Tick the box so we can email you")).toBeVisible();
-    expect(prelaunchHits(await f.innerText())).toEqual([]);
-
-    const email = address("join-home");
-    await f.getByRole("textbox", { name: "Name (optional)" }).fill("Sam Okoro");
-    await f.getByRole("textbox", { name: "How did you hear about us? (optional)" }).fill("YouTube");
-    await fillAndSend(page, email);
-    const done = f.getByRole("status");
-    await expect(done).toHaveText(DONE);
-    await expect(done).toBeFocused();
-
-    await expect.poll(() => signups(email).length).toBe(1);
-    expect(signups(email)[0]).toMatchObject({
-      name: "Sam Okoro",
-      business_type: "company",
-      heard: "YouTube",
-      consent: true,
-      consent_text: CONSENT,
-      source: "/",
-    });
   });
 
   test("/join: a short page with the form, for the social posts", async ({ page }) => {
@@ -89,22 +66,17 @@ test.describe("submission build (the default)", () => {
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Accnomos: bookkeeping you only have to check");
     await expect(page.getByRole("main").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/demo");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+    const f = form(page);
+    await expect(f).toContainText("Leave your email to join the waiting list.");
+    await f.getByRole("button", { name: HEADING }).click();
+    await expect(f.getByRole("textbox", { name: "Email" })).toBeFocused();
+    expect(prelaunchHits(await f.innerText())).toEqual([]);
 
     const email = address("join-page");
     await fillAndSend(page, email);
     await expect(form(page).getByRole("status")).toHaveText(DONE);
     await expect.poll(() => signups(email).length).toBe(1);
     expect(signups(email)[0]).toMatchObject({ consent_text: CONSENT, source: "/join", business_type: "company" });
-  });
-
-  test("pricing, the FAQ and the footer point to it", async ({ page }) => {
-    await page.goto("/");
-    const pricing = page.locator("#pricing");
-    await expect(pricing).toContainText("Leave your email to join the waiting list.");
-    await expect(pricing.getByRole("link", { name: HEADING, exact: true })).toHaveAttribute("href", "#join");
-    await page.getByText("How do I join the waiting list?").click();
-    await expect(page.getByText(/at accnomos\.com\/join\)\./)).toBeVisible();
-    await expect(page.getByRole("contentinfo").getByRole("link", { name: HEADING })).toHaveAttribute("href", "/join");
   });
 
   test("a runtime refusal is shown, not swallowed", async ({ page }) => {

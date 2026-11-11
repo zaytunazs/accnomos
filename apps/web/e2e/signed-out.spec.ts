@@ -10,7 +10,7 @@ import { PAGES } from "./pages";
  */
 
 const LABEL = "SAMPLE — FICTIONAL COMPANY";
-const KNOWN = new Set(PAGES);
+const KNOWN = new Set([...PAGES, "/pricing"]);
 // The onboarding flow is the CTA's destination: its buttons start real
 // Microsoft sign-in, which never runs in the static export.
 const CONNECT_PAGES = new Set(["/connect", "/connect/ai", "/connect/business", "/connect/ready"]);

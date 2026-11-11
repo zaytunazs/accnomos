@@ -47,7 +47,7 @@ test.describe("landing page at 1280 px", () => {
   test("top menu: every item lands; the footer's privacy and how-it-works pages keep the public shell", async ({ page }) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Site" });
-    for (const name of ["Features", "How it works", "Accountants", "Pricing & FAQ"]) {
+    for (const name of ["Features", "How it works", "Accountants", "Pricing", "FAQ"]) {
       await expect(nav.getByRole("link", { name })).toBeVisible();
     }
     await nav.getByRole("link", { name: "Features" }).click();
@@ -56,8 +56,12 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("heading", { level: 2, name: "How it works" })).toBeInViewport();
     await nav.getByRole("link", { name: "Accountants" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "For accountants" })).toBeInViewport();
-    await nav.getByRole("link", { name: "Pricing & FAQ" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Pricing" })).toBeInViewport();
+    await nav.getByRole("link", { name: "FAQ" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Questions" })).toBeInViewport();
+    await nav.getByRole("link", { name: "Pricing" }).click();
+    await expect(page).toHaveURL(/\/pricing$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Pricing" })).toBeVisible();
+    await page.goto("/");
 
     const footer = page.getByRole("contentinfo");
     await footer.getByRole("link", { name: "Privacy policy" }).click();
@@ -168,7 +172,7 @@ test.describe("at 360 px", () => {
     await button.click();
     await expect(button).toHaveAttribute("aria-expanded", "true");
     const menu = page.getByRole("navigation", { name: "Site menu" });
-    for (const name of ["Features", "How it works", "Accountants", "Pricing & FAQ"]) {
+    for (const name of ["Features", "How it works", "Accountants", "Pricing", "FAQ"]) {
       await expect(menu.getByRole("link", { name })).toBeVisible();
     }
     await expect(page.locator("#site-menu").getByRole("link", { name: "Try the demo" })).toBeVisible();
@@ -178,9 +182,9 @@ test.describe("at 360 px", () => {
     await expect(button).toBeFocused();
 
     await button.click();
-    await menu.getByRole("link", { name: "Pricing & FAQ" }).click();
-    await expect(menu).toBeHidden();
-    await expect(page.getByRole("heading", { level: 2, name: "Pricing" })).toBeInViewport();
+    await menu.getByRole("link", { name: "Pricing", exact: true }).click();
+    await expect(page).toHaveURL(/\/pricing$/);
+    await expect(page.getByRole("heading", { level: 1, name: "Pricing" })).toBeVisible();
   });
 
   test("chat fills the phone screen without sideways scroll", async ({ page }) => {

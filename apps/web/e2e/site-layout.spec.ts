@@ -48,7 +48,7 @@ test.describe("signed out, / is the marketing home", () => {
     // The public top bar, with nothing from the app: no menu bar or sidebar, profile switcher, review count, to-dos,
     // greeting or sample banner.
     const bar = page.getByRole("navigation", { name: "Site" });
-    for (const name of ["Features", "How it works", "Accountants", "Pricing & FAQ"]) await expect(bar.getByRole("link", { name })).toBeVisible();
+    for (const name of ["Features", "How it works", "Accountants", "Pricing", "FAQ"]) await expect(bar.getByRole("link", { name })).toBeVisible();
     await expect(page.getByRole("banner").getByRole("link", { name: "Sign in", exact: true })).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);

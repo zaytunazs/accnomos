@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AccountInfo } from "@azure/msal-browser";
 import { useAiLabel } from "./AiSidebarLabel";
+import { openReportProblem } from "@/lib/report-problem";
+import { useIsAdmin } from "@/lib/admin-access";
 import { ACCOUNTANT_EVENT, hasSharedClients } from "@/lib/accountant";
 import { AI_INFO_HREF } from "@/lib/ai-config";
 import { msalConfigured } from "@/lib/msal";
@@ -308,6 +310,7 @@ export function AccountMenu({ linked, minimal = false }: { linked: Linked; minim
   const { active } = linked;
   const ai = useAiLabel();
   const accountant = useIsAccountant(active.homeAccountId);
+  const admin = useIsAdmin(active);
   const profile = profileLabel(active, profileMeta(active.homeAccountId));
   return (
     <MenuButton
@@ -343,6 +346,19 @@ export function AccountMenu({ linked, minimal = false }: { linked: Linked; minim
           <Link href="/settings" role="menuitem" tabIndex={-1} className={menuItemClass}>
             Settings
           </Link>
+          {!minimal && (
+            <Link href="/settings#plan-billing" role="menuitem" tabIndex={-1} className={menuItemClass}>
+              Plan &amp; billing
+            </Link>
+          )}
+          {admin && (
+            <Link href="/admin" role="menuitem" tabIndex={-1} className={menuItemClass}>
+              Admin
+            </Link>
+          )}
+          <button type="button" role="menuitem" tabIndex={-1} className={menuItemClass} onClick={() => openReportProblem()}>
+            Report a problem
+          </button>
           <button type="button" role="menuitem" tabIndex={-1} className={menuItemClass} onClick={() => signOutOf(active)}>
             Sign out of this one
           </button>
