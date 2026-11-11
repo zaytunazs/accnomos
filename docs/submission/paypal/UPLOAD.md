@@ -27,7 +27,7 @@ Code: https://github.com/zaytunazs/accnomos
 
 Recorded against PayPal's sandbox and HMRC's sandbox with fictional data. No real money moved.
 AI disclosure: the presenter (shown small at the start, labelled "AI-generated presenter") and the voice-over in this video are AI-generated. Accnomos itself uses AI to propose entries and explain figures; every amount is calculated by code and approved by the owner.
-Music: <<TRACK TITLE>> from the YouTube Audio Library (no attribution required).
+Music: original, made for this video (synthesised by `tools/video/paypal/make_bed.py`; no samples or third-party recordings).
 
 Chapters
 0:00 Who it is for, and the problem

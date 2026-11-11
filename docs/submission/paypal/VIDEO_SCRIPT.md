@@ -92,9 +92,9 @@ enlarged on the web only, because the phone clips were recorded before Android 0
 
 ## Music
 
-A YouTube Audio Library track whose licence is **"Attribution not required"**, calm but with a pulse, about 3 minutes,
-mixed about −28 dB under the voice, 1 s fade in and 2 s fade out (added in YouTube Studio or the edit). The voice is
-normalised to −16 LUFS with peaks at −1.5 dB, and there is about a second between lines, which leaves room for it.
+An original bed made for this video: a soft pad with light plucks, synthesised by `tools/video/paypal/make_bed.py` (no
+samples, no third-party recording), mixed 25 dB under the voice with a fade in and out. The final file already has it;
+add nothing in YouTube Studio.
 Don't use music from anywhere else. After uploading, check YouTube Studio shows no copyright claim.
 
 ## Timing check
