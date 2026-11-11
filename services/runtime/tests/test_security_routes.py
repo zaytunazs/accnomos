@@ -487,6 +487,7 @@ def test_logo_upload_counts_against_the_rate_limit():
 #: Write-method routes that do not take X-User, and why. Anything else that writes must depend on require_user.
 NO_USER_NEEDED = {
     "POST /ai/test": "pings the AI the caller names (allow-listed); writes nothing",
+    "POST /ai/grid-filter": "turns words into a grid filter (allow-listed columns and operators); writes nothing",
     "POST /extract": "reads one document; writes nothing",
     "POST /books/scan": "the extractor agent files the inbox; audited as agent:extractor / agent:autopilot",
     "POST /books/scan/jobs": (
