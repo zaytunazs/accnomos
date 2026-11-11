@@ -88,6 +88,8 @@ def test_articles_have_stable_unique_ids_and_steps() -> None:
         ("how can I pay a supplier with paypal", "bill-pay-paypal"),
         ("how do I close the month", "month-end"),
         ("how do I add a paypal link to an invoice", "invoices-paypal-links"),
+        ("The PayPal sync is not working, I get an error", "sync-paypal"),
+        ("I want to contact support", "contact-support"),
     ],
 )
 def test_retrieval_finds_the_article(question: str, article: str) -> None:

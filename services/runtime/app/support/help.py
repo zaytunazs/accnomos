@@ -175,6 +175,11 @@ def search(question: str, limit: int = 3) -> list[Match]:
                 best = (float(hit), (problem, fix))
         out.append(Match(a, round(score, 3), best[1]))
     out.sort(key=lambda m: m.score, reverse=True)
+    # "Get help and raise a ticket" matches every problem sentence ("not working", "error"): it is the fallback, so a
+    # real article about the thing that broke goes first unless the user asked for support itself.
+    if len(out) > 1 and out[0].article.id == "contact-support" and not wants_ticket(question):
+        if out[1].score >= MIN_SCORE:
+            out[0], out[1] = out[1], out[0]
     return out[:limit]
 
 

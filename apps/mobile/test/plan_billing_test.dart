@@ -114,14 +114,16 @@ void main() {
   });
 
   test('Plan & billing is left out where the store allows no purchase links', () {
-    expect(accountEntries(true).map((e) => e.title), ['Plan & billing', 'Report a problem']);
-    expect(accountEntries(false).map((e) => e.title), ['Report a problem']);
+    expect(accountEntries(true).map((e) => e.title),
+        ['Plan & billing', 'Help', 'Contact support', 'Report a problem']);
+    expect(accountEntries(false).map((e) => e.title), ['Help', 'Contact support', 'Report a problem']);
   });
 
-  test('More ends with Plan & billing and Report a problem, for every kind of books', () {
+  test('More ends with Plan & billing, Help, Contact support and Report a problem, for every kind of books', () {
     for (final entries in [moreEntries(null), moreEntries(null, household: true)]) {
       final titles = entries.map((e) => e.title).toList();
-      expect(titles.sublist(titles.length - 2), ['Plan & billing', 'Report a problem']);
+      expect(titles.sublist(titles.length - 4),
+          ['Plan & billing', 'Help', 'Contact support', 'Report a problem']);
       expect(entries.last.action, isNotNull);
     }
   });

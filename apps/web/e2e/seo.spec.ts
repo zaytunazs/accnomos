@@ -20,8 +20,10 @@ test("sitemap.xml lists the public pages, never the app shells", async ({ reques
   for (const page of ["/how-it-works", "/help", "/try", "/join", "/privacy", "/terms", "/models", "/meta-models"]) {
     expect(body).toContain(`https://accnomos.com${page}`);
   }
-  expect(body).not.toContain("/review");
-  expect(body).not.toContain("/bank");
+  expect(body).not.toContain("accnomos.com/review<");
+  expect(body).not.toContain("accnomos.com/bank<");
+  expect(body).not.toContain("accnomos.com/support<");
+  expect(body).toContain("https://accnomos.com/help/vat-return"); // every help article is listed
 });
 
 test("the landing page has a canonical link and valid JSON-LD", async ({ page }) => {
