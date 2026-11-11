@@ -15,6 +15,7 @@ import {
 } from "@/components/invoices/PaymentDialogs";
 import { ApplyCreditDialog, RefundDialog } from "@/components/invoices/CreditDialogs";
 import { OnlineFound, PaymentLinkDialog, PayOnlineLine, linkAmount } from "@/components/invoices/OnlinePayments";
+import PayPalSync from "@/components/invoices/PayPalSync";
 import SignInCta from "@/components/SignInCta";
 import StatusBadge, { type BadgeTone } from "@/components/StatusBadge";
 import { EmptyState, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
@@ -290,6 +291,7 @@ export default function LiveInvoices() {
           onApproved={(inv, message) => { replace(inv); setNote(message); void load(); }}
         />
       )}
+      {account && <PayPalSync account={account} onPosted={() => void load()} />}
       {payProblems.length > 0 && (
         <p className="rounded-xl bg-warn-bg px-4 py-3 text-sm text-warn-ink">
           Could not check {payProblems.map((p) => `${p.invoice} (${p.message})`).join("; ")} for online payments.
