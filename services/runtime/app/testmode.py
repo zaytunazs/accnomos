@@ -948,6 +948,29 @@ def grid_filter_reply(user: str) -> dict[str, Any]:
     return {"conditions": conds, "sort": sort, "summary": "Lines matching your words." if conds or sort else ""}
 
 
+def ai_search_reply(user: str) -> dict[str, Any]:
+    """Ask's AI search (app/ai_search.py), deterministic: code's own reading of the question, as the model's JSON."""
+    from app import ai_search
+
+    today = date.fromisoformat(user.split("TODAY: ", 1)[1][:10])
+    question = user.rsplit("QUESTION: ", 1)[1]
+    kind = ai_search.intent(question) or "payment_search"
+    q = ai_search.code_query(question, kind, today)
+    low = question.lower()
+    named = next((k for k, v in ai_search._NAMED_SPAN.items() if v in low), "none")  # noqa: SLF001
+    return {
+        "kind": kind,
+        "counterparty_hint": "",
+        "amount_pence": q.amount_pence,
+        "amount_tolerance_pct": None,
+        "direction": q.direction,
+        "date_range": named,
+        "month": None,
+        "keywords": q.keywords[:3],
+        "sources": q.sources,
+    }
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()
@@ -979,8 +1002,11 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(items_reply(messages[-1]["content"])))
     if system == public_chat.SYSTEM_PROMPT:
         return JSONResponse(_ollama(public_chat_reply(messages[-1]["content"])))
+    from app import ai_search
     from app.ai import grid_filter as grid_filter_ai
 
+    if system == ai_search.SEARCH_PROMPT:
+        return JSONResponse(_ollama(ai_search_reply(messages[-1]["content"])))
     if system == grid_filter_ai.system_prompt("ledger"):
         return JSONResponse(_ollama(grid_filter_reply(messages[-1]["content"])))
     from app import cashflow

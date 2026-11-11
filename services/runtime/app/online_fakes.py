@@ -20,6 +20,7 @@ import json
 import re
 import secrets
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -389,11 +390,30 @@ def reporting_row(
     return row
 
 
-def sample_transactions(end: date, invoice: tuple[str, int, str] | None = None) -> list[dict[str, Any]]:
+#: The demo's customer who settles their overdue invoice through PayPal (app/demo_recent.add_arrears_invoice): the
+#: sample history carries that payment, so "did that client pay the arrears? check PayPal" has an answer in the demo.
+SAMPLE_ARREARS_CUSTOMER = "Wrenfield Dental Studio"
+#: A stationery order paid through PayPal in the calendar month before `end` (fictional supplier).
+SAMPLE_STATIONERY = (
+    "Quillstone Office Supplies Ltd",
+    [("A4 copier paper, 5 reams", 3495), ("Gel pens, box of 24", 1899), ("Lever arch files, pack of 10", 4385)],
+)
+
+
+def _last_month_day(end: date) -> date:
+    """The 14th of the calendar month before `end` (or its last day, never later than the 14th)."""
+    prev = end.replace(day=1) - timedelta(days=1)
+    return prev.replace(day=min(14, prev.day))
+
+
+def sample_transactions(
+    end: date, invoice: tuple[str, int, str] | None = None, more: Sequence[tuple[str, int, str]] = ()
+) -> list[dict[str, Any]]:
     """A small, believable month of a joinery firm's PayPal account, dated back from `end`: two sales, a payment
     naming one of the user's invoices (when given: number, amount and customer), two purchases (fictional suppliers), a
-    withdrawal to the bank and a payment still pending. Ids are fixed per day, so syncing twice finds the same rows.
-    Fees are the made-up 2.9% + 30p above."""
+    withdrawal to the bank and a payment still pending; a stationery order in the month before; and a payment for each
+    further invoice in `more` (number, amount, customer), three days back. Ids are fixed per day, so syncing twice
+    finds the same rows. Fees are the made-up 2.9% + 30p above."""
 
     def at(days: int, hour: int = 10) -> datetime:
         d = end - timedelta(days=days)
@@ -451,6 +471,32 @@ def sample_transactions(end: date, invoice: tuple[str, int, str] | None = None) 
             reporting_row(
                 tid(7),
                 at(6),
+                code="T0007",
+                gross=pence,
+                fee=paypal_fee(pence),
+                name=customer,
+                invoice_id=number,
+                subject=f"Payment for invoice {number}",
+            )
+        )
+    name, items = SAMPLE_STATIONERY
+    rows.append(
+        reporting_row(
+            tid(8),
+            at((end - _last_month_day(end)).days, 11),
+            code="T0006",
+            gross=-sum(p for _, p in items),
+            name=name,
+            email="orders@quillstone.example",
+            items=items,
+            subject="Office stationery order",
+        )
+    )
+    for n, (number, pence, customer) in enumerate(more[:5]):
+        rows.append(
+            reporting_row(
+                tid(9 + n),
+                at(3, 14),
                 code="T0007",
                 gross=pence,
                 fee=paypal_fee(pence),

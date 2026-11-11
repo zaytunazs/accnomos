@@ -20,7 +20,7 @@ from app import demo
 from app import paypal_sync as ps
 from app.ai.config import AiConfig
 from app.books import Books, today
-from app.invoicing import InvoiceError, InvoiceStateError, list_invoices
+from app.invoicing import InvoiceError, InvoiceStateError
 from app.routes_books import get_books, require_user
 from app.validation import StrictBody
 
@@ -65,9 +65,8 @@ async def run_sync(
     if source == "paypal":
         fetch = ps.paypal_fetch(merchant)
     else:
-        sent = sorted((i for i in await list_invoices(books, "sent") if i.event_id), key=lambda i: i.due_date)
-        hint = (sent[0].number, sent[0].balance_pence or sent[0].total_pence, sent[0].customer.name) if sent else None
-        fetch = ps.sample_fetch(today(), hint)
+        hint, more = await ps.sample_hints(books)
+        fetch = ps.sample_fetch(today(), hint, more)
     try:
         return await ps.sync(books, user, fetch, source, days=body.days, cfg=_ai(request) if body.ai else None)
     except InvoiceError as exc:
