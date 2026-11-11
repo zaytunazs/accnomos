@@ -54,8 +54,8 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
 - Still to do when resumed: the webhook `https://api.accnomos.com/billing/stripe/webhook` and `STRIPE_WEBHOOK_SECRET`, the admin "Sync prices to Stripe" step, Stripe Tax (VAT GB441589282), the customer portal, and the trial-end reminder.
 - Stripe owner task: upload a photo ID for Zohaib Sharif (overdue). Bacs, SEPA and Afterpay are paused.
 
-## AI (claude/ai-local, merged into integ/wave3)
-- The chain is our own server (vLLM on the Spark) first, then Anthropic (`claude-haiku-5-5`) as the backup. "Local only" never reaches Anthropic.
+## AI (`claude/ai-local`, merged into `integ/wave3`)
+- The chain is our own server (the model server on the Spark) first, then Anthropic (`claude-haiku-5-5`) as the backup. "Local only" never reaches Anthropic.
 - Voice is spark-voice at `STT_BASE` (`http://host.docker.internal:8890`). SAM crop is off.
 - Privacy text is updated (Anthropic, US, backup only; not used for training; 30-day deletion).
 - `/health` only says "Accnomos AI". Full details are at `GET /admin/ai-status` (`ADMIN_EMAILS` only).
@@ -75,7 +75,7 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
   - `acc-ci <branch>`: full CI on the Spark.
   - `ai-local-first.sh`.
 - Deploy the API: `ssh spark "nohup bash ~/spark/accnomos/jobs/api_up.sh > ~/spark/accnomos/jobs/api_up.last.log 2>&1 &"`. It deploys from origin main. Then check `/health`.
-- The Spark job queue `sq` can run batch, render and CI jobs, which saves Claude tokens. Use cloud agents when the Spark is busy.
+- The Spark job queue `sq` can run batch, render and CI jobs, which saves cloud AI usage. Use cloud agents when the Spark is busy.
 
 ## Supabase
 - Project `usqwmybqjvldqjtaxsqi`, the same account as Learning Heaven. Schema `accnomos`, applied from `supabase/migrations/0001_accounts.sql`.
@@ -86,7 +86,7 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
 2. Build the PayPal plan provider (above) in PayPal **sandbox**. Read the PayPal hackathon rules first.
 3. Hide the model names on the client side, and decide whether bring your own AI is in scope for the hackathon.
 4. Fast-forward main once CI is green, deploy the API with the env changes above, and verify `/health`, `/account` and `/admin/ai-status`.
-5. Record the self-employed video (`docs/video/SELF_EMPLOYED_SCRIPT.md`, Kokoro bf_emma, `tools/video/v3/tts.py`) on the Spark after the features are live. Show the bulk dump of zips and folders. Re-check it for Stripe wording.
+5. Record the self-employed video (`docs/video/SELF_EMPLOYED_SCRIPT.md`, voice `bf_emma`, `tools/video/v3/tts.py`) on the Spark after the features are live. Show the bulk dump of zips and folders. Re-check it for Stripe wording.
 
 ## Owner to do
 - PayPal developer account and sandbox app (client ID and secret go to the Spark via the clipboard script, never into chat).
@@ -94,11 +94,11 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
 - Apple Developer account (for TestFlight).
 - HMRC production application (`docs/hmrc/PRODUCTION_APPLICATION.md`), which is needed for live VAT filing with users' own HMRC accounts.
 - Stripe photo ID task.
-- Decide what remote.gethits.co.uk is for. Don't expose Ollama publicly.
+- Decide what remote.gethits.co.uk is for. Keep the model server off the public internet.
 - Google Cloud projects stay under admin@zaytunauk.co.uk.
 
 ## Rules
 - No secrets in the repo or in chat. Secrets go PC clipboard → ssh script → Spark `.env`, then clear the clipboard.
 - Commit on non-main branches. Fast-forward main only after CI is green.
-- UK English. No "coming soon/beta/launch" wording; the prelaunch-words check enforces it. Public text may name Anthropic but not "Claude" or other vendors (the guard is `tests/test_docs.py`). Use fictional demo data only.
+- UK English. No "coming soon/beta/launch" wording; the prelaunch-words check enforces it. Public text may name Anthropic but not its model names or other vendors (the guard is `tests/test_docs.py`). Use fictional demo data only.
 - Commit trailer: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`
