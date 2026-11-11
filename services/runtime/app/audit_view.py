@@ -741,6 +741,25 @@ SUMMARIES: dict[str, Summary] = {
     "billpay_autopilot_asked": lambda r, w: (
         f"Autopilot left a bill from {r.get('supplier') or 'a supplier'} for you" + _pounds(r, "owed_pence")
     ),
+    # Upcoming PayPal payments (app/billpay_schedule.py)
+    "billpay_scheduled_approved": lambda r, w: (
+        f"Approved in advance a PayPal payment to {r.get('supplier') or 'a supplier'}"
+        + _pounds(r, "amount_pence")
+        + (f", to be paid on or after {r['due_date']}" if r.get("due_date") else "")
+    ),
+    "billpay_scheduled_cancelled": lambda r, w: (
+        f"Cancelled a PayPal payment to {r.get('supplier') or 'a supplier'} approved in advance"
+        + _pounds(r, "amount_pence")
+    ),
+    "billpay_scheduled_sent": lambda r, w: (
+        f"Sent a PayPal payment to {r.get('supplier') or 'a supplier'} approved in advance" + _pounds(r, "amount_pence")
+    ),
+    "billpay_scheduled_held": lambda r, w: (
+        f"Did not pay {r.get('supplier') or 'a supplier'} as approved in advance: something changed"
+        + _pounds(r, "amount_pence")
+    ),
+    "billpay_calendar_added": lambda r, w: "Added PayPal bill payments to your calendar",
+    "billpay_calendar_removed": lambda r, w: "Removed PayPal bill payments from your calendar",
 }
 
 
