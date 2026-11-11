@@ -17,6 +17,7 @@
     "dependencies": {
         "@azure/msal-browser": "^5.26.0",
         "@azure/msal-react": "^5.7.3",
+        "fflate": "^0.8.3",
         "next": "16.4.3",
         "react": "19.3.0",
         "react-dom": "19.3.0"
