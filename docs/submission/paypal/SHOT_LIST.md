@@ -15,12 +15,14 @@ PAYPAL_CONNECT=1 SYNC_FIRST=1 node tools/video/paypal/capture_paypal.ts <media>/
 SYNC_FIRST=1 GRID_APPROVE=1 node tools/video/paypal/capture_paypal.ts <media>/raw pp-grid            # ag (sample history)
 node tools/video/paypal/capture_paypal.ts <media>/raw pp-ask,pp-disputes                             # h2 (NOT connected), h5
 PAYPAL_CONNECT=1 PAY=1 node tools/video/paypal/capture_paypal.ts $R pp-billpay,m-home,pp-invoice     # h4 (sandbox payout), ec link
-node tools/video/paypal/capture_paypal.ts $R f-receipt,f-invoice,f-reports,f-vat,f-files,f-bank,f-bankmatch,f-talk
+node tools/video/paypal/capture_paypal.ts <media>/raw6 f-receipt   # after the web fix
+node tools/video/paypal/capture_paypal.ts $R f-invoice,f-reports,f-vat,f-files,f-bank,f-bankmatch,f-talk
 ```
 
 - `f-bank` signs in to TrueLayer's sandbox with its public mock login (john / doe): blur it. `f-vat` signs in to
   HMRC's sandbox with the throwaway test user the demo makes: cut the HMRC pages and never show the password.
-- `f-receipt`: the verifier line under the receipt card names the models (e.g. "muse-glimmer:30b"): blur it or cut it.
+- `f-receipt`: since web af90aeda the verifier line says "the local open-weights model" instead of the raw model id;
+  footage from before that deploy shows the id and must be blurred or cut. Check every frame anyway.
 - `pp-ask` must run on a demo **without** PayPal connected (with the real sandbox connected the answers are "no").
 - `pp-billpay` with `PAY=1` pays the demo's `example.com` payee in the sandbox: it ends *Waiting for the supplier to
   claim it* (never *Paid and posted*); say nothing that claims otherwise.

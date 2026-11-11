@@ -310,7 +310,7 @@
    "children": [
     {
      "type": "video",
-     "src": "raw5/f-receipt.webm",
+     "src": "raw6/f-receipt.webm",
      "in": 0.5,
      "dur": 2.0,
      "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
@@ -322,8 +322,8 @@
     },
     {
      "type": "video",
-     "src": "raw5/f-receipt.webm",
-     "in": 26.4,
+     "src": "raw6/f-receipt.webm",
+     "in": 9.9,
      "dur": 1.6,
      "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
      "tag": "Reading sped up",
@@ -335,8 +335,8 @@
     },
     {
      "type": "video",
-     "src": "raw5/f-receipt.webm",
-     "in": 77.0,
+     "src": "raw6/f-receipt.webm",
+     "in": 43.0,
      "dur": 2.6,
      "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
      "phone": {
@@ -346,18 +346,10 @@
     },
     {
      "type": "video",
-     "src": "raw5/f-receipt.webm",
-     "in": 84.6,
+     "src": "raw6/f-receipt.webm",
+     "in": 52.6,
      "dur": 1.8,
      "caption": "Receipts: the AI reads the photo · code checks totals and VAT · you approve",
-     "blur": [
-      {
-       "x": 400,
-       "y": 395,
-       "w": 1360,
-       "h": 140
-      }
-     ],
      "phone": {
       "src": "android/a-review.mp4",
       "name": "a-review",

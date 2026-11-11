@@ -1,4 +1,4 @@
-# Builds timeline_paypal_v5.json from the capture marks. Run in the media folder (raw/, raw5/, cards/): python3 make_timeline_v5.py
+# Builds timeline_paypal_v5.json from the capture marks. Run in the media folder (raw/, raw5/, raw6/, cards/): python3 make_timeline_v5.py
 import json, sys
 C = {
  "h1": "PayPal Transaction Search · gross / fee / net · a sale with no invoice waits for your VAT choice",
@@ -57,10 +57,10 @@ segs = [
    V("raw/pp-disputes.webm", 24.6, 5.5, C["h5"], sp=1.5)]},
  {"id": "ai", "type": "still", "src": "cards/ai-in-action.png", "zoom": 0.03, "dur": 5, "vo": "ai"},
  {"id": "ea", "type": "group", "dur": 8, "vo": "ea", "children": [
-   V("raw5/f-receipt.webm", 0.5, 2.0, C["ea"], sp=2.0, phone=ph("a-capture")),
-   V("raw5/f-receipt.webm", 26.4, 1.6, C["ea"], tag="Reading sped up", phone=ph("a-capture", **{"in": 3})),
-   V("raw5/f-receipt.webm", 77.0, 2.6, C["ea"], phone=ph("a-review")),
-   V("raw5/f-receipt.webm", 84.6, 1.8, C["ea"], blur=RECEIPT_BLUR, phone=ph("a-review", **{"in": 3}))]},
+   V("raw6/f-receipt.webm", 0.5, 2.0, C["ea"], sp=2.0, phone=ph("a-capture")),
+   V("raw6/f-receipt.webm", 9.9, 1.6, C["ea"], tag="Reading sped up", phone=ph("a-capture", **{"in": 3})),
+   V("raw6/f-receipt.webm", 43.0, 2.6, C["ea"], phone=ph("a-review")),
+   V("raw6/f-receipt.webm", 52.6, 1.8, C["ea"], phone=ph("a-review", **{"in": 3}))]},
  "BANK",
  {"id": "ec", "type": "group", "dur": 7, "vo": "ec", "children": [
    V("raw5/f-invoice.webm", 2.0, 2.2, C["ec"], sp=2.0, tag="Typing sped up"),
