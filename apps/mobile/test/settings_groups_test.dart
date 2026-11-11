@@ -451,9 +451,9 @@ void main() {
     await pumpSignedIn(tester, FakeSettingsClient());
 
     await scrollTo(tester, find.text('Which AI answers first'));
-    expect(find.text('Meta Model API first'), findsOneWidget);
+    expect(find.text('Hosted model first'), findsOneWidget);
     expect(find.text('RECOMMENDED'), findsOneWidget);
-    expect(find.text('Local model first, Meta API when unsure'), findsOneWidget);
+    expect(find.text('Local model first, hosted model when unsure'), findsOneWidget);
     expect(find.text('Local model only'), findsOneWidget);
     expect(find.byKey(const Key('aiRoute_meta_first')), findsOneWidget);
     expect(find.byKey(const Key('aiRoute_local_first')), findsOneWidget);
@@ -475,7 +475,7 @@ void main() {
     expect(find.byKey(const Key('aiRouteWarningSelected')), findsOneWidget);
     expect(
         find.text(
-            'No voice input: speech-to-text (Muse Voice Transcribe) runs on the Meta Model API. You can still type, and replies can still be read out by your device.'),
+            "No voice input: speech-to-text runs on the hosted model's API. You can still type, and replies can still be read out by your device."),
         findsOneWidget);
 
     final prefs = await SharedPreferences.getInstance();

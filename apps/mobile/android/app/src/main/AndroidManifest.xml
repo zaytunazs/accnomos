@@ -11,7 +11,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <!-- Plain http: only to the owner's LAN hosts in release builds, anywhere in debug builds
          (res/xml/network_security_config.xml in src/main and src/debug; SEC-05). -->
-    <!-- No backups: settings hold the user's Meta key (shared_preferences), which Auto Backup would copy to the
+    <!-- No backups: settings hold the user's own AI API key (shared_preferences), which Auto Backup would copy to the
          cloud. Reinstalling means entering settings again. -->
     <application
         android:label="Accnomos"

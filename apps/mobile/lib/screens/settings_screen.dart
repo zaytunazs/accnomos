@@ -945,7 +945,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   children: [
                     if (demo)
                       const Text(
-                        'The demo reads and answers with Meta\'s Muse models on '
+                        'The demo reads and answers with the AI models on '
                         'the Accnomos reader service, as the website\'s demo does. '
                         'Your own AI choice applies once you sign in.',
                         key: Key('demoAiNote'),
@@ -983,9 +983,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 12),
                       _field(
                         fieldKey: 'apiKeyField',
-                        label: 'Muse API key',
+                        label: 'API key for the hosted model',
                         helper:
-                            'Only used for \u201cMuse Spark (key)\u201d. Stored on this phone only and sent straight to your reader.',
+                            'Only used for \u201cMy own API key\u201d. Stored on this phone only and sent straight to your reader.',
                         controller: _apiKey,
                         enabled: _signedIn,
                         obscure: _obscureKey,
@@ -1406,7 +1406,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontWeight: FontWeight.w700,
                         color: AccnomosColors.ink)),
                 subtitle: const Text(
-                    'Meta\'s Muse models on the reader service, as on the website. Nothing to set up.',
+                    'The reader service\'s AI models, as on the website. Nothing to set up.',
                     style: TextStyle(
                         color: AccnomosColors.muted,
                         fontSize: 12,
@@ -1427,7 +1427,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ],
                 ),
                 subtitle: const Text(
-                    'Muse Glimmer 30B, open weights, running on your computer. Receipts never leave your network.',
+                    'An open-weights model running on your computer. Receipts never leave your network.',
                     style: TextStyle(
                         color: AccnomosColors.muted,
                         fontSize: 12,
@@ -1437,12 +1437,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               RadioListTile<String>(
                 value: 'key',
-                title: const Text('My own Meta API key',
+                title: const Text('My own API key for the hosted model',
                     style: TextStyle(
                         fontWeight: FontWeight.w700,
                         color: AccnomosColors.ink)),
                 subtitle: const Text(
-                    'Muse Spark via the Meta Model API. Fast, no hardware needed.',
+                    'The hosted model through its provider\'s API. Fast, no hardware needed.',
                     style: TextStyle(
                         color: AccnomosColors.muted,
                         fontSize: 12,

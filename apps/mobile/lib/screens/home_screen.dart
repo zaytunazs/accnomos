@@ -277,7 +277,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
               signedIn
                   ? 'Hello, ${AuthService.greetingName(_account!)}'
-                  : 'Your books. Your cloud. Meta AI on your terms.',
+                  : 'Your books. Your cloud. AI on your terms.',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
           Text(
@@ -285,7 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 'Worked out by code from the books in your own folder. '
                     'Pull down to refresh.'
                 : 'Accnomos keeps your bookkeeping in a folder you own (OneDrive first), '
-                    'reads receipts and invoices with Meta AI, and files VAT returns to HMRC '
+                    'reads receipts and invoices with AI, and files VAT returns to HMRC '
                     'only when you say so.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
@@ -392,7 +392,7 @@ class SummaryCard extends StatelessWidget {
   final HomeSummary summary;
 
   /// Code's summary is showing and the AI's words are on their way: a thin
-  /// teal bar along the top and "Muse Spark is writing your summary…".
+  /// teal bar along the top and "The AI is writing your summary…".
   final bool pending;
 
   /// Which app the actions open pages in; null reads it from [AppMode].
@@ -471,7 +471,7 @@ class SummaryCard extends StatelessWidget {
                     pending
                         ? const AiWritingBar(
                             key: Key('summary-writing'),
-                            label: 'Muse Spark is writing your summary…')
+                            label: 'The AI is writing your summary…')
                         : Text(summary.byLine,
                             style: const TextStyle(
                                 color: AccnomosColors.muted, fontSize: 12)),

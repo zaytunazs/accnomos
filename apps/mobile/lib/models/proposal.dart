@@ -89,7 +89,7 @@ class Proposal {
   /// 0-1 confidence in the reading.
   final double confidence;
 
-  /// Either 'Read on your machine' or 'Read by Muse Spark'.
+  /// Either 'Read on your machine' or 'Read by the hosted model'.
   final String source;
   final String category;
   final double? net;
@@ -227,7 +227,7 @@ class Proposal {
     final model = (json['model'] as String?) ?? '';
     final source = model.startsWith('local:')
         ? 'Read on your machine'
-        : 'Read by Muse Spark';
+        : 'Read by the hosted model';
 
     String? reviewerNote;
     if (checks.isNotEmpty) {
@@ -458,7 +458,7 @@ class Proposal {
       date: '16 Oct 2026',
       paidBy: 'Business debit card',
       confidence: 0.61,
-      source: 'Read by Muse Spark',
+      source: 'Read by the hosted model',
       category: 'Materials',
       net: 177.00,
       vat: 35.40,
@@ -510,7 +510,7 @@ const _verifierFieldLabels = {
 };
 
 String _verifierName(String model) {
-  if (model.startsWith('baseten:')) return 'Muse Spark Open';
+  if (model.startsWith('baseten:')) return 'the open-weights verifier model';
   return friendlyModelName(model);
 }
 

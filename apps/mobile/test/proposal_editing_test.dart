@@ -259,7 +259,7 @@ void main() {
       });
       expect(proposal.verifierTone, VerifierTone.agree);
       expect(proposal.verifierNote, contains('all 1 fields match'));
-      expect(proposal.verifierNote, contains('Muse Spark'));
+      expect(proposal.verifierNote, contains('the hosted model'));
       expect(proposal.failedChecks, isEmpty);
       expect(proposal.checksOk, isTrue);
     });

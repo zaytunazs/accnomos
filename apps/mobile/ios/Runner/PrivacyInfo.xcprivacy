@@ -3,7 +3,7 @@
 <!-- The app's own privacy manifest (docs/IOS_APP_STORE.md, "Privacy manifest and nutrition label").
      Flutter and every plugin ship their own manifests (shared_preferences declares UserDefaults; MSAL and
      GoogleSignIn ship theirs). Listed here (Apple's sense of "collected": kept off the device beyond the
-     request): documents, statements, emails and questions the runtime passes to Meta's Model API (which may
+     request): documents, statements, emails and questions the runtime passes to a hosted AI provider (which may
      keep them in Contributor mode), and the device id and hashed user id HMRC's fraud-prevention headers
      carry. Never for tracking or advertising. Also the required-reason APIs its Dart and
      Swift code may reach (its own UserDefaults; timestamps of files inside its own container). -->

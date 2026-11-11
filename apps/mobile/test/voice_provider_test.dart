@@ -13,7 +13,7 @@ void main() {
         'provider': 'whisper',
         'label': 'a local fallback model',
         'model': 'Systran/faster-whisper-large-v3',
-        'fallback_reason': 'Muse Voice Transcribe: Muse Voice returned HTTP 503',
+        'fallback_reason': 'the speech-to-text model: it returned HTTP 503',
       },
     });
     expect(voice.transcribedBy, 'a local fallback model');
@@ -30,12 +30,12 @@ void main() {
     await tester.pumpWidget(const MaterialApp(
       home: Scaffold(
         body: Column(children: [
-          SpokenTag(heardBy: 'Muse Voice Transcribe'),
+          SpokenTag(heardBy: 'the speech-to-text model'),
           SpokenTag(),
         ]),
       ),
     ));
-    expect(find.text('Spoken · Transcribed by Muse Voice Transcribe'),
+    expect(find.text('Spoken · Transcribed by the speech-to-text model'),
         findsOneWidget);
     expect(find.text('Spoken'), findsOneWidget);
   });
@@ -43,7 +43,7 @@ void main() {
   test('voice is on with a key, or with the server speech-to-text', () {
     final ok = {'voice': true};
     expect(voiceOffReason('key', ok), isNull);
-    expect(voiceOffReason('local', ok), contains('Meta API key'));
+    expect(voiceOffReason('local', ok), contains('API key for the hosted model'));
     expect(
       voiceOffReason('local', {
         'voice': true,
@@ -55,7 +55,7 @@ void main() {
       isNull,
     );
     expect(voiceOffReason('key', {'voice': false}), contains('ffmpeg'));
-    expect(voiceOffReason('local', null), contains('Meta API key'));
+    expect(voiceOffReason('local', null), contains('API key for the hosted model'));
     expect(voiceOffReason('key', null), isNull);
   });
 }

@@ -231,7 +231,7 @@ class GoalsNotePanel extends StatelessWidget {
   final GoalsNote note;
 
   /// The AI's note is still being written: code's note (if any) shows with
-  /// "Muse Spark is reading your goals…" and a small spinner.
+  /// "The AI is reading your goals…" and a small spinner.
   final bool pending;
 
   @override
@@ -291,7 +291,7 @@ class GoalsNotePanel extends StatelessWidget {
                   if (pending)
                     const AiWritingBar(
                         key: Key('note-writing'),
-                        label: 'Muse Spark is reading your goals…')
+                        label: 'The AI is reading your goals…')
                   else
                     Text(note.byLine,
                         style: const TextStyle(

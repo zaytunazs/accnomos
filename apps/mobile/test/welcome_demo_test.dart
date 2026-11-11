@@ -198,7 +198,7 @@ void main() {
       final h = client.debugHeaders;
       expect(h['X-Graph-Token'], 'tok');
       expect(h.containsKey('X-Demo-Session'), isFalse);
-      // The default is the reader service's own Meta chain, as on the web.
+      // The default is the reader service's own model chain, as on the web.
       expect(h.containsKey('X-AI-Mode'), isFalse);
       final own = RuntimeClient(
         AppSettings(
