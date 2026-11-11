@@ -72,6 +72,14 @@ Ask a question in plain words, typed or spoken, and get an answer with figures c
 
 Run a month-end check that lists missing statements, uncategorised costs, possible duplicates and anything dated into a closed month. Work through the list and re-close when done. Example: fictional March books for Bramblewood Joinery Ltd flag two unmatched bank lines and one receipt still sitting in the inbox.
 
+### PayPal, in the same approve-first books
+
+Put a PayPal pay link on your invoices, then Sync PayPal: each sale, purchase and fee is proposed with its journal, you choose the VAT on a sale with no invoice, and the PayPal balance is tied out against your books. Tried with PayPal's sandbox; nothing posts until you approve it. Example: a fictional customer pays a £372.00 invoice through its PayPal link; the payment and PayPal's £11.09 fee wait on Invoices until you tap Approve.
+
+### Supplier bills paid through PayPal
+
+Approve a bill now and it is paid from your PayPal on its due date, only if nothing about it changed. Upcoming payments go in your calendar, a dispute's evidence is built from your books, and one switch stops every automatic payment. Example: a fictional £51.90 bill from Novex Office Supplies Ltd, approved today, is paid on 12 November, the day it falls due.
+
 ### Your books live in OneDrive
 
 Your ledger, documents and spreadsheets are files in your own OneDrive folder. Accnomos keeps no database of your books. Example: disconnect and the fictional folder for Bramblewood Joinery Ltd, with its ledger events and Books.xlsx, is still sitting in your OneDrive.

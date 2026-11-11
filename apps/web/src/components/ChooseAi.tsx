@@ -84,7 +84,14 @@ export default function ChooseAi() {
           <label className="text-xs font-bold text-[#4B5159]" htmlFor="agent">Local agent address</label>
           <input id="agent" className={input} value={local.baseUrl} onChange={(e) => setLocal({ ...local, baseUrl: e.target.value })} />
           <label className="mt-3 block text-xs font-bold text-[#4B5159]" htmlFor="lmodel">Model</label>
-          <input id="lmodel" className={input} value={local.model} onChange={(e) => setLocal({ ...local, model: e.target.value })} />
+          {/* The default model's id is never shown: the box is empty with a neutral hint, and an empty box keeps the default. */}
+          <input
+            id="lmodel"
+            className={input}
+            placeholder="The default open-weights model"
+            value={local.model === DEFAULT_LOCAL.model ? "" : local.model}
+            onChange={(e) => setLocal({ ...local, model: e.target.value.trim() ? e.target.value : DEFAULT_LOCAL.model })}
+          />
           <p className="mt-2 text-xs text-[#4B5159]">Stays on this device — sent only to your runtime.</p>
         </div>
       )}
@@ -137,7 +144,7 @@ export default function ChooseAi() {
           className={`rounded-2xl border p-4 text-sm ${result.ok ? "border-[#5A2D00] bg-[#F4EDE5] text-[#3F2000]" : "border-[#F3C892] bg-[#FFF7ED] text-[#8A3F06]"}`}
         >
           {result.ok ? (
-            <p><strong>Connected</strong>{result.model ? ` · ${mode === "key" ? shortModelName(result.model) : result.model}` : ""} · {result.detail}</p>
+            <p><strong>Connected</strong>{result.model ? ` · ${shortModelName(result.model)}` : ""} · {result.detail}</p>
           ) : (
             <div>
               <p><strong>Not connected</strong> — the test did not get an answer{mode === "local" ? " — check the address" : " — check the key"} and try again.</p>

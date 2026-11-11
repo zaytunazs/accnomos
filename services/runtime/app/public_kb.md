@@ -56,6 +56,19 @@ trail of every action, jobs and timesheets, vehicles and mileage, and payroll es
 payroll: no submissions to HMRC for payroll).
 Keywords: invoice, invoicing, send, outlook, email, payment, part payment, credit note, refund, bank, statement, csv, import, reconcile, reconciliation, rules, contacts, customers, suppliers, duplicates, reports, profit, loss, aged, debtors, creditors, trend, audit, jobs, timesheets, mileage, vehicles, payroll
 
+## PayPal {#paypal}
+
+PayPal is the payment handler. Connect your own PayPal business account in Settings, then put a PayPal pay link on any
+invoice; a customer's payment waits on Invoices until you approve it, with PayPal's fee as its own bank charge. Sync
+PayPal reads your PayPal history and proposes each sale, purchase and fee with the journal approving makes; a sale with
+no invoice waits until you choose its VAT, and a tie-out compares PayPal's balance with the books. Bill pay pays
+supplier bills you approved from your PayPal on their due date ("approve now, pay on due date"), lists upcoming
+payments, adds them to your calendar, and has one switch that stops every automatic payment. For a PayPal dispute on
+an invoice payment, Accnomos builds the evidence from your books; nothing goes to PayPal until you press Send. The
+assistant answers PayPal questions from the books. Links, Sync PayPal and bill pay have run against PayPal's sandbox
+only, never live; disputes are checked against a stand-in only. Step-by-step guides are in docs/howto on GitHub.
+Keywords: paypal, pay link, payment link, pay online, sync, fees, balance, tie-out, bill pay, payouts, pay suppliers, due date, upcoming payments, calendar, kill switch, dispute, chargeback, evidence, power grid
+
 ## Ask, chat and voice {#ask-chat-voice}
 
 Signed in, the Ask page answers questions about your own books in plain English, such as how much VAT you owe and why.

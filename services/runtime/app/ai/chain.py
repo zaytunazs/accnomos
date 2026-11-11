@@ -96,10 +96,12 @@ def why(exc: BaseException) -> str:
 
 
 def trouble(cfg: AiConfig, what: str) -> str:
-    """The plain reason shown when no model answered. For the server's chain it names the providers, never their
-    addresses; for a backend the user chose it reads as before ("Your AI (local) could not be reached at ...")."""
+    """The plain reason shown when no model answered. For the server's chain it says how many were tried, never their
+    names (the screen names no AI vendor or model) or addresses; for a backend the user chose it reads as before
+    ("Your AI (local) could not be reached at ...")."""
     if cfg.in_chain:
-        return f"None of the server's AI providers answered ({', '.join(c.provider for c in cfg.chain())})."
+        n = len(cfg.chain())
+        return f"None of the server's AI providers answered ({n} tried)."
     return f"Your AI ({cfg.mode}) {what}."
 
 

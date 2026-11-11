@@ -123,6 +123,30 @@ const features: Feature[] = [
     gap: "Not verified yet: never sent from a real mailbox; applying a customer's credit to another invoice or refunding it is on the web only, not the phone.",
   },
   {
+    id: "paypal",
+    title: "PayPal: pay links, Sync PayPal and disputes",
+    does: "Connect your own PayPal business account in Settings › Business › Online payments. An invoice can carry a PayPal Pay online link; a payment found when you open Invoices waits there until you approve it, with PayPal’s fee as its own bank charge. Sync PayPal reads the PayPal history and proposes each sale, purchase and fee with the journal approving makes; a sale with no invoice waits until you choose its VAT, and a tie-out compares PayPal’s balance with 1240 PayPal clearing. A customer’s PayPal dispute on an invoice payment gets an evidence PDF built from your books and a draft response; nothing goes to PayPal until you press Send.",
+    ai: "The AI may suggest the account for a PayPal purchase that no rule of yours covers (at most 12 a sync), words the dispute response, and words the assistant’s PayPal answers. It never chooses the VAT on a sale, never posts and never sends.",
+    code: "Code reads the PayPal transactions, matches payments to invoices by link and number, works out fees, nets and journals in pence, skips anything already synced, refuses to approve a sale with no VAT chosen, explains the tie-out gap (waiting, never posted, unexplained), and checks every figure and date in a dispute draft against the books.",
+    gap: "Not verified yet: pay links, Sync PayPal and the balance have run against PayPal’s sandbox only, never live; disputes have met a stand-in for PayPal only (no sandbox dispute was available); payments are found when you open Invoices, not in the background, and PayPal lists some up to 3 hours late. Guides: invoice with a PayPal pay link, Sync PayPal and Answer a PayPal dispute (above, under Step-by-step guides).",
+  },
+  {
+    id: "billpay",
+    title: "Bill pay with PayPal",
+    does: "Bills you approved in Review can be paid from your PayPal account (PayPal Payouts) to the supplier’s PayPal email that you typed yourself. Pay one that is due, or Approve now, pay on due date: it is paid the next time Accnomos is open on or after that date, only if the amount, the email and the bill are unchanged. Upcoming PayPal payments lists what leaves PayPal in the next 7 and 30 days, with Cancel approval and Add to calendar. Autopilot for bills pays chosen suppliers within per-bill and per-month limits; Stop all automatic payments now switches it off and holds back payments approved in advance.",
+    ai: "No AI. Payees are never read from a bill or an email.",
+    code: "Code works out what is owed in pence, re-reads it before paying, claims the payout before calling PayPal so a retry pays once, flags a bill whose payment details differ from the ones on file, and posts the payment and PayPal’s fee only after PayPal says it succeeded.",
+    gap: "Not verified yet: payouts have reached SUCCESS in PayPal’s sandbox, never live; there is no scheduler, so a payment due while Accnomos is closed is made the next time it is open; calendar events go to the calendar you signed in with or an .ics file.",
+  },
+  {
+    id: "power-grid",
+    title: "Power grid add-on",
+    does: "Off by default, on this device only (Settings › Business › Power grid). On a wide screen the PayPal panel becomes one sortable, filterable grid where you tick several waiting transactions and approve them together, and Reporting › Ledger explorer shows your journal lines in a grid you can filter by typing what you want (“sales over £500 this year, biggest first”).",
+    ai: "The AI only turns your words into a proposed filter and sort.",
+    code: "Code checks the proposed filter against the grid’s columns before using it; the grid cannot change your books, and approving from it follows the same rules as the list (a sale with no invoice still needs its VAT).",
+    gap: "Not verified yet: the ledger explorer shows the newest 500 journal lines; phones and narrow windows keep the usual lists.",
+  },
+  {
     id: "jobs",
     title: "Jobs, staff and timesheets",
     does: "The Jobs page lists jobs with hours, labour, materials and what is still to invoice. Staff and their cost/charge rates live in Settings. Each job has a timesheet (staff, date, hours in quarter steps, note, billable). Review can tag a purchase to a job on Approve; Invoice these hours prefills an invoice draft.",
@@ -367,7 +391,12 @@ export default function HowItWorksPage() {
           Step-by-step guides
         </h2>
         <p className="mt-1 text-[15px] leading-7 text-muted">
-          Short guides with a screenshot for every step, taken from the demo&apos;s fictional sample books, and the Android app where it differs. They open on GitHub.
+          Short guides with a screenshot for every step, taken from fictional sample books, and the Android app where it differs. They open on
+          GitHub. The PayPal guides use a stand-in for PayPal, so no real money moves; the{" "}
+          <Link href="/help" className="font-semibold text-teal-dark underline hover:text-teal">
+            help centre
+          </Link>{" "}
+          has the short versions.
         </p>
         <ul className="mt-3 grid grid-cols-1 gap-2 min-[560px]:grid-cols-2">
           {guides.map((g) => (
