@@ -51,7 +51,7 @@ export default function PayPalSync({ account, onPosted }: { account: AccountInfo
   }
 
   return (
-    <section aria-label="PayPal" className="space-y-3 rounded-2xl border border-border bg-white p-4">
+    <section id="paypal-sync" aria-label="PayPal" className="scroll-mt-20 space-y-3 rounded-2xl border border-border bg-white p-4">
       {!view.sample && <PayPalTieOut account={account} refresh={tieKey} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

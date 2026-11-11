@@ -30,7 +30,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import actions, ask_more, ask_pnl, jobs, paypal_assistant, spending
+from app import actions, ai_search, ask_more, ask_pnl, jobs, paypal_assistant, spending
 from app import assistant_tasks as tasks
 from app import dashboard as dash
 from app import demo as demo_mod
@@ -200,6 +200,11 @@ async def _prepare(
         return await ask_more.household_answer(req.question, books, cfg, period, today(TZ))
     if (paid := await paypal_assistant.question_answer(req.question, books, cfg, period, today(TZ), demo)) is not None:
         return paid  # PayPal's fees, balance, payouts, disputes, payments waiting in Sync PayPal, bills due through it
+    # AI search: "was there a PayPal payment last month, around £100? how much exactly?", "did that client pay the
+    # arrears? check PayPal" (app/ai_search.py: the AI reads the words into a query, code checks it and searches the
+    # books, Sync PayPal and PayPal's own history). After PayPal's own questions, before "who owes me" and the P&L.
+    if (found := await ai_search.answer(req.question, req.history, books, cfg, period, today(TZ), demo)) is not None:
+        return found
     if (side := ask_more.owed_intent(req.question)) is not None:  # the aged balances Home shows
         if actions.looks_like_action(req.question):  # "send a PayPal reminder to everyone who owes me"
             found = await actions.propose(req.question, books, cfg, token, today(TZ))

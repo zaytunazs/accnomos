@@ -680,7 +680,10 @@
         "hands-free",
         "speak",
         "question",
-        "approve by voice"
+        "approve by voice",
+        "find a payment",
+        "did they pay",
+        "search"
       ],
       "steps": [
         {
@@ -698,6 +701,10 @@
         {
           "title": "Approve cards",
           "body": "When it proposes something it shows a card. Hands-free reads it back and asks \"Shall I go ahead?\"; a clear yes approves notes, to-dos and events. Cards that send or move money always need a tap on **Approve**."
+        },
+        {
+          "title": "Find a payment",
+          "body": "Ask \"there was a PayPal payment last month, around £100 for stationery: how much exactly?\" or \"did that client pay the arrears? check PayPal\". The AI reads your words into a search; code searches your books, Sync PayPal and PayPal itself, and gives the exact amount, date and who it was with, and says whether it is in your books yet. It ends by saying what it searched."
         },
         {
           "title": "Ask how to do something",

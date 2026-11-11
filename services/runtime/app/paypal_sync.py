@@ -228,11 +228,29 @@ def paypal_fetch(merchant: str | None) -> Fetch:
     return fetch
 
 
-def sample_fetch(day: date, invoice: tuple[str, int, str] | None) -> Fetch:
+Hint = tuple[str, int, str]  # an invoice the sample history pays: number, amount (pence), customer
+
+
+async def sample_hints(books: Books) -> tuple[Hint | None, list[Hint]]:
+    """The invoices the demo's sample history pays: the sent invoice due first, and the demo's arrears customer's
+    unpaid one (online_fakes.SAMPLE_ARREARS_CUSTOMER), paid in full through PayPal."""
+    from app import online_fakes
+
+    sent = sorted((i for i in await list_invoices(books, "sent") if i.event_id), key=lambda i: i.due_date)
+    first = (sent[0].number, sent[0].balance_pence or sent[0].total_pence, sent[0].customer.name) if sent else None
+    more = [
+        (i.number, i.balance_pence or i.total_pence, i.customer.name)
+        for i in sent
+        if i.customer.name == online_fakes.SAMPLE_ARREARS_CUSTOMER and (first is None or i.number != first[0])
+    ]
+    return first, more
+
+
+def sample_fetch(day: date, invoice: Hint | None, more: list[Hint] | None = None) -> Fetch:
     """The demo's sample history (app/online_fakes.sample_transactions), dated back from `day`."""
     from app import online_fakes
 
-    rows = online_fakes.sample_transactions(day, invoice)
+    rows = online_fakes.sample_transactions(day, invoice, more or [])
 
     async def fetch(start: datetime, end: datetime) -> tuple[list[dict[str, Any]], int]:
         out = []

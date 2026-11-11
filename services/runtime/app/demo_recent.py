@@ -171,3 +171,46 @@ async def add_recent_trading(st: FakeStorageProvider, seed: ModuleType, plan: An
     if docs:
         await seed._rebuild(books)  # noqa: SLF001  Books.xlsx with the new entries
     return len(docs)
+
+
+#: The demo's customer with about £500 overdue, settled through PayPal (the sample history pays it in full three days
+#: before "today", online_fakes.sample_transactions): "did that client pay all the arrears? check PayPal" in Ask.
+ARREARS_LINE = ("Reception desk repair and new cabinet doors", 41_000)  # £410.00 + VAT = £492.00
+ARREARS_DAYS_AGO = 40  # issued; 30 days to pay, so about ten days overdue
+
+
+async def add_arrears_invoice(st: FakeStorageProvider, seed: ModuleType, plan: Any) -> str | None:
+    """Create and "send" (nothing is emailed) one invoice to the arrears customer, unpaid in the books. Dated inside
+    the current VAT period only, like every recent document; None when that would fall before it."""
+    from decimal import Decimal
+
+    from app import invoicing
+    from app.online_fakes import SAMPLE_ARREARS_CUSTOMER
+
+    issue = plan.today - timedelta(days=ARREARS_DAYS_AGO)
+    if issue < plan.current[0]:
+        return None
+    books = seed.SeedBooks(st)
+    desc, unit = ARREARS_LINE
+    draft = invoicing.InvoiceDraft(
+        customer=invoicing.InvoiceCustomer(
+            contact_id=None,
+            name=SAMPLE_ARREARS_CUSTOMER,
+            email="accounts@wrenfield-dental.example",
+            address="4 Mill Lane, Harrogate",
+            vrn=None,
+        ),
+        issue_date=issue,
+        due_date=issue + timedelta(days=30),
+        lines=[invoicing.LineIn(description=desc, quantity=Decimal(1), unit="each", unit_price_pence=unit)],
+        reference=None,
+        notes=seed.LABEL,
+        job_id=None,
+    )
+    created = await invoicing.create_invoice(books, draft, seed.USER)
+    profile = await invoicing.load_profile(books)
+    await invoicing.send_invoice(
+        books, seed.NotEmailed(), created.number, seed.USER, seed.render_invoice(created, profile)
+    )
+    await seed._rebuild(books)  # noqa: SLF001  Books.xlsx with the new entry
+    return created.number

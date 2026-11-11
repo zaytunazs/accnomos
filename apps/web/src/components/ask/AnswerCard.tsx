@@ -187,6 +187,16 @@ export function groupCitations(citations: string[], sheet: string): CitationGrou
       }
       continue;
     }
+    const paypal = /^paypal:([A-Za-z0-9-]{1,64})$/.exec(path); // AI search: a PayPal transaction, synced or not
+    if (paypal) {
+      groups.push({ label: `PayPal · ${paypal[1]}`, paths: [path] });
+      continue;
+    }
+    const invoice = /^invoice:([A-Za-z0-9/_.-]{1,40})$/.exec(path);
+    if (invoice) {
+      groups.push({ label: `Invoice ${invoice[1]}`, paths: [path] });
+      continue;
+    }
     if (path === "Books.xlsx") {
       groups.push({ label: `Books.xlsx · ${sheet} sheet`, paths: [path] });
       continue;
@@ -200,13 +210,21 @@ export function groupCitations(citations: string[], sheet: string): CitationGrou
   return groups;
 }
 
+/** AI search cites PayPal transactions (`paypal:<id>`) and invoices (`invoice:<number>`): they open in the app. */
+export function citationPage(c: string): { href: string; title: string } | null {
+  if (/^paypal:[A-Za-z0-9-]{1,64}$/.test(c)) return { href: "/invoices#paypal-sync", title: "Open Sync PayPal on Invoices" };
+  const inv = /^invoice:([A-Za-z0-9/_.-]{1,40})$/.exec(c);
+  if (inv) return { href: `/invoices?q=${encodeURIComponent(inv[1])}`, title: `Open invoice ${inv[1]}` };
+  return null;
+}
+
 /** One cited file (or a month of ledger entries): its Graph web URL when signed in, otherwise the Files page. */
 function CitationChip({ group, account }: { group: CitationGroup; account: AccountInfo | null }) {
   const [url, setUrl] = useState<string | null>(null);
   const first = group.paths[0];
   const help = helpCitation(first);
   useEffect(() => {
-    if (!account || help) return;
+    if (!account || help || citationPage(first)) return;
     let stale = false;
     void getFileWebUrl(account, first).then((u) => {
       if (!stale) setUrl(u);
@@ -219,6 +237,13 @@ function CitationChip({ group, account }: { group: CitationGroup; account: Accou
     return (
       <Link href={`/help/${help.id}`} title={`Help article: ${help.title}`} className={chip}>
         Help · {help.title}
+      </Link>
+    );
+  const page = citationPage(first);
+  if (page)
+    return (
+      <Link href={page.href} title={page.title} className={chip}>
+        {group.label}
       </Link>
     );
   const label = group.label;
