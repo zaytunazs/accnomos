@@ -193,7 +193,17 @@ def test_paypal_direct_connect_and_link_send_no_partner_headers(client: TestClie
     assert "PayPal-Partner-Attribution-Id" not in create.headers
     assert create.headers["Authorization"] == "Bearer A21-sandbox"
     sent = json.loads(create.content)
-    assert sent["items"][0]["unit_amount"] == {"currency_code": "GBP", "value": "240.00"}  # £200 + 20% VAT
+    # the invoice's own line, with VAT as PayPal item tax: £200 + 20% = the £240 owed
+    assert sent["items"] == [
+        {
+            "name": "October support",
+            "quantity": "1",
+            "unit_amount": {"currency_code": "GBP", "value": "200.00"},
+            "unit_of_measure": "QUANTITY",
+            "tax": {"name": "VAT", "percent": "20"},
+        }
+    ]
+    assert sent["invoicer"]["business_name"] == "Sam Builds Ltd"
 
 
 def test_paypal_direct_refuses_another_merchant_id(client: TestClient) -> None:
