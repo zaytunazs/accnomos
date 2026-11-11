@@ -1,1 +1,0 @@
-Paying a supplier works the other way. When a bill falls due, Accnomos offers to pay it by PayPal payout. I approve, PayPal confirms in about half a minute, and only then does it post. A retry can never pay twice. PayPal can't date a payout ahead, so it goes on the due date, when the app is open.

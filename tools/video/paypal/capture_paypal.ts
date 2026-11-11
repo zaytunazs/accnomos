@@ -5,9 +5,9 @@
  * SHOT_LIST.md. Nothing is faked: a screen that is not there ends the shot with an error in its marks file.
  *
  *   PW_FROM=apps/web node tools/video/paypal/capture_paypal.ts OUTDIR [shot,shot,...]
- * Hero shots: pp-sync, pp-ask, pp-billpay, pp-disputes (pp-invoice, pp-vat as inserts). Montage: m-review, m-bank,
- * m-invoices, m-quotes, m-vat, m-reports, m-ask, m-jobs, m-vehicles, m-payroll, m-calendar, m-contacts, m-upcoming
- * (needs the upcoming-payments work deployed), m-help. Blur model bylines in the edit (docs/submission/paypal/SHOT_LIST.md).
+ * Hero shots: pp-sync, pp-grid (Power grid; GRID_APPROVE=1 really approves the ticked rows), pp-ask, pp-billpay,
+ * pp-disputes (pp-invoice, pp-vat as inserts). Montage: m-review, m-bank, m-quotes, m-vat, m-reports, m-jobs, m-payroll,
+ * m-upcoming, m-support (files, voice, day plan and Android are filmed by hand). Blur model bylines in the edit (docs/submission/paypal/SHOT_LIST.md).
  * Env: PW_FROM (a folder whose node_modules has playwright or @playwright/test), SITE (default https://accnomos.com),
  * PAYPAL_CONNECT=1 (connect PayPal in test mode in the demo copy first: needs PAYPAL_DIRECT=1 on the server),
  * PAY=1 (pp-billpay presses "Pay £…": a real sandbox payout; without it the shot ends on the confirmation),
@@ -217,6 +217,43 @@ const SHOTS: Record<string, Shot> = {
       await hoverText(c, /Nothing was sent to PayPal/, 2200);
     },
   },
+  // ag: the Power grid (AG Grid Community): tick waiting PayPal rows, totals, Approve selected; then a plain-words filter
+  "pp-grid": {
+    setup: async ({ page }) => {
+      await page.evaluate(() => window.localStorage.setItem("accnomos.powergrid.show", "1")); // Settings › Business › Power grid
+      await go(page, "/invoices");
+      await toRegion(page, "PayPal");
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      const grid = vis(page.getByRole("grid").or(page.locator(".ag-root")));
+      await grid.waitFor({ timeout: 30_000 });
+      await h.park(900, 240);
+      const boxes = page.locator(".ag-center-cols-container .ag-checkbox-input, .ag-pinned-left-cols-container .ag-checkbox-input");
+      const n = Math.min(3, await boxes.count());
+      for (let i = 0; i < n; i++) await h.click(boxes.nth(i), 350);
+      await hoverText(c, /^Total of \d+ shown/, 1200);
+      const approve = vis(page.getByRole("button", { name: /^Approve selected/ }));
+      if (n > 0 && process.env.GRID_APPROVE === "1") {
+        page.once("dialog", (d: any) => d.accept());
+        c.mark("approve");
+        await h.click(approve, 300);
+        await page.waitForTimeout(5000);
+        c.mark("approved");
+      } else {
+        await h.hover(approve, 1200);
+      }
+      await go(page, "/reports/ledger-grid");
+      c.mark("explorer");
+      const box = vis(page.getByLabel(/Describe the lines you want to see/).or(page.getByPlaceholder(/Describe the lines/)));
+      await h.type(box, process.env.GRID_Q ?? "PayPal fees over £5", 300);
+      await h.click(vis(page.getByRole("button", { name: "Filter", exact: true })), 300);
+      c.mark("wait");
+      await page.getByText("Working it out…").first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
+      c.mark("ready");
+      await h.hold(2500);
+    },
+  },
   // h2: Ask the PayPal questions (answered by code from the books' PayPal entries; blur the byline in the edit)
   "pp-ask": {
     setup: async ({ page }) => { await go(page, "/ask"); },
@@ -266,18 +303,13 @@ function montage(): Record<string, Shot> {
   return {
     "m-review": look("/review", [/waiting for you/]),
     "m-bank": look("/bank", [/^Bank feed/, /matched/i], 250),
-    "m-invoices": look("/invoices", [/Awaiting payment/]),
     "m-quotes": look("/sales/quotes", [], 150),
     "m-vat": look("/vat", [/^Box 1\b/, /^Box 6\b/]),
     "m-reports": look("/reports/profit-and-loss", [], 200),
-    "m-ask": look("/ask", [/Ask your books/]),
     "m-jobs": look("/jobs", [], 150),
-    "m-vehicles": look("/vehicles", [/mileage/i], 150),
     "m-payroll": look("/payroll", [], 150),
-    "m-calendar": look("/calendar", [], 120),
-    "m-contacts": look("/contacts", [], 150),
     "m-upcoming": look("/purchases", [/^Upcoming PayPal payments$/, /Download all \(\.ics\)|^Calendar$/]),
-    "m-help": look("/help", [/Step-by-step guides/]),
+    "m-support": look("/support", [], 150),
   };
 }
 
