@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   // words are not in the bundle at all.
   env: {
     NEXT_PUBLIC_TEST_MODE: process.env.NEXT_PUBLIC_TEST_MODE ?? "",
+    // The optional error reporting (lib/sentry.ts): "" folds its code, and the SDK, out of the build.
+    NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN ?? "",
     NEXT_PUBLIC_SUBMISSION_MODE: process.env.NEXT_PUBLIC_SUBMISSION_MODE ?? "1",
   },
   images: { unoptimized: true },

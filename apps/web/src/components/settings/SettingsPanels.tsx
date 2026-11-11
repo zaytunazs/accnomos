@@ -22,11 +22,13 @@ import WorkingHours from "@/components/settings/WorkingHours";
 import YourAccountant from "@/components/settings/YourAccountant";
 import FilesBackups from "@/components/settings/FilesBackups";
 import OnlinePayments from "@/components/settings/OnlinePayments";
+import PlanBilling from "@/components/settings/PlanBilling";
+import PrivacySettings from "@/components/settings/PrivacySettings";
 import { hasMsalSignIn } from "@/lib/signed-in";
 import { useHousehold } from "@/lib/profiles";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
-type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "files" | "data";
+type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "files" | "data" | "billing" | "privacy";
 
 const AUTOPILOT_KEY = "accnomos.autopilot";
 const AI_KEY = "accnomos.ai";
@@ -40,6 +42,8 @@ const GROUPS: { id: GroupId; label: string }[] = [
   { id: "accountant", label: "Your accountant" },
   { id: "files", label: "Files & backups" },
   { id: "data", label: "Your data" },
+  { id: "billing", label: "Plan & billing" },
+  { id: "privacy", label: "Privacy" },
 ];
 
 /** Every deep link target stays working: the hash decides which tab opens. Back from Stripe or PayPal the hash is
@@ -86,6 +90,11 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-data-import": "data",
   "settings-data-export": "data",
   "settings-leave": "data",
+  "plan-billing": "billing",
+  "plan-usage": "billing",
+  "plan-change": "billing",
+  "plan-extras": "billing",
+  "settings-privacy": "privacy",
 };
 
 const AUTOPILOT_OPTIONS: { value: AutopilotLevel; label: string; description: string }[] = [
@@ -170,7 +179,7 @@ export default function SettingsPanels() {
       if (rawHash && hashed) pendingHash.current = rawHash.startsWith("pay=") ? "settings-payments" : rawHash;
       const stored = readLocalStorage(GROUP_KEY);
       const remembered =
-        stored === "connection" || stored === "ai" || stored === "automation" || stored === "business" || stored === "data"
+        stored === "connection" || stored === "ai" || stored === "automation" || stored === "business" || stored === "data" || stored === "billing" || stored === "privacy"
           ? stored
           : null;
       setGroup(hashed ?? remembered ?? "connection");
@@ -513,6 +522,14 @@ export default function SettingsPanels() {
         className="mt-4 space-y-4"
       >
         <YourData card={card} heading={heading} />
+      </div>
+
+      <div role="tabpanel" id="panel-billing" aria-labelledby="tab-billing" hidden={group !== "billing"} className="mt-4 space-y-4">
+        {group === "billing" && <PlanBilling card={card} heading={heading} />}
+      </div>
+
+      <div role="tabpanel" id="panel-privacy" aria-labelledby="tab-privacy" hidden={group !== "privacy"} className="mt-4 space-y-4">
+        {group === "privacy" && <PrivacySettings card={card} heading={heading} />}
       </div>
     </div>
   );

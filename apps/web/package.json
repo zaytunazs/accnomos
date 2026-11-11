@@ -7,6 +7,7 @@
         "build": "next build",
         "start": "next start",
         "lint": "eslint",
+        "test:unit": "node --test tests/unit/*.test.ts",
         "e2e": "pnpm run e2e:build && pnpm run e2e:test",
         "e2e:build": "node e2e/build.mjs",
         "e2e:test": "playwright test",
@@ -17,6 +18,7 @@
     "dependencies": {
         "@azure/msal-browser": "^5.26.0",
         "@azure/msal-react": "^5.7.3",
+        "@sentry/browser": "^11.11.0",
         "fflate": "^0.8.3",
         "next": "16.4.3",
         "react": "19.3.0",

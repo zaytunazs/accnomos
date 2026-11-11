@@ -102,6 +102,8 @@ jobs:
       - name: tsc --noEmit
         # next typegen writes the route/layout types (LayoutProps etc.) that a clean checkout lacks
         run: pnpm exec next typegen && pnpm exec tsc --noEmit
+      - name: unit tests (402 handler, track(), limits table)
+        run: pnpm run test:unit
       - name: Cache the Next build cache
         uses: actions/cache@v4
         with:

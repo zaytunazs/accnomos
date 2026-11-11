@@ -1,6 +1,6 @@
 export const metadata = { title: "Privacy policy — Accnomos" };
 
-const UPDATED = "9 November 2026";
+const UPDATED = "11 November 2026";
 
 export default function PrivacyPage() {
   return (
@@ -12,8 +12,9 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">The short version</h2>
         <p>
           Accnomos keeps your books in <strong>your own Microsoft OneDrive</strong>, or in{" "}
-          <strong>your own Google Drive</strong> if you sign in with Google. We do not run a user database and we
-          do not store your receipts, invoices, ledger or VAT figures on our servers. Unless you choose otherwise, the AI that
+          <strong>your own Google Drive</strong> if you sign in with Google. We keep a small{" "}
+          <a className="font-semibold text-teal underline" href="#account-registry">account registry</a> (who you are, your plan and how much you
+          have used it) but we do not store your receipts, invoices, ledger, bank lines or VAT figures on our servers. Unless you choose otherwise, the AI that
           reads your documents is the one on our server: <strong>Meta&apos;s Model API</strong>, then a fallback model
           on our own server. You can instead run it on a machine you control or use your own API key
           (see <a className="font-semibold text-teal underline" href="#ai-documents">where your documents go</a>).
@@ -135,10 +136,43 @@ export default function PrivacyPage() {
         </p>
       </section>
 
+      <section id="account-registry" className="mt-8 scroll-mt-6 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Your account, plan and billing</h2>
+        <p>
+          To run plans and billing we keep an account registry in a <strong>Supabase</strong> database in a UK or EU region. It holds account
+          details only: your email address, how you signed in (Microsoft or Google) and a stable id from that sign-in, your plan, billing status and
+          trial dates, any promo codes you redeemed, monthly usage counts (documents read, questions asked, invoices created) and notes our
+          support team adds when helping you. It never holds your books, documents, receipts, bank lines, financial records, or tokens for other services.
+        </p>
+        <p>
+          <strong>Payments are taken by Stripe</strong> (Checkout, Billing and the customer portal). Stripe holds your card and payment history; we
+          never see or store a card number. Stripe tells us your plan and payment status, and we keep a copy of that status in the registry.
+        </p>
+        <p>
+          <strong>Problem reports.</strong> If you use Report a problem, we keep your message, the page you were on, the app version, your browser or
+          phone type and a screenshot only if you choose to attach one, until the report is closed and for 12 months after.
+        </p>
+      </section>
+
+      <section id="analytics" className="mt-8 scroll-mt-6 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Usage analytics and error reports</h2>
+        <p>
+          <strong>First-party analytics.</strong> The app records which pages and features are used, with counts and durations, against your account
+          id, so we can see what works. It goes to our own registry through our own server: no third-party tracker, no cookies, no fingerprinting, and
+          never amounts, supplier names, document text, emails or file names. Events are kept for 13 months.{" "}
+          <strong>You can turn it off</strong> in Settings → Privacy (&ldquo;Do not collect usage analytics&rdquo;) and nothing more is recorded.
+        </p>
+        <p>
+          <strong>Error reports (Sentry, when enabled).</strong> When switched on, errors in the web app, our server and the Android app are sent to
+          Sentry, in its EU data region, with personal data turned off and amounts, emails, VAT numbers and tokens removed before sending. Where it is
+          not switched on, nothing is sent.
+        </p>
+      </section>
+
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">What we keep</h2>
         <p>
-          Nothing from your books. The runtime and relay are stateless: requests are processed in memory and discarded. Standard web-server access logs (IP address, path, time) are kept for up to 30 days for security.
+          Nothing from your books, only the account registry above. The runtime and relay are stateless: requests are processed in memory and discarded. Standard web-server access logs (IP address, path, time) are kept for up to 30 days for security.
           {" "}If you join the waiting list, we keep what you typed into that form, as described next.
         </p>
       </section>
@@ -193,6 +227,11 @@ export default function PrivacyPage() {
                 { data: "Questions typed into Ask about Accnomos (the website chat)", where: "Nowhere — answered by our own model from the team's notes, then discarded; not logged", who: "Nobody; it never sees anyone's books" },
                 { data: "Mail read during intake and triage", where: "Memory only; copies land in 00 Inbox and to-dos in _System/Todos", who: "You — full bodies and attachments are never fetched by triage" },
                 { data: "Calendar days read for planning", where: "Memory only; applied plans in _System/Planner/applied.json", who: "You — nothing written before you tap Apply" },
+                { data: "Account registry: email, sign-in kind, plan, billing status, trial dates, promo redemptions, monthly usage counts, support notes", where: "Supabase database (UK or EU region)", who: "The service operator; never your books or financial records" },
+                { data: "Card and payment details, invoices for your plan", where: "Stripe", who: "You and Stripe; we receive only your plan and payment status" },
+                { data: "Usage analytics events (page, feature, counts; off if you opt out)", where: "Our registry, kept 13 months", who: "The service operator" },
+                { data: "Problem reports (message, page, app version, browser, optional screenshot)", where: "Our registry", who: "The service operator, until closed plus 12 months" },
+                { data: "Error reports (amounts, emails, VAT numbers and tokens removed; only when enabled)", where: "Sentry, EU region", who: "The service operator" },
                 { data: "Server access logs (IP, path, time, up to 30 days)", where: "Our hosts", who: "The service operator, for security" },
               ].map((row) => (
                 <tr key={row.data} className="border-t border-border align-top first:border-t-0">
@@ -214,6 +253,9 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Third parties</h2>
         <ul className="list-disc space-y-2 pl-5">
+          <li>Supabase — hosts our account registry (plan, billing status, usage counts, analytics events, problem reports) in a UK or EU region; never your books or financial records.</li>
+          <li>Stripe — takes payment for your Accnomos plan and holds your card; we receive your plan and payment status.</li>
+          <li>Sentry (EU region) — receives scrubbed error reports, only where error reporting is enabled.</li>
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
           <li>Google (sign-in, Google Drive, and Gmail, Calendar and Contacts) — only if you sign in with Google, under your Google account terms.</li>
           <li>Meta Model API — the default for AI reading on our live server (server owner&apos;s key, Contributor mode for the demo and testing: Meta may use the content sent to it to improve its models), and with your own key if you provide one, under Meta&apos;s terms for that key. It receives the document or question being read. Not used in local mode.</li>
@@ -225,7 +267,7 @@ export default function PrivacyPage() {
           <li>HM Revenue &amp; Customs — only if you connect HMRC.</li>
         </ul>
         <p>
-          We do not sell data and we do not use advertising or analytics SDKs.
+          We do not sell data, we use no advertising, and we have no third-party analytics scripts or cookies.
           {" "}The waiting list is not shared with anyone.
         </p>
       </section>
@@ -244,7 +286,7 @@ export default function PrivacyPage() {
           <strong>Where things live.</strong> Your books live in your OneDrive, in the Accnomos app folder. This
           browser keeps your sign-in, AI choice and settings in its own localStorage (HMRC tokens live only in the
           tab). The runtime keeps nothing: it works on your OneDrive with the token each request carries and
-          discards everything. There is no Accnomos user database.
+          discards everything. There is no copy of your books on our side: only the account registry above.
         </p>
         <p>
           <strong>Leaving.</strong> Disconnect clears this browser&apos;s sign-in and settings; your files stay in
@@ -252,7 +294,7 @@ export default function PrivacyPage() {
           <a className="font-semibold text-teal underline" href="https://account.live.com/myapps">account.live.com/myapps</a>{" "}
           (signed in with Google: delete the Accnomos folder in your Google Drive and remove Accnomos at{" "}
           <a className="font-semibold text-teal underline" href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>).
-          No server-side delete is needed, because nothing from your books is stored server-side
+          No server-side delete of your books is needed, because nothing from them is stored server-side; to delete your account registry entry, email us
           {" "}(the <a className="font-semibold text-teal underline" href="#sign-up">waiting list</a> is separate)
           .
         </p>
@@ -261,8 +303,9 @@ export default function PrivacyPage() {
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Deleting your data</h2>
         <p>
-          Delete the <em>Accnomos</em> folder in your OneDrive (or Google Drive) and sign out of the app. Because we hold no copy, that removes everything.
-          There is no server-side copy of your books to delete.
+          Delete the <em>Accnomos</em> folder in your OneDrive (or Google Drive) and sign out of the app. Because we hold no copy, that removes all of your books.
+          To delete your account registry entry as well (plan, usage counts, reports), email us from your sign-in address; cancel any paid plan first
+          in Settings → Plan &amp; billing.
         </p>
       </section>
 

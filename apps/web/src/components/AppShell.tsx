@@ -8,6 +8,7 @@ import ClientBanner from "./accountant/ClientBanner";
 import AppFooter from "./AppFooter";
 import AppNav from "./AppNav";
 import BankFeedOnOpen from "./bank/BankFeedOnOpen";
+import LazyDialogs from "./billing/LazyDialogs";
 import DemoBanner from "./DemoBanner";
 import MonthlyBackup from "./files/MonthlyBackup";
 import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
@@ -97,6 +98,7 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
     <div className={`group/shell flex min-h-full flex-1 flex-col ${sidebar ? "min-[1280px]:pl-[232px] print:pl-0" : ""}`}>
       <DemoBar />
       <DemoBanner />
+      {signedIn === true && <LazyDialogs />}
       <ClientBanner />
       <MonthlyBackup />
       <BankFeedOnOpen />

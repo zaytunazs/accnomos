@@ -652,3 +652,15 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
 - The SAM response fixture `services/runtime/tests/fixtures/sam_response.json` is a captured live reply (4 Nov 2026) with the mask payload shortened.
 
 - **Calendar (Outlook through Microsoft Graph), added 4 Nov 2026.** Calendar lists the next two weeks, adds and removes events (removing asks first), and "Add to calendar" / "Add all deadlines to my calendar automatically" put the books' deadlines (VAT, MTD Income Tax, Self Assessment, CIS, a pay run to confirm, unpaid sent invoices) in as all-day events with a reminder at 9:00 the day before. `Calendars.ReadWrite` is asked for on first use. Each event Accnomos writes carries a single-value extended property (`AccnomosKey`), so a sync updates a moved date and never duplicates; deadlines the books no longer have are removed only while still ahead. Tested against fakes and Graph shapes from Microsoft Learn (httpx mock transport) and in the demos; not yet run against a real Outlook calendar. "Automatically" means when Home opens on a device where you are signed in, if the last update is over six hours old; there is no background job.
+
+## Plans, billing and the admin area (web and Android, 11 Nov 2026)
+
+- The pricing page, Settings › Plan & billing, the 402 limit dialog, the admin area and the Report a problem forms are
+  built against `docs/billing/PLANS_AND_CONTRACT.md` and are tested only against fakes (the web's test-mode fakes and a
+  stubbed 402). Nothing here has been run against a real Stripe account, a real Supabase project or the real
+  backend endpoints.
+- The home page no longer has the waiting-list form; it points to the 3-month free trial. `/join` and its list remain,
+  and the privacy page still describes the list.
+- The limits table and prices are the contract's; the market comparison on `/pricing` is dated 9 November 2026 and
+  should be rechecked before it is relied on.
+- VAT returns are listed on every plan as "prepare and export"; filing to HMRC is sandbox only (see the HMRC sections).

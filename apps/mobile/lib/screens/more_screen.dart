@@ -1,9 +1,13 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
 import '../services/demo.dart';
 import '../services/navigation.dart';
+import '../services/plan_limit.dart' show planBillingUrl;
 import '../services/region.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -21,6 +25,7 @@ import 'jobs_screen.dart';
 import 'month_end_screen.dart';
 import 'notes_screen.dart';
 import 'payroll_screen.dart';
+import 'report_problem_sheet.dart';
 import 'personal_screen.dart';
 import 'reports_screen.dart';
 import 'vehicles_screen.dart';
@@ -29,14 +34,42 @@ import 'vehicles_screen.dart';
 /// (services/runtime/app/profile.py `features`), or null for every set of
 /// books.
 class MoreEntry {
-  const MoreEntry(this.icon, this.title, this.note, this.screen, {this.needs});
+  const MoreEntry(this.icon, this.title, this.note, this.screen,
+      {this.needs, this.action});
 
   final IconData icon;
   final String title;
   final String note;
-  final Widget screen;
+
+  /// The screen to open; null for a row that does something else ([action]).
+  final Widget? screen;
   final String? needs;
+
+  /// What the row does instead of opening a screen (Plan & billing opens the
+  /// web page in the browser; Report a problem opens its sheet).
+  final Future<void> Function(BuildContext context)? action;
 }
+
+Future<void> _openPlanBilling(BuildContext context) async {
+  // No buying in the app (Google Play billing fees): the plan is managed on the web.
+  await launchUrl(Uri.parse(planBillingUrl),
+      mode: LaunchMode.externalApplication);
+}
+
+Future<void> _openReport(BuildContext context) => showReportProblem(context);
+
+/// The last rows of every More, business and household books alike. Plan &
+/// billing is not offered on iOS (no purchase links there; the iOS branch's
+/// StorePolicy.purchaseLinksAllowed replaces this check when merged).
+List<MoreEntry> get _accountEntries => [
+      if (!Platform.isIOS)
+        const MoreEntry(Icons.workspace_premium_outlined, 'Plan & billing',
+            'Your plan, usage and invoices, on the web', null,
+            action: _openPlanBilling),
+      const MoreEntry(Icons.flag_circle_outlined, 'Report a problem',
+          'Tell us what went wrong', null,
+          action: _openReport),
+    ];
 
 /// The More rows for a profile's [features], as the web's menu hides them:
 /// personal books have no invoices or payroll, and Reports mentions VAT only
@@ -45,7 +78,7 @@ class MoreEntry {
 /// shows only while Settings › Personal has "Show personal finances" on.
 List<MoreEntry> moreEntries(List<String>? features,
     {bool showPersonal = false, bool household = false}) {
-  if (household) return householdMoreEntries;
+  if (household) return [...householdMoreEntries, ..._accountEntries];
   final vat = features == null || features.contains('vat');
   final all = [
     const MoreEntry(Icons.folder_outlined, 'Files',
@@ -86,6 +119,7 @@ List<MoreEntry> moreEntries(List<String>? features,
         'Invite, remove access, answer queries', AccountantScreen()),
     const MoreEntry(Icons.history_outlined, 'Audit trail',
         'Who did what in your books, with CSV export', AuditScreen()),
+    ..._accountEntries,
   ];
   return [
     for (final e in all)
@@ -206,9 +240,16 @@ class _Entry extends StatelessWidget {
             style:
                 const TextStyle(color: AccnomosColors.muted)),
         trailing: const Icon(Icons.chevron_right_outlined),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => entry.screen),
-        ),
+        onTap: () {
+          final action = entry.action;
+          if (action != null) {
+            action(context);
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => entry.screen!),
+          );
+        },
       ),
     );
   }

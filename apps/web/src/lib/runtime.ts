@@ -5,6 +5,7 @@ import { aiHeaders, loadAiConfig, RUNTIME_URL, type AiConfig } from "./ai-config
 import { aiRouteHeaders } from "./ai-route";
 import type { PlanVat } from "./business";
 import { moneySign, type Region } from "./region";
+import { handlePlanLimit } from "./plan-limit";
 import { vatQuery } from "./vat-period";
 import { DEMO_HEADER, demoSession } from "./demo";
 import {
@@ -303,6 +304,14 @@ async function call<T>(
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/** First-party usage count (lib/analytics.ts), loaded on first use so the sign-in-free pages never pay for it. */
+function countUse(name: string): void {
+  void import("./analytics").then((m) => m.track(name));
+}
+
+/** Same as `call`, for lib/billing-api.ts. */
+export const runtimeCall = call;
+
 /** The first event of a streamed answer: what code shows before the model has written a word. */
 export type RtAskPreview = Pick<RtAskAnswer, "key_numbers" | "citations" | "suggested_actions" | "model" | "period">;
 
@@ -460,7 +469,7 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ ...(names ? { names } : {}), source }),
       headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
-    }),
+    }).then((r) => (countUse("scan_started"), r)),
   scanJob: (a: AccountInfo, id: string) => call<RtScanJob>(a, `/books/scan/jobs/${encodeURIComponent(id)}`),
   scanJobs: (a: AccountInfo) => call<RtScanJobList>(a, "/books/scan/jobs"),
   /** The user's types for files waiting on them; reading them in full starts in the background. */
@@ -474,7 +483,7 @@ export const runtime = {
   proposal: (a: AccountInfo, id: string) => call<RtProposal>(a, `/books/proposals/${id}`),
   /** `edits.job_id` tags a purchase to a job (its net then counts as a job cost). */
   approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; remember?: boolean }) =>
-    call<RtProposal>(a, `/books/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(body) }),
+    call<RtProposal>(a, `/books/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(body) }).then((r) => (countUse("approval"), r)),
   undo: (a: AccountInfo, eventId: string) =>
     call<RtUndoResult>(a, `/books/undo/${eventId}`, { method: "POST" }),
   rules: (a: AccountInfo) => call<RtRule[]>(a, "/books/rules"),
@@ -488,7 +497,7 @@ export const runtime = {
     call<RtAskAnswer>(a, withQuery("/books/ask", vatQuery()), {
       method: "POST",
       body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
-    }),
+    }).then((r) => (countUse("ask_question"), r)),
   /** POST /books/ask/voice: a spoken question, transcribed by Muse Voice Transcribe (a local speech-to-text model on our
    *  own server as the fallback), then the same answer. */
   askVoice: (a: AccountInfo, audio: Blob, period?: RtAskPeriod | null, history: RtAskTurn[] = []) => {
@@ -2201,6 +2210,8 @@ export interface RtContactMerge {
  */
 async function errorDetail(res: Response, what: string): Promise<string> {
   const text = await res.text();
+  // HTTP 402 {code:"plan_limit"}: every failed call passes here, so one dialog (components/billing/PlanLimitDialog) serves the app.
+  handlePlanLimit(res.status, text);
   let detail: unknown;
   let correlation: unknown;
   try {

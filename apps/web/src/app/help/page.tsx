@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import ReportProblemButton from "@/components/billing/ReportProblemButton";
 import { CONTACT_EMAIL, HONESTY_URL } from "@/lib/public-site";
 
 export const metadata = { title: "Help and guides · Accnomos" };
@@ -46,6 +47,7 @@ export default function HelpPage() {
           </a>
           .
         </p>
+        <ReportProblemButton />
       </section>
     </div>
   );

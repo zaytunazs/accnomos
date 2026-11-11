@@ -87,7 +87,7 @@ Both are in Settings › Your accountant. An accountant can leave a query on a t
 
 (29 Oct 2026, claude/signup-accountants: the owner asked for both options to be spelled out; every line is what `app/accountant.py` and the portal on main do. "Where it is offered": the opt-in appears only when the server sets `ACCOUNTANT_TEAM_EMAIL`.)
 
-## Join the waiting list (every build)
+## Join the waiting list (every build; no longer on the landing page since 11 Nov 2026, which offers "Start your 3-month free trial — no card needed" and /pricing instead; /join keeps the list)
 
 Join the waiting list. Leave your email to join the waiting list. Hero link next to Try the demo, a section near the end of the landing page, a line in Pricing, a FAQ entry and `/join` (the page the social posts link to). No "coming soon", "beta", "early access", "launch" or "testers"; no offer or price.
 
