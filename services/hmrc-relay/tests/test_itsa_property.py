@@ -151,7 +151,7 @@ async def test_test_business_matches_hmrcs_uk_property_example(client_for):
     assert str(rec.requests[0].url) == f"{BASE}/individuals/self-assessment-test-support/business/{NINO}"
 
 
-async def test_production_is_refused_unless_explicitly_allowed(client_for):
+async def test_production_is_always_refused(client_for):
     prod = {"hmrc_base": "https://api.service.hmrc.gov.uk"}
     c = client_for(never, **prod)
     s = cumulative_2026()
@@ -160,14 +160,13 @@ async def test_production_is_refused_unless_explicitly_allowed(client_for):
     assert (await c.post(f"/itsa/{NINO}/property/businesses", json=body(), headers=H)).status_code == 403
     r = await c.post(f"/itsa/{NINO}/property/test-business", json=body(tax_year="2026-27"), headers=H)
     assert r.status_code == 403
+    # RELAY_ITSA_PRODUCTION no longer opens it: no production credentials are issued for 2026-27 products.
     rec = Recorder()
     allowed = client_for(rec, relay_itsa_production=True, **prod)
     r = await allowed.post(
         f"/itsa/{NINO}/property/{BID}/cumulative/2026-27", json=body(summary=s, confirmed=True), headers=H
     )
-    assert r.status_code == 200 and str(rec.requests[0].url).startswith("https://api.service.hmrc.gov.uk/")
-    r = await allowed.post(f"/itsa/{NINO}/property/test-business", json=body(tax_year="2026-27"), headers=H)
-    assert r.status_code == 403  # test support never runs against production
+    assert r.status_code == 403 and rec.requests == []
 
 
 async def test_authorize_accepts_the_self_assessment_scopes(client_for):

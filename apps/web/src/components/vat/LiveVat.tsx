@@ -8,6 +8,7 @@ import { loadBusiness } from "@/lib/business";
 import PrintButton from "@/components/PrintButton";
 import { fetchLiveVat, type RtVatBox as Box, type RtVatAdjustment, type RtVatPeriod, type RtVatView as VatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
+import { useHmrcStatus } from "@/lib/hmrc-status";
 import BoxExplain from "./BoxExplain";
 import SchemeNote from "./SchemeNote";
 import VatPeriodPicker from "./VatPeriodPicker";
@@ -82,6 +83,7 @@ export default function LiveVat() {
     return b && (b.name || b.vatNumber) ? { name: b.name, vatNumber: b.vatNumber } : null;
   });
   const picked = usePickedPeriod();
+  const hmrcStatus = useHmrcStatus();
 
   useEffect(() => {
     (async () => {
@@ -238,7 +240,9 @@ export default function LiveVat() {
       <p className="mt-3 text-sm text-muted">
         {box5Note ?? <>Net VAT to pay: <strong className="text-ink">{fmt(net)}</strong>.</>}{" "}
         {view.can_submit
-          ? "Connect to HMRC below to submit it to the sandbox."
+          ? hmrcStatus?.vatLive
+            ? "Connect to HMRC below to submit it, or use File it yourself."
+            : "Use File it yourself below to file it through your bridging software. Filing to HMRC from Accnomos is planned; Connect to HMRC practises the flow on HMRC's sandbox."
           : view.submitted
             ? view.submitted_source === "hmrc" && view.received
               ? `Filed with HMRC on ${uk(view.received)}.`

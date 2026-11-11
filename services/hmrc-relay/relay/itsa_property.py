@@ -20,8 +20,8 @@ checked 28 Oct 2026; developer.service.hmrc.gov.uk publishes the same files):
 Scopes: read:self-assessment / write:self-assessment. Property Business 6.0 is "BETA" with endpoints released in
 production (conf/application.conf). The cumulative endpoint takes tax years from 2025-26 only.
 
-Sandbox only: every route refuses (403) when HMRC_BASE is production, unless RELAY_ITSA_PRODUCTION=1 is set as
-well; nothing in this repository sets it. In production Accnomos produces the file to submit instead
+Sandbox only: every route refuses (403) against HMRC production, whatever HMRC_ENV says (RELAY_ITSA_PRODUCTION is
+no longer honoured). In production Accnomos produces the file to submit instead
 (services/runtime /property/mtd/{taxYear}/export).
 """
 
@@ -54,8 +54,10 @@ Money = Annotated[Decimal, Field(max_digits=13, decimal_places=2, ge=-LIMIT, le=
 
 
 def property_allowed(r: Annotated[Relay, Depends(configured)]) -> Relay:
-    if not r.settings.sandbox and not r.settings.relay_itsa_production:
-        raise HTTPException(403, "MTD Income Tax is sandbox only (set RELAY_ITSA_PRODUCTION=1 to use production)")
+    if not r.settings.sandbox:
+        # Whatever HMRC_ENV or RELAY_ITSA_PRODUCTION say: HMRC is not issuing production credentials for new
+        # 2026-27 quarterly-update products (Developer Hub notice, 15 Sep 2026). Users file with "File it yourself".
+        raise HTTPException(403, "MTD Income Tax is sandbox only: filing to HMRC from Accnomos is planned")
     return r
 
 

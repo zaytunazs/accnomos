@@ -38,8 +38,9 @@ Keywords: receipt, receipts, scan, photo, upload, email, emails, mail, outlook, 
 The VAT return page shows the nine boxes for a period, calculated by code from your approved entries, with the entries
 behind each box. Submitting to HMRC goes through a relay that holds only the HMRC application secret; you sign in on
 HMRC's own site, the tokens stay in your browser tab, and a legal declaration tick is required before anything is
-sent. Today everything HMRC is sandbox only, meaning HMRC's test service with test data: there is no production HMRC
-filing yet, and the full browser flow has not been run end to end against the sandbox. Flat-rate and annual accounting
+sent. Today everything HMRC is sandbox only, meaning HMRC's test service with test data. Filing to HMRC from Accnomos
+is planned; until then "File it yourself" on the VAT page gives a bridging file (CSV or XLSX, the nine boxes in fixed
+cells) to upload to HMRC-recognised bridging software, since a VAT return can't be typed into HMRC's online account. Flat-rate and annual accounting
 schemes are not supported. A UK VAT number check (sandbox) and Companies House look-up are built but not used live.
 Keywords: vat, return, mtd, making tax digital, hmrc, submit, file, filing, boxes, nine, 9, box, sandbox, quarter, period, deadline, obligations, flat rate, tax
 

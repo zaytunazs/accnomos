@@ -38,7 +38,7 @@ export const GUIDES: HowtoGuide[] = [
   {
     file: "vat-return",
     title: "Do a VAT return",
-    summary: "Nine boxes worked out by code, checked against the entries, then the sandbox HMRC flow.",
+    summary: "Nine boxes worked out by code, checked against the entries, then a bridging file to upload, or the sandbox HMRC flow.",
     who: "VAT-registered and filing through MTD",
     alt: "The VAT return for Jul–Sep 2026 with the nine boxes and the number of entries behind each.",
     featured: true,
@@ -105,7 +105,7 @@ export const GUIDES: HowtoGuide[] = [
   {
     file: "income-tax-update",
     title: "Income Tax quarterly update",
-    summary: "Turn on self-employment or landlord mode and practise the MTD Income Tax flow in the sandbox.",
+    summary: "Turn on self-employment or landlord mode, take the quarterly figures to MTD software, or practise the flow in the sandbox.",
     who: "Sole traders and landlords sending MTD updates",
     alt: "Self-employment (MTD Income Tax) with the sandbox HMRC connect button.",
   },

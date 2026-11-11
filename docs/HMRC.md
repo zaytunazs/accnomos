@@ -83,8 +83,8 @@ test user's `userId` / `password`, then enter its `vrn`.
 
 # HMRC (sandbox): self-employment, Making Tax Digital for Income Tax
 
-Sandbox only, like VAT, and stricter: every Income Tax route on the relay answers 403 against a production `HMRC_BASE`
-unless `RELAY_ITSA_PRODUCTION=1` is set as well, and nothing in this repository sets it. Never run against HMRC from
+Sandbox only, like VAT, and stricter: every Income Tax route on the relay answers 403 against HMRC production, whatever
+`HMRC_ENV` says (`RELAY_ITSA_PRODUCTION` is no longer honoured, since 11 Nov 2026). Never run against HMRC from
 this machine: everything below was built and tested on fakes that answer with HMRC's own example payloads
 (`docs/HONESTY.md`).
 
@@ -243,7 +243,7 @@ Landlords send a quarterly cumulative update for their UK property business (6 A
 each one replacing the last) and an annual submission of allowances. Accnomos makes both from the books
 (`services/runtime/app/property.py`) and either saves them as a file to submit (`POST /property/mtd/{taxYear}/export`,
 written to `07 Reports`) or sends them to HMRC's **sandbox** through the relay. Production submission is off: the
-relay's routes answer 403 against a production `HMRC_BASE` unless `RELAY_ITSA_PRODUCTION=1`, which nothing sets.
+relay's routes answer 403 against HMRC production, always (`RELAY_ITSA_PRODUCTION` is no longer honoured).
 
 ## Sources checked (28 Oct 2026)
 

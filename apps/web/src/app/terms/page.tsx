@@ -44,8 +44,10 @@ export default function TermsPage() {
             send to HMRC. If you are unsure, ask an accountant.
           </li>
           <li>
-            Direct submission to HMRC goes to HMRC&apos;s sandbox (its test service). For a real return, Accnomos prepares
-            the figures and files for you to submit.
+            Direct submission to HMRC goes to HMRC&apos;s sandbox (its test service). Filing to HMRC from Accnomos is
+            planned. For a real return, Accnomos prepares the figures as files (File it yourself on the VAT and
+            Self-employment pages) for you to upload to bridging or MTD software, or to type into HMRC&apos;s online
+            Self Assessment where that is allowed.
           </li>
         </ul>
       </section>

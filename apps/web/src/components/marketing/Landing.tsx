@@ -74,7 +74,7 @@ const BLOCK = {
   },
   vat: {
     title: "VAT boxes, worked out by code",
-    body: "Your nine VAT boxes are calculated by code from approved entries, not typed by hand. Connect to HMRC through the sandbox flow and walk through obligations, checks and a declaration.",
+    body: "Your nine VAT boxes are calculated by code from approved entries, not typed by hand. Download them as a bridging file to file through your bridging software, or practise the HMRC flow on the sandbox.",
     example: "A fictional quarter for Harthill Bakery Ltd shows £1,240 in Box 1 and £310 in Box 4.",
   },
   itsa: {
@@ -128,7 +128,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "Does it file to HMRC?",
-    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return. HMRC has closed production access for new Income Tax quarterly-update products for the 2026-27 tax year, so live Income Tax filing from Accnomos cannot start before the 2027-28 year; live VAT filing needs a separate HMRC production application.",
+    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return. HMRC has closed production access for new Income Tax quarterly-update products for the 2026-27 tax year, so live Income Tax filing from Accnomos cannot start before the 2027-28 year; live VAT filing needs a separate HMRC production application. Filing to HMRC from Accnomos is planned. Until then, File it yourself gives you the VAT return as a bridging file to upload to HMRC-recognised bridging software, the Income Tax quarterly figures for MTD software, and your Self Assessment self-employment pages box by box.",
   },
   {
     q: "Can I use it outside the UK?",

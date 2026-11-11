@@ -90,8 +90,13 @@ services:
     build: { context: .., dockerfile: deploy/Dockerfile.relay }
     image: accnomos-relay
     environment:
+      # sandbox (default) or production: where real users' VAT returns go (docs/PRODUCTION.md). The demo always
+      # uses the sandbox credentials; Income Tax stays sandbox only whatever this says.
+      HMRC_ENV: ${HMRC_ENV:-sandbox}
       HMRC_CLIENT_ID: ${HMRC_CLIENT_ID}
       HMRC_CLIENT_SECRET: ${HMRC_CLIENT_SECRET}
+      HMRC_PROD_CLIENT_ID: ${HMRC_PROD_CLIENT_ID:-}
+      HMRC_PROD_CLIENT_SECRET: ${HMRC_PROD_CLIENT_SECRET:-}
       HMRC_BASE: ${HMRC_BASE:-https://test-api.service.hmrc.gov.uk}
       HMRC_AUTH_BASE: ${HMRC_AUTH_BASE:-https://test-www.tax.service.gov.uk}
       HMRC_REDIRECT_URI: ${HMRC_REDIRECT_URI:-https://api.accnomos.com/hmrc/callback}
