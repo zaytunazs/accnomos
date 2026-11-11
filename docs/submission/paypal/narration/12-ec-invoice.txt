@@ -1,0 +1,1 @@
+Ask for an invoice in plain words, and add a PayPal pay link.

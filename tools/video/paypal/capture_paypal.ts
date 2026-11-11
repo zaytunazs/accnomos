@@ -74,6 +74,22 @@ async function toRegion(page: any, name: string) {
   return r;
 }
 
+const RECEIPT = process.env.RECEIPT ?? path.resolve(path.dirname(new URL(import.meta.url).pathname), "../../../apps/web/public/sample-receipt.png");
+/** Home's summary is written by the live model: wait (off camera) until it is in words. */
+async function homeReady(page: any) {
+  await vis(page.getByText("Your summary")).waitFor({ timeout: 60_000 }).catch(() => undefined);
+  await page.getByText(/putting this into words/).first().waitFor({ state: "detached", timeout: 90_000 }).catch(() => undefined);
+  await page.waitForTimeout(800);
+}
+/** Glide to a visible element without scrolling the page. */
+async function point(c: Ctx, t: string | RegExp, dwell = 900) {
+  const l = vis(c.page.getByText(t));
+  const box = await l.boundingBox().catch(() => null);
+  const vp = c.page.viewportSize();
+  if (!box || box.y < 0 || box.y > vp.height - 20) return;
+  await c.h.moveTo(box.x + Math.min(box.width * 0.5, 160), box.y + box.height / 2);
+  await c.h.hold(dwell);
+}
 /** The live server's connect callback can point at its internal address (PAYPAL_RETURN_URL unset): follow it on the public host. */
 async function fixCallback(page: any) {
   const host = process.env.CALLBACK_HOST;
@@ -344,6 +360,286 @@ const SHOTS: Record<string, Shot> = {
       await hoverText(c, /^Difference/, 2600);
       await hoverText(c, /refreshes this balance/, 1800);
       await h.hold(800);
+    },
+  },
+  // v5 "Everything else, in action" (ported from tools/video/v3/capture_live.ts; the v3 helpers point/sidebar are inlined)
+  "f-receipt": {
+    setup: async ({ page }) => { await go(page, "/review"); await vis(page.getByText(/waiting for you/)).waitFor({ timeout: 60_000 }); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 250);
+      await h.hold(600);
+      const add = vis(page.getByRole("button", { name: "Add a receipt" }));
+      await h.moveToLocator(add);
+      const fcP = page.waitForEvent("filechooser", { timeout: 10_000 }).catch(() => null);
+      await h.click(add, 200);
+      const fc = await fcP;
+      if (fc) await fc.setFiles(RECEIPT);
+      c.mark("wait");
+      const confirm = vis(page.getByRole("button", { name: "Confirm" }));
+      await confirm.waitFor({ timeout: 120_000 });
+      c.mark("ready");
+      await hoverText(c, /Looks like a receipt/, 1300);
+      await h.click(confirm, 300);
+      c.mark("wait2");
+      const card = page.locator("section[aria-labelledby^=proposal-]").filter({ hasText: /NOVEX/i }).first();
+      await card.waitFor({ timeout: 180_000 });
+      await page.waitForTimeout(1500);
+      c.mark("ready2");
+      await h.scrollIntoView(card, 1100);
+      await h.hover(vis(card.getByText(/Read by/)), 1500);
+      await h.hover(vis(card.getByText(/^Net · VAT · Total/)), 1100);
+      await h.hover(vis(card.getByText(/^Why:/)), 1500);
+      await hoverText({ ...c, page: card } as any, /checks by code|Verifier agrees/, 1300);
+      const approve = vis(card.getByRole("button", { name: /^Approve/ }));
+      await h.click(approve, 400);
+      await vis(page.getByText(/Approved · posted to your books|Approved/)).waitFor({ timeout: 30_000 }).catch(() => undefined);
+      await h.hold(1800);
+    },
+  },
+  "f-invoice": {
+    setup: async ({ page }) => { await go(page, "/ask"); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 300);
+      await h.hold(500);
+      await h.type(vis(page.getByLabel(/Ask your books/)), "send a £450 invoice to Hartwell", 300);
+      await h.click(vis(page.getByRole("button", { name: "Ask", exact: true })), 200);
+      c.mark("wait");
+      const card = vis(page.getByRole("article", { name: /^Proposed:/ }));
+      await card.waitFor({ timeout: 150_000 });
+      await page.waitForTimeout(800);
+      c.mark("ready");
+      await h.scrollIntoView(card, 900);
+      await h.hover(card, 1600);
+      const approve = vis(card.getByRole("button", { name: "Approve" }));
+      await h.hover(approve, 700);
+      await h.click(approve, 300);
+      c.mark("wait2");
+      await vis(page.getByText(/INV-|Invoice .* (created|sent)|Done/)).waitFor({ timeout: 60_000 }).catch(() => undefined);
+      c.mark("ready2");
+      await h.hold(2200);
+    },
+  },
+  "f-reports": {
+    setup: async ({ page }) => {
+      await go(page, "/reports");
+      await page.getByRole("radio", { name: /Jul.Sep 2026/ }).first().click().catch(() => undefined);
+      await settle(page, 1500);
+      await page.evaluate(() => window.scrollTo(0, 0));
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(800, 300);
+      await point(c, /^Jul.Sep 2026$/, 700);
+      const pl = vis(page.getByRole("heading", { name: /^Profit and loss/ }));
+      await h.scrollIntoView(pl, 1200);
+      await h.hover(pl, 1000);
+      await h.scrollBy(260, 900);
+      await h.hold(900);
+      await h.scrollToTop(800);
+      await h.click(vis(page.getByRole("button", { name: /Export to OneDrive/ })), 300);
+      await vis(page.getByText(/Saved to 07 Reports/)).waitFor({ timeout: 20_000 }).catch(() => undefined);
+      await hoverText(c, /Saved to 07 Reports/, 1800);
+    },
+  },
+  "f-vat": {
+    setup: async ({ page }) => {
+      await go(page, "/vat");
+      await page.getByRole("radiogroup", { name: "VAT period" }).getByRole("radio", { name: /Jul–Sep 2026/ }).click();
+      await settle(page, 800);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(700, 260);
+      const ret = page.getByRole("region", { name: /Your return/ });
+      await h.scrollIntoView(vis(ret.getByText("VAT due on sales")), 1000);
+      for (const t of ["VAT due on sales", "VAT reclaimed on purchases", /Net VAT to pay HMRC/]) await h.hover(vis(ret.getByText(t)), 700);
+      const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
+      await h.scrollIntoView(hmrc, 900);
+      await hoverText(c, /HMRC sandbox — real test service/, 1000);
+      c.mark("user");
+      await h.click(vis(hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" })), 300);
+      const user = hmrc.getByRole("group", { name: "HMRC sandbox test user" });
+      await user.waitFor({ timeout: 60_000 });
+      c.mark("userReady");
+      await h.hover(user, 1400);
+      const uid = (await user.getByTestId("sandbox-user-id").innerText()).trim();
+      const pwd = (await user.getByTestId("sandbox-password").innerText()).trim();
+      await h.click(vis(hmrc.getByRole("button", { name: "Connect to HMRC sandbox" })), 300);
+      await page.waitForURL((u: URL) => !u.href.startsWith(SITE), { timeout: 30_000 }).catch(() => undefined);
+      c.mark("hmrc");
+      // HMRC's own sandbox pages: Continue → Sign in to the HMRC online service → User ID + password → Give permission
+      for (let i = 0; i < 12 && !page.url().startsWith(SITE); i++) {
+        await page.waitForTimeout(2500);
+        if (page.url().startsWith(SITE)) break;
+        const idBox = page.getByLabel(/User ID/i).first();
+        if (await idBox.isVisible().catch(() => false)) {
+          // HMRC's own sandbox sign-in, with the throwaway test user the demo just made (cut in the edit)
+          await idBox.fill(uid);
+          await page.getByLabel(/Password/i).first().fill(pwd);
+          await page.getByRole("button", { name: /Sign in/i }).first().click();
+          continue;
+        }
+        for (const name of [/Give permission/i, /Sign in to the HMRC online service/i, /^Continue/i]) {
+          const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).first();
+          if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(1500); break; }
+        }
+      }
+      await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 60_000 });
+      c.mark("back");
+      await settle(page, 1000);
+      const hm = page.getByRole("region", { name: "Connect to HMRC" });
+      await vis(hm.getByText(/Connected to HMRC.s sandbox as test user/)).waitFor({ timeout: 30_000 });
+      await h.scrollIntoView(vis(hm.getByText(/Connected to HMRC.s sandbox as test user/)), 800);
+      await hoverText(c, /Connected to HMRC.s sandbox as test user/, 900);
+      await h.click(vis(hm.getByRole("button", { name: "Show obligations" })), 600);
+      await vis(hm.getByRole("button", { name: "Prepare submission" })).waitFor({ timeout: 30_000 });
+      await h.click(vis(hm.getByRole("button", { name: "Prepare submission" })), 700);
+      await h.click(vis(hm.getByLabel(/I confirm the information is true and complete/)), 600);
+      c.mark("submit");
+      await h.click(vis(hm.getByRole("button", { name: /Submit to HMRC sandbox/ })), 300);
+      const receipt = vis(hm.getByRole("heading", { name: /Submitted to HMRC sandbox/ }));
+      await receipt.waitFor({ timeout: 60_000 });
+      c.mark("receipt");
+      await h.scrollIntoView(receipt, 800);
+      await hoverText(c, /Form bundle number|form bundle/i, 1800);
+      await hoverText(c, /HMRC.s own sandbox receipt/, 1500);
+      await h.hold(800);
+    },
+  },
+  "f-files": {
+    setup: async ({ page }) => { await go(page, "/files"); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(800, 250);
+      await hoverText(c, /A live view of your Accnomos folder in OneDrive/, 1300);
+      await hoverText(c, /^00 Inbox$/, 800);
+      const books = vis(page.getByRole("button", { name: /Books\.xlsx/ }).or(page.getByText(/^Books\.xlsx$/)));
+      if (await books.isVisible({ timeout: 3000 }).catch(() => false)) { await h.scrollIntoView(books, 1200); await h.hover(books, 1300); }
+      const bk = vis(page.getByRole("heading", { name: /^Backups$|version/i }));
+      if (await bk.isVisible({ timeout: 3000 }).catch(() => false)) { await h.scrollIntoView(bk, 1200); await h.hover(bk, 1200); }
+      await hoverText(c, /version history|versions/i, 1500);
+      await h.hold(800);
+    },
+  },
+  "f-bank": {
+    setup: async ({ page }) => {
+      await go(page, "/bank");
+      const feed = page.getByRole("region", { name: "Bank feed" });
+      await feed.waitFor({ timeout: 30_000 }).catch(() => undefined);
+      await feed.evaluate((e: Element) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 120)).catch(() => undefined);
+      await page.waitForTimeout(600);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(900, 250);
+      const feed = page.getByRole("region", { name: "Bank feed" });
+      await hoverText(c, /^Bank feed/, 800);
+      const connect = vis(feed.getByRole("button", { name: /^Connect (a|the test) bank/ }).or(page.getByRole("button", { name: /^Connect the test bank/ })));
+      if (await connect.isVisible({ timeout: 3000 }).catch(() => false)) {
+        c.mark("connect");
+        await h.click(connect, 300);
+        await page.waitForURL((u: URL) => !u.href.startsWith(SITE), { timeout: 30_000 }).catch(() => undefined);
+        c.mark("tl");
+        // TrueLayer's sandbox: pick the mock bank, sign in with its public test login, allow
+        for (let i = 0; i < 16 && !page.url().startsWith(SITE); i++) {
+          await page.waitForTimeout(2500);
+          if (page.url().startsWith(SITE)) break;
+          const user = page.getByLabel(/user ?name|user id/i).or(page.getByPlaceholder(/user ?name/i)).first();
+          if ((await user.isVisible().catch(() => false)) && !(await user.inputValue().catch(() => "x"))) {
+            // TrueLayer's published sandbox test login (blurred in the edit); plain fills: the eased cursor stalls on these pages
+            await user.fill(process.env.TL_USER ?? "john");
+            await page.getByLabel(/password/i).or(page.getByPlaceholder(/password/i)).first().fill(process.env.TL_PASS ?? "doe");
+          }
+          let clicked = false;
+          for (const name of [/mock/i, /^Allow|^Approve|^Agree/i, /^Proceed|^Continue|^Submit|^Sign in|^Log in|^Confirm|^Next/i]) {
+            const b = page.getByRole("button", { name }).or(page.getByRole("link", { name })).or(page.getByRole("option", { name })).first();
+            if (await b.isVisible().catch(() => false)) { await b.click().catch(() => undefined); clicked = true; break; }
+          }
+          if (!clicked) {
+            const tile = page.getByText(/^Mock/i).first();
+            if (await tile.isVisible().catch(() => false)) await tile.click().catch(() => undefined);
+            else await page.waitForTimeout(1500);
+          }
+          console.log("  tl page", i, page.url().slice(0, 80));
+        }
+        await page.waitForURL((u: URL) => u.href.startsWith(SITE), { timeout: 90_000 });
+        c.mark("back");
+        await settle(page, 1500);
+      }
+      const f2 = page.getByRole("region", { name: "Bank feed" });
+      await h.scrollIntoView(f2, 700);
+      const fetch = vis(f2.getByRole("button", { name: /^Fetch now|^Sync now/ }));
+      await fetch.waitFor({ timeout: 60_000 });
+      await h.hover(fetch, 600);
+      c.mark("fetch");
+      await h.click(fetch, 300);
+      await vis(f2.getByRole("button", { name: /^Fetch now|^Sync now/ })).waitFor({ timeout: 90_000 }).catch(() => undefined);
+      await page.waitForTimeout(800);
+      c.mark("fetched");
+      await hoverText(c, /new (bank )?lines?|fetched|Last fetched/i, 1400);
+      await h.scrollBy(320, 900);
+      await hoverText(c, /matched|Match/i, 1500);
+      await h.hold(1200);
+    },
+  },
+  // v5: a sure bank match confirmed (Bank › Matches: an "Exact" suggestion → Confirm)
+  "f-bankmatch": {
+    setup: async ({ page }) => {
+      await go(page, "/bank");
+      const all = page.getByRole("button", { name: /^Confirm all \d+ exact matches/ }).first();
+      await all.waitFor({ timeout: 30_000 });
+      await all.evaluate((e: Element) => window.scrollTo(0, e.getBoundingClientRect().top + window.scrollY - 160));
+      await page.waitForTimeout(600);
+    },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(800, 200);
+      await hoverText(c, /^Confirm all \d+ exact matches/, 900);
+      const exact = vis(page.getByText(/^Exact$/));
+      await h.hover(exact, 900);
+      await hoverText(c, /^exact amount$/, 700);
+      await hoverText(c, /^same day$/, 700);
+      const confirm = vis(page.locator("button", { hasText: /^Confirm$/ })); // the first (top) suggestion (its aria-label names the line)
+      c.mark("confirm");
+      await h.click(confirm, 300);
+      await page.waitForTimeout(1500);
+      c.mark("confirmed");
+      await h.hold(1500);
+    },
+  },
+  "f-talk": {
+        setup: async ({ page }) => { await go(page, "/"); await homeReady(page); },
+    run: async (c) => {
+      const { page, h } = c;
+      await h.park(1000, 400);
+      await h.click(vis(page.getByRole("button", { name: "Talk to Accnomos" })), 900);
+      const dlg = page.getByRole("dialog");
+      if (process.env.FAKE_MIC) {
+        await h.moveToLocator(vis(dlg.getByRole("button", { name: "Ask by voice" })));
+        await h.hold(300);
+        c.mark("speak");
+        await h.click(vis(dlg.getByRole("button", { name: "Ask by voice" })), 300);
+      } else {
+        await h.type(vis(dlg.getByLabel("Your question")), process.env.TALK_TEXT ?? "add a site visit tomorrow at 10", 300);
+        await h.click(vis(dlg.getByRole("button", { name: "Send" })), 200);
+      }
+      c.mark("wait");
+      const card = vis(dlg.getByText(/NEEDS YOUR OK|Needs your OK/i));
+      await card.waitFor({ timeout: 150_000 });
+      c.mark("ready");
+      await h.hold(600);
+      await hoverText(c, /Transcribed by/, 1200);
+      await hoverText(c, /clash|free then|nothing else/i, 1200);
+      await hoverText(c, /^When$/, 900);
+      const approve = vis(dlg.getByRole("button", { name: "Approve" }));
+      await h.hover(approve, 600);
+      await h.click(approve, 300);
+      c.mark("wait2");
+      await vis(dlg.getByText(/Added|added to your calendar|Done/i)).waitFor({ timeout: 60_000 }).catch(() => undefined);
+      c.mark("ready2");
+      await h.hold(2200);
     },
   },
   ...montage(),

@@ -1,7 +1,7 @@
 [
  {
   "id": "i0",
-  "text": "Hi, I'm an AI presenter. Accnomos was built by a UK business owner who gets paid, and pays suppliers, through PayPal. Here's how it keeps the books."
+  "text": "Accnomos was built by a UK business owner who gets paid, and pays suppliers, through PayPal. Here's how it keeps the books."
  },
  {
   "id": "pr",
@@ -9,15 +9,15 @@
  },
  {
   "id": "hw",
-  "text": "PayPal's data comes in, the AI proposes, code calculates to the penny, and the owner approves."
+  "text": "PayPal's data comes in, the AI proposes, code calculates to the penny, and you approve."
  },
  {
   "id": "h1",
-  "text": "Press Sync PayPal, and Accnomos fetches every payment from PayPal itself: the gross, PayPal's fee and the net, matched to the invoice it pays. A sale with no invoice waits for you to choose its VAT. Nothing posts until you approve."
+  "text": "Press Sync PayPal, and Accnomos fetches every payment from PayPal itself: the gross, PayPal's fee and the net. A sale with no invoice in your books waits for you to choose its VAT, and nothing posts until you approve."
  },
  {
   "id": "ag",
-  "text": "Turn on the Power grid, and you can tick several PayPal rows and approve them together, with totals. Or just type: PayPal fees over five pounds."
+  "text": "Turn on the Power grid to tick several PayPal rows and approve them together. Or just type: PayPal fees over five pounds."
  },
  {
   "id": "h2",
@@ -26,28 +26,51 @@
  },
  {
   "id": "h3",
-  "text": "The tie-out checks the books against PayPal's own balance, shows when PayPal last refreshed it, and explains any difference."
+  "text": "The tie-out checks your books against PayPal's own balance, as of PayPal's last refresh."
  },
  {
   "id": "h4",
-  "text": "Paying a supplier works the other way. When a bill falls due, Accnomos offers a PayPal payout. You approve, PayPal confirms in about half a minute, and only then does it post. A retry never pays twice. PayPal can't date a payout ahead, so it goes on the due date, when the app is open."
+  "text": "Paying a supplier works the other way. When a bill falls due, Accnomos offers a PayPal payout. You approve it, PayPal processes it, and it posts only when PayPal confirms. A retry never pays twice."
  },
  {
   "id": "h5",
-  "text": "If a customer opens a dispute, Accnomos builds the evidence pack from the books, checks every figure by code, and waits for you to read it before anything goes to PayPal."
+  "text": "If a customer disputes a payment, Accnomos builds the evidence from your books, and nothing goes to PayPal until you send it."
  },
  {
   "id": "ai",
   "text": "Everywhere in Accnomos, the AI proposes, code checks the figures, and you approve."
  },
  {
-  "id": "m1",
-  "text": "And PayPal sits inside a full set of books, kept in your own OneDrive or Google Drive. Scan receipts, match the bank, and file VAT to HMRC's sandbox. Reports, voice, jobs and payroll, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it.",
-  "say": "And PayPal sits inside a full set of books, kept in your own One Drive or Google Drive. Scan receipts, match the bank, and file VAT to H M R C's sandbox. Reports, voice, jobs and payroll, on the web and Android, with upcoming PayPal payments in your calendar and help when you need it."
+  "id": "ea",
+  "text": "Snap a receipt, and the AI reads it. Code checks the totals and the VAT, then you approve."
  },
  {
-  "id": "fl",
-  "text": "And that's everything Accnomos does today, in one app."
+  "id": "eb",
+  "text": "Connect your bank by Open Banking. Here it's a test bank: the lines arrive and match your books."
+ },
+ {
+  "id": "ec",
+  "text": "Ask for an invoice in plain words, and add a PayPal pay link."
+ },
+ {
+  "id": "ed",
+  "text": "The nine VAT boxes are worked out by code and filed to HMRC's sandbox, with HMRC's own receipt."
+ },
+ {
+  "id": "ee",
+  "text": "Reports, from profit and loss to who owes you."
+ },
+ {
+  "id": "ef",
+  "text": "Or talk to it, and approve what it proposes."
+ },
+ {
+  "id": "eg",
+  "text": "Jobs, with their costs and margins."
+ },
+ {
+  "id": "eh",
+  "text": "And the books stay in your own OneDrive or Google Drive."
  },
  {
   "id": "o0",

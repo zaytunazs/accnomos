@@ -3,6 +3,10 @@
 #
 #   tools/video/paypal/assemble_paypal.sh TIMELINE.json OUT.mp4 [--vo DIR] [--presenter DIR] [--keep]
 #
+# Segment types: still, stills (equal split, e.g. a card built up), video (in, speed, crop, blur boxes in source-frame
+# pixels, tag), slate (text), group (children cut hard). A video with "phone": {"src": "android/a-x.mp4", "in": 0} is a
+# split scene: web left (1440x810), the phone in a device frame right (350x778); a missing phone clip shows a labelled
+# placeholder, so clips drop in by name. Split scenes and placeholders need Pillow.
 # TIMELINE.json lists every segment at its script time (docs/submission/paypal/VIDEO_SCRIPT.md v4): source file,
 # in-point, speed, burned-in caption, blur boxes. Paths in it are relative to its "media_root" (default: the folder
 # the timeline is in). The draft timeline is tools/video/paypal/timeline_paypal.json: copy it into the media folder
@@ -10,9 +14,9 @@
 #
 #   --vo DIR         voice-over WAVs named <id>.wav (i0 pr hw h1 ag h2 h3 h4 h5 ai m1 fl o0). Each is placed at its
 #                    segment's start + "vo_lead" (default 0.3 s). A missing WAV is silence (and is reported).
-#   --presenter DIR  presenter_intro.mp4 / presenter_outro.mp4. Present: each replaces its black slate, scaled to
-#                    1920x1080 and labelled "AI presenter" for the whole slot; if the clip has sound, that sound is
-#                    used and i0.wav / o0.wav are skipped. Missing: a labelled black slate of the slot's length.
+#   --presenter DIR  presenter clips. A segment gets a small picture-in-picture (320x180, bottom right, labelled
+#                    "AI-generated presenter") when DIR has its "pip" file (e.g. presenter_intro.mp4) or <vo id>.mp4;
+#                    the clip's own sound then replaces that line's WAV. No clip: no PiP, the WAV plays.
 #   --keep           keep the per-segment intermediates (OUT dir/.segments).
 #
 # Writes OUT.mp4 (H.264 veryfast CRF 20, AAC 192k, 30 fps, 1920x1080), OUT.srt (the narration, from
@@ -125,6 +129,56 @@ def subs_filter(ass):
     p = ass.replace("\\", "/").replace(":", "\\:").replace("'", "\\'")
     return f"subtitles='{p}'"
 
+# Split layout (web left + phone right) and the presenter picture-in-picture, all in 1920x1080 pixels.
+BG = T.get("split_bg", "0x2c1c10")
+WEB = (40, 30, 1440, 810)            # x, y, w, h of the web capture
+PHONE = (1530, 30, 350, 778)         # x, y, w, h of the device frame
+BEZEL = 10                           # screen inset inside the frame
+PIP = (1560, 856, 320, 180)          # x, y, w, h of the presenter picture-in-picture (label under it)
+PIP_LABEL = T.get("pip_label", "AI-generated presenter")
+
+def _hex(c):
+    c = c.replace("0x", "").replace("#", "")
+    return tuple(int(c[i:i + 2], 16) for i in (0, 2, 4))
+
+def phone_frame_png():
+    """A plain rounded device frame on the split background, with a transparent screen."""
+    f = os.path.join(work, "phone_frame.png")
+    if os.path.exists(f):
+        return f
+    from PIL import Image, ImageDraw
+    x, y, w, h = PHONE
+    im = Image.new("RGBA", (w, h), _hex(BG) + (255,))
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle([0, 0, w - 1, h - 1], radius=46, fill=(17, 17, 17, 255), outline=(90, 80, 70, 255), width=2)
+    d.rounded_rectangle([BEZEL, BEZEL, w - 1 - BEZEL, h - 1 - BEZEL], radius=36, fill=(0, 0, 0, 0))
+    im.save(f)
+    return f
+
+def phone_placeholder_png(name):
+    f = os.path.join(work, f"phone_ph_{name}.png")
+    from PIL import Image, ImageDraw, ImageFont
+    w, h = PHONE[2] - 2 * BEZEL, PHONE[3] - 2 * BEZEL
+    im = Image.new("RGB", (w, h), (58, 42, 30))
+    d = ImageDraw.Draw(im)
+    try:
+        font = ImageFont.truetype("Inter-Bold.otf", 26)
+    except OSError:
+        font = ImageFont.load_default()
+    for k, t in enumerate(["ANDROID", "(placeholder)", name]):
+        d.text((w // 2, h // 2 - 50 + k * 44), t, fill=(240, 220, 170), font=font, anchor="mm")
+    im.save(f)
+    return f
+
+def pip_clip_for(seg, presenter_dir):
+    """The presenter clip for a segment: its own "pip" file, else presenter/<vo id>.mp4 (None if there is none)."""
+    if not presenter_dir:
+        return None
+    for name in [seg.get("pip"), f"{seg.get('vo')}.mp4" if seg.get("vo") else None]:
+        if name and os.path.exists(os.path.join(presenter_dir, name)):
+            return os.path.join(presenter_dir, name)
+    return None
+
 ENC = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-pix_fmt", "yuv420p", "-r", str(FPS), "-an"]
 
 def blur_chain(blurs, label_in="v0"):
@@ -188,8 +242,27 @@ def render(seg, dur, dst, presenter_dir):
         fl[0] += f",scale={W}:{H}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0xf4f3ee,setsar=1,format=yuv420p,tpad=stop_mode=clone:stop_duration={dur + 2}[v0]"
         bl, cur = blur_chain(seg.get("blur"))
         fl += bl
+        inputs = ["-ss", f"{t_in:.3f}", "-i", src]
+        if "phone" in seg:
+            # web left, phone right in a device frame, both under the same caption
+            ph = seg["phone"] or {}
+            x, y, w, h = WEB
+            fx, fy, fw, fh = PHONE
+            cw, ch = fw - 2 * BEZEL, fh - 2 * BEZEL
+            fl.append(f"[{cur}]scale={w - 4}:{h - 4},pad={w}:{h}:2:2:color=0x8a7563[web]")  # thin frame: the app sidebar is the same brown as the background
+            fl.append(f"color=c={BG}:s={W}x{H}:r={FPS}:d={dur + 1}[bg]")
+            pf = P(ph["src"]) if ph.get("src") else None
+            if pf and os.path.exists(pf):
+                inputs += ["-ss", f"{float(ph.get('in', 0)):.3f}", "-i", pf]
+                fl.append(f"[1:v]setpts=(PTS-STARTPTS)/{float(ph.get('speed', 1.0))},fps={FPS},scale={cw}:{ch}:force_original_aspect_ratio=increase,crop={cw}:{ch},setsar=1,tpad=stop_mode=clone:stop_duration={dur + 2}[ph]")
+            else:
+                inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur + 1:.3f}", "-i", phone_placeholder_png(ph.get("name", "phone"))]
+                fl.append(f"[1:v]setsar=1[ph]")
+            inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur + 1:.3f}", "-i", phone_frame_png()]
+            fl.append(f"[bg][web]overlay={x}:{y}[c1];[c1][ph]overlay={fx + BEZEL}:{fy + BEZEL}[c2];[c2][2:v]overlay={fx}:{fy},format=yuv420p[comp]")
+            cur = "comp"
         fl.append(f"[{cur}]{subs_filter(ass)}[vout]")
-        run(["ffmpeg", "-y", "-hide_banner", "-ss", f"{t_in:.3f}", "-i", src, "-filter_complex", ";".join(fl), "-map", "[vout]", "-t", f"{dur:.3f}", *ENC, dst])
+        run(["ffmpeg", "-y", "-hide_banner", *inputs, "-filter_complex", ";".join(fl), "-map", "[vout]", "-t", f"{dur:.3f}", *ENC, dst])
         return
     if kind == "group":
         parts = []
@@ -222,6 +295,33 @@ for k, s in enumerate(segs):
     dst = os.path.join(work, f"{k:02d}_{s['id']}.mp4")
     print(f"[{s['start']:6.2f}] {s['id']:<4} {s['type']:<9} {float(s['dur']):5.2f}s", flush=True)
     render(s, d, dst, opt["--presenter"])
+    clip = pip_clip_for(s, opt["--presenter"])
+    if clip:
+        # the presenter as a small picture-in-picture (bottom right), in step with its own audio (see 2.)
+        lead = float(s.get("pip_lead", s.get("vo_lead", LEAD)))
+        x, y, w, h = PIP
+        cl = min(probe_dur(clip), d - lead)
+        lab = os.path.join(work, f"{k:02d}_pip.ass")
+        open(lab, "w", encoding="utf-8").write(f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: {W}
+PlayResY: {H}
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Pip,Inter,22,&H00FFFFFF,&H00FFFFFF,&H1A0E1C2C,&H00000000,-1,0,0,0,100,100,0,0,3,5,0,7,{x},0,{y + h + 6},1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:{lead:05.2f},0:00:{lead + cl:05.2f},Pip,,0,0,0,,{PIP_LABEL}
+""")
+        tmp = dst + ".pip.mp4"
+        run(["ffmpeg", "-y", "-hide_banner", "-i", dst, "-i", clip, "-filter_complex",
+             f"[1:v]setpts=PTS-STARTPTS+{lead}/TB,scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+             f"pad={w + 6}:{h + 6}:3:3:color=0xf0dcaa[pp];[0:v][pp]overlay={x - 3}:{y - 3}:eof_action=pass:enable='between(t,{lead},{lead + cl:.3f})',{subs_filter(lab)}[v]",
+             "-map", "[v]", "-t", f"{d:.3f}", *ENC, tmp])
+        os.replace(tmp, dst)
+        s["_pip"] = (clip, lead)
     paths.append(dst)
 
 # ---- 2. audio: VO at each segment's start + lead; presenter sound when the clip has it ----------------------------
@@ -233,10 +333,9 @@ for s in segs:
         continue
     start = s["start"] + float(s.get("vo_lead", LEAD))
     src = None
-    if s["type"] == "presenter" and opt["--presenter"]:
-        clip = os.path.join(opt["--presenter"], s["file"])
-        if os.path.exists(clip) and has_audio(clip):
-            src, start, length = clip, s["start"], min(probe_dur(clip), float(s["dur"]))
+    if s.get("_pip") and has_audio(s["_pip"][0]):
+        clip, lead = s["_pip"]
+        src, start, length = clip, s["start"] + lead, min(probe_dur(clip), float(s["dur"]) - lead)
     if src is None and opt["--vo"] and os.path.exists(os.path.join(opt["--vo"], f"{vid}.wav")):
         src = os.path.join(opt["--vo"], f"{vid}.wav")
         length = wav_len(src)
@@ -248,7 +347,7 @@ for s in segs:
         length = float(s["dur"]) - 0.6
     else:
         a_inputs += ["-i", src]
-        a_filters.append(f"[{1 + n_a}:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:{float(s['dur']):.3f},adelay={int(start * 1000)}|{int(start * 1000)}[a{n_a}]")
+        a_filters.append(f"[{1 + n_a}:a]aformat=sample_rates=48000:channel_layouts=stereo,atrim=0:{length + 0.05:.3f},adelay={int(start * 1000)}|{int(start * 1000)}[a{n_a}]")
         n_a += 1
     if vid in lines:
         srt.append((start, min(start + length, s["start"] + float(s["dur"])), lines[vid]["text"]))
@@ -287,7 +386,9 @@ with open(base + ".srt", "w", encoding="utf-8") as f:
         f.write(f"{n}\n{srt_ts(a)} --> {srt_ts(b)}\n{txt}\n\n")
 
 def res(s):
-    r = {k: v for k, v in s.items() if k not in ("children",)}
+    r = {k: v for k, v in s.items() if k not in ("children", "_pip")}
+    if s.get("_pip"):
+        r["pip_clip"], r["pip_at"] = s["_pip"][0], round(s["start"] + s["_pip"][1], 3)
     r["end"] = round(s["start"] + float(s["dur"]), 3)
     if s["type"] == "video":
         r["out"] = round(float(s.get("in", 0)) + float(s["dur"]) * float(s.get("speed", 1)), 3)

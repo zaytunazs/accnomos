@@ -26,7 +26,7 @@ python "$repo/tools/video/v3/tts.py" "${args[@]}"
 # Lengths against the scene budget in docs/submission/paypal/VIDEO_SCRIPT.md (seconds of narration per scene):
 python - "$out" <<'EOF'
 import sys, wave, pathlib
-budget = {"i0": 11, "pr": 6, "hw": 7, "h1": 20, "ag": 12, "h2": 14, "h3": 10, "h4": 24, "h5": 14, "ai": 6, "m1": 30, "fl": 5, "o0": 8}
+budget = {"i0": 10.4, "pr": 4.8, "hw": 5.6, "h1": 18, "ag": 9.5, "h2": 14.5, "h3": 8, "h4": 20, "h5": 8, "ai": 5, "ea": 8, "eb": 8, "ec": 7, "ed": 8, "ee": 5, "ef": 6, "eg": 5, "eh": 5, "o0": 7.4}
 total = 0.0
 for wav in [pathlib.Path(sys.argv[1]) / f"{k}.wav" for k in budget if (pathlib.Path(sys.argv[1]) / f"{k}.wav").exists()]:
     with wave.open(str(wav)) as w:
@@ -34,5 +34,5 @@ for wav in [pathlib.Path(sys.argv[1]) / f"{k}.wav" for k in budget if (pathlib.P
     total += s
     flag = "  OVER" if s > budget.get(wav.stem, 99) else ""
     print(f"{wav.stem}: {s:5.1f}s (budget {budget.get(wav.stem, '?')}s){flag}")
-print(f"narration total {total:.1f}s; the planned cut is 2:47; it must stay at or under 2:50 (170 s) with the dwell time between lines")
+print(f"narration total {total:.1f}s; the planned v5 cut is 2:46; it must stay at or under 2:50 (170 s) with the dwell time between lines")
 EOF
