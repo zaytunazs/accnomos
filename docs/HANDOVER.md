@@ -26,19 +26,45 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
   | `claude/ios-app` | iOS Xcode project, privacy manifest, TestFlight CI; `docs/IOS_APP_STORE.md` |
   | `claude/ai-local` | Our own server first, Anthropic as the backup; voice on our own server |
 
-## Payments: how to add PayPal
-- **Plan payments** use the backend setting `PAYMENTS_PROVIDER` (`none` by default, or `stripe`) in `services/runtime/app/billing/payments.py`, mirrored on the web in `apps/web/src/lib/payments.ts` / `NEXT_PUBLIC_PAYMENTS_PROVIDER`.
-  - With `none`, checkout, the customer portal and top-up return 503 with a neutral sentence.
-  - The web shows the plans, the trial and promo codes with: "Paid plans can't be bought here at the moment…". It shows no Stripe name.
-  - `/account` returns `payments_provider`.
-- **To add PayPal:**
-  1. Add `paypal` to both `payments` modules.
-  2. Write `paypal_api.py` next to `stripe_api.py`, covering PayPal Subscriptions (plans, subscribe, cancel) and its webhooks.
-  3. Wire it through `routes.py` (`stripe_or_503`; make that a generic provider), `service.py` and `webhooks.py`.
-  4. Use the fakes in `fakes.py` for tests.
-  5. On the web, change `PlanBilling.tsx`, `PlanLimitDialog.tsx`, `PricingView.tsx`, `privacy/page.tsx` and `settings/billing` (`BillingReturn.tsx`).
-  6. The contract test `tests/test_billing_contract.py` pins the shapes in `docs/billing/api_shapes.json`. Regenerate with `UPDATE_API_SHAPES=1`. Web check: `apps/web/tests/unit/api-shapes.test.ts`.
-- **Invoice payment links** (customers paying a user's invoice) are a separate feature: `app/online_payments.py`, `routes_online_payments.py` and `components/settings/OnlinePayments.tsx`. `paypal-direct` extends this.
+## Payments: PayPal is the default (branch `paypal-default`, 11 Nov 2026)
+- **Owner decision:** PayPal is the default payment handler everywhere. Stripe is kept in code but hidden from users
+  (on hold, no live key).
+- **Invoice "Pay online" links** (`app/online_payments.py`, `routes_online_payments.py`,
+  `components/settings/OnlinePayments.tsx`, the invoice dialog and the assistant): PayPal first, then PayPal.me (no
+  API). Stripe is listed only with `STRIPE_VISIBLE=1` on the runtime (or when a user already linked Stripe, so they can
+  disconnect it); hidden Stripe refuses connect and new links with a 503 sentence. The web's
+  `NEXT_PUBLIC_STRIPE_VISIBLE=1` only changes static wording. Playwright sets `STRIPE_VISIBLE=1` so its Stripe flow
+  still runs.
+- **Plan billing** (`app/billing/`): `PAYMENTS_PROVIDER` = `none` (default) | `paypal` | `stripe`, mirrored on the web
+  by `NEXT_PUBLIC_PAYMENTS_PROVIDER` (`lib/payments.ts`). With `paypal`:
+  - `billing/paypal_api.py`: PayPal Subscriptions (Catalog product, Billing plans, subscribe with return/cancel URLs ->
+    approve link, get, cancel, revise for a plan change), an Orders v2 order for the £3 top-up, and webhook checks via
+    `POST /v1/notifications/verify-webhook-signature` with `PAYPAL_WEBHOOK_ID`. Shapes and pages cited in its
+    docstring (read 11 Nov 2026). Live API refused unless `PAYMENTS_LIVE=1`.
+  - Routes are provider-generic (`provider_or_503`): `POST /billing/checkout` (PayPal approval link),
+    `/billing/portal` (PayPal's automatic payments page), new `/billing/change-plan` and `/billing/cancel`,
+    `/billing/topup`, and `POST /billing/paypal/webhook` (ACTIVATED, UPDATED, CANCELLED, EXPIRED, SUSPENDED,
+    PAYMENT.FAILED, PAYMENT.SALE.COMPLETED, CHECKOUT.ORDER.APPROVED; idempotent by event id).
+  - Trial: ours (90 days, no card). PayPal plans have no TRIAL cycle; a subscription made in the trial or a comp gets
+    `start_time` = its end. VAT: prices ex VAT, `taxes.percentage` = `PAYPAL_VAT_PERCENT` (20) added by PayPal.
+  - No Supabase change: the PayPal subscription id lives in `stripe_subscription_id`, webhook ids in `stripe_events`.
+  - Percent/fixed promo codes are refused at a PayPal checkout ("contact us"); free-month codes work.
+  - Web: Settings › Plan & billing ("Subscribe with PayPal", Change plan, Cancel plan, Manage in PayPal),
+    `PlanLimitDialog`, `PricingView` and `privacy` name PayPal when the build's provider is `paypal`; iOS still shows no
+    prices or purchase links (`StorePolicy`).
+  - Contract: `docs/billing/api_shapes.json` gained `POST /billing/change-plan` and `POST /billing/cancel`
+    (regenerate with `UPDATE_API_SHAPES=1` only for intended changes; web check `tests/unit/api-shapes.test.ts`).
+  - Tests: `tests/test_billing_paypal.py` (fakes in `billing/fakes.py`). Nothing has reached the PayPal sandbox yet: see
+    docs/HONESTY.md, "PayPal as the payment handler".
+- **To switch it on (sandbox):**
+  1. With the sandbox REST app's id and secret in the env (clipboard script on the Spark, never in chat), run
+     `uv run python tools/paypal_billing_setup.py`; put the printed `PAYPAL_PRODUCT_ID` / `PAYPAL_PLAN_*` lines in the
+     Spark `.env` (ids, not secrets).
+  2. In the PayPal developer dashboard add a webhook for `https://api.accnomos.com/billing/paypal/webhook` with the
+     events above; set `PAYPAL_WEBHOOK_ID`.
+  3. Set `PAYMENTS_PROVIDER=paypal` on the runtime and `NEXT_PUBLIC_PAYMENTS_PROVIDER=paypal` in the web build.
+  4. Subscribe with a sandbox personal account; check `/account` shows `active` (or `trialing` with the deferred
+     start), then try change plan, cancel and a top-up. Record what differed from the fakes in HONESTY.md.
 - **Plans:** Starter £10, Comprehensive £20, Ultimate £50 a month, ex VAT. Yearly is **2 months free** (£100 / £200 / £500).
   - 3-month free trial with no card. Admin-made promo codes, including 12 months free. The contract is in `docs/billing/PLANS_AND_CONTRACT.md`.
   - Live Supabase `accnomos.plans` holds 1000/2000/5000 (monthly) and 10000/20000/50000 (yearly), in pence.
@@ -68,7 +94,7 @@ The Meta hackathon is finished (submitted 4 Nov). This handover is for the next 
 - `.env` is `~/spark/accnomos/deploy-repo/.env`. Never print it.
 - Set now: `AI_PROVIDERS=spark`, `SAM_CROP=0`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (`sb_secret`, verified), `ADMIN_EMAILS=admin@zaytunauk.co.uk`, and `STRIPE_SECRET_KEY` (test).
 - Stale and unused: `MODEL_API_MODEL` and `VERIFIER_MODEL`, which still name Meta models.
-- **At deploy:** set `ANTHROPIC_API_KEY` (from `~/.anthropic_key`) and `AI_PROVIDERS=spark,anthropic`. Keep `PAYMENTS_PROVIDER=none` until PayPal is ready. Redeploy with the new `deploy/docker-compose.yml`, which passes the new variables into the container.
+- **At deploy:** set `ANTHROPIC_API_KEY` (from `~/.anthropic_key`) and `AI_PROVIDERS=spark,anthropic`. Keep `PAYMENTS_PROVIDER=none` until the PayPal sandbox steps under Payments are done. Redeploy with the new `deploy/docker-compose.yml`, which passes the new variables into the container.
 - Helper scripts are in `~/spark/accnomos/ci/`:
   - `set-env-secret.sh NAME PREFIX`: the value goes in on stdin from the PC clipboard, then clear the clipboard.
   - `check-supabase.sh` and `check-stripe.sh`.

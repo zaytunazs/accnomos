@@ -681,3 +681,37 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
 - The limits table and prices are the contract's; the market comparison on `/pricing` is dated 9 November 2026 and
   should be rechecked before it is relied on.
 - VAT returns are listed on every plan as "prepare and export"; filing to HMRC is sandbox only (see the HMRC sections).
+
+## PayPal as the payment handler (11 Nov 2026)
+
+- **Owner decision:** PayPal is the default payment handler. Stripe stays in the code but is hidden: invoice links
+  offer PayPal, then PayPal.me; Stripe only with `STRIPE_VISIBLE=1` (or to a user who already linked one, so it can be
+  disconnected). Plan billing runs on PayPal with `PAYMENTS_PROVIDER=paypal`.
+- **Plan billing on PayPal Subscriptions is checked against fakes only.** `app/billing/paypal_api.py` was written from
+  PayPal's published OpenAPI files (Subscriptions v1, Catalog Products v1, Orders v2, Webhooks v1) and pages
+  (delayed start, webhook event names), all read 11 Nov 2026, and tested against the fake in `app/billing/fakes.py`
+  (`tests/test_billing_paypal.py`). Nothing has been sent to the PayPal sandbox from this code: no credentials were
+  available to the branch. The fake's answers follow the schemas; they are not recordings.
+- Unverified until a sandbox run: that a `start_time` up to 90 days ahead is accepted and nothing is taken before it
+  (the trial is ours, so a subscription made during the trial or a comp starts at its end); that `/revise` accepts a
+  switch between a monthly and a yearly plan, and which webhook (we rely on `BILLING.SUBSCRIPTION.UPDATED`) tells us the
+  buyer approved it; that `PAYMENT.SALE.COMPLETED` carries the subscription id as `billing_agreement_id` (PayPal's
+  samples show it; the schema files do not cover webhook resources); the error PayPal gives when an order is captured
+  twice (`ORDER_ALREADY_CAPTURED` is assumed); and that verify-webhook-signature accepts the event spliced in exactly
+  as received (done so nothing PayPal signed changes on the way back).
+- **VAT:** one flat 20% UK VAT added by PayPal on top of the ex-VAT price (`taxes.percentage`, `inclusive: false`).
+  Unlike Stripe Tax there is no address-based tax and no reverse charge for business customers outside the UK, and
+  Accnomos does not issue its own VAT invoice for a plan payment: the customer has PayPal's receipt only.
+- **Promo codes:** free-month codes work as before (they never touch the provider). Percent and fixed-amount codes are
+  refused at a PayPal checkout with "contact us": a PayPal plan override can only change the price for the whole
+  subscription, not for the first months. Applying one by hand is an admin task outside the app.
+- **Cancel:** PayPal cancels at once (it has no cancel-at-period-end), so Accnomos keeps the plan until
+  `current_period_end` (PayPal's `next_billing_time`) and then shows it cancelled (read-only). Subscribing again
+  before then starts the new subscription at that date. The admin's "cancel at period end", "resume", "send portal
+  link", "apply code" and the user's Stripe summary are still Stripe-only.
+- **Storage:** no Supabase change. The PayPal subscription id is kept in `accounts.stripe_subscription_id` and PayPal
+  webhook ids in `stripe_events`; the payer id is not kept. The column names are wrong for PayPal until a later
+  migration renames them.
+- Manage billing opens PayPal's own "automatic payments" page (`paypal.com/myaccount/autopay/`); PayPal has no
+  per-merchant customer portal. The top-up is a PayPal order captured by the `CHECKOUT.ORDER.APPROVED` webhook, so a
+  top-up shows only once the webhook is set up.
