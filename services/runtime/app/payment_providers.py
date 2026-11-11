@@ -40,6 +40,7 @@ import base64
 import json
 import time
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import urlencode
@@ -443,6 +444,45 @@ class PayPalApi:
 
     async def capture(self, merchant: str, capture_id: str) -> dict[str, Any]:
         return await self._call("GET", f"/v2/payments/captures/{capture_id}", merchant=merchant)
+
+    async def transactions(
+        self, merchant: str | None, *, start: datetime, end: datetime, page: int = 1, page_size: int = 500
+    ) -> dict[str, Any]:
+        """One page of the account's history (Transaction Search, `GET /v1/reporting/transactions`; guide at
+        developer.paypal.com/docs/transaction-search, read 11 Nov 2026: at most 31 days per request, `page_size` at
+        most 500). Dates are sent as PayPal prints them (`2014-07-11T04:03:52+0000`). UNVERIFIED against the
+        sandbox: that PayPal-Auth-Assertion is accepted here for a partner's merchant (the guide says third-party
+        use needs the partner network)."""
+        q = urlencode(
+            {
+                "start_date": paypal_time(start),
+                "end_date": paypal_time(end),
+                "fields": "all",
+                "page_size": str(page_size),
+                "page": str(page),
+            }
+        )
+        return await self._call("GET", f"/v1/reporting/transactions?{q}", merchant=merchant)
+
+
+def paypal_time(when: datetime) -> str:
+    """2026-11-11T09:00:00+0000 (UTC), the form PayPal's own transaction dates take."""
+    return when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+0000")
+
+
+def paypal_parse_time(raw: Any) -> datetime | None:
+    """A PayPal transaction date (`2014-07-11T04:03:52+0000`, or with `Z`) as an aware datetime; None if unreadable."""
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    text = text.replace("Z", "+00:00")
+    if len(text) >= 5 and text[-5] in "+-" and text[-3] != ":":  # +0000 -> +00:00
+        text = f"{text[:-2]}:{text[-2:]}"
+    try:
+        got = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return got if got.tzinfo else got.replace(tzinfo=UTC)
 
 
 def recipient_view_url(invoice: dict[str, Any]) -> str | None:

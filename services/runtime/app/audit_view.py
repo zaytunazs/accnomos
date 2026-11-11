@@ -289,6 +289,18 @@ SUMMARIES: dict[str, Summary] = {
         + ", moved from clearing to the bank"
     ),
     "payout_unmatched": lambda r, w: f"Unmatched a {_provider(r)} payout; the money is back in clearing",
+    # Sync PayPal (app/paypal_sync.py)
+    "paypal_synced": lambda r, w: (
+        ("Read the sample PayPal history" if r.get("source") == "sample" else "Synced PayPal")
+        + f": {_n(r, 'new')} new, {_n(r, 'proposed')} to approve"
+    ),
+    "paypal_transaction_approved": lambda r, w: (
+        "Posted a PayPal "
+        + {"invoice": "payment", "sale": "sale", "expense": "purchase", "fee": "fee"}.get(str(r.get("kind")), "entry")
+        + _pounds(r, "amount_pence")
+        + (f" against invoice {_inv(r)}" if r.get("invoice") else "")
+    ),
+    "paypal_transaction_rejected": lambda r, w: "Rejected a synced PayPal transaction",
     # Credits on contacts (app/credits.py)
     "credit_applied": lambda r, w: "Applied a credit on account to another document" + _pounds(r, "amount_pence"),
     "credit_refunded": lambda r, w: (

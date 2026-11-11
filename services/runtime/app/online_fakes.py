@@ -20,6 +20,7 @@ import json
 import secrets
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 from urllib.parse import parse_qsl, urlencode
@@ -63,6 +64,10 @@ class Fakes:
     invoices: dict[str, dict[str, Any]] = field(default_factory=dict)  # INV2-… -> PayPal invoice, with "_merchant"
     captures: dict[str, dict[str, Any]] = field(default_factory=dict)
     paypal_fee_known: bool = True
+    # Transaction Search rows (`transaction_details[]`). None: the sample history (sample_transactions), dated back
+    # from the end of the first search, so test mode has something to sync. Payments made through fake PayPal
+    # invoices (pay_paypal) are listed as well, as PayPal would.
+    reporting: list[dict[str, Any]] | None = None
     base: str = "http://127.0.0.1:8780"  # where the fake browser pages are (test mode sets the runtime's own)
 
     def reset(self) -> None:
@@ -172,6 +177,206 @@ def _pence(value: str) -> int:
 
 def _value(pence: int) -> str:
     return f"{pence // 100}.{pence % 100:02d}"
+
+
+def _signed(pence: int) -> str:
+    return f"-{_value(-pence)}" if pence < 0 else _value(pence)
+
+
+def reporting_row(
+    tid: str,
+    when: datetime,
+    *,
+    code: str,
+    gross: int,
+    fee: int = 0,
+    name: str | None = None,
+    email: str | None = None,
+    items: list[tuple[str, int]] | None = None,
+    invoice_id: str | None = None,
+    custom: str | None = None,
+    subject: str | None = None,
+    status: str = "S",
+    currency: str = "GBP",
+) -> dict[str, Any]:
+    """One `transaction_details[]` entry shaped like the Transaction Search sample response (fields=all): amounts as
+    signed strings, the fee negative, dates as `2014-07-11T04:03:52+0000`, the other party in `payer_info`."""
+    ts = when.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S+0000")
+    info: dict[str, Any] = {
+        "paypal_account_id": "FAKEACCOUNT1",
+        "transaction_id": tid,
+        "transaction_event_code": code,
+        "transaction_initiation_date": ts,
+        "transaction_updated_date": ts,
+        "transaction_amount": {"currency_code": currency, "value": _signed(gross)},
+        "transaction_status": status,
+        "protection_eligibility": "01",
+    }
+    if fee:
+        info["fee_amount"] = {"currency_code": currency, "value": _signed(-abs(fee))}
+    if invoice_id:
+        info["invoice_id"] = invoice_id
+    if custom:
+        info["custom_field"] = custom
+    if subject:
+        info["transaction_subject"] = subject
+    payer: dict[str, Any] = {"account_id": "FAKEPAYER" + tid[:4], "address_status": "Y", "payer_status": "Y"}
+    if email:
+        payer["email_address"] = email
+    if name:
+        payer["payer_name"] = {"alternate_full_name": name}
+    row: dict[str, Any] = {"transaction_info": info, "payer_info": payer, "shipping_info": {}, "store_info": {}}
+    if items:
+        row["cart_info"] = {
+            "item_details": [
+                {
+                    "item_name": n,
+                    "item_quantity": "1",
+                    "item_unit_price": {"currency_code": currency, "value": _value(p)},
+                    "item_amount": {"currency_code": currency, "value": _value(p)},
+                }
+                for n, p in items
+            ]
+        }
+    else:
+        row["cart_info"] = {}
+    return row
+
+
+def sample_transactions(end: date, invoice: tuple[str, int, str] | None = None) -> list[dict[str, Any]]:
+    """A small, believable month of a joinery firm's PayPal account, dated back from `end`: two sales, a payment
+    naming one of the user's invoices (when given: number, amount and customer), two purchases (Screwfix, Adobe), a
+    withdrawal to the bank and a payment still pending. Ids are fixed per day, so syncing twice finds the same rows.
+    Fees are the made-up 2.9% + 30p above."""
+
+    def at(days: int, hour: int = 10) -> datetime:
+        d = end - timedelta(days=days)
+        return datetime(d.year, d.month, d.day, hour, 15, tzinfo=UTC)
+
+    def tid(n: int) -> str:
+        return f"{end:%y%m%d}SMPL{n:04d}X"[:17]
+
+    rows = [
+        reporting_row(
+            tid(1),
+            at(12),
+            code="T0006",
+            gross=4800,
+            fee=paypal_fee(4800),
+            name="Amelia Clarke",
+            email="amelia.clarke@example.com",
+            items=[("Oak chopping board", 4800)],
+            subject="Oak chopping board",
+        ),
+        reporting_row(
+            tid(2),
+            at(15),
+            code="T0002",
+            gross=-1997,
+            name="Adobe Systems Software Ireland Ltd",
+            email="billing@adobe.example",
+            items=[("Creative Cloud Photography plan (monthly)", 1997)],
+        ),
+        reporting_row(
+            tid(3),
+            at(9),
+            code="T0006",
+            gross=-3699,
+            name="Screwfix Direct Ltd",
+            email="orders@screwfix.example",
+            items=[("Wood screws 4.0 x 40mm (200)", 1299), ("Wood glue 1L", 2400)],
+        ),
+        reporting_row(
+            tid(4),
+            at(3),
+            code="T0001",
+            gross=12000,
+            fee=paypal_fee(12000),
+            name="Ben Hughes",
+            email="ben.hughes@example.com",
+            items=[("Floating shelf set, walnut", 12000)],
+        ),
+        reporting_row(tid(5), at(2), code="T0400", gross=-15000, subject="Withdrawal to bank account"),
+        reporting_row(tid(6), at(0, 8), code="T0006", gross=2500, fee=paypal_fee(2500), name="Chloe Patel", status="P"),
+    ]
+    if invoice:
+        number, pence, customer = invoice
+        rows.append(
+            reporting_row(
+                tid(7),
+                at(6),
+                code="T0007",
+                gross=pence,
+                fee=paypal_fee(pence),
+                name=customer,
+                invoice_id=number,
+                subject=f"Payment for invoice {number}",
+            )
+        )
+    return rows
+
+
+def _invoice_rows() -> list[dict[str, Any]]:
+    """Payments made through fake PayPal invoices, as Transaction Search lists them (T0007, the invoice number)."""
+    out = []
+    for inv in FAKES.invoices.values():
+        for t in inv["payments"]["transactions"]:
+            day = date.fromisoformat(str(t["payment_date"])[:10])
+            gross = _pence(t["amount"]["value"])
+            out.append(
+                reporting_row(
+                    t["payment_id"],
+                    datetime(day.year, day.month, day.day, 12, 0, tzinfo=UTC),
+                    code="T0007",
+                    gross=gross,
+                    fee=paypal_fee(gross),
+                    name=((inv.get("primary_recipients") or [{}])[0].get("billing_info") or {})
+                    .get("name", {})
+                    .get("full_name"),
+                    invoice_id=inv["detail"]["invoice_number"],
+                    subject=inv["detail"].get("note"),
+                )
+            )
+    return out
+
+
+def _reporting(request: httpx.Request) -> httpx.Response:
+    q = request.url.params
+    start = payment_providers.paypal_parse_time(q.get("start_date"))
+    end = payment_providers.paypal_parse_time(q.get("end_date"))
+    if start is None or end is None or end <= start:
+        return _paypal_error(400, "INVALID_REQUEST", "start_date and end_date are required")
+    if end - start > timedelta(days=31):
+        return _paypal_error(400, "INVALID_REQUEST", "Date range is greater than 31 days")
+    try:
+        size, page = int(q.get("page_size", "100")), int(q.get("page", "1"))
+    except ValueError:
+        return _paypal_error(400, "INVALID_REQUEST", "page")
+    if not 1 <= size <= 500 or page < 1:
+        return _paypal_error(400, "INVALID_REQUEST", "page_size is 1 to 500")
+    if FAKES.reporting is None:
+        FAKES.reporting = sample_transactions(end.date())
+    rows = []
+    for row in [*FAKES.reporting, *_invoice_rows()]:
+        when = payment_providers.paypal_parse_time(row["transaction_info"]["transaction_initiation_date"])
+        if when is not None and start <= when <= end:
+            rows.append(row)
+    rows.sort(key=lambda r: r["transaction_info"]["transaction_initiation_date"])
+    pages = max(1, -(-len(rows) // size))
+    return _json(
+        200,
+        {
+            "transaction_details": rows[(page - 1) * size : page * size],
+            "account_number": "FAKEACCOUNT1",
+            "start_date": q.get("start_date"),
+            "end_date": q.get("end_date"),
+            "last_refreshed_datetime": payment_providers.paypal_time(datetime.now(UTC)),
+            "page": page,
+            "total_items": len(rows),
+            "total_pages": pages,
+            "links": [],
+        },
+    )
 
 
 def _json(status: int, body: Any) -> httpx.Response:
@@ -377,8 +582,12 @@ def _paypal(request: httpx.Request) -> httpx.Response:
             return _paypal_error(404, "RESOURCE_NOT_FOUND", "The specified resource does not exist.")
         return _json(200, FAKES.merchants[mid])
     merchant = _assertion_merchant(request)
-    if path.startswith(("/v2/invoicing/", "/v2/payments/")) and (merchant is None or merchant not in FAKES.merchants):
+    if path.startswith(("/v2/invoicing/", "/v2/payments/", "/v1/reporting/")) and (
+        merchant is None or merchant not in FAKES.merchants
+    ):
         return _paypal_error(403, "NOT_AUTHORIZED", "Authorization failed due to insufficient permissions.")
+    if path == "/v1/reporting/transactions" and method == "GET":
+        return _reporting(request)
     if path == "/v2/invoicing/invoices" and method == "POST":
         number = body["detail"]["invoice_number"]
         if any(i["detail"]["invoice_number"] == number and i["_merchant"] == merchant for i in FAKES.invoices.values()):
