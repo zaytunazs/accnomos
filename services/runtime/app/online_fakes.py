@@ -417,7 +417,8 @@ def sample_transactions(
 
     def at(days: int, hour: int = 10) -> datetime:
         d = end - timedelta(days=days)
-        return datetime(d.year, d.month, d.day, hour, 15, tzinfo=UTC)
+        when = datetime(d.year, d.month, d.day, hour, 15, tzinfo=UTC)
+        return min(when, datetime.now(UTC) - timedelta(minutes=1))  # never in the future, early in the day
 
     def tid(n: int) -> str:
         return f"{end:%y%m%d}SMPL{n:04d}X"[:17]
@@ -518,7 +519,10 @@ def _invoice_rows() -> list[dict[str, Any]]:
             out.append(
                 reporting_row(
                     t["payment_id"],
-                    datetime(day.year, day.month, day.day, 12, 0, tzinfo=UTC),
+                    min(
+                        datetime(day.year, day.month, day.day, 12, 0, tzinfo=UTC),
+                        datetime.now(UTC) - timedelta(minutes=1),
+                    ),
                     code="T0007",
                     gross=gross,
                     fee=paypal_fee(gross),
