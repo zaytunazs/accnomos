@@ -1,4 +1,4 @@
-﻿name: Deploy web (static export) to the site branch
+name: Deploy web (static export) to the site branch
 
 on:
   push:
@@ -24,11 +24,11 @@ jobs:
       # 1 = the judged site (no launch date or "coming soon"); set the repo variable SUBMISSION_MODE=0 after judging.
       NEXT_PUBLIC_SUBMISSION_MODE: ${{ vars.SUBMISSION_MODE || '1' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -48,7 +48,7 @@ jobs:
             echo "::error::out/ contains test-mode code (fake sign-in or /__test URLs); not publishing"; exit 1
           fi
       - name: Publish out/ to the site branch (Plesk Git pulls this branch into httpdocs)
-        uses: peaceiris/actions-gh-pages@329bcc8f12caed2cefe5a5b80781499a6f3b361b # v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: apps/web/out
